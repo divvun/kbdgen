@@ -32,3 +32,9 @@ among the various linguistic targets: Windows, MacOS, .svg, etc.
 * keyboard layout (A001+)
 
 * layout .yaml files
+
+== Bundle Model
+
+* project.yaml file (do this first, probably)
+* layout folder, x amount of .yaml files, validate by language name
+* targets folder, x amount of yaml files, validate by... target name

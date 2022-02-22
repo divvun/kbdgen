@@ -1,14 +1,21 @@
-use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+
+use clap::{Parser, Args, Subcommand};
+
+use crate::bundle::read_kbdgen_bundle;
+
+mod bundle;
 
 fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Command::Target(target_command) => {
+        Command::Target(target_command_struct) => {
 
+            let bundle_path = target_command_struct.bundle_path.clone();
+            read_kbdgen_bundle(&bundle_path);
 
-
-            match target_command {
+            match &target_command_struct.target_command {
                 TargetCommand::Svg(svg_command) => {
 
 
@@ -31,13 +38,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    #[clap(subcommand)]
-    Target(TargetCommand)
+    Target(TargetCommandStruct)
 }
 
 #[derive(Subcommand)]
 enum TargetCommand {
     Svg(TargetSvgCommand)
+}
+
+#[derive(Args)]
+struct TargetCommandStruct {
+    #[clap(subcommand)]
+    target_command: TargetCommand,
+
+    #[clap(parse(from_os_str))]
+    bundle_path: PathBuf,
 }
 
 #[derive(Parser)]
