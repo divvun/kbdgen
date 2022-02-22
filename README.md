@@ -8,3 +8,8 @@ This is a developer oriented Readme.
 
 `cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen svg`
 
+# asciidoc
+
+`asciidoctor dev-docs/cli-functions.adoc`
+
+`asciidoctor dev-docs/layout-questions.adoc`

@@ -11,6 +11,8 @@ pathos = "0.3.0-pre.3"
 
 serde = { version = "1.0.110", features = ["derive"] }
 indexmap = { version = "1.8.0", features = ["serde"] }
+language-tags = { version = "0.3.2", features = ["serde"] }
+
 # DIV-8
 serde_yaml = { git = "https://github.com/divvun/serde-yaml/", branch = "feature/multiline-strings" }
 
