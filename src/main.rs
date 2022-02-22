@@ -3,7 +3,21 @@ use clap::{Parser, Subcommand};
 fn main() {
     let cli = Cli::parse();
 
-    
+    match &cli.command {
+        Command::Target(target_command) => {
+
+
+
+            match target_command {
+                TargetCommand::Svg(svg_command) => {
+
+
+
+                    println!("whee");
+                }
+            }
+        }
+    };
 
     println!("Hello, world!");
 }
@@ -29,5 +43,5 @@ enum TargetCommand {
 #[derive(Parser)]
 struct TargetSvgCommand {
     #[clap(short, long)]
-    hmm: bool,
+    aaa: Option<bool>,
 }

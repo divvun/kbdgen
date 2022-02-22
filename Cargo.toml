@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "3.1.0", features = ["derive"] }
+pathos = "0.3.0-pre.3"
