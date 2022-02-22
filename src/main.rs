@@ -15,6 +15,8 @@ fn main() -> Result<(), Error> {
             let bundle_path = target_command_struct.bundle_path.clone();
             let bundle = read_kbdgen_bundle(&bundle_path)?;
 
+            println!("Printing bundle for kicks: {:?}", bundle);
+
             match &target_command_struct.target_command {
                 TargetCommand::Svg(svg_command) => {
 
