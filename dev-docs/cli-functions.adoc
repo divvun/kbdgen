@@ -1,0 +1,34 @@
+== Expected CLI Functions
+
+Core `kbdgen` functionality will be within the subcommand `target`, that then allows to select
+among the various linguistic targets: Windows, MacOS, .svg, etc.
+
+== Expected Inputs and Outputs
+
+* inputs
+
+** .svg generator: ISO keyboard template .svg
+
+** relevant language bundle (.kbdgen folder format)
+
+** cldr models
+
+* outputs
+
+** build artifacts at various stages
+
+== Expected Generators
+
+* target-based generators for major OSes (Windows, Mac, Linux)
+
+* target-based generators for minor OSes (mobile)
+
+* .svg keyboard image generator
+
+== Expected Models
+
+* .kbdgen bundle
+
+* keyboard layout (A001+)
+
+* layout .yaml files
