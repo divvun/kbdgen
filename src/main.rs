@@ -2,18 +2,18 @@ use std::path::PathBuf;
 
 use clap::{Parser, Args, Subcommand};
 
-use crate::bundle::read_kbdgen_bundle;
+use crate::bundle::{read_kbdgen_bundle, Error};
 
 mod bundle;
 
-fn main() {
+fn main() -> Result<(), Error> {
     let cli = Cli::parse();
 
     match &cli.command {
         Command::Target(target_command_struct) => {
 
             let bundle_path = target_command_struct.bundle_path.clone();
-            read_kbdgen_bundle(&bundle_path);
+            let bundle = read_kbdgen_bundle(&bundle_path)?;
 
             match &target_command_struct.target_command {
                 TargetCommand::Svg(svg_command) => {
@@ -26,7 +26,7 @@ fn main() {
         }
     };
 
-    println!("Hello, world!");
+    Ok(())
 }
 
 #[derive(Parser)]
