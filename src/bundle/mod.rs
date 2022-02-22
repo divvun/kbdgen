@@ -2,8 +2,9 @@ use std::fs;
 use std::fs::canonicalize;
 use std::path::{Path, PathBuf};
 
-use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use project::Project;
+
+mod project;
 
 static PROJECT_FILENAME: &str = "project.yaml";
 
@@ -26,21 +27,6 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
         path: canonical_bundle_path,
         project,
     })
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct LocaleProjectDescription {
-    pub name: String,
-    pub description: String,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Project {
-    pub locales: IndexMap<String, LocaleProjectDescription>,
-    pub author: String,
-    pub copyright: String,
-    pub email: String,
-    pub organisation: String,
 }
 
 #[derive(Debug, thiserror::Error)]
