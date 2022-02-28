@@ -6,9 +6,11 @@ use std::path::{Path, PathBuf};
 use language_tags::LanguageTag;
 
 use layout::Layout;
+use target::Target;
 use project::Project;
 
 mod layout;
+mod target;
 mod project;
 
 const PROJECT_FILENAME: &str = "project.yaml";
@@ -22,6 +24,7 @@ pub struct KbdgenBundle {
     pub path: PathBuf,
     pub project: Project,
     pub layouts: HashMap<LanguageTag, Layout>,
+    pub targets: Vec<Target>,
 }
 
 pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
@@ -37,11 +40,13 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     let targets_path = canonical_bundle_path.join(TARGETS_FOLDER);
 
     let layouts = read_layouts(&layouts_path)?;
+    let targets = read_targets(&targets_path)?;
 
     Ok(KbdgenBundle {
         path: canonical_bundle_path,
         project,
         layouts,
+        targets,
     })
 }
 
@@ -67,6 +72,36 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
             let layout: Layout = serde_yaml::from_str(&fs::read_to_string(path)?)?;
 
             Ok((tag, layout))
+        })
+        .collect()
+}
+
+fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
+    read_dir(path)?
+        .filter_map(Result::ok)
+        .map(|file| file.path())
+        .filter(|path| path.is_file())
+        .filter(|path| match path.extension() {
+            Some(ext) => ext == YAML_EXT,
+            None => false,
+        })
+        .map(|path| {
+            let target_name = path
+                .file_stem()
+                .ok_or_else(|| Error::NoFileStem { path: path.clone() })?
+                .to_string_lossy();
+
+            let target: Target = match target_name.as_ref() {
+                "ios" => {
+                    let iOS_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+                    Target::iOS(iOS_target)
+                },
+                _ => {
+                    todo!()
+                },
+            };
+            
+            Ok(target)
         })
         .collect()
 }
