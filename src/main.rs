@@ -5,6 +5,7 @@ use clap::{Args, Parser, Subcommand};
 use crate::bundle::{read_kbdgen_bundle, Error};
 
 mod bundle;
+mod build;
 
 fn main() -> Result<(), Error> {
     let cli = Cli::parse();

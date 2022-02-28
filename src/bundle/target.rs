@@ -8,8 +8,13 @@ pub enum Target {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Windows {
-
+    app_name: String,
+    version: String,
+    url: String,
+    uuid: String,
+    build: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

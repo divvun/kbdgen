@@ -92,6 +92,10 @@ fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
                 .to_string_lossy();
 
             let target: Target = match target_name.as_ref() {
+                "win" | "windows" => {
+                    let win_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+                    Target::Windows(win_target)
+                },
                 "ios" => {
                     let iOS_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
                     Target::iOS(iOS_target)
