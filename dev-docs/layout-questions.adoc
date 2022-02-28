@@ -1,4 +1,28 @@
+== YAML Questions
+
 What are `displayNames`? Why is that the name?
 
 `modes` -> `layers`
 
+Layers need to be organized better than they currently are. Some considerations:
+
+* what do they have in comon?
+* how are they actually used?
+* there seem to be some that become mobile layers, and some desktop layers.
+Is there more than these two categories?
+* disentangle file structure from the model we actually want to end up with.
+
+== Targets
+
+Target files seem random and very specific to a given target.
+
+== Implementation
+
+For a given layout file, `layers` need to correspond to target files.
+
+Create a trait for the build process. Each target would implement this trait,
+which would include in it a number of build steps. The build steps will be named,
+and can either be executed all at once, or one can be chosen. No state
+tracking is planned for `kbdgen` at this time.
+
+What to do for targets that do not have keyboard layers, or the extra layers?

@@ -17,6 +17,9 @@ fn main() -> Result<(), Error> {
             println!("Printing bundle for kicks: {:?}", bundle);
 
             match &target_command_struct.target_command {
+                TargetCommand::Windows(windows_command) => {
+                    println!("windosss");
+                },
                 TargetCommand::Svg(svg_command) => {
                     println!("whee");
                 }
@@ -42,6 +45,7 @@ enum Command {
 #[derive(Subcommand)]
 enum TargetCommand {
     Svg(TargetSvgCommand),
+    Windows(TargetWindowsCommand)
 }
 
 #[derive(Args)]
@@ -57,4 +61,10 @@ struct TargetCommandStruct {
 struct TargetSvgCommand {
     #[clap(short, long)]
     aaa: Option<bool>,
+}
+
+#[derive(Parser)]
+struct TargetWindowsCommand {
+    #[clap(short, long)]
+    boop: Option<String>,
 }
