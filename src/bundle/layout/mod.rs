@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
 
 use android::{AndroidKbdLayerKey, AndroidPlatformKey};
 use chrome::{ChromeKbdLayerKey, ChromePlatformKey};
@@ -19,6 +19,9 @@ pub struct Layout {
     pub display_names: IndexMap<String, String>,
 
     pub layers: Layers,
+
+    #[serde(default, deserialize_with = "from_mapped_sequence")]
+    pub longpress: Option<IndexMap<String, Vec<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,4 +32,15 @@ pub struct Layers {
     #[serde(rename = "ios")]
     iOS: Option<IndexMap<iOSPlatformKey, IndexMap<iOSKbdLayerKey, String>>>,
     android: Option<IndexMap<AndroidPlatformKey, IndexMap<AndroidKbdLayerKey, String>>>,
+}
+
+fn from_mapped_sequence<'de, D>(deserializer: D) -> Result<Option<IndexMap<String, Vec<String>>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let map: IndexMap<String, String> = Deserialize::deserialize(deserializer)?;
+    
+    Ok(Some(map.into_iter().map(|(key, value)| {
+        (key, value.split(" ").map(|s| s.to_owned()).collect())
+    }).collect()))
 }
