@@ -23,4 +23,6 @@ pub enum MacOSKbdLayerKey {
     CmdAndShift,
     #[serde(rename = "cmd+alt")]
     CmdAndAlt,
+    #[serde(rename = "cmd+alt+shift")]
+    CmdAndAltAndShift,
 }

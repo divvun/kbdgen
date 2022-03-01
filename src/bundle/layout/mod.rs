@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use language_tags::LanguageTag;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use android::{AndroidKbdLayerKey, AndroidPlatformKey};
@@ -24,6 +25,12 @@ pub struct Layout {
     pub longpress: Option<IndexMap<String, Vec<String>>>,
 
     pub space: Option<Space>,
+
+    pub dead_keys: Option<DeadKeys>,
+
+    pub key_names: Option<KeyNames>,
+
+    pub targets: Option<Targets>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,4 +63,51 @@ where
 pub struct Space {
     #[serde(rename = "macos")]
     macOS: Option<IndexMap<MacOSKbdLayerKey, String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeadKeys {
+    #[serde(rename = "macos")]
+    macOS: Option<IndexMap<MacOSKbdLayerKey, Vec<String>>>,
+    windows: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct KeyNames {
+    space: String,
+    r#return: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Targets {
+    windows: Option<WindowsTargetConfig>,
+    chrome: Option<ChromeTargetConfig>,
+    iOS: Option<iOSTargetConfig>,
+    android: Option<AndroidTargetConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WindowsTargetConfig {
+    locale: LanguageTag,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChromeTargetConfig {
+    locale: LanguageTag,
+    xkb_layout: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct iOSTargetConfig {
+    speller_package_key: String,
+    speller_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AndroidTargetConfig {
+    speller_package_key: String,
+    speller_path: String,
 }
