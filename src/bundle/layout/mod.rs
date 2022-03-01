@@ -88,26 +88,26 @@ pub struct Targets {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsTargetConfig {
-    locale: LanguageTag,
+    locale: Option<LanguageTag>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChromeTargetConfig {
-    locale: LanguageTag,
-    xkb_layout: String,
+    locale: Option<LanguageTag>,
+    xkb_layout: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct iOSTargetConfig {
-    speller_package_key: String,
-    speller_path: String,
+    speller_package_key: Option<String>,
+    speller_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AndroidTargetConfig {
-    speller_package_key: String,
-    speller_path: String,
+    speller_package_key: Option<String>,
+    speller_path: Option<String>,
 }
