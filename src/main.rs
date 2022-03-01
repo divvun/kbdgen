@@ -4,8 +4,8 @@ use clap::{Args, Parser, Subcommand};
 
 use crate::bundle::{read_kbdgen_bundle, Error};
 
-mod bundle;
 mod build;
+mod bundle;
 
 fn main() -> Result<(), Error> {
     let cli = Cli::parse();
@@ -20,7 +20,7 @@ fn main() -> Result<(), Error> {
             match &target_command_struct.target_command {
                 TargetCommand::Windows(windows_command) => {
                     println!("windosss");
-                },
+                }
                 TargetCommand::Svg(svg_command) => {
                     println!("whee");
                 }
@@ -46,7 +46,7 @@ enum Command {
 #[derive(Subcommand)]
 enum TargetCommand {
     Svg(TargetSvgCommand),
-    Windows(TargetWindowsCommand)
+    Windows(TargetWindowsCommand),
 }
 
 #[derive(Args)]

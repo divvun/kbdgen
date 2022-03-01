@@ -18,9 +18,7 @@ pub struct Windows {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MacOS {
-
-}
+pub struct MacOS {}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

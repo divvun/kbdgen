@@ -6,12 +6,12 @@ use std::path::{Path, PathBuf};
 use language_tags::LanguageTag;
 
 use layout::Layout;
-use target::Target;
 use project::Project;
+use target::Target;
 
 mod layout;
-mod target;
 mod project;
+mod target;
 
 const PROJECT_FILENAME: &str = "project.yaml";
 const LAYOUTS_FOLDER: &str = "layouts";
@@ -95,16 +95,16 @@ fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
                 "win" | "windows" => {
                     let win_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
                     Target::Windows(win_target)
-                },
+                }
                 "ios" => {
                     let iOS_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
                     Target::iOS(iOS_target)
-                },
+                }
                 _ => {
                     todo!()
-                },
+                }
             };
-            
+
             Ok(target)
         })
         .collect()

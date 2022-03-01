@@ -2,20 +2,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
-pub enum WindowsPlatformKey {
+pub enum iOSPlatformKey {
     Primary,
+    #[serde(rename = "ipad-9in")]
+    iPad9in,
+    #[serde(rename = "ipad-12in")]
+    iPad12in,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
-pub enum WindowsKbdLayerKey {
+pub enum iOSKbdLayerKey {
     Default,
     Shift,
-    Caps,
-    #[serde(rename = "caps+shift")]
-    CapsAndShift,
     Alt,
     #[serde(rename = "alt+shift")]
     AltAndShift,
-    Ctrl,
+    #[serde(rename = "symbols-1")]
+    Symbols1,
+    #[serde(rename = "symbols-2")]
+    Symbols2,
 }
