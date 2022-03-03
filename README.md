@@ -2,7 +2,7 @@
 
 This is a developer oriented Readme.
 
-`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds windows`
+`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/blep windows`
 
 `cargo run -- target ~/Projects/keyboard-sme svg`
 

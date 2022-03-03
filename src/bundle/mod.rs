@@ -9,7 +9,7 @@ use layout::Layout;
 use project::Project;
 use target::Target;
 
-mod layout;
+pub mod layout;
 mod project;
 mod target;
 
@@ -92,7 +92,7 @@ fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
                 .to_string_lossy();
 
             let target: Target = match target_name.as_ref() {
-                "win" | "windows" => {
+                "windows" => {
                     let win_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
                     Target::Windows(win_target)
                 }

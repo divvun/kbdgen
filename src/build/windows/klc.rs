@@ -6,10 +6,13 @@ use codecs::utf16::Utf16Ext;
 
 use crate::build::BuildStep;
 use crate::bundle::KbdgenBundle;
+use crate::bundle::layout::windows::WindowsPlatformKey;
 
 const KLC_EXT: &str = "klc";
 
-pub struct KlcFile {}
+pub struct KlcFile {
+    keyboard_name: String,
+}
 
 impl Display for KlcFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -23,15 +26,24 @@ pub struct GenerateKlc {}
 
 impl BuildStep for GenerateKlc {
     fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
-        // TODO: Create a .klc file for every layer
-        // TODO: in the windows platforms
-        let klc_file = KlcFile {};
+        let windows_layouts = bundle.layouts.iter().filter(|(_, layout)| {
+            layout.layers.windows.as_ref().map_or(false, |platform| {
+                platform.contains_key(&WindowsPlatformKey::Primary)
+            })
+        });
 
-        // .klc files must be UTF-16 encoded
-        let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
+        let klc_files = windows_layouts.map(|(language_tag, layout)| {
+            KlcFile {
+                keyboard_name: language_tag.to_string(),
+            }
+        });
 
-        let klc_path = output_path.join(format!("test.{}", KLC_EXT));
-        std::fs::write(klc_path, klc_bytes).unwrap();
+        klc_files.for_each(|klc_file| {
+            // .klc files must be UTF-16 encoded
+            let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
+            let klc_path = output_path.join(format!("{}.{}", klc_file.keyboard_name, KLC_EXT));
+            std::fs::write(klc_path, klc_bytes).unwrap();
+        });
     }
 }
 
