@@ -2,6 +2,8 @@
 
 This is a developer oriented Readme.
 
+`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds windows`
+
 `cargo run -- target ~/Projects/keyboard-sme svg`
 
 ^ should have an error.
