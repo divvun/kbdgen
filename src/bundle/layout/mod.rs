@@ -33,14 +33,19 @@ pub struct Layout {
     pub targets: Option<Targets>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Layers {
     windows: Option<IndexMap<WindowsPlatformKey, IndexMap<WindowsKbdLayerKey, String>>>,
+
     chrome: Option<IndexMap<ChromePlatformKey, IndexMap<ChromeKbdLayerKey, String>>>,
+
     #[serde(rename = "macos")]
     macOS: Option<IndexMap<MacOSPlatformKey, IndexMap<MacOSKbdLayerKey, String>>>,
+
     #[serde(rename = "ios")]
     iOS: Option<IndexMap<iOSPlatformKey, IndexMap<iOSKbdLayerKey, String>>>,
+
     android: Option<IndexMap<AndroidPlatformKey, IndexMap<AndroidKbdLayerKey, String>>>,
 }
 
@@ -59,16 +64,19 @@ where
     ))
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Space {
     #[serde(rename = "macos")]
     macOS: Option<IndexMap<MacOSKbdLayerKey, String>>,
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeadKeys {
     #[serde(rename = "macos")]
     macOS: Option<IndexMap<MacOSKbdLayerKey, Vec<String>>>,
+
     windows: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }
 
@@ -78,6 +86,7 @@ pub struct KeyNames {
     r#return: String,
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Targets {
     windows: Option<WindowsTargetConfig>,
@@ -98,6 +107,7 @@ pub struct ChromeTargetConfig {
     xkb_layout: Option<String>,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct iOSTargetConfig {

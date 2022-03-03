@@ -97,6 +97,7 @@ fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
                     Target::Windows(win_target)
                 }
                 "ios" => {
+                    #[allow(non_snake_case)]
                     let iOS_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
                     Target::iOS(iOS_target)
                 }

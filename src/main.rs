@@ -1,11 +1,10 @@
-use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 
+use crate::build::windows::WindowsBuild;
 use crate::build::BuildSteps;
-use crate::build::WindowsBuild;
 use crate::bundle::{read_kbdgen_bundle, Error, KbdgenBundle};
 
 mod build;
@@ -25,7 +24,7 @@ fn main() -> Result<(), Error> {
             //println!("Printing bundle for kicks: {:?}", bundle);
 
             match &target_command_struct.target_command {
-                TargetCommand::Windows(windows_command) => {
+                TargetCommand::Windows(_windows_command) => {
                     let mut build = WindowsBuild {
                         bundle: Arc::new(bundle),
                         output_path: target_command_struct.output_path.clone(),
@@ -35,7 +34,7 @@ fn main() -> Result<(), Error> {
                     build.populate_steps(); // This shouldn't be a thing
                     build.build_full();
                 }
-                TargetCommand::Svg(svg_command) => {
+                TargetCommand::Svg(_svg_command) => {
                     println!("whee");
                 }
             }

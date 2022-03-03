@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum Target {
     Windows(Windows),
     MacOS(MacOS),
+    #[allow(non_camel_case_types)]
     iOS(iOS),
 }
 
@@ -20,6 +21,7 @@ pub struct Windows {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MacOS {}
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct iOS {
