@@ -1,9 +1,12 @@
 use std::path::PathBuf;
 use std::fs::canonicalize;
+use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 
 use crate::bundle::{read_kbdgen_bundle, Error, KbdgenBundle};
+use crate::build::target::WindowsBuild;
+use crate::build::target::BuildSteps;
 
 mod build;
 mod bundle;
@@ -23,7 +26,13 @@ fn main() -> Result<(), Error> {
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(windows_command) => {
-                    build(bundle);
+                    let mut build = WindowsBuild {
+                        bundle: Arc::new(bundle),
+                        steps: vec![],
+                    };
+
+                    build.populate_steps(); // This shouldn't be a thing
+                    build.build_full();
                 }
                 TargetCommand::Svg(svg_command) => {
                     println!("whee");
@@ -75,12 +84,4 @@ struct TargetSvgCommand {
 struct TargetWindowsCommand {
     #[clap(short, long)]
     boop: Option<String>,
-}
-
-fn build(bundle: KbdgenBundle) {
-    println!("windosss");
-
-    // if it's windows
-    // generate that klc file
-    
 }

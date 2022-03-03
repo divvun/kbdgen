@@ -1,4 +1,4 @@
-# Klc Preliminary Docs
+= Klc Preliminary Docs
 
 Description of KLC goes here.
 

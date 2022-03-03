@@ -1,2 +1,2 @@
-mod target;
+pub mod target;
 mod windows;
