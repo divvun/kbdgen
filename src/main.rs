@@ -1,12 +1,12 @@
-use std::path::PathBuf;
 use std::fs::canonicalize;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 
+use crate::build::BuildSteps;
+use crate::build::WindowsBuild;
 use crate::bundle::{read_kbdgen_bundle, Error, KbdgenBundle};
-use crate::build::target::WindowsBuild;
-use crate::build::target::BuildSteps;
 
 mod build;
 mod bundle;
@@ -28,6 +28,7 @@ fn main() -> Result<(), Error> {
                 TargetCommand::Windows(windows_command) => {
                     let mut build = WindowsBuild {
                         bundle: Arc::new(bundle),
+                        output_path: target_command_struct.output_path.clone(),
                         steps: vec![],
                     };
 
