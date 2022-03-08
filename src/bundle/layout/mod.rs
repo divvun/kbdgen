@@ -5,8 +5,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use android::{AndroidKbdLayerKey, AndroidPlatformKey};
 use chrome::{ChromeKbdLayerKey, ChromePlatformKey};
 use ios::{iOSKbdLayerKey, iOSPlatformKey};
-use macos::{MacOSKbdLayerKey, MacOSPlatformKey};
-use windows::{WindowsKbdLayerKey, WindowsPlatformKey};
+use macos::MacOsKbdLayerKey;
+use windows::WindowsKbdLayerKey;
 
 mod android;
 mod chrome;
@@ -19,6 +19,13 @@ pub mod windows;
 pub struct Layout {
     pub display_names: IndexMap<String, String>,
 
+    pub windows: Option<WindowsPlatform>,
+    #[serde(rename = "chromeOS")]
+    pub chrome_os: Option<ChromeOsPlatform>,
+    #[serde(rename = "macOS")]
+    pub mac_os: Option<MacOsPlatform>,
+
+    /*
     pub layers: Layers,
 
     #[serde(default, deserialize_with = "from_mapped_sequence")]
@@ -31,14 +38,13 @@ pub struct Layout {
     pub key_names: Option<KeyNames>,
 
     pub targets: Option<Targets>,
+    */
 }
 
+/*
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Layers {
-    pub windows: Option<IndexMap<WindowsPlatformKey, IndexMap<WindowsKbdLayerKey, String>>>,
-
-    pub chrome: Option<IndexMap<ChromePlatformKey, IndexMap<ChromeKbdLayerKey, String>>>,
 
     #[serde(rename = "macos")]
     pub macOS: Option<IndexMap<MacOSPlatformKey, IndexMap<MacOSKbdLayerKey, String>>>,
@@ -48,6 +54,45 @@ pub struct Layers {
 
     pub android: Option<IndexMap<AndroidPlatformKey, IndexMap<AndroidKbdLayerKey, String>>>,
 }
+*/
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WindowsPlatform {
+    primary: WindowsPrimaryPlatform,
+}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WindowsPrimaryPlatform {
+    config: WindowsTargetConfig,
+    layers: IndexMap<WindowsKbdLayerKey, String>,
+    dead_keys: IndexMap<WindowsKbdLayerKey, Vec<String>>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChromeOsPlatform {
+    primary: ChromeOsPrimaryPlatform,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChromeOsPrimaryPlatform {
+    config: WindowsTargetConfig,
+    layers: IndexMap<WindowsKbdLayerKey, String>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MacOsPlatform {
+    primary: MacOsPrimaryPlatform,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MacOsPrimaryPlatform {
+    layers: IndexMap<MacOsKbdLayerKey, String>,
+}
+
 
 fn from_mapped_sequence<'de, D>(
     deserializer: D,
@@ -68,14 +113,14 @@ where
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Space {
     #[serde(rename = "macos")]
-    macOS: Option<IndexMap<MacOSKbdLayerKey, String>>,
+    macOS: Option<IndexMap<MacOsKbdLayerKey, String>>,
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeadKeys {
     #[serde(rename = "macos")]
-    macOS: Option<IndexMap<MacOSKbdLayerKey, Vec<String>>>,
+    macOS: Option<IndexMap<MacOsKbdLayerKey, Vec<String>>>,
 
     windows: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }

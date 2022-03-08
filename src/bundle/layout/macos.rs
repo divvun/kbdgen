@@ -2,13 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
-pub enum MacOSPlatformKey {
-    Primary,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "lowercase")]
-pub enum MacOSKbdLayerKey {
+pub enum MacOsKbdLayerKey {
     Default,
     Shift,
     Caps,

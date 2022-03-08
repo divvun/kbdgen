@@ -7,6 +7,7 @@ use crate::build::windows::WindowsBuild;
 use crate::build::BuildSteps;
 use crate::bundle::{read_kbdgen_bundle, Error, KbdgenBundle};
 
+mod iso_key;
 mod build;
 mod bundle;
 

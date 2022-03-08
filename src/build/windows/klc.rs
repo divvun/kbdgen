@@ -6,7 +6,6 @@ use codecs::utf16::Utf16Ext;
 
 use crate::build::BuildStep;
 use crate::bundle::KbdgenBundle;
-use crate::bundle::layout::windows::WindowsPlatformKey;
 
 const KLC_EXT: &str = "klc";
 
@@ -26,9 +25,14 @@ pub struct GenerateKlc {}
 
 impl BuildStep for GenerateKlc {
     fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+
+        // commenting due to format change
+        /*
+        let supported_patform = WindowsPlatformKey::Primary;
+
         let windows_layouts = bundle.layouts.iter().filter(|(_, layout)| {
             layout.layers.windows.as_ref().map_or(false, |platform| {
-                platform.contains_key(&WindowsPlatformKey::Primary)
+                platform.contains_key(&supported_patform)
             })
         });
 
@@ -38,12 +42,19 @@ impl BuildStep for GenerateKlc {
             }
         });
 
+        
+
+
+
+        // need keymaps by mode
+
         klc_files.for_each(|klc_file| {
             // .klc files must be UTF-16 encoded
             let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
             let klc_path = output_path.join(format!("{}.{}", klc_file.keyboard_name, KLC_EXT));
             std::fs::write(klc_path, klc_bytes).unwrap();
         });
+        */
     }
 }
 
