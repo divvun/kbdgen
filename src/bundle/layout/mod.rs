@@ -41,22 +41,6 @@ pub struct Layout {
     */
 }
 
-/*
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Layers {
-
-    #[serde(rename = "macos")]
-    pub macOS: Option<IndexMap<MacOSPlatformKey, IndexMap<MacOSKbdLayerKey, String>>>,
-
-    #[serde(rename = "ios")]
-    pub iOS: Option<IndexMap<iOSPlatformKey, IndexMap<iOSKbdLayerKey, String>>>,
-
-    pub android: Option<IndexMap<AndroidPlatformKey, IndexMap<AndroidKbdLayerKey, String>>>,
-}
-*/
-
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsPlatform {
     primary: WindowsPrimaryPlatform,
@@ -65,9 +49,9 @@ pub struct WindowsPlatform {
 #[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsPrimaryPlatform {
-    config: WindowsTargetConfig,
+    config: Option<WindowsTargetConfig>,
     layers: IndexMap<WindowsKbdLayerKey, String>,
-    dead_keys: IndexMap<WindowsKbdLayerKey, Vec<String>>,
+    dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }
 
 
@@ -78,7 +62,7 @@ pub struct ChromeOsPlatform {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsPrimaryPlatform {
-    config: WindowsTargetConfig,
+    config: ChromeTargetConfig,
     layers: IndexMap<WindowsKbdLayerKey, String>,
 }
 
@@ -88,9 +72,12 @@ pub struct MacOsPlatform {
     primary: MacOsPrimaryPlatform,
 }
 
+#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MacOsPrimaryPlatform {
     layers: IndexMap<MacOsKbdLayerKey, String>,
+    dead_keys: IndexMap<MacOsKbdLayerKey, Vec<String>>,
+    space: IndexMap<MacOsKbdLayerKey, String>,
 }
 
 
@@ -109,35 +96,10 @@ where
     ))
 }
 
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Space {
-    #[serde(rename = "macos")]
-    macOS: Option<IndexMap<MacOsKbdLayerKey, String>>,
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DeadKeys {
-    #[serde(rename = "macos")]
-    macOS: Option<IndexMap<MacOsKbdLayerKey, Vec<String>>>,
-
-    windows: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KeyNames {
     space: String,
     r#return: String,
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Targets {
-    windows: Option<WindowsTargetConfig>,
-    chrome: Option<ChromeTargetConfig>,
-    iOS: Option<iOSTargetConfig>,
-    android: Option<AndroidTargetConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
