@@ -38,13 +38,13 @@ pub struct Layout {
 pub struct WindowsTarget {
     config: Option<WindowsConfig>,
     primary: WindowsPrimaryPlatform,
+    dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowsPrimaryPlatform {
     layers: IndexMap<WindowsKbdLayerKey, String>,
-    dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,14 +61,14 @@ pub struct ChromeOsPrimaryPlatform {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MacOsTarget {
     primary: MacOsPrimaryPlatform,
+    dead_keys: Option<IndexMap<MacOsKbdLayerKey, Vec<String>>>,
+    space: IndexMap<MacOsKbdLayerKey, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MacOsPrimaryPlatform {
     layers: IndexMap<MacOsKbdLayerKey, String>,
-    dead_keys: IndexMap<MacOsKbdLayerKey, Vec<String>>,
-    space: IndexMap<MacOsKbdLayerKey, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
