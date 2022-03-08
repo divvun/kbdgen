@@ -40,8 +40,8 @@ pub struct WindowsTarget {
     primary: WindowsPrimaryPlatform,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WindowsPrimaryPlatform {
     layers: IndexMap<WindowsKbdLayerKey, String>,
     dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
@@ -56,7 +56,7 @@ pub struct ChromeOsTarget {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsPrimaryPlatform {
-    layers: IndexMap<WindowsKbdLayerKey, String>,
+    layers: IndexMap<ChromeKbdLayerKey, String>,
 }
 
 
@@ -65,8 +65,8 @@ pub struct MacOsTarget {
     primary: MacOsPrimaryPlatform,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MacOsPrimaryPlatform {
     layers: IndexMap<MacOsKbdLayerKey, String>,
     dead_keys: IndexMap<MacOsKbdLayerKey, Vec<String>>,
@@ -103,8 +103,10 @@ pub struct IOsIpad12InPlatform {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AndroidTarget {
     config: AndroidConfig,
+    primary: AndroidPrimaryPlatform,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AndroidPrimaryPlatform {
     layers: IndexMap<AndroidKbdLayerKey, String>,
 }
@@ -143,7 +145,6 @@ pub struct ChromeConfig {
     xkb_layout: Option<String>,
 }
 
-#[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IOsConfig {
