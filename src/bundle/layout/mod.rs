@@ -25,31 +25,21 @@ pub struct Layout {
     #[serde(rename = "macOS")]
     pub mac_os: Option<MacOsPlatform>,
 
-    /*
-    pub layers: Layers,
-
     #[serde(default, deserialize_with = "from_mapped_sequence")]
     pub longpress: Option<IndexMap<String, Vec<String>>>,
 
-    pub space: Option<Space>,
-
-    pub dead_keys: Option<DeadKeys>,
-
     pub key_names: Option<KeyNames>,
-
-    pub targets: Option<Targets>,
-    */
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsPlatform {
+    config: Option<WindowsConfig>,
     primary: WindowsPrimaryPlatform,
 }
 
 #[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsPrimaryPlatform {
-    config: Option<WindowsTargetConfig>,
     layers: IndexMap<WindowsKbdLayerKey, String>,
     dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }
@@ -57,12 +47,12 @@ pub struct WindowsPrimaryPlatform {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsPlatform {
+    config: ChromeConfig,
     primary: ChromeOsPrimaryPlatform,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsPrimaryPlatform {
-    config: ChromeTargetConfig,
     layers: IndexMap<WindowsKbdLayerKey, String>,
 }
 
@@ -103,13 +93,13 @@ pub struct KeyNames {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct WindowsTargetConfig {
+pub struct WindowsConfig {
     locale: Option<LanguageTag>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ChromeTargetConfig {
+pub struct ChromeConfig {
     locale: Option<LanguageTag>,
     xkb_layout: Option<String>,
 }
