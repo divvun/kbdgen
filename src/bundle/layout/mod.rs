@@ -2,9 +2,9 @@ use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use android::{AndroidKbdLayerKey, AndroidPlatformKey};
-use chrome::{ChromeKbdLayerKey, ChromePlatformKey};
-use ios::{iOSKbdLayerKey, iOSPlatformKey};
+use android::AndroidKbdLayerKey;
+use chrome::ChromeKbdLayerKey;
+use ios::IOsKbdLayerKey;
 use macos::MacOsKbdLayerKey;
 use windows::WindowsKbdLayerKey;
 
@@ -19,11 +19,14 @@ pub mod windows;
 pub struct Layout {
     pub display_names: IndexMap<String, String>,
 
-    pub windows: Option<WindowsPlatform>,
+    pub windows: Option<WindowsTarget>,
     #[serde(rename = "chromeOS")]
-    pub chrome_os: Option<ChromeOsPlatform>,
+    pub chrome_os: Option<ChromeOsTarget>,
     #[serde(rename = "macOS")]
-    pub mac_os: Option<MacOsPlatform>,
+    pub mac_os: Option<MacOsTarget>,
+    #[serde(rename = "iOS")]
+    pub i_os: Option<IOsTarget>,
+    pub android: Option<AndroidTarget>,
 
     #[serde(default, deserialize_with = "from_mapped_sequence")]
     pub longpress: Option<IndexMap<String, Vec<String>>>,
@@ -32,7 +35,7 @@ pub struct Layout {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct WindowsPlatform {
+pub struct WindowsTarget {
     config: Option<WindowsConfig>,
     primary: WindowsPrimaryPlatform,
 }
@@ -46,7 +49,7 @@ pub struct WindowsPrimaryPlatform {
 
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ChromeOsPlatform {
+pub struct ChromeOsTarget {
     config: ChromeConfig,
     primary: ChromeOsPrimaryPlatform,
 }
@@ -58,7 +61,7 @@ pub struct ChromeOsPrimaryPlatform {
 
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MacOsPlatform {
+pub struct MacOsTarget {
     primary: MacOsPrimaryPlatform,
 }
 
@@ -68,6 +71,42 @@ pub struct MacOsPrimaryPlatform {
     layers: IndexMap<MacOsKbdLayerKey, String>,
     dead_keys: IndexMap<MacOsKbdLayerKey, Vec<String>>,
     space: IndexMap<MacOsKbdLayerKey, String>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IOsTarget {
+    config: IOsConfig,
+    primary: Option<IOsPrimaryPlatform>,
+    #[serde(rename = "iPad-9in")]
+    i_pad_9in: Option<IOsIpad9InPlatform>,
+    #[serde(rename = "iPad-12in")]
+    i_pad_12in: Option<IOsIpad12InPlatform>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IOsPrimaryPlatform {
+    layers: IndexMap<IOsKbdLayerKey, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IOsIpad9InPlatform {
+    layers: IndexMap<IOsKbdLayerKey, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IOsIpad12InPlatform {
+    layers: IndexMap<IOsKbdLayerKey, String>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AndroidTarget {
+    config: AndroidConfig,
+}
+
+pub struct AndroidPrimaryPlatform {
+    layers: IndexMap<AndroidKbdLayerKey, String>,
 }
 
 
@@ -107,14 +146,14 @@ pub struct ChromeConfig {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct iOSTargetConfig {
+pub struct IOsConfig {
     speller_package_key: Option<String>,
     speller_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AndroidTargetConfig {
+pub struct AndroidConfig {
     speller_package_key: Option<String>,
     speller_path: Option<String>,
 }
