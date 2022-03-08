@@ -47,7 +47,6 @@ pub struct WindowsPrimaryPlatform {
     dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsTarget {
     config: ChromeConfig,
@@ -58,7 +57,6 @@ pub struct ChromeOsTarget {
 pub struct ChromeOsPrimaryPlatform {
     layers: IndexMap<ChromeKbdLayerKey, String>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MacOsTarget {
@@ -72,7 +70,6 @@ pub struct MacOsPrimaryPlatform {
     dead_keys: IndexMap<MacOsKbdLayerKey, Vec<String>>,
     space: IndexMap<MacOsKbdLayerKey, String>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsTarget {
@@ -99,7 +96,6 @@ pub struct IOsIpad12InPlatform {
     layers: IndexMap<IOsKbdLayerKey, String>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AndroidTarget {
     config: AndroidConfig,
@@ -110,7 +106,6 @@ pub struct AndroidTarget {
 pub struct AndroidPrimaryPlatform {
     layers: IndexMap<AndroidKbdLayerKey, String>,
 }
-
 
 fn from_mapped_sequence<'de, D>(
     deserializer: D,
