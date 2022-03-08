@@ -25,36 +25,20 @@ pub struct GenerateKlc {}
 
 impl BuildStep for GenerateKlc {
     fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+        // One .klc file per language with Windows primary platform
+        for (language_tag, layout) in &bundle.layouts {
+            if let Some(windows_layout) = &layout.windows {
+                let layers = &windows_layout.primary.layers;
 
-        // commenting due to format change
-        /*
-        let supported_patform = WindowsPlatformKey::Primary;
+                let klc_file = KlcFile {
+                    keyboard_name: language_tag.to_string(),
+                };
 
-        let windows_layouts = bundle.layouts.iter().filter(|(_, layout)| {
-            layout.layers.windows.as_ref().map_or(false, |platform| {
-                platform.contains_key(&supported_patform)
-            })
-        });
-
-        let klc_files = windows_layouts.map(|(language_tag, layout)| {
-            KlcFile {
-                keyboard_name: language_tag.to_string(),
+                let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
+                let klc_path = output_path.join(format!("{}.{}", klc_file.keyboard_name, KLC_EXT));
+                std::fs::write(klc_path, klc_bytes).unwrap();
             }
-        });
-
-
-
-
-
-        // need keymaps by mode
-
-        klc_files.for_each(|klc_file| {
-            // .klc files must be UTF-16 encoded
-            let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
-            let klc_path = output_path.join(format!("{}.{}", klc_file.keyboard_name, KLC_EXT));
-            std::fs::write(klc_path, klc_bytes).unwrap();
-        });
-        */
+        }
     }
 }
 
