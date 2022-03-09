@@ -22,7 +22,14 @@ fn main() -> Result<(), Error> {
             println!("Output Path: {:?}", &target_command_struct.output_path);
             std::fs::create_dir_all(&target_command_struct.output_path)?;
 
-            //println!("Printing bundle for kicks: {:?}", bundle);
+            for (tag, layout) in &bundle.layouts {
+                if let Some(transform) = &layout.transforms {
+                    println!(
+                        "printing transforms because no way that just worked: {}: {:?}",
+                        tag, transform
+                    );
+                }
+            }
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {

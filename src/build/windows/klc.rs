@@ -30,6 +30,10 @@ impl BuildStep for GenerateKlc {
             if let Some(windows_layout) = &layout.windows {
                 let layers = &windows_layout.primary.layers;
 
+                // Next steps: layer processing
+                // original impl was returning keys from an iterator linked to modes indexed by said keys
+                // i.e., IsoKey ->
+
                 let klc_file = KlcFile {
                     keyboard_name: language_tag.to_string(),
                 };
