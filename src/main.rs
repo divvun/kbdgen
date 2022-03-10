@@ -4,6 +4,7 @@ use std::sync::Arc;
 use clap::{Args, Parser, Subcommand};
 
 use crate::build::windows::WindowsBuild;
+use crate::build::svg::SvgBuild;
 use crate::build::BuildSteps;
 use crate::bundle::{read_kbdgen_bundle, Error, KbdgenBundle};
 
@@ -22,6 +23,7 @@ fn main() -> Result<(), Error> {
             println!("Output Path: {:?}", &target_command_struct.output_path);
             std::fs::create_dir_all(&target_command_struct.output_path)?;
 
+            /*
             for (tag, layout) in &bundle.layouts {
                 if let Some(transform) = &layout.transforms {
                     println!(
@@ -30,8 +32,10 @@ fn main() -> Result<(), Error> {
                     );
                 }
             }
+            */
 
             match &target_command_struct.target_command {
+                
                 TargetCommand::Windows(_windows_command) => {
                     let mut build = WindowsBuild {
                         bundle: Arc::new(bundle),
@@ -43,7 +47,15 @@ fn main() -> Result<(), Error> {
                     build.build_full();
                 }
                 TargetCommand::Svg(_svg_command) => {
-                    println!("whee");
+
+                    let mut build = SvgBuild {
+                        bundle: Arc::new(bundle),
+                        output_path: target_command_struct.output_path.clone(),
+                        steps: vec![],
+                    };
+
+                    build.populate_steps(); // This shouldn't be a thing
+                    build.build_full();
                 }
             }
         }

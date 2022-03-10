@@ -1,9 +1,10 @@
-pub mod windows;
-
 use std::path::Path;
 use std::sync::Arc;
 
 use crate::bundle::KbdgenBundle;
+
+pub mod svg;
+pub mod windows;
 
 pub trait BuildSteps {
     fn populate_steps(&mut self);
