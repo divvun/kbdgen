@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "3.1.0", features = ["derive"] }
 pathos = "0.3.0-pre.3"
-xmlem = { git = "https://github.com/bbqsrc/xmlem", rev = "9a127b0205487ed6ecbd16d6a2c9769932f1e9a2" }
+xmlem = { git = "https://github.com/bbqsrc/xmlem", rev = "026d00f34c63b37977a9570bd694ce50a5c42b39" }
 
 serde = { version = "1.0.110", features = ["derive"] }
 indexmap = { version = "1.8.0", features = ["serde"] }

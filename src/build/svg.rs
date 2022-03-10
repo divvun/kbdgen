@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::rc::Rc;
+use std::sync::Arc;
 
-use xmlem::Element;
+use xmlem::XmlemDocument;
 
 use crate::bundle::KbdgenBundle;
 
@@ -11,9 +11,7 @@ use super::{BuildStep, BuildSteps};
 const SVG_EXT: &str = "svg";
 static KEYBOARD_SVG: &str = include_str!("../../resources/template-iso-keyboard.svg");
 
-pub struct SvgFile {
-    
-}
+pub struct SvgFile {}
 
 pub struct SvgBuild {
     pub bundle: Arc<KbdgenBundle>,
@@ -41,30 +39,23 @@ pub struct GenerateSvg {}
 
 impl BuildStep for GenerateSvg {
     fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+        let document = XmlemDocument::from_str(KEYBOARD_SVG).unwrap();
 
-        let root = Rc::try_unwrap(Element::from_str(KEYBOARD_SVG).unwrap()).unwrap().into_inner();
-
-        
         println!("no explosion?");
 
         // .svg files need to be generated in cases of windows, chromeOS, and macOS
         // we'll start with Windows first
         for (language_tag, layout) in &bundle.layouts {
-
             if let Some(windows_layout) = &layout.windows {
-
-                let cloned_template = root.clone();
+                let cloned_template = document.clone();
 
                 let svg_path = output_path.join(format!("{}.{}", language_tag, SVG_EXT));
 
-                //std::fs::write(svg_path, cloned_template.to_string()).unwrap();
+                std::fs::write(svg_path, cloned_template.to_string()).unwrap();
             }
-
         }
-
     }
 }
-
 
 /*
 if let Some(windows_layout) = &layout.windows {
@@ -83,6 +74,3 @@ if let Some(windows_layout) = &layout.windows {
     std::fs::write(klc_path, klc_bytes).unwrap();
 }
 */
-
-
- 
