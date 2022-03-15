@@ -8,6 +8,7 @@ use super::{BuildStep, BuildSteps};
 use klc::GenerateKlc;
 
 pub mod klc;
+mod klc_keymap;
 
 pub struct WindowsBuild {
     pub bundle: Arc<KbdgenBundle>,

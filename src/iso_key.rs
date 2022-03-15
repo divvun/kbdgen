@@ -1,5 +1,6 @@
 // https://commons.wikimedia.org/wiki/File:Keyboard-sections-zones-grid-ISOIEC-9995-1.jpg
 // https://commons.wikimedia.org/wiki/File:Keyboard-alphanumeric-section-ISOIEC-9995-2-2009-with-amd1-2012.png
+#[derive(PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum IsoKey {
     E00 = 0,
