@@ -2,13 +2,11 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::bundle::KbdgenBundle;
 
-use self::klc_generate::GenerateKlc;
+use klc::generate::GenerateKlc;
 
 use super::{BuildStep, BuildSteps};
 
-pub mod klc_file;
-mod klc_generate;
-mod klc_keymap;
+mod klc;
 
 pub struct WindowsBuild {
     pub bundle: Arc<KbdgenBundle>,

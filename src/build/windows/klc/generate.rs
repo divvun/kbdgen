@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use codecs::utf16::Utf16Ext;
 
-use super::klc_file::{KlcFile, KlcRow};
-use super::klc_keymap::MSKLC_KEYS;
+use super::file::{KlcFile, KlcRow};
+use super::keymap::MSKLC_KEYS;
 
 use crate::build::BuildStep;
 use crate::bundle::layout::windows::WindowsKbdLayerKey;
