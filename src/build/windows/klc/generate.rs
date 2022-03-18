@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use codecs::utf16::Utf16Ext;
 
-use super::file::{KlcFile, KlcRow};
+use super::file::{KlcFile, KlcLayout, KlcRow};
+use super::key::KlcKey;
 use super::keymap::MSKLC_KEYS;
 
 use crate::build::BuildStep;
@@ -21,34 +22,22 @@ impl BuildStep for GenerateKlc {
             if let Some(windows_layout) = &layout.windows {
                 let layers = &windows_layout.primary.layers;
 
-                // Testing
-                let default_layer: Vec<String> = layers
-                    .get(&WindowsKbdLayerKey::Default)
-                    .unwrap()
-                    .split_whitespace()
-                    .map(|v| v.to_string())
-                    .collect();
-                let shift_layer: Vec<String> = layers
-                    .get(&WindowsKbdLayerKey::Shift)
-                    .unwrap()
-                    .split_whitespace()
-                    .map(|v| v.to_string())
-                    .collect();
+                let mut klc_rows = Vec::new();
 
-                let mut default_klc_keys = Vec::new();
                 let mut cursor = 0;
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
-                    if cursor >= default_layer.len() {
-                        print!("keymap less than iso map");
-                        break;
+                    let mut layout_set = WindowsLayoutSet::default();
+
+                    for (layer_key, key_map) in layers {
+                        populate_layout_set(&mut layout_set, layer_key, &key_map, cursor);
                     }
 
-                    default_klc_keys.push(KlcRow {
+                    klc_rows.push(KlcRow {
                         scancode: klc_key.scancode.clone(),
                         virtual_key: klc_key.virtual_key.clone(),
-                        cap_mode: "9".to_owned(), // TODO: UUHHH
-                        default_character: default_layer[cursor].clone(),
-                        shift_character: shift_layer[cursor].clone(),
+                        caps_mode: layout_set.caps_mode(),
+                        default_key: convert_to_klc_key(layout_set.default),
+                        shift_key: convert_to_klc_key(layout_set.shift),
                     });
 
                     cursor = cursor + 1;
@@ -58,7 +47,7 @@ impl BuildStep for GenerateKlc {
                     keyboard_name: language_tag.to_string(),
                     copyright: bundle.project.copyright.clone(),
                     company: bundle.project.organisation.clone(),
-                    rows: default_klc_keys,
+                    layout: KlcLayout { rows: klc_rows },
                 };
 
                 let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
@@ -66,5 +55,90 @@ impl BuildStep for GenerateKlc {
                 std::fs::write(klc_path, klc_bytes).unwrap();
             }
         }
+    }
+}
+
+#[derive(Default)]
+pub struct WindowsLayoutSet {
+    pub default: Option<String>,
+    pub shift: Option<String>,
+    pub caps: Option<String>,
+    pub caps_and_shift: Option<String>,
+    pub alt: Option<String>,
+    pub alt_and_shift: Option<String>,
+    pub ctrl: Option<String>,
+}
+
+impl WindowsLayoutSet {
+    fn caps_mode(&self) -> i8 {
+        let mut caps_mode: i8 = 0;
+
+        -1
+    }
+}
+
+fn populate_layout_set(
+    layout_set: &mut WindowsLayoutSet,
+    layer_key: &WindowsKbdLayerKey,
+    key_map: &str,
+    cursor: usize,
+) {
+    let key_map: Vec<String> = split_keys(&key_map);
+
+    match layer_key {
+        WindowsKbdLayerKey::Default => {
+            layout_set.default = process_key(&key_map[cursor]);
+        }
+        WindowsKbdLayerKey::Shift => {
+            layout_set.shift = process_key(&key_map[cursor]);
+        }
+        WindowsKbdLayerKey::Caps => {
+            layout_set.caps = process_key(&key_map[cursor]);
+        }
+        WindowsKbdLayerKey::CapsAndShift => {
+            layout_set.caps_and_shift = process_key(&key_map[cursor]);
+        }
+        WindowsKbdLayerKey::Alt => {
+            layout_set.alt = process_key(&key_map[cursor]);
+        }
+        WindowsKbdLayerKey::AltAndShift => {
+            layout_set.alt_and_shift = process_key(&key_map[cursor]);
+        }
+        WindowsKbdLayerKey::Ctrl => {
+            layout_set.ctrl = process_key(&key_map[cursor]);
+        }
+    };
+}
+
+fn split_keys(layer: &str) -> Vec<String> {
+    layer.split_whitespace().map(|v| v.to_string()).collect()
+}
+
+fn process_key(key: &str) -> Option<String> {
+    let utf16s: Vec<u16> = key.encode_utf16().collect::<Vec<_>>();
+
+    if utf16s.len() == 0 || utf16s[0] == 0 {
+        return None;
+    } else if utf16s.len() > 4 {
+        log::error!("Input key too long: {:?}", key);
+        return None;
+    }
+
+    None
+}
+
+fn convert_to_klc_key(key: Option<String>) -> KlcKey {
+    match key {
+        Some(key) => {
+            let utf16s: Vec<u16> = key.encode_utf16().collect::<Vec<_>>();
+
+            if utf16s.len() == 1 {
+                let character = key.chars().next().unwrap();
+                KlcKey::Character(character)
+            } else {
+                KlcKey::None
+            }
+        }
+        None => KlcKey::None,
     }
 }

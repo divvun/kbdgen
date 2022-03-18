@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_yaml::{Mapping, Value};
+use serde_yaml::Value;
 
 use transform::Transform;
 

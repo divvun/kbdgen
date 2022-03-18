@@ -6,7 +6,7 @@ use clap::{Args, Parser, Subcommand};
 use crate::build::svg::SvgBuild;
 use crate::build::windows::WindowsBuild;
 use crate::build::BuildSteps;
-use crate::bundle::{read_kbdgen_bundle, Error, KbdgenBundle};
+use crate::bundle::{read_kbdgen_bundle, Error};
 
 mod build;
 mod bundle;
@@ -22,17 +22,6 @@ fn main() -> Result<(), Error> {
 
             println!("Output Path: {:?}", &target_command_struct.output_path);
             std::fs::create_dir_all(&target_command_struct.output_path)?;
-
-            /*
-            for (tag, layout) in &bundle.layouts {
-                if let Some(transform) = &layout.transforms {
-                    println!(
-                        "printing transforms because no way that just worked: {}: {:?}",
-                        tag, transform
-                    );
-                }
-            }
-            */
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {

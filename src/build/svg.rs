@@ -46,7 +46,7 @@ impl BuildStep for GenerateSvg {
         // .svg files need to be generated in cases of windows, chromeOS, and macOS
         // we'll start with Windows first
         for (language_tag, layout) in &bundle.layouts {
-            if let Some(windows_layout) = &layout.windows {
+            if let Some(_windows_layout) = &layout.windows {
                 let cloned_template = document.clone();
 
                 let svg_path = output_path.join(format!("{}.{}", language_tag, SVG_EXT));

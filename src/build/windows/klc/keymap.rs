@@ -3,12 +3,12 @@ use once_cell::sync::Lazy;
 
 use crate::iso_key::IsoKey;
 
-pub struct KlcKey {
-    pub scancode: String,
-    pub virtual_key: String,
+pub struct KlcKeyCodes {
+    pub scancode: String,    // simply `sc` in .klc format
+    pub virtual_key: String, // simply `vk` in .klc format
 }
 
-pub(super) static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKey>> = Lazy::new(|| {
+pub(super) static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
     let mut map = IndexMap::new();
 
     {
@@ -66,7 +66,7 @@ pub(super) static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKey>> = Lazy::new(|| {
         for (key, value) in arr {
             map.insert(
                 key,
-                KlcKey {
+                KlcKeyCodes {
                     scancode: value.0.to_owned(),
                     virtual_key: value.1.to_owned(),
                 },
