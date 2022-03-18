@@ -2,6 +2,7 @@ use std::fmt::{Display, Write};
 
 pub enum KlcKey {
     Character(char),
+    Ligature,
     None,
 }
 
@@ -17,6 +18,7 @@ impl Display for KlcKey {
                     f.write_fmt(format_args!("{:04x}", *character as u32))
                 }
             }
+            &KlcKey::Ligature => f.write_str("%%"),
             KlcKey::None => f.write_str("-1"),
         }
     }

@@ -3,17 +3,28 @@ use std::sync::Arc;
 
 use codecs::utf16::Utf16Ext;
 
+use super::dead_key::KlcDeadKey;
 use super::file::KlcFile;
 use super::key::KlcKey;
 use super::keymap::MSKLC_KEYS;
 use super::layout::{KlcLayout, KlcLayoutRow};
-use super::ligature::KlcLigature;
+use super::ligature::{KlcLigature, KlcLigatureRow};
 
 use crate::build::BuildStep;
 use crate::bundle::layout::windows::WindowsKbdLayerKey;
 use crate::bundle::KbdgenBundle;
 
 const KLC_EXT: &str = "klc";
+
+#[derive(Copy, Clone)]
+#[repr(u8)]
+pub enum LayerColumn {
+    Default,
+    Shift,
+    Ctrl,
+    Alt,
+    AltAndShift,
+}
 
 pub struct GenerateKlc {}
 
@@ -24,7 +35,8 @@ impl BuildStep for GenerateKlc {
             if let Some(windows_layout) = &layout.windows {
                 let layers = &windows_layout.primary.layers;
 
-                let mut klc_rows = Vec::new();
+                let mut klc_layout_rows = Vec::new();
+                let mut klc_ligature_rows = Vec::new();
 
                 let mut cursor = 0;
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
@@ -35,15 +47,40 @@ impl BuildStep for GenerateKlc {
                         populate_layout_set(&mut layout_set, layer_key, &key_map, cursor);
                     }
 
-                    klc_rows.push(KlcLayoutRow {
+                    klc_layout_rows.push(KlcLayoutRow {
                         scancode: klc_key.scancode.clone(),
                         virtual_key: klc_key.virtual_key.clone(),
                         caps_mode: layout_set.caps_mode(),
-                        default_key: convert_to_klc_key(layout_set.default),
-                        shift_key: convert_to_klc_key(layout_set.shift),
-                        ctrl_key: convert_to_klc_key(layout_set.ctrl),
-                        alt_key: convert_to_klc_key(layout_set.alt),
-                        alt_and_shift_key: convert_to_klc_key(layout_set.alt_and_shift),
+                        default_key: convert_to_klc_key(
+                            layout_set.default,
+                            &mut klc_ligature_rows,
+                            &klc_key.virtual_key,
+                            LayerColumn::Default,
+                        ),
+                        shift_key: convert_to_klc_key(
+                            layout_set.shift,
+                            &mut klc_ligature_rows,
+                            &klc_key.virtual_key,
+                            LayerColumn::Shift,
+                        ),
+                        ctrl_key: convert_to_klc_key(
+                            layout_set.ctrl,
+                            &mut klc_ligature_rows,
+                            &klc_key.virtual_key,
+                            LayerColumn::Ctrl,
+                        ),
+                        alt_key: convert_to_klc_key(
+                            layout_set.alt,
+                            &mut klc_ligature_rows,
+                            &klc_key.virtual_key,
+                            LayerColumn::Alt,
+                        ),
+                        alt_and_shift_key: convert_to_klc_key(
+                            layout_set.alt_and_shift,
+                            &mut klc_ligature_rows,
+                            &klc_key.virtual_key,
+                            LayerColumn::AltAndShift,
+                        ),
                     });
 
                     cursor += 1;
@@ -53,8 +90,13 @@ impl BuildStep for GenerateKlc {
                     keyboard_name: language_tag.to_string(),
                     copyright: bundle.project.copyright.clone(),
                     company: bundle.project.organisation.clone(),
-                    layout: KlcLayout { rows: klc_rows },
-                    ligature: KlcLigature {},
+                    layout: KlcLayout {
+                        rows: klc_layout_rows,
+                    },
+                    ligature: KlcLigature {
+                        rows: klc_ligature_rows,
+                    },
+                    dead_key: KlcDeadKey {},
                 };
 
                 let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
@@ -147,23 +189,28 @@ fn split_keys(layer: &str) -> Vec<String> {
 }
 
 fn process_key(key: &str) -> Option<String> {
-    println!("processing key: {}", key);
+    if key == r"\u{0}" {
+        return None;
+    }
 
     let utf16s = key.encode_utf16().collect::<Vec<_>>();
-
     if utf16s.len() == 0 || utf16s[0] == 0 {
-        println!("Null key1");
+        tracing::error!("Empty key: {:?}", key);
         return None;
     } else if utf16s.len() > 4 {
-        println!("More than 4 UTF-16s");
-        log::error!("Input key too long: {:?}", key);
+        tracing::error!("Input key too long: {:?}", key);
         return None;
     }
 
     Some(key.to_owned())
 }
 
-fn convert_to_klc_key(key: Option<String>) -> KlcKey {
+fn convert_to_klc_key(
+    key: Option<String>,
+    klc_ligature_rows: &mut Vec<KlcLigatureRow>,
+    virtual_key: &str,
+    layer_column: LayerColumn,
+) -> KlcKey {
     match key {
         Some(key) => {
             let utf16s: Vec<u16> = key.encode_utf16().collect::<Vec<_>>();
@@ -172,13 +219,17 @@ fn convert_to_klc_key(key: Option<String>) -> KlcKey {
                 let character = key.chars().next().unwrap();
                 KlcKey::Character(character)
             } else {
-                println!("Ligature");
-                KlcKey::None
+                let ligature_row = KlcLigatureRow {
+                    virtual_key: virtual_key.to_owned(),
+                    shift_state: (layer_column as u8).to_string(),
+                    utf16s,
+                };
+
+                klc_ligature_rows.push(ligature_row);
+
+                KlcKey::Ligature
             }
         }
-        None => {
-            println!("Null key2");
-            KlcKey::None
-        }
+        None => KlcKey::None,
     }
 }

@@ -25,6 +25,15 @@ impl Display for KlcLayout {
             f.write_str(&row.to_string())?;
         }
 
+        // Space key
+        f.write_str("39\tSPACE\t0\t0020\t0020\t0020\t-1\t-1\n")?;
+
+        // Decimal key
+        // TODO: add support for custom decimal keys
+        f.write_fmt(format_args!("53\tDECIMAL\t0\t.\t.\t-1\t-1\t-1\n\n"))?;
+
+        f.write_str("\n")?;
+
         Ok(())
     }
 }
