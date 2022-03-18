@@ -1,12 +1,13 @@
 use core::fmt::Display;
 
-use super::layout::KlcLayout;
+use super::{layout::KlcLayout, ligature::KlcLigature};
 
 pub struct KlcFile {
     pub keyboard_name: String,
     pub copyright: String,
     pub company: String,
     pub layout: KlcLayout,
+    pub ligature: KlcLigature,
 }
 
 impl Display for KlcFile {
@@ -17,6 +18,8 @@ impl Display for KlcFile {
         f.write_str("VERSION\t1.0\n\n")?;
 
         f.write_str(&self.layout.to_string())?;
+
+        f.write_str(&self.ligature.to_string())?;
 
         Ok(())
     }

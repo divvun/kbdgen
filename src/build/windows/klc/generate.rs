@@ -7,6 +7,7 @@ use super::file::KlcFile;
 use super::key::KlcKey;
 use super::keymap::MSKLC_KEYS;
 use super::layout::{KlcLayout, KlcLayoutRow};
+use super::ligature::KlcLigature;
 
 use crate::build::BuildStep;
 use crate::bundle::layout::windows::WindowsKbdLayerKey;
@@ -53,6 +54,7 @@ impl BuildStep for GenerateKlc {
                     copyright: bundle.project.copyright.clone(),
                     company: bundle.project.organisation.clone(),
                     layout: KlcLayout { rows: klc_rows },
+                    ligature: KlcLigature {},
                 };
 
                 let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
