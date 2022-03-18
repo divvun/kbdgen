@@ -3,9 +3,10 @@ use std::sync::Arc;
 
 use codecs::utf16::Utf16Ext;
 
-use super::file::{KlcFile, KlcLayout, KlcRow};
+use super::file::KlcFile;
 use super::key::KlcKey;
 use super::keymap::MSKLC_KEYS;
+use super::layout::{KlcLayout, KlcLayoutRow};
 
 use crate::build::BuildStep;
 use crate::bundle::layout::windows::WindowsKbdLayerKey;
@@ -28,19 +29,23 @@ impl BuildStep for GenerateKlc {
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
                     let mut layout_set = WindowsLayoutSet::default();
 
+                    // Layout set to determine caps_mode and null keys
                     for (layer_key, key_map) in layers {
                         populate_layout_set(&mut layout_set, layer_key, &key_map, cursor);
                     }
 
-                    klc_rows.push(KlcRow {
+                    klc_rows.push(KlcLayoutRow {
                         scancode: klc_key.scancode.clone(),
                         virtual_key: klc_key.virtual_key.clone(),
                         caps_mode: layout_set.caps_mode(),
                         default_key: convert_to_klc_key(layout_set.default),
                         shift_key: convert_to_klc_key(layout_set.shift),
+                        ctrl_key: convert_to_klc_key(layout_set.ctrl),
+                        alt_key: convert_to_klc_key(layout_set.alt),
+                        alt_and_shift_key: convert_to_klc_key(layout_set.alt_and_shift),
                     });
 
-                    cursor = cursor + 1;
+                    cursor += 1;
                 }
 
                 let klc_file = KlcFile {
@@ -70,10 +75,35 @@ pub struct WindowsLayoutSet {
 }
 
 impl WindowsLayoutSet {
-    fn caps_mode(&self) -> i8 {
-        let mut caps_mode: i8 = 0;
+    fn caps_mode(&self) -> String {
+        // Shift correspondence increases caps mode by 1
+        // Alt correspondence increases caps mode by 4
+        // We do not really know or understand why
 
-        -1
+        if !&self.caps.is_none() && &self.default != &self.caps && &self.shift != &self.caps {
+            "SGCap".to_owned()
+        } else if self.caps.is_none() {
+            let mut caps = 0;
+            if &self.default != &self.shift {
+                caps += 1;
+            }
+            if &self.alt != &self.alt_and_shift {
+                caps += 4;
+            }
+
+            caps.to_string()
+        } else {
+            let mut caps = 0;
+            if &self.caps == &self.shift {
+                caps += 1;
+            }
+            //if &self.alt_caps == &self.alt_shift {
+            //    caps += 4;
+            //}
+            // TODO: add alt_and_caps if that's another layer
+
+            caps.to_string()
+        }
     }
 }
 
@@ -115,16 +145,20 @@ fn split_keys(layer: &str) -> Vec<String> {
 }
 
 fn process_key(key: &str) -> Option<String> {
-    let utf16s: Vec<u16> = key.encode_utf16().collect::<Vec<_>>();
+    println!("processing key: {}", key);
+
+    let utf16s = key.encode_utf16().collect::<Vec<_>>();
 
     if utf16s.len() == 0 || utf16s[0] == 0 {
+        println!("Null key1");
         return None;
     } else if utf16s.len() > 4 {
+        println!("More than 4 UTF-16s");
         log::error!("Input key too long: {:?}", key);
         return None;
     }
 
-    None
+    Some(key.to_owned())
 }
 
 fn convert_to_klc_key(key: Option<String>) -> KlcKey {
@@ -136,9 +170,13 @@ fn convert_to_klc_key(key: Option<String>) -> KlcKey {
                 let character = key.chars().next().unwrap();
                 KlcKey::Character(character)
             } else {
+                println!("Ligature");
                 KlcKey::None
             }
         }
-        None => KlcKey::None,
+        None => {
+            println!("Null key2");
+            KlcKey::None
+        }
     }
 }
