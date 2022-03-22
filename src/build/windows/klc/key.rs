@@ -23,7 +23,7 @@ impl Display for KlcKey {
 
 // ASCII characters can be represented as is
 // Unicode characters must be converted to their UTF-16 representation
-fn display_klc_character(character: char, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+pub fn display_klc_character(character: char, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     if character.is_ascii_graphic() {
         f.write_char(character)
     } else {

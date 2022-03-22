@@ -1,18 +1,18 @@
 use std::fmt::Display;
 
-use super::key::KlcKey;
-
 pub struct KlcDeadKeys {
-    pub keys: Vec<KlcKey>,
+    pub characters: Vec<char>,
 }
 
 impl Display for KlcDeadKeys {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.keys.is_empty() {
+        if self.characters.is_empty() {
             return Ok(());
         }
 
-        f.write_str("DEADKEY\n\n")?;
+        for dead_key in &self.characters {
+            f.write_fmt(format_args!("DEADKEY {:04x}\n\n", *dead_key as u32))?;
+        }
 
         f.write_str("\n")?;
 

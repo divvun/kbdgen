@@ -38,7 +38,7 @@ impl BuildStep for GenerateKlc {
 
                 let mut klc_layout_rows = Vec::new();
                 let mut klc_ligature_rows = Vec::new();
-                let mut klc_dead_keys = Vec::new();
+                let mut dead_key_characters = Vec::new();
 
                 let mut cursor = 0;
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
@@ -64,30 +64,35 @@ impl BuildStep for GenerateKlc {
                             &mut klc_ligature_rows,
                             &klc_key.virtual_key,
                             LayerColumn::Default,
+                            &mut dead_key_characters,
                         ),
                         shift_key: convert_to_klc_key(
                             layout_set.shift,
                             &mut klc_ligature_rows,
                             &klc_key.virtual_key,
                             LayerColumn::Shift,
+                            &mut dead_key_characters,
                         ),
                         ctrl_key: convert_to_klc_key(
                             layout_set.ctrl,
                             &mut klc_ligature_rows,
                             &klc_key.virtual_key,
                             LayerColumn::Ctrl,
+                            &mut dead_key_characters,
                         ),
                         alt_key: convert_to_klc_key(
                             layout_set.alt,
                             &mut klc_ligature_rows,
                             &klc_key.virtual_key,
                             LayerColumn::Alt,
+                            &mut dead_key_characters,
                         ),
                         alt_and_shift_key: convert_to_klc_key(
                             layout_set.alt_and_shift,
                             &mut klc_ligature_rows,
                             &klc_key.virtual_key,
                             LayerColumn::AltAndShift,
+                            &mut dead_key_characters,
                         ),
                     });
 
@@ -105,7 +110,7 @@ impl BuildStep for GenerateKlc {
                         rows: klc_ligature_rows,
                     },
                     dead_keys: KlcDeadKeys {
-                        keys: klc_dead_keys,
+                        characters: dead_key_characters,
                     },
                 };
 
@@ -244,6 +249,7 @@ fn convert_to_klc_key(
     klc_ligature_rows: &mut Vec<KlcLigatureRow>,
     virtual_key: &str,
     layer_column: LayerColumn,
+    dead_key_characters: &mut Vec<char>,
 ) -> KlcKey {
     match key {
         Some(key) => {
@@ -253,11 +259,9 @@ fn convert_to_klc_key(
                 let character = key.string.chars().next().unwrap();
 
                 if key.dead_key {
-                    let dead_key = KlcKey::DeadKey(character);
+                    dead_key_characters.push(character);
 
-                    // add to list
-
-                    dead_key
+                    KlcKey::DeadKey(character)
                 } else {
                     KlcKey::Character(character)
                 }
