@@ -4,7 +4,7 @@ use std::sync::Arc;
 use codecs::utf16::Utf16Ext;
 use indexmap::IndexMap;
 
-use super::dead_key::{KlcDeadKey, KlcDeadKeyRow};
+use super::dead_key::KlcDeadKeys;
 use super::file::KlcFile;
 use super::key::KlcKey;
 use super::keymap::MSKLC_KEYS;
@@ -38,7 +38,7 @@ impl BuildStep for GenerateKlc {
 
                 let mut klc_layout_rows = Vec::new();
                 let mut klc_ligature_rows = Vec::new();
-                let mut klc_dead_key_rows = Vec::new();
+                let mut klc_dead_keys = Vec::new();
 
                 let mut cursor = 0;
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
@@ -46,7 +46,7 @@ impl BuildStep for GenerateKlc {
 
                     // Layout set to determine caps_mode and null keys
                     for (layer_key, key_map) in layers {
-                        populate_layout_set(windows_layout.dead_keys.as_ref(), &mut klc_dead_key_rows, &mut layout_set, layer_key, &key_map, cursor);
+                        populate_layout_set(windows_layout.dead_keys.as_ref(), &mut layout_set, layer_key, &key_map, cursor);
                     }
 
                     klc_layout_rows.push(KlcLayoutRow {
@@ -98,8 +98,8 @@ impl BuildStep for GenerateKlc {
                     ligature: KlcLigature {
                         rows: klc_ligature_rows,
                     },
-                    dead_key: KlcDeadKey {
-                        rows: klc_dead_key_rows,
+                    dead_keys: KlcDeadKeys {
+                        keys: klc_dead_keys,
                     },
                 };
 
@@ -111,20 +111,21 @@ impl BuildStep for GenerateKlc {
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub struct WindowsLayoutKey {
-    pub key: String,
+    pub string: String,
     pub dead_key: bool,
 }
 
 #[derive(Default)]
 pub struct WindowsLayoutSet {
-    pub default: Option<String>,
-    pub shift: Option<String>,
-    pub caps: Option<String>,
-    pub caps_and_shift: Option<String>,
-    pub alt: Option<String>,
-    pub alt_and_shift: Option<String>,
-    pub ctrl: Option<String>,
+    pub default: Option<WindowsLayoutKey>,
+    pub shift: Option<WindowsLayoutKey>,
+    pub caps: Option<WindowsLayoutKey>,
+    pub caps_and_shift: Option<WindowsLayoutKey>,
+    pub alt: Option<WindowsLayoutKey>,
+    pub alt_and_shift: Option<WindowsLayoutKey>,
+    pub ctrl: Option<WindowsLayoutKey>,
 }
 
 impl WindowsLayoutSet {
@@ -162,7 +163,6 @@ impl WindowsLayoutSet {
 
 fn populate_layout_set(
     dead_keys: Option<&IndexMap<WindowsKbdLayerKey, Vec<String>>>,
-    klc_dead_key_rows: &mut Vec<KlcDeadKeyRow>,
     layout_set: &mut WindowsLayoutSet,
     layer_key: &WindowsKbdLayerKey,
     key_map: &str,
@@ -172,48 +172,25 @@ fn populate_layout_set(
 
     match layer_key {
         WindowsKbdLayerKey::Default => {
-            layout_set.default = process_key(&key_map[cursor]);
-
-            if let Some(dead_keys) = dead_keys {
-                if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
-                    println!("testing dead keys for default: {:?}", layer_dead_keys);
-                    //alt: ['~', ¨]
-                }
-            }
+            layout_set.default = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayerKey::Shift => {
-            layout_set.shift = process_key(&key_map[cursor]);
-
-
+            layout_set.shift = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayerKey::Caps => {
-            layout_set.caps = process_key(&key_map[cursor]);
-
-
+            layout_set.caps = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayerKey::CapsAndShift => {
-            layout_set.caps_and_shift = process_key(&key_map[cursor]);
-
-
+            layout_set.caps_and_shift = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayerKey::Alt => {
-            layout_set.alt = process_key(&key_map[cursor]);
-
-
+            layout_set.alt = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayerKey::AltAndShift => {
-            layout_set.alt_and_shift = process_key(&key_map[cursor]);
-
-            if let Some(dead_keys) = dead_keys {
-                if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
-                    println!("testing dead keys for alt and shift: {:?}", layer_dead_keys);
-                }
-            }
+            layout_set.alt_and_shift = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayerKey::Ctrl => {
-            layout_set.ctrl = process_key(&key_map[cursor]);
-
-
+            layout_set.ctrl = process_key(&layer_key, &key_map[cursor], dead_keys);
         }
     };
 }
@@ -222,7 +199,8 @@ fn split_keys(layer: &str) -> Vec<String> {
     layer.split_whitespace().map(|v| v.to_string()).collect()
 }
 
-fn process_key(key: &str) -> Option<String> {
+fn process_key(layer_key: &WindowsKbdLayerKey, key: &str, dead_keys: Option<&IndexMap<WindowsKbdLayerKey, Vec<String>>>) -> Option<WindowsLayoutKey> {
+
     if key == r"\u{0}" {
         return None;
     }
@@ -236,21 +214,31 @@ fn process_key(key: &str) -> Option<String> {
         return None;
     }
 
-    Some(key.to_owned())
+    let mut dead_key: bool = false;
+
+    if let Some(dead_keys) = dead_keys {
+        if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
+            if layer_dead_keys.contains(&key.to_string()) {
+                dead_key = true;                          
+            }
+        }
+    }
+
+    Some(WindowsLayoutKey { string: key.to_owned(), dead_key })
 }
 
 fn convert_to_klc_key(
-    key: Option<String>,
+    key: Option<WindowsLayoutKey>,
     klc_ligature_rows: &mut Vec<KlcLigatureRow>,
     virtual_key: &str,
     layer_column: LayerColumn,
 ) -> KlcKey {
     match key {
         Some(key) => {
-            let utf16s: Vec<u16> = key.encode_utf16().collect::<Vec<_>>();
+            let utf16s: Vec<u16> = key.string.encode_utf16().collect::<Vec<_>>();
 
             if utf16s.len() == 1 {
-                let character = key.chars().next().unwrap();
+                let character = key.string.chars().next().unwrap();
                 KlcKey::Character(character)
             } else {
                 let ligature_row = KlcLigatureRow {

@@ -1,6 +1,6 @@
 use core::fmt::Display;
 
-use super::{dead_key::KlcDeadKey, layout::KlcLayout, ligature::KlcLigature};
+use super::{dead_key::KlcDeadKeys, layout::KlcLayout, ligature::KlcLigature};
 
 pub struct KlcFile {
     pub keyboard_name: String,
@@ -8,7 +8,7 @@ pub struct KlcFile {
     pub company: String,
     pub layout: KlcLayout,
     pub ligature: KlcLigature,
-    pub dead_key: KlcDeadKey,
+    pub dead_keys: KlcDeadKeys,
 }
 
 impl Display for KlcFile {
@@ -22,7 +22,7 @@ impl Display for KlcFile {
 
         f.write_str(&self.ligature.to_string())?;
 
-        f.write_str(&self.dead_key.to_string())?;
+        f.write_str(&self.dead_keys.to_string())?;
 
         Ok(())
     }
