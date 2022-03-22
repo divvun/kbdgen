@@ -46,7 +46,13 @@ impl BuildStep for GenerateKlc {
 
                     // Layout set to determine caps_mode and null keys
                     for (layer_key, key_map) in layers {
-                        populate_layout_set(windows_layout.dead_keys.as_ref(), &mut layout_set, layer_key, &key_map, cursor);
+                        populate_layout_set(
+                            windows_layout.dead_keys.as_ref(),
+                            &mut layout_set,
+                            layer_key,
+                            &key_map,
+                            cursor,
+                        );
                     }
 
                     klc_layout_rows.push(KlcLayoutRow {
@@ -199,8 +205,11 @@ fn split_keys(layer: &str) -> Vec<String> {
     layer.split_whitespace().map(|v| v.to_string()).collect()
 }
 
-fn process_key(layer_key: &WindowsKbdLayerKey, key: &str, dead_keys: Option<&IndexMap<WindowsKbdLayerKey, Vec<String>>>) -> Option<WindowsLayoutKey> {
-
+fn process_key(
+    layer_key: &WindowsKbdLayerKey,
+    key: &str,
+    dead_keys: Option<&IndexMap<WindowsKbdLayerKey, Vec<String>>>,
+) -> Option<WindowsLayoutKey> {
     if key == r"\u{0}" {
         return None;
     }
@@ -219,12 +228,15 @@ fn process_key(layer_key: &WindowsKbdLayerKey, key: &str, dead_keys: Option<&Ind
     if let Some(dead_keys) = dead_keys {
         if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
             if layer_dead_keys.contains(&key.to_string()) {
-                dead_key = true;                          
+                dead_key = true;
             }
         }
     }
 
-    Some(WindowsLayoutKey { string: key.to_owned(), dead_key })
+    Some(WindowsLayoutKey {
+        string: key.to_owned(),
+        dead_key,
+    })
 }
 
 fn convert_to_klc_key(
@@ -239,7 +251,16 @@ fn convert_to_klc_key(
 
             if utf16s.len() == 1 {
                 let character = key.string.chars().next().unwrap();
-                KlcKey::Character(character)
+
+                if key.dead_key {
+                    let dead_key = KlcKey::DeadKey(character);
+
+                    // add to list
+
+                    dead_key
+                } else {
+                    KlcKey::Character(character)
+                }
             } else {
                 let ligature_row = KlcLigatureRow {
                     virtual_key: virtual_key.to_owned(),
