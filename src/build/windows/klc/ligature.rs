@@ -6,6 +6,10 @@ pub struct KlcLigature {
 
 impl Display for KlcLigature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.rows.is_empty() {
+            return Ok(());
+        }
+
         f.write_str("LIGATURE\n\n")?;
 
         for ligature in &self.rows {

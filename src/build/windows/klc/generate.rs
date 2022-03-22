@@ -2,8 +2,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use codecs::utf16::Utf16Ext;
+use indexmap::IndexMap;
 
-use super::dead_key::KlcDeadKey;
+use super::dead_key::{KlcDeadKey, KlcDeadKeyRow};
 use super::file::KlcFile;
 use super::key::KlcKey;
 use super::keymap::MSKLC_KEYS;
@@ -37,6 +38,7 @@ impl BuildStep for GenerateKlc {
 
                 let mut klc_layout_rows = Vec::new();
                 let mut klc_ligature_rows = Vec::new();
+                let mut klc_dead_key_rows = Vec::new();
 
                 let mut cursor = 0;
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
@@ -44,7 +46,7 @@ impl BuildStep for GenerateKlc {
 
                     // Layout set to determine caps_mode and null keys
                     for (layer_key, key_map) in layers {
-                        populate_layout_set(&mut layout_set, layer_key, &key_map, cursor);
+                        populate_layout_set(windows_layout.dead_keys.as_ref(), &mut klc_dead_key_rows, &mut layout_set, layer_key, &key_map, cursor);
                     }
 
                     klc_layout_rows.push(KlcLayoutRow {
@@ -96,7 +98,9 @@ impl BuildStep for GenerateKlc {
                     ligature: KlcLigature {
                         rows: klc_ligature_rows,
                     },
-                    dead_key: KlcDeadKey {},
+                    dead_key: KlcDeadKey {
+                        rows: klc_dead_key_rows,
+                    },
                 };
 
                 let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
@@ -105,6 +109,11 @@ impl BuildStep for GenerateKlc {
             }
         }
     }
+}
+
+pub struct WindowsLayoutKey {
+    pub key: String,
+    pub dead_key: bool,
 }
 
 #[derive(Default)]
@@ -152,6 +161,8 @@ impl WindowsLayoutSet {
 }
 
 fn populate_layout_set(
+    dead_keys: Option<&IndexMap<WindowsKbdLayerKey, Vec<String>>>,
+    klc_dead_key_rows: &mut Vec<KlcDeadKeyRow>,
     layout_set: &mut WindowsLayoutSet,
     layer_key: &WindowsKbdLayerKey,
     key_map: &str,
@@ -162,24 +173,47 @@ fn populate_layout_set(
     match layer_key {
         WindowsKbdLayerKey::Default => {
             layout_set.default = process_key(&key_map[cursor]);
+
+            if let Some(dead_keys) = dead_keys {
+                if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
+                    println!("testing dead keys for default: {:?}", layer_dead_keys);
+                    //alt: ['~', ¨]
+                }
+            }
         }
         WindowsKbdLayerKey::Shift => {
             layout_set.shift = process_key(&key_map[cursor]);
+
+
         }
         WindowsKbdLayerKey::Caps => {
             layout_set.caps = process_key(&key_map[cursor]);
+
+
         }
         WindowsKbdLayerKey::CapsAndShift => {
             layout_set.caps_and_shift = process_key(&key_map[cursor]);
+
+
         }
         WindowsKbdLayerKey::Alt => {
             layout_set.alt = process_key(&key_map[cursor]);
+
+
         }
         WindowsKbdLayerKey::AltAndShift => {
             layout_set.alt_and_shift = process_key(&key_map[cursor]);
+
+            if let Some(dead_keys) = dead_keys {
+                if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
+                    println!("testing dead keys for alt and shift: {:?}", layer_dead_keys);
+                }
+            }
         }
         WindowsKbdLayerKey::Ctrl => {
             layout_set.ctrl = process_key(&key_map[cursor]);
+
+
         }
     };
 }

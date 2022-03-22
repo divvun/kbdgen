@@ -42,6 +42,7 @@ pub struct Layout {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WindowsTarget {
     pub config: Option<WindowsConfig>,
     pub primary: WindowsPrimaryPlatform,
@@ -66,6 +67,7 @@ pub struct ChromeOsPrimaryPlatform {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MacOsTarget {
     pub primary: MacOsPrimaryPlatform,
     pub dead_keys: Option<IndexMap<MacOsKbdLayerKey, Vec<String>>>,
