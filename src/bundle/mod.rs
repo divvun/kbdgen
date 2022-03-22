@@ -30,7 +30,7 @@ pub struct KbdgenBundle {
 pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     let canonical_bundle_path: PathBuf = canonicalize(path)?;
 
-    println!("Canonical Bundle Path: {:?}", &canonical_bundle_path);
+    tracing::info!("Canonical Bundle Path: {:?}", &canonical_bundle_path);
 
     let project: Project = serde_yaml::from_str(&fs::read_to_string(
         canonical_bundle_path.join(PROJECT_FILENAME),

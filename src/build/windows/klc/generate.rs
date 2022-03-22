@@ -111,6 +111,7 @@ impl BuildStep for GenerateKlc {
                     },
                     dead_keys: KlcDeadKeys {
                         characters: dead_key_characters,
+                        transforms: &layout.transforms,
                     },
                 };
 

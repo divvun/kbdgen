@@ -13,6 +13,8 @@ mod bundle;
 mod iso_key;
 
 fn main() -> Result<(), Error> {
+    tracing_subscriber::fmt::init();
+
     let cli = Cli::parse();
 
     match &cli.command {
@@ -20,7 +22,7 @@ fn main() -> Result<(), Error> {
             let bundle_path = target_command_struct.bundle_path.clone();
             let bundle = read_kbdgen_bundle(&bundle_path)?;
 
-            println!("Output Path: {:?}", &target_command_struct.output_path);
+            tracing::info!("Output Path: {:?}", &target_command_struct.output_path);
             std::fs::create_dir_all(&target_command_struct.output_path)?;
 
             match &target_command_struct.target_command {

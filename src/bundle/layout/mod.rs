@@ -15,7 +15,7 @@ mod android;
 mod chrome;
 mod ios;
 mod macos;
-mod transform;
+pub mod transform;
 pub mod windows;
 
 #[derive(Debug, Serialize, Deserialize)]

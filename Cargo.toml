@@ -10,6 +10,7 @@ clap = { version = "3.1.0", features = ["derive"] }
 pathos = "0.3.0-pre.3"
 xmlem = { git = "https://github.com/bbqsrc/xmlem", rev = "026d00f34c63b37977a9570bd694ce50a5c42b39" }
 tracing = "0.1.32"
+tracing-subscriber = "0.3.9"
 
 serde = { version = "1.0.110", features = ["derive"] }
 indexmap = { version = "1.8.0", features = ["serde"] }
