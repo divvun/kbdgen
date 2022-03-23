@@ -1,6 +1,12 @@
 use indexmap::IndexMap;
+use once_cell::sync::Lazy;
+use regex::Regex;
 
 use crate::bundle::layout::windows::WindowsKbdLayer;
+
+pub static UNICODE_ESCAPES: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\\u\{([0-9A-Fa-f]{1,6})\}").expect("valid regex")
+});
 
 #[derive(Eq, PartialEq)]
 pub struct WindowsLayerSetKey {

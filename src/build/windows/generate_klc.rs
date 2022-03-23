@@ -44,7 +44,7 @@ impl BuildStep for GenerateKlc {
                 for (_iso_key, klc_key) in MSKLC_KEYS.iter() {
                     let mut layer_set = WindowsLayerSet::default();
 
-                    // Layout set to determine caps_mode and null keys
+                    // Layer set to determine caps_mode, special escapes, dead keys and null keys
                     for (layer, key_map) in layers {
                         populate_layer_set(
                             &mut layer_set,
