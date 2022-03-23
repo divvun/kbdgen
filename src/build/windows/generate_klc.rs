@@ -103,6 +103,7 @@ impl BuildStep for GenerateKlc {
                     metadata,
                     layout: KlcLayout {
                         rows: klc_layout_rows,
+                        decimal: layout.decimal.to_owned(),
                     },
                     ligature: KlcLigature {
                         rows: klc_ligature_rows,

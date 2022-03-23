@@ -1,9 +1,12 @@
 use std::fmt::Display;
 
+use crate::bundle::DEFAULT_DECIMAL;
+
 use super::key::KlcKey;
 
 pub struct KlcLayout {
     pub rows: Vec<KlcLayoutRow>,
+    pub decimal: Option<String>,
 }
 
 impl Display for KlcLayout {
@@ -24,12 +27,22 @@ impl Display for KlcLayout {
             f.write_str(&row.to_string())?;
         }
 
+        // TODO: just add these as keys?
+
         // Space key
         f.write_str("39\tSPACE\t0\t0020\t0020\t0020\t-1\t-1\n")?;
 
         // Decimal key
-        // TODO: add support for custom decimal keys
-        f.write_fmt(format_args!("53\tDECIMAL\t0\t.\t.\t-1\t-1\t-1\n\n"))?;
+        let mut decimal = DEFAULT_DECIMAL.to_owned();
+
+        if let Some(layout_decimal) = self.decimal.as_ref() {
+            decimal = layout_decimal.clone();
+        }
+
+        f.write_fmt(format_args!(
+            "53\tDECIMAL\t0\t{x}\t{x}\t-1\t-1\t-1\n\n",
+            x = &decimal
+        ))?;
 
         f.write_str("\n")?;
 

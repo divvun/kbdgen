@@ -4,9 +4,8 @@ use regex::Regex;
 
 use crate::bundle::layout::windows::WindowsKbdLayer;
 
-pub static UNICODE_ESCAPES: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\\u\{([0-9A-Fa-f]{1,6})\}").expect("valid regex")
-});
+pub static UNICODE_ESCAPES: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\\u\{([0-9A-Fa-f]{1,6})\}").expect("valid regex"));
 
 #[derive(Eq, PartialEq)]
 pub struct WindowsLayerSetKey {
@@ -102,7 +101,7 @@ fn process_key(
         return None;
     }
 
-    // TOOO: process \u and such
+    let key = decode_unicode_escapes(key);
 
     let utf16s = key.encode_utf16().collect::<Vec<_>>();
     if utf16s.len() == 0 || utf16s[0] == 0 {
@@ -131,4 +130,13 @@ fn process_key(
 
 fn split_keys(layer: &str) -> Vec<String> {
     layer.split_whitespace().map(|v| v.to_string()).collect()
+}
+
+fn decode_unicode_escapes(input: &str) -> String {
+    let new = UNICODE_ESCAPES.replace_all(input, |hex: &regex::Captures| {
+        let number = u32::from_str_radix(hex.get(1).unwrap().as_str(), 16).unwrap_or(0xfeff);
+        std::char::from_u32(number).unwrap().to_string()
+    });
+
+    new.to_string()
 }

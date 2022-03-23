@@ -20,6 +20,9 @@ const TARGETS_FOLDER: &str = "targets";
 
 const YAML_EXT: &str = "yaml";
 
+pub const DEFAULT_DECIMAL: &str = ".";
+const COMMA_DECIMAL: &str = ",";
+
 #[derive(Debug)]
 pub struct KbdgenBundle {
     pub path: PathBuf,
@@ -78,7 +81,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                     Value::String(tag.to_string()),
                 );
 
-            let layout: Layout = serde_yaml::from_value(yaml)?;
+            let mut layout: Layout = serde_yaml::from_value(yaml)?;
 
             let _autonym = layout
                 .display_names
@@ -86,6 +89,17 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                 .unwrap_or_else(|| {
                     panic!("displayNames for the layout do not have the autonym");
                 });
+
+            if let Some(decimal) = layout.decimal.as_ref() {
+                if decimal != COMMA_DECIMAL || decimal != DEFAULT_DECIMAL {
+                    tracing::error!(
+                        "{} is not supported as a decimal character, setting to {}",
+                        decimal,
+                        DEFAULT_DECIMAL
+                    );
+                    layout.decimal = Some(DEFAULT_DECIMAL.to_owned());
+                }
+            };
 
             Ok((tag, layout))
         })
