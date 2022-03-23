@@ -3,25 +3,32 @@ use language_tags::LanguageTag;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_yaml::Value;
 
-use transform::Transform;
-
-use android::AndroidKbdLayerKey;
-use chrome::ChromeKbdLayerKey;
-use ios::IOsKbdLayerKey;
-use macos::MacOsKbdLayerKey;
-use windows::WindowsKbdLayerKey;
+use android::AndroidKbdLayer;
+use chrome::ChromeKbdLayer;
+use ios::IOsKbdLayer;
+use macos::MacOsKbdLayer;
+use windows::WindowsKbdLayer;
 
 mod android;
 mod chrome;
 mod ios;
 mod macos;
-pub mod transform;
 pub mod windows;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Transform {
+    End(String),
+    More(IndexMap<String, Transform>),
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Layout {
+    pub language_tag: LanguageTag,
+
     pub display_names: IndexMap<String, String>,
+
+    pub decimal: Option<String>,
 
     pub windows: Option<WindowsTarget>,
     #[serde(rename = "chromeOS")]
@@ -41,18 +48,28 @@ pub struct Layout {
     pub key_names: Option<KeyNames>,
 }
 
+impl Layout {
+    pub fn autonym(&self) -> &str {
+        let temp = self.language_tag.primary_language().to_string();
+        &self
+            .display_names
+            .get(&temp)
+            .expect("autonym must be present")
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowsTarget {
     pub config: Option<WindowsConfig>,
     pub primary: WindowsPrimaryPlatform,
-    pub dead_keys: Option<IndexMap<WindowsKbdLayerKey, Vec<String>>>,
+    pub dead_keys: Option<IndexMap<WindowsKbdLayer, Vec<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowsPrimaryPlatform {
-    pub layers: IndexMap<WindowsKbdLayerKey, String>,
+    pub layers: IndexMap<WindowsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,21 +80,21 @@ pub struct ChromeOsTarget {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsPrimaryPlatform {
-    pub layers: IndexMap<ChromeKbdLayerKey, String>,
+    pub layers: IndexMap<ChromeKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MacOsTarget {
     pub primary: MacOsPrimaryPlatform,
-    pub dead_keys: Option<IndexMap<MacOsKbdLayerKey, Vec<String>>>,
-    pub space: IndexMap<MacOsKbdLayerKey, String>,
+    pub dead_keys: Option<IndexMap<MacOsKbdLayer, Vec<String>>>,
+    pub space: IndexMap<MacOsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MacOsPrimaryPlatform {
-    pub layers: IndexMap<MacOsKbdLayerKey, String>,
+    pub layers: IndexMap<MacOsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -92,17 +109,17 @@ pub struct IOsTarget {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsPrimaryPlatform {
-    pub layers: IndexMap<IOsKbdLayerKey, String>,
+    pub layers: IndexMap<IOsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsIpad9InPlatform {
-    pub layers: IndexMap<IOsKbdLayerKey, String>,
+    pub layers: IndexMap<IOsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsIpad12InPlatform {
-    pub layers: IndexMap<IOsKbdLayerKey, String>,
+    pub layers: IndexMap<IOsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,7 +130,7 @@ pub struct AndroidTarget {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AndroidPrimaryPlatform {
-    pub layers: IndexMap<AndroidKbdLayerKey, String>,
+    pub layers: IndexMap<AndroidKbdLayer, String>,
 }
 
 fn from_mapped_sequence<'de, D>(
@@ -181,6 +198,7 @@ pub struct KeyNames {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowsConfig {
     pub locale: Option<LanguageTag>,
+    pub id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -195,6 +213,8 @@ pub struct ChromeConfig {
 pub struct IOsConfig {
     pub speller_package_key: Option<String>,
     pub speller_path: Option<String>,
+    pub space: Option<String>,
+    pub r#return: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

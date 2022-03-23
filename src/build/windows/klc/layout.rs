@@ -17,7 +17,6 @@ impl Display for KlcLayout {
         f.write_str("2 // 6 Ctrl\n")?;
         f.write_str("6 // 7 Alt\n")?;
         f.write_str("7 // 8 Alt + Shift\n\n")?;
-        // Adopted from old kbdgen, not convinced these are correct
 
         f.write_str("LAYOUT\n\n")?;
 
@@ -36,6 +35,16 @@ impl Display for KlcLayout {
 
         Ok(())
     }
+}
+
+#[derive(Copy, Clone)]
+#[repr(u8)]
+pub enum KlcLayer {
+    Default,
+    Shift,
+    Ctrl,
+    Alt,
+    AltAndShift,
 }
 
 // Hardcoded columns. .klc can support a different number

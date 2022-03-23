@@ -7,6 +7,7 @@ use language_tags::LanguageTag;
 
 use layout::Layout;
 use project::Project;
+use serde_yaml::Value;
 use target::Target;
 
 pub mod layout;
@@ -69,7 +70,22 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                 tag: tag.to_string(),
             })?;
 
-            let layout: Layout = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+            let mut yaml: Value = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+            yaml.as_mapping_mut()
+                .expect("top level yaml type must be a mapping")
+                .insert(
+                    Value::String("languageTag".to_owned()),
+                    Value::String(tag.to_string()),
+                );
+
+            let layout: Layout = serde_yaml::from_value(yaml)?;
+
+            let _autonym = layout
+                .display_names
+                .get(&tag.primary_language().to_owned())
+                .unwrap_or_else(|| {
+                    panic!("displayNames for the layout do not have the autonym");
+                });
 
             Ok((tag, layout))
         })

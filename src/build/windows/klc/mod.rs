@@ -1,7 +1,6 @@
-mod dead_key;
-mod file;
-pub mod generate;
-mod key;
-mod keymap;
-mod layout;
-mod ligature;
+pub mod dead_key;
+pub mod file;
+pub mod key;
+pub mod keymap;
+pub mod layout;
+pub mod ligature;

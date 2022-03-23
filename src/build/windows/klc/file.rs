@@ -2,19 +2,34 @@ use core::fmt::Display;
 
 use super::{dead_key::KlcDeadKeys, layout::KlcLayout, ligature::KlcLigature};
 
+pub const KLC_EXT: &str = "klc";
+
 pub struct KlcFile<'a> {
-    pub keyboard_name: String,
-    pub copyright: String,
-    pub company: String,
+    pub metadata: KlcFileMetadata,
     pub layout: KlcLayout,
     pub ligature: KlcLigature,
     pub dead_keys: KlcDeadKeys<'a>,
 }
 
+pub struct KlcFileMetadata {
+    pub keyboard_name: String,
+    pub description: String,
+    pub copyright: String,
+    pub company: String,
+}
+
 impl Display for KlcFile<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("COPYRIGHT\t\"{}\"\n\n", self.copyright))?;
-        f.write_fmt(format_args!("COMPANY\t\"{}\"\n\n", self.company))?;
+        f.write_fmt(format_args!(
+            "KBD\t{}\t\"{}\"\n\n",
+            self.metadata.keyboard_name, self.metadata.description
+        ))?;
+
+        f.write_fmt(format_args!(
+            "COPYRIGHT\t\"{}\"\n\n",
+            self.metadata.copyright
+        ))?;
+        f.write_fmt(format_args!("COMPANY\t\"{}\"\n\n", self.metadata.company))?;
 
         f.write_str("VERSION\t1.0\n\n")?;
 

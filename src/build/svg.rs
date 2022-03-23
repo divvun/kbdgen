@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+//use std::rc::Rc;
 use std::sync::Arc;
 
 use xmlem::XmlemDocument;
@@ -11,7 +11,7 @@ use super::{BuildStep, BuildSteps};
 const SVG_EXT: &str = "svg";
 static KEYBOARD_SVG: &str = include_str!("../../resources/template-iso-keyboard.svg");
 
-pub struct SvgFile {}
+//pub struct SvgFile {}
 
 pub struct SvgBuild {
     pub bundle: Arc<KbdgenBundle>,

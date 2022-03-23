@@ -8,7 +8,7 @@ pub struct KlcKeyCodes {
     pub virtual_key: String, // simply `vk` in .klc format
 }
 
-pub(super) static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
+pub static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
     let mut map = IndexMap::new();
 
     {
