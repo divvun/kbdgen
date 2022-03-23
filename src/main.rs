@@ -12,7 +12,8 @@ mod build;
 mod bundle;
 mod iso_key;
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
@@ -34,7 +35,7 @@ fn main() -> Result<(), Error> {
                     };
 
                     build.populate_steps(); // This shouldn't be a thing
-                    build.build_full();
+                    build.build_full().await;
                 }
                 TargetCommand::Svg(_svg_command) => {
                     let mut build = SvgBuild {
@@ -44,7 +45,7 @@ fn main() -> Result<(), Error> {
                     };
 
                     build.populate_steps(); // This shouldn't be a thing
-                    build.build_full();
+                    build.build_full().await;
                 }
             }
         }

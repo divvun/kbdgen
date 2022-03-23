@@ -29,8 +29,6 @@ impl Display for KlcDeadKeys<'_> {
                         Transform::More(map) => {
                             for (next_char, transform) in map {
                                 if next_char == TRANSFORM_ESCAPE {
-                                    // TODO: Process this as the default
-
                                     continue;
                                 }
 
@@ -66,6 +64,15 @@ impl Display for KlcDeadKeys<'_> {
 
                 f.write_str("\n")?;
             }
+
+            // TODO: default transform for each dead key
+            /*
+            let default = transforms
+                .get(" ")
+                .and_then(|x| x.encode_utf16().nth(0))
+                .unwrap_or_else(|| dk.into_inner().to_string().encode_utf16().nth(0).unwrap());
+            f.write_fmt(format_args!("0020\t{:04x}\n\n", default))?;
+            */
 
             Ok(())
         } else {

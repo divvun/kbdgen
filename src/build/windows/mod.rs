@@ -1,11 +1,13 @@
 use std::{path::PathBuf, sync::Arc};
 
+use async_trait::async_trait;
+
 use crate::bundle::KbdgenBundle;
+
+use super::{BuildStep, BuildSteps};
 
 use build_klc::BuildKlc;
 use generate_klc::GenerateKlc;
-
-use super::{BuildStep, BuildSteps};
 
 mod build_klc;
 mod generate_klc;
@@ -18,6 +20,7 @@ pub struct WindowsBuild {
     pub steps: Vec<Box<dyn BuildStep>>,
 }
 
+#[async_trait(?Send)]
 impl BuildSteps for WindowsBuild {
     fn populate_steps(&mut self) {
         self.steps.push(Box::new(GenerateKlc {}));
@@ -28,9 +31,9 @@ impl BuildSteps for WindowsBuild {
         *&self.steps.len()
     }
 
-    fn build_full(&self) {
-        self.steps.iter().for_each(|step| {
-            step.build(self.bundle.clone(), &self.output_path);
-        });
+    async fn build_full(&self) {
+        for step in &self.steps {
+            step.build(self.bundle.clone(), &self.output_path).await;
+        }
     }
 }

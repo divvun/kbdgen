@@ -1,5 +1,6 @@
 use std::{path::Path, sync::Arc};
 
+use async_trait::async_trait;
 use codecs::utf16::Utf16Ext;
 use language_tags::LanguageTag;
 
@@ -26,8 +27,9 @@ use super::{
 
 pub struct GenerateKlc {}
 
+#[async_trait(?Send)]
 impl BuildStep for GenerateKlc {
-    fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
         // One .klc file per language with Windows primary platform
         for (language_tag, layout) in &bundle.layouts {
             if let Some(windows_target) = &layout.windows {
@@ -144,6 +146,8 @@ fn generate_metadata(
     let copyright = bundle.project.copyright.clone();
     let company = bundle.project.organisation.clone();
 
+    let autonym = layout.autonym().to_string();
+
     // Language Code Identifier
     // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-lcid/70feba9f-294e-491e-b6eb-56532684c37f
     let lcid_record = iso639::lcid::get(
@@ -157,10 +161,12 @@ fn generate_metadata(
         None => 0x2000,
     };
 
-    /*
-    let locale_name = target.config
-        .map(|t| t.locale.to_string())
-        .unwrap_or_else(|| match lcid {
+    let locale_name = target
+        .config
+        .as_ref()
+        .and_then(|config| config.locale.as_ref())
+        .map(|locale| locale.to_string())
+        .unwrap_or_else(|| match lcid_record {
             Some(_) => language_tag.to_string(),
             None => format!(
                 "{}-{}-{}",
@@ -169,14 +175,15 @@ fn generate_metadata(
                 language_tag.region().unwrap_or("001")
             ),
         });
-        */
 
     KlcFileMetadata {
         keyboard_name,
         description,
         copyright,
         company,
+        autonym,
         locale_id,
+        locale_name,
     }
 }
 

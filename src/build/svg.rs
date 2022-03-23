@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 //use std::rc::Rc;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use xmlem::XmlemDocument;
 
 use crate::bundle::KbdgenBundle;
@@ -16,9 +17,10 @@ static KEYBOARD_SVG: &str = include_str!("../../resources/template-iso-keyboard.
 pub struct SvgBuild {
     pub bundle: Arc<KbdgenBundle>,
     pub output_path: PathBuf,
-    pub steps: Vec<Box<dyn BuildStep>>,
+    pub steps: Vec<Box<dyn BuildStep + Send + Sync>>,
 }
 
+#[async_trait(?Send)]
 impl BuildSteps for SvgBuild {
     fn populate_steps(&mut self) {
         self.steps.push(Box::new(GenerateSvg {}));
@@ -28,17 +30,18 @@ impl BuildSteps for SvgBuild {
         *&self.steps.len()
     }
 
-    fn build_full(&self) {
-        self.steps.iter().for_each(|step| {
-            step.build(self.bundle.clone(), &self.output_path);
-        });
+    async fn build_full(&self) {
+        for step in &self.steps {
+            step.build(self.bundle.clone(), &self.output_path).await;
+        }
     }
 }
 
 pub struct GenerateSvg {}
 
+#[async_trait(?Send)]
 impl BuildStep for GenerateSvg {
-    fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
         let document = XmlemDocument::from_str(KEYBOARD_SVG).unwrap();
 
         println!("no explosion?");
