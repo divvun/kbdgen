@@ -4,6 +4,8 @@ use regex::Regex;
 
 use crate::bundle::layout::windows::WindowsKbdLayer;
 
+pub const SG_CAP: &str = "SGCap";
+
 pub static UNICODE_ESCAPES: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\\u\{([0-9A-Fa-f]{1,6})\}").expect("valid regex"));
 
@@ -32,7 +34,7 @@ impl WindowsLayerSet {
         // We do not really know or understand why
 
         if !&self.caps.is_none() && &self.default != &self.caps && &self.shift != &self.caps {
-            "SGCap".to_owned()
+            SG_CAP.to_owned()
         } else if self.caps.is_none() {
             let mut caps = 0;
             if &self.default != &self.shift {

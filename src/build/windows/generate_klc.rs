@@ -58,7 +58,7 @@ impl BuildStep for GenerateKlc {
                     klc_layout_rows.push(KlcLayoutRow {
                         scancode: klc_key.scancode.clone(),
                         virtual_key: klc_key.virtual_key.clone(),
-                        caps_mode: layer_set.caps_mode(),
+                        caps_mode: layer_set.caps_mode(), // Generate extra key for SGCap here?
                         default_key: convert_to_klc_key(
                             layer_set.default,
                             &klc_key.virtual_key,
@@ -144,11 +144,39 @@ fn generate_metadata(
     let copyright = bundle.project.copyright.clone();
     let company = bundle.project.organisation.clone();
 
+    // Language Code Identifier
+    // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-lcid/70feba9f-294e-491e-b6eb-56532684c37f
+    let lcid_record = iso639::lcid::get(
+        language_tag.primary_language(),
+        language_tag.script(),
+        language_tag.region(),
+    );
+
+    let locale_id = match lcid_record {
+        Some(record) => record.lcid,
+        None => 0x2000,
+    };
+
+    /*
+    let locale_name = target.config
+        .map(|t| t.locale.to_string())
+        .unwrap_or_else(|| match lcid {
+            Some(_) => language_tag.to_string(),
+            None => format!(
+                "{}-{}-{}",
+                language_tag.primary_language(),
+                language_tag.script().unwrap_or("Latn"),
+                language_tag.region().unwrap_or("001")
+            ),
+        });
+        */
+
     KlcFileMetadata {
         keyboard_name,
         description,
         copyright,
         company,
+        locale_id,
     }
 }
 

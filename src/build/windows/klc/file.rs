@@ -16,6 +16,7 @@ pub struct KlcFileMetadata {
     pub description: String,
     pub copyright: String,
     pub company: String,
+    pub locale_id: u32,
 }
 
 impl Display for KlcFile<'_> {
@@ -31,6 +32,13 @@ impl Display for KlcFile<'_> {
         ))?;
         f.write_fmt(format_args!("COMPANY\t\"{}\"\n\n", self.metadata.company))?;
 
+        // f.write_fmt(format_args!("LOCALENAME\t\"{}\"\n\n", self.locale_name))?;
+
+        f.write_fmt(format_args!(
+            "LOCALEID\t\"{:08x}\"\n\n",
+            self.metadata.locale_id
+        ))?;
+
         f.write_str("VERSION\t1.0\n\n")?;
 
         f.write_str(&self.layout.to_string())?;
@@ -42,6 +50,15 @@ impl Display for KlcFile<'_> {
         f.write_str(FOOTER_CONTENT)?;
 
         f.write_str("\nDESCRIPTIONS\n\n")?;
+        f.write_fmt(format_args!(
+            "{:04x}\t{}\n\n",
+            self.metadata.locale_id, self.metadata.description
+        ))?;
+
+        // f.write_str("LANGUAGENAMES\n\n")?;
+        // Autonyms?
+
+        f.write_str("ENDKBD\n")?;
 
         Ok(())
     }

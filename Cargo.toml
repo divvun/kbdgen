@@ -16,6 +16,7 @@ tracing-subscriber = "0.3.9"
 serde = { version = "1.0.110", features = ["derive"] }
 indexmap = { version = "1.8.0", features = ["serde"] }
 language-tags = { version = "0.3.2", features = ["serde"] }
+iso639 = "0.1.0"
 codecs = "0.0.1"
 
 # DIV-8

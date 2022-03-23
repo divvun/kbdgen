@@ -25,9 +25,22 @@ impl Display for KlcLayout {
 
         for row in &self.rows {
             f.write_str(&row.to_string())?;
+
+            // This needs to be resolved earlier as caps/caps_shift are not valid KLC columns
+            // sc -1, vk -1, caps 0, caps, shift
+            // Hard override?
+            // Correspondence: Caps goes to Default, Caps_Shift goes to Shift
+            /*
+            if row.caps_mode == SG_CAP {
+                f.write_fmt(format_args!(
+                    "-1\t-1\t0\t{}\t{}\n",
+                    row.caps, row.caps_shift
+                ))?;
+            }
+            */
         }
 
-        // TODO: just add these as keys?
+        // TODO: just add these \/ as keys?
 
         // Space key
         f.write_str("39\tSPACE\t0\t0020\t0020\t0020\t-1\t-1\n")?;

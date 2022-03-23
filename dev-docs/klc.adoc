@@ -7,3 +7,8 @@ https://www.microsoft.com/en-us/download/details.aspx?id=102134
 
 Installing MSKLC requires enabling .NET Framework 3.5 in Windows Programs and Features.
 
+SGCap = from Swiss German, first keyboard to use this.
+
+Special override for keyboards that need caps lock to type certain keys.
+
+See: https://kbdlayout.info/features/SGCAPS
