@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use xmlem::XmlemDocument;
+use xmlem::Document;
 
 use crate::bundle::KbdgenBundle;
 
@@ -42,7 +42,7 @@ pub struct GenerateSvg {}
 #[async_trait(?Send)]
 impl BuildStep for GenerateSvg {
     async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
-        let document = XmlemDocument::from_str(KEYBOARD_SVG).unwrap();
+        let document = Document::from_str(KEYBOARD_SVG).unwrap();
 
         println!("no explosion?");
 

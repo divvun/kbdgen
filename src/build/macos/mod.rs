@@ -1,13 +1,14 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
 
 use super::{BuildStep, BuildSteps};
+
+use generate_mac_os::GenerateMacOs;
+
+mod generate_mac_os;
 
 pub struct MacOsBuild {
     pub bundle: Arc<KbdgenBundle>,
@@ -30,11 +31,4 @@ impl BuildSteps for MacOsBuild {
             step.build(self.bundle.clone(), &self.output_path).await;
         }
     }
-}
-
-pub struct GenerateMacOs {}
-
-#[async_trait(?Send)]
-impl BuildStep for GenerateMacOs {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {}
 }

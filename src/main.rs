@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 
+use crate::build::macos::MacOsBuild;
 use crate::build::svg::SvgBuild;
 use crate::build::windows::WindowsBuild;
 use crate::build::BuildSteps;
@@ -29,6 +30,16 @@ async fn main() -> Result<(), Error> {
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
                     let mut build = WindowsBuild {
+                        bundle: Arc::new(bundle),
+                        output_path: target_command_struct.output_path.clone(),
+                        steps: vec![],
+                    };
+
+                    build.populate_steps(); // This shouldn't be a thing
+                    build.build_full().await;
+                }
+                TargetCommand::Macos(_macos_command) => {
+                    let mut build = MacOsBuild {
                         bundle: Arc::new(bundle),
                         output_path: target_command_struct.output_path.clone(),
                         steps: vec![],
@@ -68,8 +79,9 @@ enum Command {
 
 #[derive(Subcommand)]
 enum TargetCommand {
-    Svg(TargetSvgCommand),
     Windows(TargetWindowsCommand),
+    Macos(TargetMacOsCommand),
+    Svg(TargetSvgCommand),
 }
 
 #[derive(Args)]
@@ -85,13 +97,19 @@ struct TargetCommandStruct {
 }
 
 #[derive(Parser)]
-struct TargetSvgCommand {
-    #[clap(short, long)]
-    aaa: Option<bool>,
-}
-
-#[derive(Parser)]
 struct TargetWindowsCommand {
     #[clap(short, long)]
     boop: Option<String>,
+}
+
+#[derive(Parser)]
+struct TargetMacOsCommand {
+    #[clap(short, long)]
+    boop3: Option<String>,
+}
+
+#[derive(Parser)]
+struct TargetSvgCommand {
+    #[clap(short, long)]
+    aaa: Option<bool>,
 }
