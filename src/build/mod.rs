@@ -5,6 +5,7 @@ use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
 
+pub mod macos;
 pub mod svg;
 pub mod windows;
 
