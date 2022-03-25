@@ -1,0 +1,26 @@
+== Notes (Windows)
+
+Good sneaky website for windows that apparently exists: https://kbdlayout.info/
+
+
+
+BMP = Basic Multilingual Plane. The true encoding Windows .klc actually expects: https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane
+
+This means characters > 0xFFFF cannot be represented in .klc at all.
+
+https://kbdlayout.info/features/ligatures
+
+
+SGCap, see: https://kbdlayout.info/features/SGCAPS
+
+Copied from site in case it goes down:
+
+"Some keyboards do not associate the CapsLock and Shift keys together for all keystrokes; 
+instead, pressing the CapsLock key defines an additional two shift states for specific keys. 
+Therefore, some languages cannot by typed without the CapsLock key. The "SG" in the name 
+orginiates from the first keyboard layout to use the functionality, the Swiss German 
+keyboard layout."
+
+While alt caps is mentioned as a potential layer, it does not seem to be used.
+
+
