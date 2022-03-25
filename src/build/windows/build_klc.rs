@@ -2,31 +2,30 @@ use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
 
-use crate::{
-    build::{
-        pahkat::{install_msklc, prefix_dir},
-        BuildStep,
-    },
-    bundle::KbdgenBundle,
-};
+use crate::build::pahkat::{install_msklc, prefix_dir};
+
+use crate::{build::BuildStep, bundle::KbdgenBundle};
 
 pub struct BuildKlc {}
 
 #[async_trait(?Send)]
 impl BuildStep for BuildKlc {
     async fn build(&self, _bundle: Arc<KbdgenBundle>, output_path: &Path) {
-        // this should be Windows only steps
-        // print error if ran on not-Windows
-        install_msklc().await;
+        ms_klc(output_path).await;
+    }
+}
 
-        for entry in output_path.read_dir().unwrap().filter_map(Result::ok) {
-            let path = entry.path();
-            if let Some(extension) = path.extension() {
-                if extension == "klc" {
-                    build_dll(&path, KlcBuildTarget::Amd64, &output_path);
-                    build_dll(&path, KlcBuildTarget::I386, &output_path);
-                    build_dll(&path, KlcBuildTarget::Wow64, &output_path);
-                }
+#[cfg(target_os = "windows")]
+async fn ms_klc(output_path: &Path) {
+    install_msklc().await;
+
+    for entry in output_path.read_dir().unwrap().filter_map(Result::ok) {
+        let path = entry.path();
+        if let Some(extension) = path.extension() {
+            if extension == "klc" {
+                build_dll(&path, KlcBuildTarget::Amd64, &output_path);
+                build_dll(&path, KlcBuildTarget::I386, &output_path);
+                build_dll(&path, KlcBuildTarget::Wow64, &output_path);
             }
         }
     }

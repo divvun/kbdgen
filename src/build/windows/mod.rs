@@ -6,9 +6,9 @@ use crate::bundle::KbdgenBundle;
 
 use super::{BuildStep, BuildSteps};
 
-use build_klc::BuildKlc;
 use generate_klc::GenerateKlc;
 
+#[cfg(target_os = "windows")]
 mod build_klc;
 mod generate_klc;
 mod klc;
@@ -24,7 +24,15 @@ pub struct WindowsBuild {
 impl BuildSteps for WindowsBuild {
     fn populate_steps(&mut self) {
         self.steps.push(Box::new(GenerateKlc {}));
-        self.steps.push(Box::new(BuildKlc {}));
+        #[cfg(target_os = "windows")]
+        self.steps.push(Box::new(build_klc::BuildKlc {}));
+        #[cfg(not(target_os = "windows"))]
+        {
+            tracing::error!("Skipping BuildKlc step");
+            tracing::error!(
+                ".klc .dlls require MSKLC to build, which is only available on Windows"
+            );
+        }
     }
 
     fn count(&self) -> usize {
