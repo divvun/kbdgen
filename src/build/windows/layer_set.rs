@@ -63,12 +63,10 @@ impl WindowsLayerSet {
 pub fn populate_layer_set(
     layer_set: &mut WindowsLayerSet,
     layer: &WindowsKbdLayer,
-    key_map: &str,
+    key_map: Vec<String>,
     cursor: usize,
     dead_keys: Option<&IndexMap<WindowsKbdLayer, Vec<String>>>,
 ) {
-    let key_map: Vec<String> = split_keys(&key_map);
-
     match layer {
         WindowsKbdLayer::Default => {
             layer_set.default = process_key(&layer, &key_map[cursor], dead_keys);
@@ -128,10 +126,6 @@ fn process_key(
         string: key.to_owned(),
         dead_key,
     })
-}
-
-fn split_keys(layer: &str) -> Vec<String> {
-    layer.split_whitespace().map(|v| v.to_string()).collect()
 }
 
 fn decode_unicode_escapes(input: &str) -> String {

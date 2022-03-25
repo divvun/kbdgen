@@ -48,10 +48,30 @@ impl BuildStep for GenerateKlc {
 
                     // Layer set to determine caps_mode, special escapes, dead keys and null keys
                     for (layer, key_map) in layers {
+                        let key_map: Vec<String> = split_keys(&key_map);
+
+                        tracing::debug!(
+                            "iso len: {}; keymap len: {}",
+                            MSKLC_KEYS.len(),
+                            key_map.len()
+                        );
+                        if MSKLC_KEYS.len() > key_map.len() {
+                            panic!(
+                                r#"Provided layer does not have enough keys, expected {} keys but got {}, in {}:{}:{}:{:?}: \n{:?}"#,
+                                MSKLC_KEYS.len(),
+                                key_map.len(),
+                                language_tag.to_string(),
+                                "Windows",
+                                "Primary",
+                                layer,
+                                key_map
+                            );
+                        }
+
                         populate_layer_set(
                             &mut layer_set,
                             layer,
-                            &key_map,
+                            key_map,
                             cursor,
                             windows_target.dead_keys.as_ref(),
                         );
@@ -222,4 +242,8 @@ fn convert_to_klc_key(
         }
         None => KlcKey::None,
     }
+}
+
+fn split_keys(layer: &str) -> Vec<String> {
+    layer.split_whitespace().map(|v| v.to_string()).collect()
 }
