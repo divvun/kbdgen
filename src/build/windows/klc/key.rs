@@ -1,5 +1,7 @@
 use std::fmt::{Display, Write};
 
+const EXCEEDS_BMP: char = '\u{FFFF}';
+
 pub enum KlcKey {
     Character(char),
     DeadKey(char),
@@ -31,4 +33,12 @@ pub fn display_klc_character(character: char, f: &mut std::fmt::Formatter<'_>) -
     } else {
         f.write_fmt(format_args!("{:04x}", character as u32))
     }
+}
+
+pub fn validate_for_klc(key: &str) {
+    key.chars().for_each(|character| {
+        if character >= EXCEEDS_BMP {
+            panic!("Unrepresentable key detected! {}", key);
+        }
+    });
 }
