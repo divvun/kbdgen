@@ -37,7 +37,7 @@ pub fn display_klc_character(character: char, f: &mut std::fmt::Formatter<'_>) -
 
 pub fn validate_for_klc(key: &str) {
     key.chars().for_each(|character| {
-        if character >= EXCEEDS_BMP {
+        if character > EXCEEDS_BMP {
             panic!("Unrepresentable key detected! {}", key);
         }
     });
