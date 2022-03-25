@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "3.1.0", features = ["derive"] }
-pathos = "0.3.0-pre.5"
+pathos = "0.3.0-pre.3"
 regex = "1.5.5"
 xmlem = { git = "https://github.com/bbqsrc/xmlem", rev = "9aa584e2899f53a994e606a4b30143be6e6e20bc" }
 
@@ -31,4 +31,4 @@ serde_yaml = { git = "https://github.com/divvun/serde-yaml/", branch = "feature/
 
 thiserror = "1.0.30"
 
-pahkat-client = { git = "https://github.com/divvun/pahkat", features = ["prefix"] }
+pahkat-client = { git = "https://github.com/divvun/pahkat", branch = "feature/tokio-1", features = ["prefix"] }
