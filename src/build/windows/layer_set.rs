@@ -4,6 +4,8 @@ use regex::Regex;
 
 use crate::bundle::layout::windows::WindowsKbdLayer;
 
+use super::klc::key::validate_for_klc;
+
 pub const SG_CAP: &str = "SGCap";
 
 pub static UNICODE_ESCAPES: Lazy<Regex> =
@@ -102,6 +104,8 @@ fn process_key(
     if key == r"\u{0}" {
         return None;
     }
+
+    validate_for_klc(key);
 
     let key = decode_unicode_escapes(key);
 

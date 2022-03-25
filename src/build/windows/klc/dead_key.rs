@@ -4,6 +4,8 @@ use indexmap::IndexMap;
 
 use crate::bundle::layout::Transform;
 
+use super::key::validate_for_klc;
+
 const TRANSFORM_ESCAPE: &str = " ";
 
 pub struct KlcDeadKeys<'a> {
@@ -34,28 +36,27 @@ impl Display for KlcDeadKeys<'_> {
 
                                 match transform {
                                     Transform::End(end_char) => {
-                                        let next_16s = next_char.encode_utf16().collect::<Vec<_>>();
-                                        let end_16s = end_char.encode_utf16().collect::<Vec<_>>();
-
-                                        if next_16s.len() > 1 || end_16s.len() > 1 {
-                                            tracing::error!(
-                                                "Key or value of transform too long: {} {}",
-                                                next_char,
-                                                end_char
-                                            );
-                                            continue;
-                                        }
-
-                                        f.write_fmt(format_args!(
-                                            "{:04x}\t{:04x}\n",
-                                            next_16s[0], end_16s[0]
-                                        ))?;
+                                        write_transform(next_char, end_char, f)?;
                                     }
                                     Transform::More(_transform) => {
                                         todo!("Recursion required ahead");
                                     }
                                 }
                             }
+
+                            let transform = map.get(TRANSFORM_ESCAPE).expect(&format!(
+                                "The escape transform `{}` not found for dead key `{}`",
+                                TRANSFORM_ESCAPE, &dead_key
+                            ));
+
+                            match transform {
+                                Transform::End(end_char) => {
+                                    write_transform(TRANSFORM_ESCAPE, end_char, f)?;
+                                }
+                                Transform::More(_transform) => {
+                                    panic!("The escape transform should be a string, not another transform");
+                                }
+                            };
                         }
                     };
                 } else {
@@ -65,15 +66,6 @@ impl Display for KlcDeadKeys<'_> {
                 f.write_str("\n")?;
             }
 
-            // TODO: default transform for each dead key
-            /*
-            let default = transforms
-                .get(" ")
-                .and_then(|x| x.encode_utf16().nth(0))
-                .unwrap_or_else(|| dk.into_inner().to_string().encode_utf16().nth(0).unwrap());
-            f.write_fmt(format_args!("0020\t{:04x}\n\n", default))?;
-            */
-
             Ok(())
         } else {
             tracing::error!("Dead Keys present but no transforms");
@@ -81,4 +73,24 @@ impl Display for KlcDeadKeys<'_> {
             Ok(())
         }
     }
+}
+
+fn write_transform(from: &str, to: &str, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    validate_for_klc(from);
+    validate_for_klc(to);
+
+    let from_16s = from.encode_utf16().collect::<Vec<_>>();
+    let to_16s = to.encode_utf16().collect::<Vec<_>>();
+
+    if from_16s.len() > 1 || to_16s.len() > 1 {
+        tracing::error!(
+            "Key or value of transform too long: {} {}, skipping",
+            from,
+            to
+        );
+
+        return Ok(());
+    }
+
+    f.write_fmt(format_args!("{:04x}\t{:04x}\n", from_16s[0], to_16s[0]))
 }
