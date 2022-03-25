@@ -23,11 +23,11 @@ pub struct WindowsLayerSet {
     pub caps_and_shift: Option<WindowsLayerSetKey>,
     pub alt: Option<WindowsLayerSetKey>,
     pub alt_and_shift: Option<WindowsLayerSetKey>,
+    pub alt_and_caps: Option<WindowsLayerSetKey>,
     pub ctrl: Option<WindowsLayerSetKey>,
 }
 
 impl WindowsLayerSet {
-    // TODO: SGCap
     pub fn caps_mode(&self) -> String {
         // Shift correspondence increases caps mode by 1
         // Alt correspondence increases caps mode by 4
@@ -50,10 +50,9 @@ impl WindowsLayerSet {
             if &self.caps == &self.shift {
                 caps += 1;
             }
-            //if &self.alt_caps == &self.alt_shift {
-            //    caps += 4;
-            //}
-            // TODO: add alt_and_caps if that's another layer
+            if &self.alt_and_caps == &self.alt_and_shift {
+                caps += 4;
+            }
 
             caps.to_string()
         }
@@ -85,6 +84,9 @@ pub fn populate_layer_set(
         }
         WindowsKbdLayer::AltAndShift => {
             layer_set.alt_and_shift = process_key(&layer, &key_map[cursor], dead_keys);
+        }
+        WindowsKbdLayer::AltAndCaps => {
+            layer_set.alt_and_caps = process_key(&layer, &key_map[cursor], dead_keys);
         }
         WindowsKbdLayer::Ctrl => {
             layer_set.ctrl = process_key(&layer, &key_map[cursor], dead_keys);

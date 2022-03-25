@@ -15,7 +15,7 @@ pub struct GenerateMacOs {}
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateMacOs {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, _bundle: Arc<KbdgenBundle>, output_path: &Path) {
         let contents_path = output_path.join(TOP_FOLDER);
         let resources_path = contents_path.join(RESOURCES_FOLDER);
         std::fs::create_dir_all(contents_path).unwrap();

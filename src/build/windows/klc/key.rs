@@ -5,6 +5,7 @@ pub enum KlcKey {
     DeadKey(char),
     Ligature,
     None,
+    Skip,
 }
 
 impl Display for KlcKey {
@@ -17,6 +18,7 @@ impl Display for KlcKey {
             }
             KlcKey::Ligature => f.write_str("%%"),
             KlcKey::None => f.write_str("-1"),
+            KlcKey::Skip => Ok(()),
         }
     }
 }

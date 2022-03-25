@@ -8,7 +8,7 @@ use crate::{
     build::BuildStep,
     bundle::{
         layout::{Layout, WindowsTarget},
-        KbdgenBundle,
+        KbdgenBundle, DEFAULT_DECIMAL,
     },
 };
 
@@ -22,7 +22,7 @@ use super::{
         layout::{KlcLayer, KlcLayout, KlcLayoutRow},
         ligature::{KlcLigature, KlcLigatureRow},
     },
-    layer_set::{populate_layer_set, WindowsLayerSet, WindowsLayerSetKey},
+    layer_set::{populate_layer_set, WindowsLayerSet, WindowsLayerSetKey, SG_CAP},
 };
 
 pub struct GenerateKlc {}
@@ -77,10 +77,12 @@ impl BuildStep for GenerateKlc {
                         );
                     }
 
+                    let caps_mode = layer_set.caps_mode();
+
                     klc_layout_rows.push(KlcLayoutRow {
                         scancode: klc_key.scancode.clone(),
                         virtual_key: klc_key.virtual_key.clone(),
-                        caps_mode: layer_set.caps_mode(), // Generate extra key for SGCap here?
+                        caps_mode: caps_mode.clone(), // Generate extra key for SGCap here?
                         default_key: convert_to_klc_key(
                             layer_set.default,
                             &klc_key.virtual_key,
@@ -118,14 +120,45 @@ impl BuildStep for GenerateKlc {
                         ),
                     });
 
+                    if caps_mode == SG_CAP {
+                        let caps_key = convert_to_klc_key(
+                            layer_set.caps,
+                            &klc_key.virtual_key,
+                            KlcLayer::Default,
+                            &mut klc_ligature_rows,
+                            &mut dead_key_characters,
+                        );
+
+                        let caps_shift_key = convert_to_klc_key(
+                            layer_set.caps_and_shift,
+                            &klc_key.virtual_key,
+                            KlcLayer::Shift,
+                            &mut klc_ligature_rows,
+                            &mut dead_key_characters,
+                        );
+
+                        klc_layout_rows.push(KlcLayoutRow {
+                            scancode: "-1".to_owned(),
+                            virtual_key: "-1".to_owned(),
+                            caps_mode: "0".to_owned(),
+                            default_key: caps_key,
+                            shift_key: caps_shift_key,
+                            ctrl_key: KlcKey::Skip,
+                            alt_key: KlcKey::Skip,
+                            alt_and_shift_key: KlcKey::Skip,
+                        });
+                    }
+
                     cursor += 1;
                 }
+
+                klc_layout_rows.push(space_layout_row());
+                klc_layout_rows.push(decimal_layout_row(&layout.decimal));
 
                 let klc_file = KlcFile {
                     metadata,
                     layout: KlcLayout {
                         rows: klc_layout_rows,
-                        decimal: layout.decimal.to_owned(),
                     },
                     ligature: KlcLigature {
                         rows: klc_ligature_rows,
@@ -241,6 +274,42 @@ fn convert_to_klc_key(
             }
         }
         None => KlcKey::None,
+    }
+}
+
+fn space_layout_row() -> KlcLayoutRow {
+    KlcLayoutRow {
+        scancode: "39".to_owned(),
+        virtual_key: "SPACE".to_owned(),
+        caps_mode: "0".to_owned(),
+        default_key: KlcKey::Character(' '),
+        shift_key: KlcKey::Character(' '),
+        ctrl_key: KlcKey::Character(' '),
+        alt_key: KlcKey::None,
+        alt_and_shift_key: KlcKey::None,
+    }
+}
+
+fn decimal_layout_row(layout_decimal: &Option<String>) -> KlcLayoutRow {
+    let mut decimal = DEFAULT_DECIMAL.to_owned();
+    if let Some(layout_decimal) = layout_decimal {
+        decimal = layout_decimal.clone();
+    }
+
+    let decimal = decimal
+        .chars()
+        .next()
+        .expect("Layout decimal must be a single character.");
+
+    KlcLayoutRow {
+        scancode: "53".to_owned(),
+        virtual_key: "DECIMAL".to_owned(),
+        caps_mode: "0".to_owned(),
+        default_key: KlcKey::Character(decimal),
+        shift_key: KlcKey::Character(decimal),
+        ctrl_key: KlcKey::None,
+        alt_key: KlcKey::None,
+        alt_and_shift_key: KlcKey::None,
     }
 }
 
