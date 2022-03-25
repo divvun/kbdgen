@@ -6,11 +6,9 @@ use async_trait::async_trait;
 use crate::bundle::KbdgenBundle;
 
 pub mod macos;
+pub mod pahkat;
 pub mod svg;
 pub mod windows;
-
-#[allow(dead_code)]
-pub mod pahkat;
 
 #[async_trait(?Send)]
 pub trait BuildSteps {
