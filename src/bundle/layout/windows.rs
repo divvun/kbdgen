@@ -11,5 +11,7 @@ pub enum WindowsKbdLayer {
     Alt,
     #[serde(rename = "alt+shift")]
     AltAndShift,
+    #[serde(rename = "alt+caps")]
+    AltAndCaps,
     Ctrl,
 }
