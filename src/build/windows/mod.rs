@@ -28,10 +28,8 @@ impl BuildSteps for WindowsBuild {
         self.steps.push(Box::new(build_klc::BuildKlc {}));
         #[cfg(not(target_os = "windows"))]
         {
-            tracing::error!("Skipping BuildKlc step");
-            tracing::error!(
-                ".klc .dlls require MSKLC to build, which is only available on Windows"
-            );
+            tracing::warn!("Skipping BuildKlc step");
+            tracing::warn!(".klc .dlls require MSKLC to build, which is only available on Windows");
         }
     }
 
