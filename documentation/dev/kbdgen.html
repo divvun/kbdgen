@@ -519,6 +519,9 @@ pub trait BuildStep {
 <div class="sect2">
 <h3 id="_klc_generation">KLC Generation</h3>
 <div class="paragraph">
+<p>See the .klc file example below for an overview.</p>
+</div>
+<div class="paragraph">
 <p>It is currently assumed that Windows only has the core platform (<code>primary</code>).
 .klc files <em>must</em> be encoded in UTF-16 and <em>must</em> have Windows style CRLF or MSKLC
 will refuse to read them.</p>
@@ -555,6 +558,9 @@ Unicode hex.</p>
 <p>a .klc file is created per <code>language-tag</code>, i.e., per <code>layout</code> file</p>
 </li>
 <li>
+<p>various metadata required by .klc is generated</p>
+</li>
+<li>
 <p>the keymap for the <code>layouts</code> are expected to be in the ISO keyboard format:
 <a href="https://en.wikipedia.org/wiki/ISO/IEC_9995#ISO/IEC_9995-1" class="bare">https://en.wikipedia.org/wiki/ISO/IEC_9995#ISO/IEC_9995-1</a>
 A variable called <code>cursor</code> is an incrementing integer that
@@ -564,16 +570,33 @@ keeps track of which key we&#8217;re on</p>
 <p>the generation occurs in two steps. The first step, for every key, creates
 a <code>WindowsLayerSet</code>, which lists the set of the key on
 every layer, and notes any missing characters (nulls) and converts them to
-<code>None</code></p>
+<code>None</code>. This step also converts any Unicode escapes into Unicode characters</p>
 </li>
 <li>
 <p>the <code>WindowsLayerSet</code> is used to calculate the status of <code>caps_mode</code>,
 which is one of the expected .klc columns and roughly corresponds to
 whether a given key is related to the <code>shift</code> layer, <code>alt</code> layer,
-or both
-*</p>
+or both</p>
+</li>
+<li>
+<p>the second step, the final .klc key is created, including any available information
+on its dead key or ligature status. Dead keys must be formatted such as <code>@</code>,
+and ligatures as <code>%%</code></p>
+</li>
+<li>
+<p>both steps validate to make sure the incoming characters are within BMP</p>
+</li>
+<li>
+<p>SGCap rows are added</p>
+</li>
+<li>
+<p>space and decimal rows are added</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Finally, after all this, PahkatClient is used to download the MS KLC installer
+and run on the resulting .klc files. This step only works on Windows.</p>
 </div>
 </div>
 <div class="sect2">
