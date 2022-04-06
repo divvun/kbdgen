@@ -1,0 +1,12 @@
+= KeyboardGen User Documentation
+:doctype: book
+:toc: left
+
+KeyboardGen (shortened `kbdgen`) is a tool for generating keyboard 
+layouts from .kbdgen bundles and associated resources.
+
+include::cli.adoc[]
+
+include::bundle.adoc[]
+
+include::targets.adoc[]

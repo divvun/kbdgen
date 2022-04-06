@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.12">
-<title>Expected CLI Functions</title>
+<title>KeyboardGen User Documentation</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -438,105 +438,201 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
 </style>
 </head>
-<body class="article">
+<body class="book toc2 toc-left">
 <div id="header">
+<h1>KeyboardGen User Documentation</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_cli">CLI</a></li>
+<li><a href="#_bundle">Bundle</a>
+<ul class="sectlevel1">
+<li><a href="#_layouts">Layouts</a>
+<ul class="sectlevel2">
+<li><a href="#_layers">Layers</a></li>
+<li><a href="#_additional_info">Additional Info</a></li>
+</ul>
+</li>
+<li><a href="#_targets">Targets</a></li>
+</ul>
+</li>
+<li><a href="#_target_specific_information">Target Specific information</a>
+<ul class="sectlevel1">
+<li><a href="#_windows">Windows</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>KeyboardGen (shortened <code>kbdgen</code>) is a tool for generating keyboard
+layouts from .kbdgen bundles and associated resources.</p>
+</div>
+</div>
+</div>
 <div class="sect1">
-<h2 id="_expected_cli_functions">Expected CLI Functions</h2>
+<h2 id="_cli">CLI</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Core <code>kbdgen</code> functionality will be within the subcommand <code>target</code>, that then allows to select
 among the various linguistic targets: Windows, MacOS, .svg, etc.</p>
 </div>
+<div class="paragraph">
+<p>Example usage:</p>
 </div>
+<div class="paragraph">
+<p><code>cargo run&#8201;&#8212;&#8201;target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/SME windows</code></p>
 </div>
-<div class="sect1">
-<h2 id="_expected_inputs_and_outputs">Expected Inputs and Outputs</h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p>inputs</p>
-<div class="ulist">
-<ul>
-<li>
-<p>.svg generator: ISO keyboard template .svg</p>
-</li>
-<li>
-<p>relevant language bundle (.kbdgen folder format)</p>
-</li>
-<li>
-<p>cldr models</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>The first argument is the location of the given .kbdgen bundle (see below for
+information on bundles) that the keyboard should be built from.</p>
 </div>
-</li>
-<li>
-<p>outputs</p>
-<div class="ulist">
-<ul>
-<li>
-<p>build artifacts at various stages</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>The second argument is the output path.</p>
 </div>
-</li>
-</ul>
+<div class="paragraph">
+<p>And the third argument is the desired target.</p>
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="_expected_generators">Expected Generators</h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p>target-based generators for major OSes (Windows, Mac, Linux)</p>
-</li>
-<li>
-<p>target-based generators for minor OSes (mobile)</p>
-</li>
-<li>
-<p>.svg keyboard image generator</p>
-</li>
-</ul>
+<h1 id="_bundle" class="sect0">Bundle</h1>
+<div class="openblock partintro">
+<div class="content">
+<div class="paragraph">
+<p>\.kbdgen bundles are folders with the .kbdgen extension which describe keyboards for a
+language or language family. They&#8217;re expected to contain 3 pieces:</p>
+</div>
+<div class="paragraph">
+<p>*project.yaml
+*layouts folder
+*targets folder
+*resources</p>
+</div>
+<div class="paragraph">
+<p>You can see an example of a .kbdgen bundle here: <a href="https://github.com/giellalt/keyboard-sme" class="bare">https://github.com/giellalt/keyboard-sme</a></p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_expected_models">Expected Models</h2>
+<h2 id="_layouts">Layouts</h2>
 <div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p>.kbdgen bundle</p>
-</li>
-<li>
-<p>keyboard layout (A001+)</p>
-</li>
-<li>
-<p>layout .yaml files</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>A layout is a file that describes keyboard layouts, including associated keymaps,
+dead keys, and transforms, as well as any configuration information, for all
+supported targets.</p>
+</div>
+<div class="paragraph">
+<p>With the new <code>kbdgen</code>, the layout format has been changed as described below.</p>
+</div>
+<div class="paragraph">
+<p>Layouts are described in .yaml files, with one <code>layout</code> file per
+<code>language tag</code> (i.e., <code>se-FI</code> (Northern Sami (Finland)))</p>
+</div>
+<div class="paragraph">
+<p>The <code>layout</code> may be described for multiple <code>targets</code> (windows, macOS, etc.),
+i.e., groupings of <code>platforms</code>.</p>
+</div>
+<div class="paragraph">
+<p>A given <code>target</code> may support one or more <code>platforms</code> (<code>iPad-9in</code>, <code>iPad-12in</code>).</p>
+</div>
+<div class="paragraph">
+<p>Within a <code>platform</code> are the supported keyboard <code>layers</code>, i.e.,
+<code>default</code>, <code>shift</code>, <code>caps</code> (for caps lock), etc.</p>
+</div>
+<div class="paragraph">
+<p>Layouts also have associated <code>deadKeys</code> information, which is for keys that do not
+themselves result in a key printed, but will print a key in combination with some
+other key. For <code>deadKeys</code>, there must be a corresponding <code>transforms</code> entry for the
+' ' key, and referrs to <code>deadKey</code> usage with a <code>space</code> (i.e., a termination).</p>
+</div>
+<div class="paragraph">
+<p>There&#8217;s also the <code>space</code> category.</p>
+</div>
+<div class="sect2">
+<h3 id="_layers">Layers</h3>
+<div class="paragraph">
+<p>Layers are expected to be whitespace separated strings listing the keymap of
+characters in correspondence with appropriate format for the expected
+<code>platform</code>-<code>layer</code> combination.</p>
+</div>
+<div class="paragraph">
+<p>Newlines are permitted for readability, but the keys must be in the correct order,
+and having more keys than expected will result in an error.</p>
+</div>
+<div class="paragraph">
+<p>Special keys are supported, and must be contained within <code>\s{}</code>.
+Unrepresentable unicode characters must be contained within <code>u{}</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_additional_info">Additional Info</h3>
+<div class="paragraph">
+<p><code>displayNames</code>, at the top of the <code>layout</code> file, are the name of the
+given keyboard in each of the relevant languages. This is often used in parts of
+UI or for naming.</p>
+</div>
+<div class="paragraph">
+<p>Each <code>target</code> may have an associated <code>config</code> describing some <code>target</code>-specific
+settings.</p>
+</div>
+<div class="paragraph">
+<p>Additionally, various keyboards may require these:</p>
+</div>
+<div class="paragraph">
+<p><code>longpress</code> - used for mobile keyboards, the set of keys that become available
+if a key is pressed for a long time.</p>
+</div>
+<div class="paragraph">
+<p><code>transforms</code> - used in combination with <code>deadKeys</code>, describes the final character
+that should be printed once a series of keys is pressed.</p>
+</div>
+<div class="paragraph">
+<p><code>keyNames</code> - descriptions of named keys (<code>space</code> and <code>return</code>) in the language in
+question.</p>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_bundle_model">Bundle Model</h2>
+<h2 id="_targets">Targets</h2>
 <div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p>project.yaml file (do this first, probably)</p>
-</li>
-<li>
-<p>layout folder, x amount of .yaml files, validate by language name</p>
-</li>
-<li>
-<p>targets folder, x amount of yaml files, validate by&#8230;&#8203; target name</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>Target files are .yaml files that are specific to the given target and hold additional
+per target configuration.</p>
+</div>
+<div class="paragraph">
+<p>For a given build to succeed for a target, the target file must be present.</p>
+</div>
+</div>
+</div>
+<h1 id="_target_specific_information" class="sect0">Target Specific information</h1>
+<div class="sect1">
+<h2 id="_windows">Windows</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Generating a Windows keyboard layout in the current implementation of <code>kbdgen</code> mainly
+concerns the generation of .klc files, and then subsequent building of those files
+on a Windows system.</p>
+</div>
+<div class="paragraph">
+<p>KLC is Windows&#8217;s format for keyboard layouts, meaning Keyboard
+Layout Creator, which is also the tool that can be used to view and modify
+.klc files. The tool can be downloaded from Microsoft:
+<a href="https://www.microsoft.com/en-us/download/details.aspx?id=102134" class="bare">https://www.microsoft.com/en-us/download/details.aspx?id=102134</a></p>
+</div>
+<div class="paragraph">
+<p>Installing MSKLC requires enabling .NET Framework 3.5 in Windows Programs and Features.</p>
+</div>
+<div class="paragraph">
+<p>\.klc is a format that has specific requirements for how a keyboard is described and
+must be encoded as UTF-16, with Windows style CRLF, or the file will be perceived
+as invalid.</p>
+</div>
+<div class="paragraph">
+<p>For details on the .klc format, please see the developer documentation.</p>
 </div>
 </div>
 </div>

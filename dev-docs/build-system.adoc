@@ -1,6 +1,0 @@
-= Build System
-
-All builds are to implemented as io steps with no 
-arguments or return types except the bundle and output path.
-
-Probably should retun an error, though.

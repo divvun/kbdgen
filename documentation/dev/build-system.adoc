@@ -1,0 +1,27 @@
+== Build System
+
+All builds are to implemented as io steps with no 
+arguments or return types except the bundle and output path.
+
+Builds are expected to be per major target (i.e., Windows, 
+MacOS, ChromeOS, iOS).
+
+A given build must implement the following trait:
+
+```
+#[async_trait(?Send)]
+pub trait BuildSteps {
+    fn populate_steps(&mut self);
+    fn count(&self) -> usize;
+    async fn build_full(&self);
+}
+```
+
+And, subsequently, every step in the build must implement this trait:
+
+```
+#[async_trait(?Send)]
+pub trait BuildStep {
+    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path);
+}
+```

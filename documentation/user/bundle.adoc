@@ -1,0 +1,76 @@
+= Bundle
+
+\.kbdgen bundles are folders with the .kbdgen extension which describe keyboards for a 
+language or language family. They're expected to contain 3 pieces:
+
+*project.yaml
+*layouts folder
+*targets folder
+*resources
+
+You can see an example of a .kbdgen bundle here: https://github.com/giellalt/keyboard-sme
+
+== Layouts
+
+A layout is a file that describes keyboard layouts, including associated keymaps, 
+dead keys, and transforms, as well as any configuration information, for all 
+supported targets.
+
+With the new `kbdgen`, the layout format has been changed as described below.
+
+Layouts are described in .yaml files, with one `layout` file per 
+`language tag` (i.e., `se-FI` (Northern Sami (Finland)))
+
+The `layout` may be described for multiple `targets` (windows, macOS, etc.), 
+i.e., groupings of `platforms`.
+
+A given `target` may support one or more `platforms` (`iPad-9in`, `iPad-12in`).
+
+Within a `platform` are the supported keyboard `layers`, i.e., 
+`default`, `shift`, `caps` (for caps lock), etc.
+
+Layouts also have associated `deadKeys` information, which is for keys that do not
+themselves result in a key printed, but will print a key in combination with some
+other key. For `deadKeys`, there must be a corresponding `transforms` entry for the
+' ' key, and referrs to `deadKey` usage with a `space` (i.e., a termination).
+
+There's also the `space` category.
+
+=== Layers
+
+Layers are expected to be whitespace separated strings listing the keymap of 
+characters in correspondence with appropriate format for the expected
+`platform`-`layer` combination.
+
+Newlines are permitted for readability, but the keys must be in the correct order,
+and having more keys than expected will result in an error.
+
+Special keys are supported, and must be contained within `\s{}`.
+Unrepresentable unicode characters must be contained within `u{}`.
+
+=== Additional Info
+
+`displayNames`, at the top of the `layout` file, are the name of the 
+given keyboard in each of the relevant languages. This is often used in parts of 
+UI or for naming.
+
+Each `target` may have an associated `config` describing some `target`-specific
+settings.
+
+Additionally, various keyboards may require these:
+
+`longpress` - used for mobile keyboards, the set of keys that become available
+if a key is pressed for a long time.
+
+`transforms` - used in combination with `deadKeys`, describes the final character
+that should be printed once a series of keys is pressed.
+
+`keyNames` - descriptions of named keys (`space` and `return`) in the language in
+question.
+
+== Targets
+
+Target files are .yaml files that are specific to the given target and hold additional
+per target configuration.
+
+For a given build to succeed for a target, the target file must be present.

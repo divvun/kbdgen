@@ -1,0 +1,10 @@
+= KeyboardGen Developer Documentation
+:doctype: book
+:toc: left
+
+Most of this documentation is currently Windows oriented as that is
+the only implemented build at this time.
+
+include::build-system.adoc[]
+
+include::targets.adoc[]

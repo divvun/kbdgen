@@ -1,0 +1,15 @@
+== CLI
+
+Core `kbdgen` functionality will be within the subcommand `target`, that then allows to select
+among the various linguistic targets: Windows, MacOS, .svg, etc.
+
+Example usage:
+
+`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/SME windows`
+
+The first argument is the location of the given .kbdgen bundle (see below for 
+information on bundles) that the keyboard should be built from.
+
+The second argument is the output path.
+
+And the third argument is the desired target.

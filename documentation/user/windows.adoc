@@ -1,0 +1,18 @@
+== Windows
+
+Generating a Windows keyboard layout in the current implementation of `kbdgen` mainly
+concerns the generation of .klc files, and then subsequent building of those files
+on a Windows system.
+
+KLC is Windows's format for keyboard layouts, meaning Keyboard
+Layout Creator, which is also the tool that can be used to view and modify
+.klc files. The tool can be downloaded from Microsoft:
+https://www.microsoft.com/en-us/download/details.aspx?id=102134
+
+Installing MSKLC requires enabling .NET Framework 3.5 in Windows Programs and Features.
+
+\.klc is a format that has specific requirements for how a keyboard is described and
+must be encoded as UTF-16, with Windows style CRLF, or the file will be perceived
+as invalid.
+
+For details on the .klc format, please see the developer documentation.

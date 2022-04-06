@@ -16,6 +16,6 @@ This is a developer oriented Readme.
 
 # asciidoc
 
-`asciidoctor dev-docs/cli-functions.adoc`
+`asciidoctor documentation/user/kbdgen.adoc`
 
-`asciidoctor dev-docs/layout-questions.adoc`
+`asciidoctor documentation/dev/kbdgen.adoc`
