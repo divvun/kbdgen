@@ -1,0 +1,44 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!DOCTYPE keyboard PUBLIC "" "file://localhost/System/Library/DTDs/KeyboardLayout.dtd">
+<keyboard group="126" id="-8045" name="seNO">
+  <layouts>
+    <layout first="0" last="17" mapSet="default" modifiers="modifiers" />
+  </layouts>
+  <modifierMap defaultIndex="0" id="modifiers">
+
+    <keyMapSelect mapIndex="0">
+      <modifier keys="command?" />
+    </keyMapSelect>
+
+  </modifierMap>
+
+
+  <keyMapSet id="default">
+
+    <keyMap index="0">
+      <key action="a017" code="0" />
+    </keyMap>
+    
+  </keyMapSet>
+
+  
+  <actions>
+
+    <action id="a017">
+      <when output="a" state="none" />
+      <when output="à" state="s001" />
+      <when output="á" state="s002" />
+      <when output="ă" state="s003" />
+      <when output="ȧ" state="s004" />
+      <when output="ä" state="s005" />
+      <when output="å" state="s006" />
+      <when output="â" state="s009" />
+      <when output="ǎ" state="s010" />
+      <when output="ə" state="s012" />
+      <when output="ả" state="s014" />
+      <when output="â" state="s016" />
+      <when output="ã" state="s017" />
+    </action>
+
+  </actions>
+</keyboard>

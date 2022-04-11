@@ -1,0 +1,29 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!DOCTYPE keyboard PUBLIC "" "file://localhost/System/Library/DTDs/KeyboardLayout.dtd">
+<keyboard group="126" id="-8045" name="seNO">
+  <layouts>
+    <layout first="0" last="17" mapSet="default" modifiers="modifiers" />
+  </layouts>
+  <modifierMap defaultIndex="0" id="modifiers">
+
+    <keyMapSelect mapIndex="0">
+    
+    </keyMapSelect>
+
+  </modifierMap>
+
+
+  <keyMapSet id="default">
+
+    <keyMap index="0">
+    
+    </keyMap>
+    
+  </keyMapSet>
+
+
+  <actions>
+
+
+  </actions>
+</keyboard>
