@@ -52,13 +52,7 @@ impl BuildStep for GenerateMacOs {
                 let modifier = Element::new_child(&key_map_select, "modifier").unwrap();
                 {
                     let el = modifier.borrow();
-
-                    let qname = QName {
-                        namespace: None,
-                        name: "keys".to_string(),
-                    };
-
-                    el.add_attr(qname, "command?");
+                    el.add_attr(QName::without_namespace("keys"), "command?");
                 }
 
                 let key_layout_path =
