@@ -9,7 +9,7 @@ edition = "2021"
 clap = { version = "3.1.0", features = ["derive"] }
 pathos = "0.3.0-pre.5"
 regex = "1.5.5"
-xmlem = { git = "https://github.com/bbqsrc/xmlem", branch = "main" }
+xmlem = { git = "https://github.com/bbqsrc/xmlem", branch = "feature/encapsulate-refcell" }
 
 tracing = "0.1.32"
 tracing-subscriber = "0.3.9"

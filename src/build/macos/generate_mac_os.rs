@@ -1,11 +1,11 @@
-use std::{path::Path, sync::Arc};
 use std::cell::RefCell;
+use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
-use xmlem::Document;
 use xmlem::element::Element;
 use xmlem::node::Node;
 use xmlem::qname::QName;
+use xmlem::Document;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
@@ -23,7 +23,6 @@ pub struct GenerateMacOs {}
 #[async_trait(?Send)]
 impl BuildStep for GenerateMacOs {
     async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
-        
         let contents_path = output_path.join(TOP_FOLDER);
         let resources_path = contents_path.join(RESOURCES_FOLDER);
         std::fs::create_dir_all(contents_path).unwrap();
@@ -32,7 +31,6 @@ impl BuildStep for GenerateMacOs {
         // One .keylayout file in Resources folder per language with Windows primary platform
         for (language_tag, layout) in &bundle.layouts {
             if let Some(mac_os_target) = &layout.mac_os {
-
                 let layers = &mac_os_target.primary.layers;
 
                 let document = Document::from_str(LAYOUT_TEMPLATE).unwrap();
@@ -41,12 +39,16 @@ impl BuildStep for GenerateMacOs {
                 let children = RefCell::borrow(&*doc_children);
 
                 let root = document.root();
-                
+
                 let borrowed_root = RefCell::borrow(&*root);
-                let modifier_map_elem = borrowed_root.find_child_tag_with_name("modifierMap").unwrap();
+                let modifier_map_elem = borrowed_root
+                    .find_child_tag_with_name("modifierMap")
+                    .unwrap();
 
                 let borrowed_modifier_map = RefCell::borrow(&*modifier_map_elem);
-                let key_map_select = borrowed_modifier_map.find_child_tag_with_name("keyMapSelect").unwrap();
+                let key_map_select = borrowed_modifier_map
+                    .find_child_tag_with_name("keyMapSelect")
+                    .unwrap();
                 let borrowed_key_map_select = RefCell::borrow(&*key_map_select);
 
                 let modifier = Element::new_child(&key_map_select, "modifier").unwrap();
@@ -57,6 +59,22 @@ impl BuildStep for GenerateMacOs {
 
                 let key_layout_path =
                     resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
+                std::fs::write(key_layout_path, document.to_string()).unwrap();
+
+                //
+
+                let document =
+                    xmlem::new_mlem::document::Document::from_str(LAYOUT_TEMPLATE).unwrap();
+
+                let attribute =
+                    xmlem::new_mlem::attribute::create_attribute("keys", "command?").unwrap();
+
+                document.root.add_attribute(attribute).unwrap();
+
+                //println!("attributes: {:?}", document.root.attributes());
+
+                let key_layout_path =
+                    resources_path.join(format!("{}.{}", language_tag.to_string(), "new_blem"));
                 std::fs::write(key_layout_path, document.to_string()).unwrap();
             }
         }
