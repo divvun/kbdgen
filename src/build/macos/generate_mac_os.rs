@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use xmlem::element::Element;
 use xmlem::node::Node;
 use xmlem::qname::QName;
@@ -15,8 +16,20 @@ const TOP_FOLDER: &str = "Contents";
 const RESOURCES_FOLDER: &str = "Resources";
 const PLIST_FILENAME: &str = "Info.plist";
 
-const PLIST_TEMPLATE: &str = include_str!("../../../resources/template-macos-plist.xml");
+const PLIST_TEMPLATE: &str = include_str!("../../../resources/template-macos-info-plist.xml");
 const LAYOUT_TEMPLATE: &str = include_str!("../../../resources/template-macos-layout.xml");
+
+#[derive(Serialize, Deserialize)]
+pub struct InfoPlist {
+    #[serde(rename = "CFBundleIdentifier")]
+    pub cf_bundle_identifier: String,
+    #[serde(rename = "CFBundleName")]
+    pub cf_bundle_name: String,
+    #[serde(rename = "CFBundleVersion")]
+    pub cf_bundle_version: String,
+    #[serde(rename = "CFBundleShortVersionString")]
+    pub cf_bundle_short_version_string: String,
+}
 
 pub struct GenerateMacOs {}
 
@@ -24,11 +37,18 @@ pub struct GenerateMacOs {}
 impl BuildStep for GenerateMacOs {
     async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
         let contents_path = output_path.join(TOP_FOLDER);
+        let cloned_contents_path = contents_path.clone();
         let resources_path = contents_path.join(RESOURCES_FOLDER);
         std::fs::create_dir_all(contents_path).unwrap();
         std::fs::create_dir_all(resources_path.clone()).unwrap();
 
-        // One .keylayout file in Resources folder per language with Windows primary platform
+        let mut plist: InfoPlist = plist::from_bytes(PLIST_TEMPLATE.as_bytes()).unwrap();
+        println!("what's my CFBundleIdentifier: {}", plist.cf_bundle_identifier);
+        plist.cf_bundle_name = "MyAmazingKbdgenBundle".to_string();
+
+        plist::to_file_xml(cloned_contents_path.join(PLIST_FILENAME), &plist).unwrap();
+
+        // One .keylayout file in Resources folder per language with MacOS primary platform
         for (language_tag, layout) in &bundle.layouts {
             if let Some(mac_os_target) = &layout.mac_os {
                 let layers = &mac_os_target.primary.layers;
@@ -61,10 +81,17 @@ impl BuildStep for GenerateMacOs {
                     resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
                 std::fs::write(key_layout_path, document.to_string()).unwrap();
 
-                //
+                // plist
+
+                
+
+                // new_mlem
 
                 let document =
                     xmlem::new_mlem::document::Document::from_str(LAYOUT_TEMPLATE).unwrap();
+                    
+                /* inf loop atm
+                
 
                 let attribute =
                     xmlem::new_mlem::attribute::create_attribute("keys", "command?").unwrap();
@@ -73,10 +100,22 @@ impl BuildStep for GenerateMacOs {
 
                 //println!("attributes: {:?}", document.root.attributes());
 
+
                 let key_layout_path =
                     resources_path.join(format!("{}.{}", language_tag.to_string(), "new_blem"));
                 std::fs::write(key_layout_path, document.to_string()).unwrap();
+                 */
             }
         }
+
+        
+
+
     }
+}
+
+// return str(-min(max(binascii.crc_hqx(name.encode("utf-8"), 0) // 2, 1), 32768,))
+
+fn compute_keyboard_id(language_name: &str) -> String {
+    "-8045".to_string()
 }
