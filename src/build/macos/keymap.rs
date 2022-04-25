@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 
-use crate::iso_key::IsoKey;
+use crate::util::iso_key::IsoKey;
 
 pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
     let mut map = IndexMap::new();
@@ -9,6 +9,7 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
     {
         let arr = [
             (IsoKey::E00, "10"),
+            (IsoKey::E01, "18"),
             (IsoKey::E02, "19"),
             (IsoKey::E03, "20"),
             (IsoKey::E04, "21"),
@@ -21,7 +22,7 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
             (IsoKey::E11, "27"),
             (IsoKey::E12, "24"),
 
-            
+
             (IsoKey::D01, "12"),
             (IsoKey::D02, "13"),
             (IsoKey::D03, "14"),

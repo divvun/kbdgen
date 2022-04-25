@@ -11,7 +11,7 @@ use crate::bundle::{read_kbdgen_bundle, Error};
 
 mod build;
 mod bundle;
-mod iso_key;
+mod util;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

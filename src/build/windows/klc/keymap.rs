@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 
-use crate::iso_key::IsoKey;
+use crate::util::iso_key::IsoKey;
 
 pub struct KlcKeyCodes {
     pub scancode: String,    // simply `sc` in .klc format
@@ -52,7 +52,7 @@ pub static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
             (IsoKey::C10, ("27", "OEM_1")),
             (IsoKey::C11, ("28", "OEM_7")),
             (IsoKey::C12, ("2b", "OEM_5")),
-            
+
             (IsoKey::B00, ("56", "OEM_102")),
             (IsoKey::B01, ("2c", "Z")),
             (IsoKey::B02, ("2d", "X")),

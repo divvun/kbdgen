@@ -3,8 +3,11 @@ use std::cell::RefCell;
 
 use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
+use xmlem::Document;
 
+use crate::build::macos::keymap::MACOS_KEYS;
 use crate::{build::BuildStep, bundle::KbdgenBundle};
+use crate::util::split_keys;
 
 pub const KEY_LAYOUT_EXT: &str = "keylayout";
 
@@ -51,7 +54,16 @@ impl BuildStep for GenerateMacOs {
             if let Some(mac_os_target) = &layout.mac_os {
                 let layers = &mac_os_target.primary.layers;
 
-                
+                for (_iso_key, index) in MACOS_KEYS.iter() {
+
+                    //let layout_doc = Document::from_str(LAYOUT_TEMPLATE).unwrap();
+
+
+                    for (layer, key_map) in layers {
+                        let key_map: Vec<String> = split_keys(&key_map);
+                    }
+                    
+                }
             }
         }
     }

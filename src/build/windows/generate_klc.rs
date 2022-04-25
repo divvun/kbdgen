@@ -10,6 +10,7 @@ use crate::{
         layout::{Layout, WindowsTarget},
         KbdgenBundle, DEFAULT_DECIMAL,
     },
+    util::split_keys,
 };
 
 use super::{
@@ -311,8 +312,4 @@ fn decimal_layout_row(layout_decimal: &Option<String>) -> KlcLayoutRow {
         alt_key: KlcKey::None,
         alt_and_shift_key: KlcKey::None,
     }
-}
-
-fn split_keys(layer: &str) -> Vec<String> {
-    layer.split_whitespace().map(|v| v.to_string()).collect()
 }
