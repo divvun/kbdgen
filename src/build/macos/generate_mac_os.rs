@@ -1,11 +1,13 @@
 use std::{path::Path, sync::Arc};
 use std::cell::RefCell;
 
+use indexmap::IndexMap;
 use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
 use xmlem::Document;
 
 use crate::build::macos::keymap::MACOS_KEYS;
+use crate::bundle::layout::Transform;
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 use crate::util::split_keys;
 
@@ -30,6 +32,38 @@ pub struct InfoPlist {
     pub cf_bundle_short_version_string: String,
 }
 
+type DeadKeyId = String;
+type StateId = String;
+
+struct TransformIdManager {
+    dead_key_counter: usize,
+    state_counter: usize,
+}
+
+impl TransformIdManager {
+    fn new() -> Self {
+        TransformIdManager { dead_key_counter: 0, state_counter: 0 }
+    }
+
+    fn next_dead_key(&mut self) -> DeadKeyId {
+
+        let old_counter = self.dead_key_counter;
+
+        self.dead_key_counter = self.dead_key_counter + 1;
+
+        format!("dead_key{:03}", old_counter)
+    }
+
+    fn next_state(&mut self) -> StateId {
+
+        let old_counter = self.state_counter;
+
+        self.state_counter = self.state_counter + 1;
+
+        format!("state{:03}", old_counter)
+    }
+}
+
 pub struct GenerateMacOs {}
 
 #[async_trait(?Send)]
@@ -52,8 +86,18 @@ impl BuildStep for GenerateMacOs {
         // One .keylayout file in Resources folder per language with MacOS primary platform
         for (language_tag, layout) in &bundle.layouts {
             if let Some(mac_os_target) = &layout.mac_os {
+
+                let mut id_manager = TransformIdManager::new();
+
                 let layers = &mac_os_target.primary.layers;
 
+                let dead_key_count = 0;
+                let state_count = 0;
+
+                let mut transform_map: IndexMap<String, Option<String>> = IndexMap::new();
+                let mut dead_keys: IndexMap<String, DeadKeyId> = IndexMap::new();
+
+                let mut cursor = 0;
                 for (_iso_key, index) in MACOS_KEYS.iter() {
 
                     //let layout_doc = Document::from_str(LAYOUT_TEMPLATE).unwrap();
@@ -61,10 +105,62 @@ impl BuildStep for GenerateMacOs {
 
                     for (layer, key_map) in layers {
                         let key_map: Vec<String> = split_keys(&key_map);
+
+                        tracing::debug!(
+                            "iso len: {}; keymap len: {}",
+                            MACOS_KEYS.len(),
+                            key_map.len()
+                        );
+                        if MACOS_KEYS.len() > key_map.len() {
+                            panic!(
+                                r#"Provided layer does not have enough keys, expected {} keys but got {}, in {}:{}:{}:{:?}: \n{:?}"#,
+                                MACOS_KEYS.len(),
+                                key_map.len(),
+                                language_tag.to_string(),
+                                "MacOS",
+                                "Primary",
+                                layer,
+                                key_map
+                            );
+                        }
+
+                        // perhaps add the key index here since this may end up being the map we generate tags from
+                        transform_map.insert(key_map[cursor].clone(), None);
+
+                        if let Some(transforms) = &layout.transforms {
+                            for (dead_key, value) in transforms {
+                                if !dead_keys.contains_key(dead_key) {
+                                    let id = id_manager.next_dead_key();
+
+                                    dead_keys.insert(dead_key.to_string(), id);
+                                }
+
+                                match value {
+                                    Transform::End(_character) => {
+                                        tracing::error!("Transform ended too soon for dead key {}", dead_key);
+                                    }
+                                    Transform::More(map) => {
+                                        
+                                    }
+                                }
+                            }
+                        }
+
+                        //&key_map[cursor]
+
+
                     }
                     
+
+                }
+
+
+                for (key, value) in dead_keys {
+                    println!("{}: {}", key, value);
                 }
             }
+
+
         }
     }
 }
