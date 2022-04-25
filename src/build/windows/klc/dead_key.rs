@@ -42,12 +42,12 @@ impl Display for KlcDeadKeys<'_> {
                                 }
                             }
 
-                            let transform = map.get(TRANSFORM_ESCAPE).expect(&format!(
+                            let escape_transform = map.get(TRANSFORM_ESCAPE).expect(&format!(
                                 "The escape transform `{}` not found for dead key `{}`",
                                 TRANSFORM_ESCAPE, &dead_key
                             ));
 
-                            match transform {
+                            match escape_transform {
                                 Transform::End(end_char) => {
                                     write_transform(TRANSFORM_ESCAPE, end_char, f)?;
                                 }

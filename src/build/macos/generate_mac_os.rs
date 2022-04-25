@@ -33,10 +33,29 @@ pub struct InfoPlist {
 }
 
 #[derive(Debug)]
-pub struct DeadKeyTransform {
+pub enum DeadKeyTransition {
+    Output(DeadKeyOutput),
+    //Transform()
+}
+
+#[derive(Debug, Clone)]
+pub struct DeadKeyTerminator {
     id: DeadKeyId,
     terminator: String,
 }
+
+#[derive(Debug)]
+pub struct DeadKeyOutput {
+    id: DeadKeyId,
+    output: String,
+}
+
+/* for next cases
+pub struct DeadKeyTransform {
+    id:  DeadKeyId,
+
+}
+*/
 
 type DeadKeyId = String;
 type StateId = String;
@@ -102,8 +121,9 @@ impl BuildStep for GenerateMacOs {
                 let dead_key_count = 0;
                 let state_count = 0;
 
-                let mut transform_map: IndexMap<String, Option<String>> = IndexMap::new();
-                let mut dead_keys: IndexMap<String, DeadKeyTransform> = IndexMap::new();
+                let mut transform_map: IndexMap<String, Option<DeadKeyTransition>> =
+                    IndexMap::new();
+                let mut dead_keys: IndexMap<String, DeadKeyTerminator> = IndexMap::new();
 
                 let mut cursor = 0;
                 for (_iso_key, index) in MACOS_KEYS.iter() {
@@ -130,6 +150,9 @@ impl BuildStep for GenerateMacOs {
                             );
                         }
 
+                        // some of the transform processing and error checking
+                        // here is same as Windows, shoudl reuse those
+
                         // perhaps add the key index here since this may end up being the map we generate tags from
                         transform_map.insert(key_map[cursor].clone(), None);
 
@@ -143,27 +166,56 @@ impl BuildStep for GenerateMacOs {
                                         );
                                     }
                                     Transform::More(map) => {
+                                        let escape_transform =
+                                            map.get(TRANSFORM_ESCAPE).expect(&format!(
+                                            "The escape transform `{}` not found for dead key `{}`",
+                                            TRANSFORM_ESCAPE, &dead_key
+                                        ));
+
+                                        match escape_transform {
+                                            Transform::End(end_char) => {
+                                                if !dead_keys.contains_key(dead_key) {
+                                                    let id = id_manager.next_dead_key();
+
+                                                    dead_keys.insert(
+                                                        dead_key.clone(),
+                                                        DeadKeyTerminator {
+                                                            id,
+                                                            terminator: end_char.clone(),
+                                                        },
+                                                    );
+                                                }
+                                            }
+                                            Transform::More(_transform) => {
+                                                panic!("The escape transform should be a string, not another transform");
+                                            }
+                                        };
+
+                                        let dead_key_transform = dead_keys[dead_key].clone();
+
                                         for (next_char, transform) in map {
                                             match transform {
                                                 Transform::End(end_char) => {
                                                     if next_char == TRANSFORM_ESCAPE {
-                                                        if !dead_keys.contains_key(dead_key) {
-                                                            let id = id_manager.next_dead_key();
-
-                                                            dead_keys.insert(
-                                                                dead_key.clone(),
-                                                                DeadKeyTransform {
-                                                                    id,
-                                                                    terminator: end_char.clone(),
-                                                                },
-                                                            );
-                                                        }
+                                                        continue;
                                                     }
 
-                                                    //write_transform(next_char, end_char, f)?;
+                                                    if next_char.to_string() == key_map[cursor] {
+                                                        transform_map.insert(
+                                                            key_map[cursor].to_string(),
+                                                            Some(DeadKeyTransition::Output(
+                                                                DeadKeyOutput {
+                                                                    id: dead_key_transform
+                                                                        .id
+                                                                        .clone(),
+                                                                    output: end_char.clone(),
+                                                                },
+                                                            )),
+                                                        );
+                                                    }
                                                 }
                                                 Transform::More(_transform) => {
-                                                    //todo!("Recursion required ahead");
+                                                    todo!("Recursion required ahead");
                                                 }
                                             };
                                         }
@@ -174,14 +226,19 @@ impl BuildStep for GenerateMacOs {
 
                         //&key_map[cursor]
                     }
+
+                    cursor += 1;
                 }
 
                 // in xml, fo reach dead key, add a terminator
                 // <terminators>
-                //   <when state="{}" output="{}"> key, value
+                //   <when state="{}" output="{}"> key, value.id
                 // </terminators>
-                // OR, find the ' ' value and slap it here
                 for (key, value) in dead_keys {
+                    println!("{}: {:?}", key, value);
+                }
+
+                for (key, value) in transform_map {
                     println!("{}: {:?}", key, value);
                 }
             }
