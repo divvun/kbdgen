@@ -11,8 +11,8 @@ pub fn layer_attributes(layer: MacOsKbdLayer) -> String {
         MacOsKbdLayer::Ctrl => "anyShift? caps? anyOption? anyControl",
         MacOsKbdLayer::Cmd => "command",
         MacOsKbdLayer::CmdAndShift => "command anyShift",
-        MacOsKbdLayer::CmdAndAlt => todo!(),
-        MacOsKbdLayer::CmdAndAltAndShift => todo!(),
+        MacOsKbdLayer::CmdAndAlt => "command anyOption",
+        MacOsKbdLayer::CmdAndAltAndShift => "command anyOption anyShift",
     }
     .to_string()
 }
