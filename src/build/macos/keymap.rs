@@ -1,11 +1,41 @@
+use indexmap::IndexMap;
+use once_cell::sync::Lazy;
 
-// Order is important as it corresponds to the keymap order in .kbdgen files
-// The value is MacOS internal expected key ids
+use crate::iso_key::IsoKey;
+
 pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
     let mut map = IndexMap::new();
 
     {
         let arr = [
+
+            (IsoKey::D01, "12"),
+            (IsoKey::D02, "13"),
+            (IsoKey::D03, "14"),
+            (IsoKey::D04, "15"),
+            (IsoKey::D05, "17"),
+            (IsoKey::D06, "16"),
+            (IsoKey::D07, "32"),
+            (IsoKey::D08, "34"),
+            (IsoKey::D09, "31"),
+            (IsoKey::D10, "35"),
+            (IsoKey::D11, "33"),
+            (IsoKey::D12, "30"),
+
+            
+            (IsoKey::E00, "10"),
+            (IsoKey::E02, "19"),
+            (IsoKey::E03, "20"),
+            (IsoKey::E04, "21"),
+            (IsoKey::E05, "23"),
+            (IsoKey::E06, "22"),
+            (IsoKey::E07, "26"),
+            (IsoKey::E08, "28"),
+            (IsoKey::E09, "25"),
+            (IsoKey::E10, "29"),
+            (IsoKey::E11, "27"),
+            (IsoKey::E12, "24"),
+
 
             (IsoKey::C01, "0"),
             (IsoKey::C02, "1"),
@@ -33,43 +63,13 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
             (IsoKey::B08, "43"),
             (IsoKey::B09, "47"),
             (IsoKey::B10, "44"),
-
-
-            (IsoKey::E00, ("29", "OEM_3")),
-            (IsoKey::E01, ("02", "1")),
-            (IsoKey::E02, ("03", "2")),
-            (IsoKey::E03, ("04", "3")),
-            (IsoKey::E04, ("05", "4")),
-            (IsoKey::E05, ("06", "5")),
-            (IsoKey::E06, ("07", "6")),
-            (IsoKey::E07, ("08", "7")),
-            (IsoKey::E08, ("09", "8")),
-            (IsoKey::E09, ("0a", "9")),
-            (IsoKey::E10, ("0b", "0")),
-            (IsoKey::E11, ("0c", "OEM_MINUS")),
-            (IsoKey::E12, ("0d", "OEM_PLUS")),
-            (IsoKey::D01, ("10", "Q")),
-            (IsoKey::D02, ("11", "W")),
-            (IsoKey::D03, ("12", "E")),
-            (IsoKey::D04, ("13", "R")),
-            (IsoKey::D05, ("14", "T")),
-            (IsoKey::D06, ("15", "Y")),
-            (IsoKey::D07, ("16", "U")),
-            (IsoKey::D08, ("17", "I")),
-            (IsoKey::D09, ("18", "O")),
-            (IsoKey::D10, ("19", "P")),
-            (IsoKey::D11, ("1a", "OEM_4")),
-            (IsoKey::D12, ("1b", "OEM_6")),
-
-            
-
-            
+            (IsoKey::B11, "94"),
         ];
 
         for (key, value) in arr {
             map.insert(
                 key,
-                value,
+                value.to_string(),
             );
         }
     }
