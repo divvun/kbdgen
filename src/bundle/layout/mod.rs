@@ -12,7 +12,7 @@ use windows::WindowsKbdLayer;
 mod android;
 mod chrome;
 mod ios;
-mod macos;
+pub mod macos;
 pub mod windows;
 
 #[derive(Debug, Serialize, Deserialize)]

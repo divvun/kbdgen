@@ -10,6 +10,7 @@ use generate_mac_os::GenerateMacOs;
 
 mod generate_mac_os;
 mod keymap;
+mod layers;
 
 pub struct MacOsBuild {
     pub bundle: Arc<KbdgenBundle>,
