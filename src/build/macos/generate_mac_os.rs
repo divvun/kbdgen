@@ -3,10 +3,6 @@ use std::cell::RefCell;
 
 use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
-use xmlem::Document;
-use xmlem::element::Element;
-use xmlem::node::Node;
-use xmlem::qname::QName;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 

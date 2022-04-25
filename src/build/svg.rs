@@ -50,11 +50,11 @@ impl BuildStep for GenerateSvg {
         // we'll start with Windows first
         for (language_tag, layout) in &bundle.layouts {
             if let Some(_windows_layout) = &layout.windows {
-                let cloned_template = document.clone();
+                //let cloned_template = document.clone();
 
-                let svg_path = output_path.join(format!("{}.{}", language_tag, SVG_EXT));
+                //let svg_path = output_path.join(format!("{}.{}", language_tag, SVG_EXT));
 
-                std::fs::write(svg_path, cloned_template.to_string()).unwrap();
+                //std::fs::write(svg_path, cloned_template.to_string()).unwrap();
             }
         }
     }
