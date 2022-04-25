@@ -21,8 +21,6 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
             (IsoKey::E10, "29"),
             (IsoKey::E11, "27"),
             (IsoKey::E12, "24"),
-
-
             (IsoKey::D01, "12"),
             (IsoKey::D02, "13"),
             (IsoKey::D03, "14"),
@@ -35,23 +33,17 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
             (IsoKey::D10, "35"),
             (IsoKey::D11, "33"),
             (IsoKey::D12, "30"),
-
-        
             (IsoKey::C01, "0"),
             (IsoKey::C02, "1"),
             (IsoKey::C03, "2"),
             (IsoKey::C04, "3"),
-
             (IsoKey::C05, "5"),
             (IsoKey::C06, "4"),
-
             (IsoKey::C07, "38"),
             (IsoKey::C08, "40"),
             (IsoKey::C09, "37"),
             (IsoKey::C10, "41"),
             (IsoKey::C11, "39"),
-
-
             (IsoKey::B00, "50"),
             (IsoKey::B01, "6"),
             (IsoKey::B02, "7"),
@@ -67,10 +59,7 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
         ];
 
         for (key, value) in arr {
-            map.insert(
-                key,
-                value.to_string(),
-            );
+            map.insert(key, value.to_string());
         }
     }
 

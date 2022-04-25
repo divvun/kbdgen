@@ -2,11 +2,9 @@ use std::fmt::Display;
 
 use indexmap::IndexMap;
 
-use crate::bundle::layout::Transform;
+use crate::{bundle::layout::Transform, util::TRANSFORM_ESCAPE};
 
 use super::key::validate_for_klc;
-
-const TRANSFORM_ESCAPE: &str = " ";
 
 pub struct KlcDeadKeys<'a> {
     pub characters: Vec<char>,

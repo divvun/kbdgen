@@ -1,15 +1,15 @@
-use std::{path::Path, sync::Arc};
 use std::cell::RefCell;
+use std::{path::Path, sync::Arc};
 
-use indexmap::IndexMap;
-use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use xmlem::Document;
 
 use crate::build::macos::keymap::MACOS_KEYS;
 use crate::bundle::layout::Transform;
+use crate::util::{split_keys, TRANSFORM_ESCAPE};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
-use crate::util::split_keys;
 
 pub const KEY_LAYOUT_EXT: &str = "keylayout";
 
@@ -32,6 +32,12 @@ pub struct InfoPlist {
     pub cf_bundle_short_version_string: String,
 }
 
+#[derive(Debug)]
+pub struct DeadKeyTransform {
+    id: DeadKeyId,
+    terminator: String,
+}
+
 type DeadKeyId = String;
 type StateId = String;
 
@@ -42,11 +48,13 @@ struct TransformIdManager {
 
 impl TransformIdManager {
     fn new() -> Self {
-        TransformIdManager { dead_key_counter: 0, state_counter: 0 }
+        TransformIdManager {
+            dead_key_counter: 0,
+            state_counter: 0,
+        }
     }
 
     fn next_dead_key(&mut self) -> DeadKeyId {
-
         let old_counter = self.dead_key_counter;
 
         self.dead_key_counter = self.dead_key_counter + 1;
@@ -55,7 +63,6 @@ impl TransformIdManager {
     }
 
     fn next_state(&mut self) -> StateId {
-
         let old_counter = self.state_counter;
 
         self.state_counter = self.state_counter + 1;
@@ -69,7 +76,6 @@ pub struct GenerateMacOs {}
 #[async_trait(?Send)]
 impl BuildStep for GenerateMacOs {
     async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
-        
         let contents_path = output_path.join(TOP_FOLDER);
         let cloned_contents_path = contents_path.clone();
         let resources_path = contents_path.join(RESOURCES_FOLDER);
@@ -78,7 +84,10 @@ impl BuildStep for GenerateMacOs {
         std::fs::create_dir_all(resources_path.clone()).unwrap();
 
         let mut plist: InfoPlist = plist::from_bytes(PLIST_TEMPLATE.as_bytes()).unwrap();
-        println!("what's my CFBundleIdentifier: {}", plist.cf_bundle_identifier);
+        println!(
+            "what's my CFBundleIdentifier: {}",
+            plist.cf_bundle_identifier
+        );
         plist.cf_bundle_name = "MyAmazingKbdgenBundle".to_string();
 
         plist::to_file_xml(cloned_contents_path.join(PLIST_FILENAME), &plist).unwrap();
@@ -86,7 +95,6 @@ impl BuildStep for GenerateMacOs {
         // One .keylayout file in Resources folder per language with MacOS primary platform
         for (language_tag, layout) in &bundle.layouts {
             if let Some(mac_os_target) = &layout.mac_os {
-
                 let mut id_manager = TransformIdManager::new();
 
                 let layers = &mac_os_target.primary.layers;
@@ -95,13 +103,11 @@ impl BuildStep for GenerateMacOs {
                 let state_count = 0;
 
                 let mut transform_map: IndexMap<String, Option<String>> = IndexMap::new();
-                let mut dead_keys: IndexMap<String, DeadKeyId> = IndexMap::new();
+                let mut dead_keys: IndexMap<String, DeadKeyTransform> = IndexMap::new();
 
                 let mut cursor = 0;
                 for (_iso_key, index) in MACOS_KEYS.iter() {
-
                     //let layout_doc = Document::from_str(LAYOUT_TEMPLATE).unwrap();
-
 
                     for (layer, key_map) in layers {
                         let key_map: Vec<String> = split_keys(&key_map);
@@ -129,38 +135,56 @@ impl BuildStep for GenerateMacOs {
 
                         if let Some(transforms) = &layout.transforms {
                             for (dead_key, value) in transforms {
-                                if !dead_keys.contains_key(dead_key) {
-                                    let id = id_manager.next_dead_key();
-
-                                    dead_keys.insert(dead_key.to_string(), id);
-                                }
-
                                 match value {
                                     Transform::End(_character) => {
-                                        tracing::error!("Transform ended too soon for dead key {}", dead_key);
+                                        tracing::error!(
+                                            "Transform ended too soon for dead key {}",
+                                            dead_key
+                                        );
                                     }
                                     Transform::More(map) => {
-                                        
+                                        for (next_char, transform) in map {
+                                            match transform {
+                                                Transform::End(end_char) => {
+                                                    if next_char == TRANSFORM_ESCAPE {
+                                                        if !dead_keys.contains_key(dead_key) {
+                                                            let id = id_manager.next_dead_key();
+
+                                                            dead_keys.insert(
+                                                                dead_key.clone(),
+                                                                DeadKeyTransform {
+                                                                    id,
+                                                                    terminator: end_char.clone(),
+                                                                },
+                                                            );
+                                                        }
+                                                    }
+
+                                                    //write_transform(next_char, end_char, f)?;
+                                                }
+                                                Transform::More(_transform) => {
+                                                    //todo!("Recursion required ahead");
+                                                }
+                                            };
+                                        }
                                     }
                                 }
                             }
                         }
 
                         //&key_map[cursor]
-
-
                     }
-                    
-
                 }
 
-
+                // in xml, fo reach dead key, add a terminator
+                // <terminators>
+                //   <when state="{}" output="{}"> key, value
+                // </terminators>
+                // OR, find the ' ' value and slap it here
                 for (key, value) in dead_keys {
-                    println!("{}: {}", key, value);
+                    println!("{}: {:?}", key, value);
                 }
             }
-
-
         }
     }
 }
@@ -194,6 +218,5 @@ fn compute_keyboard_id(language_name: &str) -> String {
         resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
     std::fs::write(key_layout_path, document.to_string()).unwrap();
 */
-
 
 // return str(-min(max(binascii.crc_hqx(name.encode("utf-8"), 0) // 2, 1), 32768,))

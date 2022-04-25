@@ -26,7 +26,6 @@ pub static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
             (IsoKey::E10, ("0b", "0")),
             (IsoKey::E11, ("0c", "OEM_MINUS")),
             (IsoKey::E12, ("0d", "OEM_PLUS")),
-
             (IsoKey::D01, ("10", "Q")),
             (IsoKey::D02, ("11", "W")),
             (IsoKey::D03, ("12", "E")),
@@ -39,7 +38,6 @@ pub static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
             (IsoKey::D10, ("19", "P")),
             (IsoKey::D11, ("1a", "OEM_4")),
             (IsoKey::D12, ("1b", "OEM_6")),
-
             (IsoKey::C01, ("1e", "A")),
             (IsoKey::C02, ("1f", "S")),
             (IsoKey::C03, ("20", "D")),
@@ -52,7 +50,6 @@ pub static MSKLC_KEYS: Lazy<IndexMap<IsoKey, KlcKeyCodes>> = Lazy::new(|| {
             (IsoKey::C10, ("27", "OEM_1")),
             (IsoKey::C11, ("28", "OEM_7")),
             (IsoKey::C12, ("2b", "OEM_5")),
-
             (IsoKey::B00, ("56", "OEM_102")),
             (IsoKey::B01, ("2c", "Z")),
             (IsoKey::B02, ("2d", "X")),
