@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 use std::{path::Path, sync::Arc};
+use std::str::FromStr;
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use xmlem::Document;
+use xmlem::{Document, Selector, NewElement};
 
 use crate::build::macos::keymap::MACOS_KEYS;
 use crate::bundle::layout::Transform;
@@ -33,43 +34,42 @@ pub struct InfoPlist {
 }
 
 #[derive(Debug)]
-pub enum DeadKeyTransition {
-    Output(DeadKeyOutput),
-    //Transform()
+pub enum KeyTransition {
+    Output(KeyOutput),
+    Action(DeadKeyAction),
 }
 
 #[derive(Debug, Clone)]
-pub struct DeadKeyTerminator {
-    id: DeadKeyId,
-    terminator: String,
+pub struct KeyOutput {
+    code: usize,
+    output: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeadKeyOutput {
     id: DeadKeyId,
     output: String,
 }
 
-/* for next cases
-pub struct DeadKeyTransform {
-    id:  DeadKeyId,
-
+#[derive(Debug, Clone)]
+pub struct DeadKeyAction {
+    id: ActionId,
+    states: Vec<DeadKeyOutput>,
 }
-*/
 
 type DeadKeyId = String;
-type StateId = String;
+type ActionId = String;
 
 struct TransformIdManager {
     dead_key_counter: usize,
-    state_counter: usize,
+    action_counter: usize,
 }
 
 impl TransformIdManager {
     fn new() -> Self {
         TransformIdManager {
             dead_key_counter: 0,
-            state_counter: 0,
+            action_counter: 0,
         }
     }
 
@@ -81,12 +81,12 @@ impl TransformIdManager {
         format!("dead_key{:03}", old_counter)
     }
 
-    fn next_state(&mut self) -> StateId {
-        let old_counter = self.state_counter;
+    fn next_action(&mut self) -> ActionId {
+        let old_counter = self.action_counter;
 
-        self.state_counter = self.state_counter + 1;
+        self.action_counter = self.action_counter + 1;
 
-        format!("state{:03}", old_counter)
+        format!("action{:03}", old_counter)
     }
 }
 
@@ -121,14 +121,16 @@ impl BuildStep for GenerateMacOs {
                 let dead_key_count = 0;
                 let state_count = 0;
 
-                let mut transform_map: IndexMap<String, Option<DeadKeyTransition>> =
+                let mut key_transition_map: IndexMap<String, KeyTransition> =
                     IndexMap::new();
-                let mut dead_keys: IndexMap<String, DeadKeyTerminator> = IndexMap::new();
+                let mut dead_keys: IndexMap<String, _> = IndexMap::new();
+
+                let mut document = Document::from_str(LAYOUT_TEMPLATE).unwrap();
+    
+                let root = document.root();
 
                 let mut cursor = 0;
-                for (_iso_key, index) in MACOS_KEYS.iter() {
-                    //let layout_doc = Document::from_str(LAYOUT_TEMPLATE).unwrap();
-
+                for (_iso_key, code) in MACOS_KEYS.iter() {
                     for (layer, key_map) in layers {
                         let key_map: Vec<String> = split_keys(&key_map);
 
@@ -150,11 +152,10 @@ impl BuildStep for GenerateMacOs {
                             );
                         }
 
-                        // some of the transform processing and error checking
-                        // here is same as Windows, shoudl reuse those
-
-                        // perhaps add the key index here since this may end up being the map we generate tags from
-                        transform_map.insert(key_map[cursor].clone(), None);
+                        key_transition_map.insert(key_map[cursor].clone(), KeyTransition::Output(KeyOutput {
+                            code: *code,
+                            output: key_map[cursor].clone()
+                        }));
 
                         if let Some(transforms) = &layout.transforms {
                             for (dead_key, value) in transforms {
@@ -179,9 +180,9 @@ impl BuildStep for GenerateMacOs {
 
                                                     dead_keys.insert(
                                                         dead_key.clone(),
-                                                        DeadKeyTerminator {
+                                                        DeadKeyOutput {
                                                             id,
-                                                            terminator: end_char.clone(),
+                                                            output: end_char.clone(),
                                                         },
                                                     );
                                                 }
@@ -201,17 +202,19 @@ impl BuildStep for GenerateMacOs {
                                                     }
 
                                                     if next_char.to_string() == key_map[cursor] {
-                                                        transform_map.insert(
-                                                            key_map[cursor].to_string(),
-                                                            Some(DeadKeyTransition::Output(
-                                                                DeadKeyOutput {
-                                                                    id: dead_key_transform
-                                                                        .id
-                                                                        .clone(),
-                                                                    output: end_char.clone(),
-                                                                },
-                                                            )),
-                                                        );
+                                                        let transition = key_transition_map.get_mut(&key_map[cursor]).unwrap();
+
+                                                        match transition {
+                                                            KeyTransition::Output(output) => {
+                                                                key_transition_map.insert(key_map[cursor].clone(), KeyTransition::Action(DeadKeyAction {
+                                                                    id: id_manager.next_action(),
+                                                                    states: vec![dead_key_transform.clone()]
+                                                                }));
+                                                            },
+                                                            KeyTransition::Action(ref mut action) => {
+                                                                action.states.push(dead_key_transform.clone());
+                                                            },
+                                                        }
                                                     }
                                                 }
                                                 Transform::More(_transform) => {
@@ -229,18 +232,57 @@ impl BuildStep for GenerateMacOs {
 
                     cursor += 1;
                 }
+    
+                let selector = Selector::new("actions").unwrap();
+                let actions = root.query_selector(&document, &selector)
+                    .expect("The template document should have an 'actions' tag");
 
-                // in xml, fo reach dead key, add a terminator
-                // <terminators>
-                //   <when state="{}" output="{}"> key, value.id
-                // </terminators>
-                for (key, value) in dead_keys {
-                    println!("{}: {:?}", key, value);
+                for (key, transition) in key_transition_map {
+                
+                    match transition {
+                        KeyTransition::Output(_) => {},
+                        KeyTransition::Action(dead_key_action) => {
+
+                            let action = actions.append_new_element(&mut document, NewElement {
+                                name: "action".into(),
+                                attrs: [
+                                    ("id".into(), dead_key_action.id)
+                                ].into(),
+                            });
+
+                            for state in dead_key_action.states {
+                                action.append_new_element(&mut document, NewElement {
+                                    name: "when".into(),
+                                    attrs: [
+                                        ("state".into(), state.id),
+                                        ("output".into(), state.output),
+                                    ].into(),
+                                });
+                            }
+                        }   
+                    };
                 }
 
-                for (key, value) in transform_map {
-                    println!("{}: {:?}", key, value);
+                if dead_keys.len() > 0 {
+                    let terminators = root.append_new_element(&mut document, NewElement {
+                        name: "terminators".into(),
+                        attrs: [].into(),
+                    });
+        
+                    for (key, dead_key) in dead_keys {
+                        terminators.append_new_element(&mut document, NewElement { 
+                            name: "when".into(), 
+                            attrs: [
+                                ("state".to_string(), dead_key.id),
+                                ("output".to_string(), dead_key.output)
+                            ].into()
+                        });
+                    }
                 }
+
+                let key_layout_path =
+                    resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
+                std::fs::write(key_layout_path, document.to_string_pretty()).unwrap();
             }
         }
     }
