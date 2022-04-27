@@ -6,24 +6,15 @@
   </layouts>
   <modifierMap defaultIndex="0" id="modifiers">
 
-    <keyMapSelect mapIndex="0">
-    
-    </keyMapSelect>
-
   </modifierMap>
 
 
   <keyMapSet id="default">
-
-    <keyMap index="0">
-    
-    </keyMap>
-    
+  
   </keyMapSet>
 
 
   <actions>
-
 
   </actions>
 </keyboard>

@@ -1,6 +1,6 @@
 use crate::bundle::layout::macos::MacOsKbdLayer;
 
-pub fn layer_attributes(layer: MacOsKbdLayer) -> String {
+pub fn layer_attributes(layer: &MacOsKbdLayer) -> String {
     match layer {
         MacOsKbdLayer::Default => "command?",
         MacOsKbdLayer::Shift => "anyShift caps? command?",

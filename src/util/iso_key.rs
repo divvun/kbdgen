@@ -51,5 +51,5 @@ pub enum IsoKey {
     B08,
     B09,
     B10,
-    B11,
+    B11, // Brazillian keyboards only
 }
