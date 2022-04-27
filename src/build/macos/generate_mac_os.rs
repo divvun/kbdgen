@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::str::FromStr;
 use std::{path::Path, sync::Arc};
 
@@ -7,7 +6,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use xmlem::{Document, NewElement, Selector};
 
-use crate::build::macos::keymap::MACOS_KEYS;
+use crate::build::macos::keymap::{MACOS_HARDCODED, MACOS_KEYS};
 use crate::build::macos::layers::layer_attributes;
 use crate::bundle::layout::Transform;
 use crate::util::{split_keys, TRANSFORM_ESCAPE};
@@ -178,7 +177,7 @@ impl BuildStep for GenerateMacOs {
                         );
                         if MACOS_KEYS.len() > key_map.len() {
                             panic!(
-                                r#"Provided layer does not have enough keys, expected {} keys but got {}, in {}:{}:{}:{:?}: \n{:?}"#,
+                                r#"Provided layer does not have enough keys, expected {} keys but`` got {}, in {}:{}:{}:{:?}: \n{:?}"#,
                                 MACOS_KEYS.len(),
                                 key_map.len(),
                                 language_tag.to_string(),
@@ -233,6 +232,7 @@ impl BuildStep for GenerateMacOs {
                                         };
 
                                         let dead_key_transform = dead_keys[dead_key].clone();
+                                        let id = dead_key_transform.id.clone();
 
                                         for (next_char, transform) in map {
                                             match transform {
@@ -246,6 +246,11 @@ impl BuildStep for GenerateMacOs {
                                                             .get_mut(&key_map[cursor])
                                                             .unwrap();
 
+                                                        let key_transform = DeadKeyOutput {
+                                                            id: id.clone(),
+                                                            output: end_char.to_string(),
+                                                        };
+
                                                         match transition {
                                                             KeyTransition::Output(output) => {
                                                                 key_transition_map.insert(
@@ -256,7 +261,7 @@ impl BuildStep for GenerateMacOs {
                                                                                 .next_action(),
                                                                             code: *code,
                                                                             states: vec![
-                                                                                dead_key_transform
+                                                                                key_transform
                                                                                     .clone(),
                                                                             ],
                                                                         },
@@ -266,11 +271,15 @@ impl BuildStep for GenerateMacOs {
                                                             KeyTransition::Action(
                                                                 ref mut action,
                                                             ) => {
-                                                                action.states.push(
-                                                                    dead_key_transform.clone(),
-                                                                );
+                                                                //if action.id == "action001" {
+                                                                //    println!("aaaaaaaaaaaaaaaaaaaaaaa 🥔🥔🥔🥔");
+                                                                //}
+
+                                                                action
+                                                                    .states
+                                                                    .push(key_transform.clone());
                                                             }
-                                                        }
+                                                        };
                                                     }
                                                 }
                                                 Transform::More(_transform) => {
@@ -279,7 +288,7 @@ impl BuildStep for GenerateMacOs {
                                             };
                                         }
                                     }
-                                }
+                                };
                             }
                         }
 
@@ -316,11 +325,47 @@ impl BuildStep for GenerateMacOs {
                                         .into(),
                                     },
                                 );
+
+                                //if action.id == "action001" {
+                                //println!("key print the culprit");
+
+                                //for state in &action.states {
+                                //    println!("key print state: {:?}", state);
+                                //}
+                                //}
+
+                                //if action.states.len() == 0 {
+                                //    println!("key print empty!");
+                                //}
                             }
                         };
                     }
 
                     cursor += 1;
+                }
+
+                // Add all the hardcoded keys on top
+                for (layer_index, (layer, _)) in layers.iter().enumerate() {
+                    let selector =
+                        Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
+                    let xml_key_map = key_map_set
+                        .query_selector(&mut document, &selector)
+                        .expect("keymap to have right index");
+
+                    // Why does Mac need these? nobody knows
+                    for (code, output) in MACOS_HARDCODED.iter() {
+                        xml_key_map.append_new_element(
+                            &mut document,
+                            NewElement {
+                                name: "key".into(),
+                                attrs: [
+                                    ("code".into(), code.to_string()),
+                                    ("output".into(), output.clone()),
+                                ]
+                                .into(),
+                            },
+                        );
+                    }
                 }
 
                 let selector = Selector::new("actions").unwrap();
@@ -329,6 +374,11 @@ impl BuildStep for GenerateMacOs {
                     .expect("The template document should have an 'actions' tag");
 
                 for (key, transition) in key_transition_map {
+                    println!(
+                        "{}: xx key: {:?}, transition: {:?}",
+                        language_tag, key, transition
+                    );
+
                     match transition {
                         KeyTransition::Output(_) => {}
                         KeyTransition::Action(dead_key_action) => {
@@ -336,9 +386,17 @@ impl BuildStep for GenerateMacOs {
                                 &mut document,
                                 NewElement {
                                     name: "action".into(),
-                                    attrs: [("id".into(), dead_key_action.id)].into(),
+                                    attrs: [("id".into(), dead_key_action.id.clone())].into(),
                                 },
                             );
+
+                            //if dead_key_action.id == "action001" {
+                            //println!("actions print the culprit");
+
+                            //for state in &dead_key_action.states {
+                            //    println!("actions print state: {:?}", state);
+                            //}
+                            //}
 
                             for state in dead_key_action.states {
                                 action.append_new_element(
