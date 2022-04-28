@@ -3,6 +3,7 @@ use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
+use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
 use xmlem::{Document, Element, NewElement, Selector};
 
@@ -137,33 +138,13 @@ impl BuildStep for GenerateMacOs {
 
                 add_layer_tags(&layers, &mut document, &key_map_set);
 
-                initialize_key_transition_map(&layers, &mut key_transition_map);
-
-                /*
-                let mut cursor = 0;
+                initialize_key_transition_map(&language_tag, &layers, &mut key_transition_map);
 
                 for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+                    let mut cursor = 0;
+
                     for (_iso_key, code) in MACOS_KEYS.iter() {
-
                         let key_map: Vec<String> = split_keys(&key_map);
-
-                        tracing::debug!(
-                            "iso len: {}; keymap len: {}",
-                            MACOS_KEYS.len(),
-                            key_map.len()
-                        );
-                        if MACOS_KEYS.len() > key_map.len() {
-                            panic!(
-                                r#"Provided layer does not have enough keys, expected {} keys but`` got {}, in {}:{}:{}:{:?}: \n{:?}"#,
-                                MACOS_KEYS.len(),
-                                key_map.len(),
-                                language_tag.to_string(),
-                                "MacOS",
-                                "Primary",
-                                layer,
-                                key_map
-                            );
-                        }
 
                         if let Some(transforms) = &layout.transforms {
                             for (dead_key, value) in transforms {
@@ -204,6 +185,8 @@ impl BuildStep for GenerateMacOs {
                                         let id = dead_key_transform.id.clone();
 
                                         for (next_char, transform) in map {
+                                            //println!("next_char: {:?}, transform: {:?}", next_char, transform);
+
                                             match transform {
                                                 Transform::End(end_char) => {
                                                     if next_char == TRANSFORM_ESCAPE {
@@ -211,40 +194,18 @@ impl BuildStep for GenerateMacOs {
                                                     }
 
                                                     if next_char.to_string() == key_map[cursor] {
-                                                        let transition = key_transition_map
-                                                            .get_mut(&key_map[cursor])
-                                                            .unwrap();
-
                                                         let key_transform = DeadKeyOutput {
                                                             id: id.clone(),
                                                             output: end_char.to_string(),
                                                         };
 
-                                                        match transition {
-                                                            KeyTransition::Output(output) => {
-                                                                key_transition_map.insert(
-                                                                    key_map[cursor].clone(),
-                                                                    KeyTransition::Action(
-                                                                        DeadKeyAction {
-                                                                            id: id_manager
-                                                                                .next_action(),
-                                                                            code: *code,
-                                                                            states: vec![
-                                                                                key_transform
-                                                                                    .clone(),
-                                                                            ],
-                                                                        },
-                                                                    ),
-                                                                );
-                                                            }
-                                                            KeyTransition::Action(
-                                                                ref mut action,
-                                                            ) => {
-                                                                action
-                                                                    .states
-                                                                    .push(key_transform.clone());
-                                                            }
-                                                        };
+                                                        //println!("end char: {}", end_char);
+                                                        update_key_transition_map_with_transform(
+                                                            &mut key_transition_map,
+                                                            next_char,
+                                                            key_transform,
+                                                            &mut id_manager,
+                                                        );
 
                                                         break;
                                                     }
@@ -258,10 +219,10 @@ impl BuildStep for GenerateMacOs {
                                 };
                             }
                         }
-                    }
 
-                    cursor += 1;
-                }*/
+                        cursor += 1;
+                    }
+                }
 
                 write_key_transition_map(&layers, &key_transition_map, &mut document, &key_map_set);
 
@@ -360,6 +321,7 @@ fn add_layer_tags(
 }
 
 fn initialize_key_transition_map(
+    language_tag: &LanguageTag,
     layers: &IndexMap<MacOsKbdLayer, String>,
     key_transition_map: &mut IndexMap<String, KeyTransition>,
 ) {
@@ -368,6 +330,24 @@ fn initialize_key_transition_map(
 
         for (_iso_key, key_code) in MACOS_KEYS.iter() {
             let key_map: Vec<String> = split_keys(&key_map);
+
+            tracing::debug!(
+                "iso len: {}; keymap len: {}",
+                MACOS_KEYS.len(),
+                key_map.len()
+            );
+            if MACOS_KEYS.len() > key_map.len() {
+                panic!(
+                    r#"Provided layer does not have enough keys, expected {} keys but`` got {}, in {}:{}:{}:{:?}: \n{:?}"#,
+                    MACOS_KEYS.len(),
+                    key_map.len(),
+                    language_tag.to_string(),
+                    "MacOS",
+                    "Primary",
+                    layer,
+                    key_map
+                );
+            }
 
             let key = key_map[cursor].clone();
 
@@ -382,29 +362,40 @@ fn initialize_key_transition_map(
             cursor += 1;
         }
     }
-
-    println!("Initialization");
-
-    for (key, transition) in key_transition_map {
-        println!("key: {:?}, transition: {:?}", key, transition);
-    }
-
-    println!("--------------------------------------");
 }
 
-fn update_key_transition_map(
+fn transform_nonsense() {}
+
+fn update_key_transition_map_with_transform(
     key_transition_map: &mut IndexMap<String, KeyTransition>,
     key: &str,
-    key_code: usize,
+    transform: DeadKeyOutput,
+    id_manager: &mut TransformIdManager,
 ) {
+    println!("in function| key: {:?}, transform: {:?}", key, &transform);
+
     if key_transition_map.contains_key(key) {
         let entry = key_transition_map.get_mut(key).unwrap();
 
         match entry {
             KeyTransition::Output(output) => {
-                //key_transition_map.insert(key.to_string(), KeyTr
+                let code = output.code;
+
+                let action = DeadKeyAction {
+                    id: id_manager.next_action(),
+                    code,
+                    states: vec![transform.clone()],
+                };
+
+                //println!("key: {} | Adding new action {:?} with first state {:?}", key, &action, &transform);
+
+                key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
             }
-            KeyTransition::Action(action) => {}
+            KeyTransition::Action(ref mut action) => {
+                action.states.push(transform.clone());
+
+                //println!("key: {} | Adding new state {:?} to action: {:?}", key, &transform, &action)
+            }
         };
     } else {
         panic!(
@@ -419,7 +410,6 @@ fn write_key_transition_map(
     document: &mut Document,
     key_map_set: &Element,
 ) {
-    
     for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
         let selector = Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
         let xml_key_map = key_map_set
@@ -427,7 +417,6 @@ fn write_key_transition_map(
             .expect("keymap to have right index");
 
         for (key, transition) in key_transition_map {
-            
             match transition {
                 KeyTransition::Output(output) => {
                     append_key_output_element(&xml_key_map, document, &output);
