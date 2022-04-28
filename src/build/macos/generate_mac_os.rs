@@ -137,9 +137,14 @@ impl BuildStep for GenerateMacOs {
 
                 add_layer_tags(&layers, &mut document, &key_map_set);
 
+                initialize_key_transition_map(&layers, &mut key_transition_map);
+
+                /*
                 let mut cursor = 0;
-                for (_iso_key, code) in MACOS_KEYS.iter() {
-                    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+
+                for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+                    for (_iso_key, code) in MACOS_KEYS.iter() {
+
                         let key_map: Vec<String> = split_keys(&key_map);
 
                         tracing::debug!(
@@ -159,14 +164,6 @@ impl BuildStep for GenerateMacOs {
                                 key_map
                             );
                         }
-
-                        key_transition_map.insert(
-                            key_map[cursor].clone(),
-                            KeyTransition::Output(KeyOutput {
-                                code: *code,
-                                output: key_map[cursor].clone(),
-                            }),
-                        );
 
                         if let Some(transforms) = &layout.transforms {
                             for (dead_key, value) in transforms {
@@ -248,6 +245,8 @@ impl BuildStep for GenerateMacOs {
                                                                     .push(key_transform.clone());
                                                             }
                                                         };
+
+                                                        break;
                                                     }
                                                 }
                                                 Transform::More(_transform) => {
@@ -259,55 +258,12 @@ impl BuildStep for GenerateMacOs {
                                 };
                             }
                         }
-
-                        let key = key_transition_map.get(&key_map[cursor]).unwrap();
-                        let selector =
-                            Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
-                        let xml_key_map = key_map_set
-                            .query_selector(&mut document, &selector)
-                            .expect("keymap to have right index");
-
-                        match key {
-                            KeyTransition::Output(output_key) => {
-                                append_key_output_element(&xml_key_map, &mut document, &output_key);
-                            }
-                            KeyTransition::Action(action) => {
-                                xml_key_map.append_new_element(
-                                    &mut document,
-                                    NewElement {
-                                        name: "key".into(),
-                                        attrs: [
-                                            ("code".into(), action.code.to_string()),
-                                            ("action".into(), action.id.clone()),
-                                        ]
-                                        .into(),
-                                    },
-                                );
-                            }
-                        };
                     }
 
                     cursor += 1;
-                }
+                }*/
 
-                // Add all the hardcoded keys on top
-                for (layer_index, (layer, _)) in layers.iter().enumerate() {
-                    let selector =
-                        Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
-                    let xml_key_map = key_map_set
-                        .query_selector(&mut document, &selector)
-                        .expect("keymap to have right index");
-
-                    // Why does Mac need these? nobody knows
-                    for (code, output) in MACOS_HARDCODED.iter() {
-                        let output_key = KeyOutput {
-                            code: *code,
-                            output: output.to_string(),
-                        };
-
-                        append_key_output_element(&xml_key_map, &mut document, &output_key);
-                    }
-                }
+                write_key_transition_map(&layers, &key_transition_map, &mut document, &key_map_set);
 
                 let selector = Selector::new("actions").unwrap();
                 let actions = root
@@ -400,6 +356,106 @@ fn add_layer_tags(
                 attrs: [("index".into(), layer_index.to_string())].into(),
             },
         );
+    }
+}
+
+fn initialize_key_transition_map(
+    layers: &IndexMap<MacOsKbdLayer, String>,
+    key_transition_map: &mut IndexMap<String, KeyTransition>,
+) {
+    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+        let mut cursor = 0;
+
+        for (_iso_key, key_code) in MACOS_KEYS.iter() {
+            let key_map: Vec<String> = split_keys(&key_map);
+
+            let key = key_map[cursor].clone();
+
+            key_transition_map.insert(
+                key.clone(),
+                KeyTransition::Output(KeyOutput {
+                    code: *key_code,
+                    output: key.clone(),
+                }),
+            );
+
+            cursor += 1;
+        }
+    }
+
+    println!("Initialization");
+
+    for (key, transition) in key_transition_map {
+        println!("key: {:?}, transition: {:?}", key, transition);
+    }
+
+    println!("--------------------------------------");
+}
+
+fn update_key_transition_map(
+    key_transition_map: &mut IndexMap<String, KeyTransition>,
+    key: &str,
+    key_code: usize,
+) {
+    if key_transition_map.contains_key(key) {
+        let entry = key_transition_map.get_mut(key).unwrap();
+
+        match entry {
+            KeyTransition::Output(output) => {
+                //key_transition_map.insert(key.to_string(), KeyTr
+            }
+            KeyTransition::Action(action) => {}
+        };
+    } else {
+        panic!(
+            "The key_transition_map must already have Output entries for all keys by this point."
+        )
+    }
+}
+
+fn write_key_transition_map(
+    layers: &IndexMap<MacOsKbdLayer, String>,
+    key_transition_map: &IndexMap<String, KeyTransition>,
+    document: &mut Document,
+    key_map_set: &Element,
+) {
+    
+    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+        let selector = Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
+        let xml_key_map = key_map_set
+            .query_selector(document, &selector)
+            .expect("keymap to have right index");
+
+        for (key, transition) in key_transition_map {
+            
+            match transition {
+                KeyTransition::Output(output) => {
+                    append_key_output_element(&xml_key_map, document, &output);
+                }
+                KeyTransition::Action(action) => {
+                    xml_key_map.append_new_element(
+                        document,
+                        NewElement {
+                            name: "key".into(),
+                            attrs: [
+                                ("code".into(), action.code.to_string()),
+                                ("action".into(), action.id.clone()),
+                            ]
+                            .into(),
+                        },
+                    );
+                }
+            };
+        }
+
+        for (key_code, output) in MACOS_HARDCODED.iter() {
+            let key = KeyOutput {
+                code: *key_code,
+                output: output.clone(),
+            };
+
+            append_key_output_element(&xml_key_map, document, &key);
+        }
     }
 }
 
