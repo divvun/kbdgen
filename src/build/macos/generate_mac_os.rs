@@ -4,10 +4,11 @@ use std::{path::Path, sync::Arc};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use xmlem::{Document, NewElement, Selector};
+use xmlem::{Document, Element, NewElement, Selector};
 
 use crate::build::macos::keymap::{MACOS_HARDCODED, MACOS_KEYS};
 use crate::build::macos::layers::layer_attributes;
+use crate::bundle::layout::macos::MacOsKbdLayer;
 use crate::bundle::layout::Transform;
 use crate::util::{split_keys, TRANSFORM_ESCAPE};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
@@ -129,41 +130,12 @@ impl BuildStep for GenerateMacOs {
 
                 let root = document.root();
 
-                let selector = Selector::new("modifierMap").unwrap();
-                let modifier_map = root
-                    .query_selector(&document, &selector)
-                    .expect("The template document should have a 'modifierMap' tag");
-
                 let selector = Selector::new("keyMapSet").unwrap();
                 let key_map_set = root
                     .query_selector(&document, &selector)
                     .expect("The template document should have a 'keyMapSet' tag");
 
-                for (layer_index, (layer, _)) in layers.iter().enumerate() {
-                    let key_map_select = modifier_map.append_new_element(
-                        &mut document,
-                        NewElement {
-                            name: "keyMapSelect".into(),
-                            attrs: [("mapIndex".into(), layer_index.to_string())].into(),
-                        },
-                    );
-
-                    key_map_select.append_new_element(
-                        &mut document,
-                        NewElement {
-                            name: "modifier".into(),
-                            attrs: [("mapIndex".into(), layer_attributes(layer))].into(),
-                        },
-                    );
-
-                    key_map_set.append_new_element(
-                        &mut document,
-                        NewElement {
-                            name: "keyMap".into(),
-                            attrs: [("index".into(), layer_index.to_string())].into(),
-                        },
-                    );
-                }
+                add_layer_tags(&layers, &mut document, &key_map_set);
 
                 let mut cursor = 0;
                 for (_iso_key, code) in MACOS_KEYS.iter() {
@@ -271,10 +243,6 @@ impl BuildStep for GenerateMacOs {
                                                             KeyTransition::Action(
                                                                 ref mut action,
                                                             ) => {
-                                                                //if action.id == "action001" {
-                                                                //    println!("aaaaaaaaaaaaaaaaaaaaaaa 🥔🥔🥔🥔");
-                                                                //}
-
                                                                 action
                                                                     .states
                                                                     .push(key_transform.clone());
@@ -300,18 +268,8 @@ impl BuildStep for GenerateMacOs {
                             .expect("keymap to have right index");
 
                         match key {
-                            KeyTransition::Output(output) => {
-                                xml_key_map.append_new_element(
-                                    &mut document,
-                                    NewElement {
-                                        name: "key".into(),
-                                        attrs: [
-                                            ("code".into(), output.code.to_string()),
-                                            ("output".into(), output.output.clone()),
-                                        ]
-                                        .into(),
-                                    },
-                                );
+                            KeyTransition::Output(output_key) => {
+                                append_key_output_element(&xml_key_map, &mut document, &output_key);
                             }
                             KeyTransition::Action(action) => {
                                 xml_key_map.append_new_element(
@@ -325,18 +283,6 @@ impl BuildStep for GenerateMacOs {
                                         .into(),
                                     },
                                 );
-
-                                //if action.id == "action001" {
-                                //println!("key print the culprit");
-
-                                //for state in &action.states {
-                                //    println!("key print state: {:?}", state);
-                                //}
-                                //}
-
-                                //if action.states.len() == 0 {
-                                //    println!("key print empty!");
-                                //}
                             }
                         };
                     }
@@ -354,17 +300,12 @@ impl BuildStep for GenerateMacOs {
 
                     // Why does Mac need these? nobody knows
                     for (code, output) in MACOS_HARDCODED.iter() {
-                        xml_key_map.append_new_element(
-                            &mut document,
-                            NewElement {
-                                name: "key".into(),
-                                attrs: [
-                                    ("code".into(), code.to_string()),
-                                    ("output".into(), output.clone()),
-                                ]
-                                .into(),
-                            },
-                        );
+                        let output_key = KeyOutput {
+                            code: *code,
+                            output: output.to_string(),
+                        };
+
+                        append_key_output_element(&xml_key_map, &mut document, &output_key);
                     }
                 }
 
@@ -374,10 +315,10 @@ impl BuildStep for GenerateMacOs {
                     .expect("The template document should have an 'actions' tag");
 
                 for (key, transition) in key_transition_map {
-                    println!(
-                        "{}: xx key: {:?}, transition: {:?}",
-                        language_tag, key, transition
-                    );
+                    //println!(
+                    //    "{}: xx key: {:?}, transition: {:?}",
+                    //    language_tag, key, transition
+                    //);
 
                     match transition {
                         KeyTransition::Output(_) => {}
@@ -390,26 +331,8 @@ impl BuildStep for GenerateMacOs {
                                 },
                             );
 
-                            //if dead_key_action.id == "action001" {
-                            //println!("actions print the culprit");
-
-                            //for state in &dead_key_action.states {
-                            //    println!("actions print state: {:?}", state);
-                            //}
-                            //}
-
                             for state in dead_key_action.states {
-                                action.append_new_element(
-                                    &mut document,
-                                    NewElement {
-                                        name: "when".into(),
-                                        attrs: [
-                                            ("state".into(), state.id),
-                                            ("output".into(), state.output),
-                                        ]
-                                        .into(),
-                                    },
-                                );
+                                append_dead_key_output_element(&action, &mut document, &state);
                             }
                         }
                     };
@@ -425,17 +348,7 @@ impl BuildStep for GenerateMacOs {
                     );
 
                     for (key, dead_key) in dead_keys {
-                        terminators.append_new_element(
-                            &mut document,
-                            NewElement {
-                                name: "when".into(),
-                                attrs: [
-                                    ("state".to_string(), dead_key.id),
-                                    ("output".to_string(), dead_key.output),
-                                ]
-                                .into(),
-                            },
-                        );
+                        append_dead_key_output_element(&terminators, &mut document, &dead_key);
                     }
                 }
 
@@ -449,6 +362,73 @@ impl BuildStep for GenerateMacOs {
 
 fn compute_keyboard_id(language_name: &str) -> String {
     "-8045".to_string()
+}
+
+fn add_layer_tags(
+    layers: &IndexMap<MacOsKbdLayer, String>,
+    document: &mut Document,
+    key_map_set: &Element,
+) {
+    let root = document.root();
+
+    let selector = Selector::new("modifierMap").unwrap();
+    let modifier_map = root
+        .query_selector(&document, &selector)
+        .expect("The template document should have a 'modifierMap' tag");
+
+    for (layer_index, (layer, _)) in layers.iter().enumerate() {
+        let key_map_select = modifier_map.append_new_element(
+            document,
+            NewElement {
+                name: "keyMapSelect".into(),
+                attrs: [("mapIndex".into(), layer_index.to_string())].into(),
+            },
+        );
+
+        key_map_select.append_new_element(
+            document,
+            NewElement {
+                name: "modifier".into(),
+                attrs: [("mapIndex".into(), layer_attributes(layer))].into(),
+            },
+        );
+
+        key_map_set.append_new_element(
+            document,
+            NewElement {
+                name: "keyMap".into(),
+                attrs: [("index".into(), layer_index.to_string())].into(),
+            },
+        );
+    }
+}
+
+fn append_dead_key_output_element(element: &Element, document: &mut Document, key: &DeadKeyOutput) {
+    element.append_new_element(
+        document,
+        NewElement {
+            name: "when".into(),
+            attrs: [
+                ("state".to_string(), key.id.clone()),
+                ("output".to_string(), key.output.clone()),
+            ]
+            .into(),
+        },
+    );
+}
+
+fn append_key_output_element(element: &Element, document: &mut Document, key: &KeyOutput) {
+    element.append_new_element(
+        document,
+        NewElement {
+            name: "key".into(),
+            attrs: [
+                ("code".into(), key.code.to_string()),
+                ("output".into(), key.output.clone()),
+            ]
+            .into(),
+        },
+    );
 }
 
 /*
