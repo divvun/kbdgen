@@ -44,6 +44,7 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, usize>> = Lazy::new(|| {
             (IsoKey::C09, 37),
             (IsoKey::C10, 41),
             (IsoKey::C11, 39),
+            (IsoKey::C12, 42),
             (IsoKey::B00, 50),
             (IsoKey::B01, 6),
             (IsoKey::B02, 7),
@@ -55,7 +56,6 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, usize>> = Lazy::new(|| {
             (IsoKey::B08, 43),
             (IsoKey::B09, 47),
             (IsoKey::B10, 44),
-            (IsoKey::B11, 94),
         ];
 
         for (key, value) in arr {

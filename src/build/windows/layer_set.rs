@@ -2,14 +2,11 @@ use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use crate::bundle::layout::windows::WindowsKbdLayer;
+use crate::{bundle::layout::windows::WindowsKbdLayer, util::decode_unicode_escapes};
 
 use super::klc::key::validate_for_klc;
 
 pub const SG_CAP: &str = "SGCap";
-
-pub static UNICODE_ESCAPES: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\\u\{([0-9A-Fa-f]{1,6})\}").expect("valid regex"));
 
 #[derive(Eq, PartialEq)]
 pub struct WindowsLayerSetKey {
@@ -132,13 +129,4 @@ fn process_key(
         string: key.to_owned(),
         dead_key,
     })
-}
-
-fn decode_unicode_escapes(input: &str) -> String {
-    let new = UNICODE_ESCAPES.replace_all(input, |hex: &regex::Captures| {
-        let number = u32::from_str_radix(hex.get(1).unwrap().as_str(), 16).unwrap_or(0xfeff);
-        std::char::from_u32(number).unwrap().to_string()
-    });
-
-    new.to_string()
 }
