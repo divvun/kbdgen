@@ -61,6 +61,11 @@ pub struct DeadKeyAction {
     states: Vec<DeadKeyOutput>,
 }
 
+#[derive(Debug, Clone)]
+pub struct DeadKeyNext {
+    next: DeadKeyId,
+}
+
 type DeadKeyId = String;
 type ActionId = String;
 
@@ -120,14 +125,10 @@ impl BuildStep for GenerateMacOs {
             if let Some(mac_os_target) = &layout.mac_os {
                 let layers = &mac_os_target.primary.layers;
 
-                let dead_key_count = 0;
-                let state_count = 0;
-
                 let mut layered_key_transition_map: IndexMap<
                     MacOsKbdLayer,
                     IndexMap<String, KeyTransition>,
                 > = IndexMap::new();
-                let mut key_transition_map: IndexMap<String, KeyTransition> = IndexMap::new();
                 let mut dead_keys: IndexMap<String, _> = IndexMap::new();
 
                 let mut document = Document::from_str(LAYOUT_TEMPLATE).unwrap();
@@ -162,7 +163,7 @@ impl BuildStep for GenerateMacOs {
                             language_tag.to_string(),
                             "MacOS",
                             "Primary",
-                        )
+                        );
                     }
                 } else {
                     tracing::warn!(
@@ -170,7 +171,7 @@ impl BuildStep for GenerateMacOs {
                         language_tag.to_string(),
                         "MacOS",
                         "Primary",
-                    )
+                    );
                 }
 
                 write_key_transition_map(
@@ -179,20 +180,6 @@ impl BuildStep for GenerateMacOs {
                     &mut document,
                     &key_map_set,
                 );
-
-                if dead_keys.len() > 0 {
-                    let terminators = root.append_new_element(
-                        &mut document,
-                        NewElement {
-                            name: "terminators".into(),
-                            attrs: [].into(),
-                        },
-                    );
-
-                    for (key, dead_key) in dead_keys {
-                        append_dead_key_output_element(&terminators, &mut document, &dead_key);
-                    }
-                }
 
                 let key_layout_path =
                     resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
@@ -255,7 +242,7 @@ fn initialize_key_transition_map(
 
         layered_key_transition_map.insert(*layer, IndexMap::new());
 
-        let mut key_transition_map = layered_key_transition_map
+        let key_transition_map = layered_key_transition_map
             .get_mut(layer)
             .expect("getting back the value that was just inserted");
 
@@ -310,15 +297,61 @@ fn process_transforms(
         let layer_dead_keys = target_dead_keys.get(layer);
 
         if let Some(layer_dead_keys) = layer_dead_keys {
-            let mut key_transition_map = layered_key_transition_map
+            let key_transition_map = layered_key_transition_map
                 .get_mut(layer)
                 .expect("this map should be prefilled by now");
 
-            for (_iso_key, code) in MACOS_KEYS.iter() {
+            for (_iso_key, _code) in MACOS_KEYS.iter() {
                 let key_map: Vec<String> = split_keys(&key_map);
 
+                if layer_dead_keys.contains(&key_map[cursor]) {
+                    /*
+                    update_key_transition_map_with_transform(
+                        key_transition_map,
+                        next_char,
+                        key_transform,
+                        &mut id_manager,
+                    );
+                    */
+
+                    // find dead key id
+
+                    /*
+                    let
+
+
+                    key_transition_map.insert(key_map[cursor], )
+
+
+                    KeyTransition::Output(output) => {
+                        let code = output.code;
+
+                        let none_state = DeadKeyOutput {
+                            id: "none".to_string(),
+                            output: output.output.clone(),
+                        };
+
+                        let action = DeadKeyAction {
+                            id: id_manager.next_action(),
+                            code,
+                            states: vec![none_state, transform.clone()],
+                        };
+
+                        key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
+                    }
+                    KeyTransition::Action(ref mut action) => {
+                        action.states.push(transform.clone());
+                    }
+
+                    */
+
+                    continue;
+                }
+
                 for (dead_key, value) in transforms {
-                    // check if dead key is even adead key on this layer lol
+                    if !layer_dead_keys.contains(dead_key) {
+                        continue;
+                    }
 
                     match value {
                         Transform::End(_character) => {
@@ -353,8 +386,6 @@ fn process_transforms(
                             let id = dead_key_transform.id.clone();
 
                             for (next_char, transform) in map {
-                                //println!("next_char: {:?}, transform: {:?}", next_char, transform);
-
                                 match transform {
                                     Transform::End(end_char) => {
                                         if next_char == TRANSFORM_ESCAPE {
@@ -367,7 +398,6 @@ fn process_transforms(
                                                 output: end_char.to_string(),
                                             };
 
-                                            //println!("end char: {}", end_char);
                                             update_key_transition_map_with_transform(
                                                 key_transition_map,
                                                 next_char,
@@ -406,10 +436,15 @@ fn update_key_transition_map_with_transform(
             KeyTransition::Output(output) => {
                 let code = output.code;
 
+                let none_state = DeadKeyOutput {
+                    id: "none".to_string(),
+                    output: output.output.clone(),
+                };
+
                 let action = DeadKeyAction {
                     id: id_manager.next_action(),
                     code,
-                    states: vec![transform.clone()],
+                    states: vec![none_state, transform.clone()],
                 };
 
                 key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
@@ -437,7 +472,7 @@ fn write_key_transition_map(
         .query_selector(&document, &selector)
         .expect("The template document should have an 'actions' tag");
 
-    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+    for (layer_index, (layer, _key_map)) in layers.iter().enumerate() {
         let selector = Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
         let xml_key_map = key_map_set
             .query_selector(document, &selector)
@@ -447,7 +482,7 @@ fn write_key_transition_map(
             .get(layer)
             .expect("this map should be prefilled by now");
 
-        for (key, transition) in key_transition_map {
+        for (_key, transition) in key_transition_map {
             match transition {
                 KeyTransition::Output(output) => {
                     append_key_output_element(&xml_key_map, document, &output);
@@ -489,6 +524,22 @@ fn write_key_transition_map(
             };
 
             append_key_output_element(&xml_key_map, document, &key);
+        }
+    }
+}
+
+fn write_terminators(document: &mut Document, dead_keys: &mut IndexMap<String, DeadKeyOutput>) {
+    if dead_keys.len() > 0 {
+        let terminators = document.root().append_new_element(
+            document,
+            NewElement {
+                name: "terminators".into(),
+                attrs: [].into(),
+            },
+        );
+
+        for (_key, dead_key) in dead_keys {
+            append_dead_key_output_element(&terminators, document, &dead_key);
         }
     }
 }
