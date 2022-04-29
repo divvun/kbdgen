@@ -353,8 +353,6 @@ fn process_transforms(
                             let id = dead_key_transform.id.clone();
 
                             for (next_char, transform) in map {
-                                //println!("next_char: {:?}, transform: {:?}", next_char, transform);
-
                                 match transform {
                                     Transform::End(end_char) => {
                                         if next_char == TRANSFORM_ESCAPE {
@@ -367,7 +365,6 @@ fn process_transforms(
                                                 output: end_char.to_string(),
                                             };
 
-                                            //println!("end char: {}", end_char);
                                             update_key_transition_map_with_transform(
                                                 key_transition_map,
                                                 next_char,
@@ -406,10 +403,15 @@ fn update_key_transition_map_with_transform(
             KeyTransition::Output(output) => {
                 let code = output.code;
 
+                let none_state = DeadKeyOutput {
+                    id: "none".to_string(),
+                    output: output.output.clone(),
+                };
+
                 let action = DeadKeyAction {
                     id: id_manager.next_action(),
                     code,
-                    states: vec![transform.clone()],
+                    states: vec![none_state, transform.clone()],
                 };
 
                 key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
