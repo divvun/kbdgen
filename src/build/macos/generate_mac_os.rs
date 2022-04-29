@@ -120,14 +120,10 @@ impl BuildStep for GenerateMacOs {
             if let Some(mac_os_target) = &layout.mac_os {
                 let layers = &mac_os_target.primary.layers;
 
-                let dead_key_count = 0;
-                let state_count = 0;
-
                 let mut layered_key_transition_map: IndexMap<
                     MacOsKbdLayer,
                     IndexMap<String, KeyTransition>,
                 > = IndexMap::new();
-                let mut key_transition_map: IndexMap<String, KeyTransition> = IndexMap::new();
                 let mut dead_keys: IndexMap<String, _> = IndexMap::new();
 
                 let mut document = Document::from_str(LAYOUT_TEMPLATE).unwrap();
@@ -189,7 +185,7 @@ impl BuildStep for GenerateMacOs {
                         },
                     );
 
-                    for (key, dead_key) in dead_keys {
+                    for (_key, dead_key) in dead_keys {
                         append_dead_key_output_element(&terminators, &mut document, &dead_key);
                     }
                 }
@@ -255,7 +251,7 @@ fn initialize_key_transition_map(
 
         layered_key_transition_map.insert(*layer, IndexMap::new());
 
-        let mut key_transition_map = layered_key_transition_map
+        let key_transition_map = layered_key_transition_map
             .get_mut(layer)
             .expect("getting back the value that was just inserted");
 
@@ -310,11 +306,11 @@ fn process_transforms(
         let layer_dead_keys = target_dead_keys.get(layer);
 
         if let Some(layer_dead_keys) = layer_dead_keys {
-            let mut key_transition_map = layered_key_transition_map
+            let key_transition_map = layered_key_transition_map
                 .get_mut(layer)
                 .expect("this map should be prefilled by now");
 
-            for (_iso_key, code) in MACOS_KEYS.iter() {
+            for (_iso_key, _code) in MACOS_KEYS.iter() {
                 let key_map: Vec<String> = split_keys(&key_map);
 
                 for (dead_key, value) in transforms {
@@ -439,7 +435,7 @@ fn write_key_transition_map(
         .query_selector(&document, &selector)
         .expect("The template document should have an 'actions' tag");
 
-    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+    for (layer_index, (layer, _key_map)) in layers.iter().enumerate() {
         let selector = Selector::new(&format!("keyMap[index=\"{}\"]", layer_index)).unwrap();
         let xml_key_map = key_map_set
             .query_selector(document, &selector)
@@ -449,7 +445,7 @@ fn write_key_transition_map(
             .get(layer)
             .expect("this map should be prefilled by now");
 
-        for (key, transition) in key_transition_map {
+        for (_key, transition) in key_transition_map {
             match transition {
                 KeyTransition::Output(output) => {
                     append_key_output_element(&xml_key_map, document, &output);
