@@ -286,7 +286,7 @@ fn initialize_key_transition_map(
                 key.clone(),
                 KeyTransition::Output(KeyOutput {
                     code: *key_code,
-                    output: decode_unicode_escapes(&key),
+                    output: key.clone(),
                 }),
             );
 
@@ -500,7 +500,7 @@ fn append_dead_key_output_element(element: &Element, document: &mut Document, ke
             name: "when".into(),
             attrs: [
                 ("state".to_string(), key.id.clone()),
-                ("output".to_string(), key.output.clone()),
+                ("output".to_string(), decode_unicode_escapes(&key.output)),
             ]
             .into(),
         },
@@ -514,7 +514,7 @@ fn append_key_output_element(element: &Element, document: &mut Document, key: &K
             name: "key".into(),
             attrs: [
                 ("code".into(), key.code.to_string()),
-                ("output".into(), key.output.clone()),
+                ("output".into(), decode_unicode_escapes(&key.output)),
             ]
             .into(),
         },
