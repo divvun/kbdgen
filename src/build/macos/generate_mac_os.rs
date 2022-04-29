@@ -148,6 +148,8 @@ impl BuildStep for GenerateMacOs {
 
                         if let Some(transforms) = &layout.transforms {
                             for (dead_key, value) in transforms {
+                                // check if dead key is even adead key on this layer lol
+
                                 match value {
                                     Transform::End(_character) => {
                                         tracing::error!(
@@ -364,16 +366,12 @@ fn initialize_key_transition_map(
     }
 }
 
-fn transform_nonsense() {}
-
 fn update_key_transition_map_with_transform(
     key_transition_map: &mut IndexMap<String, KeyTransition>,
     key: &str,
     transform: DeadKeyOutput,
     id_manager: &mut TransformIdManager,
 ) {
-    println!("in function| key: {:?}, transform: {:?}", key, &transform);
-
     if key_transition_map.contains_key(key) {
         let entry = key_transition_map.get_mut(key).unwrap();
 
@@ -387,14 +385,10 @@ fn update_key_transition_map_with_transform(
                     states: vec![transform.clone()],
                 };
 
-                //println!("key: {} | Adding new action {:?} with first state {:?}", key, &action, &transform);
-
                 key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
             }
             KeyTransition::Action(ref mut action) => {
                 action.states.push(transform.clone());
-
-                //println!("key: {} | Adding new state {:?} to action: {:?}", key, &transform, &action)
             }
         };
     } else {
@@ -475,31 +469,3 @@ fn append_key_output_element(element: &Element, document: &mut Document, key: &K
         },
     );
 }
-
-/*
-    let document = Document::from_str(LAYOUT_TEMPLATE).unwrap();
-
-    let doc_children = document.children().unwrap();
-    let children = RefCell::borrow(&*doc_children);
-
-    let root = document.root();
-
-    let borrowed_root = RefCell::borrow(&*root);
-    let modifier_map_elem = borrowed_root.find_child_tag_with_name("modifierMap").unwrap();
-
-    let borrowed_modifier_map = RefCell::borrow(&*modifier_map_elem);
-    let key_map_select = borrowed_modifier_map.find_child_tag_with_name("keyMapSelect").unwrap();
-    let borrowed_key_map_select = RefCell::borrow(&*key_map_select);
-
-    let modifier = Element::new_child(&key_map_select, "modifier").unwrap();
-    {
-        let el = modifier.borrow();
-        el.add_attr(QName::without_namespace("keys"), "command?");
-    }
-
-    let key_layout_path =
-        resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
-    std::fs::write(key_layout_path, document.to_string()).unwrap();
-*/
-
-// return str(-min(max(binascii.crc_hqx(name.encode("utf-8"), 0) // 2, 1), 32768,))
