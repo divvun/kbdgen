@@ -122,7 +122,7 @@ impl BuildStep for GenerateMacOs {
         std::fs::create_dir_all(resources_path.clone()).unwrap();
 
         let mut plist: InfoPlist = plist::from_bytes(PLIST_TEMPLATE.as_bytes()).unwrap();
-        println!(
+        tracing::debug!(
             "what's my CFBundleIdentifier: {}",
             plist.cf_bundle_identifier
         );
@@ -479,14 +479,12 @@ fn create_dead_key_actions(
             for (_iso_key, key_code) in MACOS_KEYS.iter() {
                 let key_map: Vec<String> = split_keys(&key_map);
 
-                println!(
+                tracing::debug!(
                     "layer dead keys: {:?}, key: {}",
                     layer_dead_keys, &key_map[cursor]
                 );
 
                 if layer_dead_keys.contains(&key_map[cursor]) {
-                    println!("any dead keys in layer");
-
                     if let Some(dead_key_in_list) = dead_keys.get(&key_map[cursor]) {
                         let none_state = DeadKeyNext {
                             next: dead_key_in_list.id.clone(),
@@ -568,8 +566,6 @@ fn write_key_transition_map(
                     }
                 }
                 KeyTransition::Next(next_action) => {
-                    println!("any nexts?");
-
                     xml_key_map.append_new_element(
                         document,
                         NewElement {
