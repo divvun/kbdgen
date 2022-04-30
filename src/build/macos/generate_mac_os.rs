@@ -1,3 +1,4 @@
+use std::cmp;
 use std::str::FromStr;
 use std::{path::Path, sync::Arc};
 
@@ -14,6 +15,8 @@ use crate::bundle::layout::macos::MacOsKbdLayer;
 use crate::bundle::layout::{Layout, Transform};
 use crate::util::{decode_unicode_escapes, split_keys, TRANSFORM_ESCAPE};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
+
+use super::util::crc_hqx;
 
 pub const KEY_LAYOUT_EXT: &str = "keylayout";
 
@@ -139,9 +142,18 @@ impl BuildStep for GenerateMacOs {
                 > = IndexMap::new();
                 let mut dead_keys: IndexMap<String, _> = IndexMap::new();
 
-                let mut document = Document::from_str(LAYOUT_TEMPLATE).unwrap();
+                let mut document = Document::from_str(LAYOUT_TEMPLATE).expect("invalid template");
 
                 let root = document.root();
+
+                let keyboard = document
+                    .root()
+                    .query_selector(&document, &Selector::new("keyboard").unwrap())
+                    .expect("keyboard element must exist");
+
+                let keyboard_name = compute_language_name(language_tag);
+                keyboard.set_attribute(&mut document, "id", &compute_keyboard_id(&keyboard_name));
+                keyboard.set_attribute(&mut document, "name", &keyboard_name);
 
                 let selector = Selector::new("keyMapSet").unwrap();
                 let key_map_set = root
@@ -215,7 +227,14 @@ impl BuildStep for GenerateMacOs {
 }
 
 fn compute_keyboard_id(language_name: &str) -> String {
-    "-8045".to_string()
+    let crc = crc_hqx(language_name.as_bytes()) / 2;
+    let crc = cmp::max(1, crc);
+    let crc = cmp::min(crc, 32768);
+    format!("-{}", crc)
+}
+
+fn compute_language_name(tag: &LanguageTag) -> String {
+    tag.to_string().replace("-", "").replace("_", "")
 }
 
 fn add_layer_tags(
@@ -463,7 +482,10 @@ fn create_dead_key_actions(
             for (_iso_key, key_code) in MACOS_KEYS.iter() {
                 let key_map: Vec<String> = split_keys(&key_map);
 
-                println!("layer dead keys: {:?}, key: {}", layer_dead_keys, &key_map[cursor]);
+                println!(
+                    "layer dead keys: {:?}, key: {}",
+                    layer_dead_keys, &key_map[cursor]
+                );
 
                 if layer_dead_keys.contains(&key_map[cursor]) {
                     println!("any dead keys in layer");
@@ -491,7 +513,7 @@ fn create_dead_key_actions(
 
                 cursor += 1;
             }
-        }        
+        }
     }
 }
 

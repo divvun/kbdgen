@@ -1,20 +1,13 @@
 <?xml version="1.1" encoding="UTF-8"?>
 <!DOCTYPE keyboard PUBLIC "" "file://localhost/System/Library/DTDs/KeyboardLayout.dtd">
-<keyboard group="126" id="-8045" name="seNO">
+<keyboard group="126">
   <layouts>
     <layout first="0" last="17" mapSet="default" modifiers="modifiers" />
   </layouts>
   <modifierMap defaultIndex="0" id="modifiers">
-
   </modifierMap>
-
-
   <keyMapSet id="default">
-  
   </keyMapSet>
-
-
   <actions>
-
   </actions>
 </keyboard>
