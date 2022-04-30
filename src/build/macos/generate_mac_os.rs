@@ -5,14 +5,13 @@ use std::{path::Path, sync::Arc};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use pahkat_client::types::repo::Index;
 use serde::{Deserialize, Serialize};
 use xmlem::{Document, Element, NewElement, Selector};
 
 use crate::build::macos::keymap::{MACOS_HARDCODED, MACOS_KEYS};
 use crate::build::macos::layers::layer_attributes;
 use crate::bundle::layout::macos::MacOsKbdLayer;
-use crate::bundle::layout::{Layout, Transform};
+use crate::bundle::layout::Transform;
 use crate::util::{decode_unicode_escapes, split_keys, TRANSFORM_ESCAPE};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
@@ -146,14 +145,9 @@ impl BuildStep for GenerateMacOs {
 
                 let root = document.root();
 
-                let keyboard = document
-                    .root()
-                    .query_selector(&document, &Selector::new("keyboard").unwrap())
-                    .expect("keyboard element must exist");
-
                 let keyboard_name = compute_language_name(language_tag);
-                keyboard.set_attribute(&mut document, "id", &compute_keyboard_id(&keyboard_name));
-                keyboard.set_attribute(&mut document, "name", &keyboard_name);
+                root.set_attribute(&mut document, "id", &compute_keyboard_id(&keyboard_name));
+                root.set_attribute(&mut document, "name", &keyboard_name);
 
                 let selector = Selector::new("keyMapSet").unwrap();
                 let key_map_set = root
@@ -209,11 +203,14 @@ impl BuildStep for GenerateMacOs {
                     }
                 }
 
+                let decimal = layout.decimal.as_deref().unwrap_or(".");
+
                 write_key_transition_map(
                     &layers,
                     &layered_key_transition_map,
                     &mut document,
                     &key_map_set,
+                    decimal,
                 );
 
                 write_terminators(&mut document, &dead_keys);
@@ -522,6 +519,7 @@ fn write_key_transition_map(
     layered_key_transition_map: &IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
     document: &mut Document,
     key_map_set: &Element,
+    decimal: &str,
 ) {
     let selector = Selector::new("actions").unwrap();
     let actions = document
@@ -602,11 +600,27 @@ fn write_key_transition_map(
         for (key_code, output) in MACOS_HARDCODED.iter() {
             let key = KeyOutput {
                 code: *key_code,
-                output: output.clone(),
+                output: output.to_string(),
             };
 
             append_key_output_element(&xml_key_map, document, &key);
         }
+
+        // Special case for our favourite decimal key on the keypad
+        let key = KeyOutput {
+            code: 65,
+            output: decimal.to_string(),
+        };
+
+        append_key_output_element(&xml_key_map, document, &key);
+
+        // Special case for our favourite spacebar key
+        let key = KeyOutput {
+            code: 49,
+            output: " ".to_string(),
+        };
+
+        append_key_output_element(&xml_key_map, document, &key);
     }
 }
 
