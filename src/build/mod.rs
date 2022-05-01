@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -13,12 +13,22 @@ pub mod windows;
 
 #[async_trait(?Send)]
 pub trait BuildSteps {
-    fn populate_steps(&mut self);
-    fn count(&self) -> usize;
-    async fn build_full(&self);
+    fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self
+    where
+        Self: Sized;
+
+    fn steps(&self) -> &[Box<dyn BuildStep>];
+    fn bundle(&self) -> &KbdgenBundle;
+    fn output_path(&self) -> &Path;
+
+    async fn build_full(&self) {
+        for step in self.steps() {
+            step.build(self.bundle().clone(), self.output_path()).await;
+        }
+    }
 }
 
 #[async_trait(?Send)]
 pub trait BuildStep {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path);
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path);
 }

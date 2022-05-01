@@ -30,7 +30,7 @@ pub struct GenerateKlc {}
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateKlc {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         // One .klc file per language with Windows primary platform
         for (language_tag, layout) in &bundle.layouts {
             if let Some(windows_target) = &layout.windows {
@@ -180,7 +180,7 @@ impl BuildStep for GenerateKlc {
 }
 
 fn generate_metadata(
-    bundle: Arc<KbdgenBundle>,
+    bundle: &KbdgenBundle,
     language_tag: &LanguageTag,
     layout: &Layout,
     target: &WindowsTarget,

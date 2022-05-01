@@ -16,25 +16,33 @@ static KEYBOARD_SVG: &str = include_str!("../../resources/template-iso-keyboard.
 //pub struct SvgFile {}
 
 pub struct SvgBuild {
-    pub bundle: Arc<KbdgenBundle>,
+    pub bundle: KbdgenBundle,
     pub output_path: PathBuf,
-    pub steps: Vec<Box<dyn BuildStep + Send + Sync>>,
+    pub steps: Vec<Box<dyn BuildStep>>,
 }
 
 #[async_trait(?Send)]
 impl BuildSteps for SvgBuild {
-    fn populate_steps(&mut self) {
-        self.steps.push(Box::new(GenerateSvg {}));
-    }
+    fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
+        let mut steps = vec![];
 
-    fn count(&self) -> usize {
-        *&self.steps.len()
-    }
-
-    async fn build_full(&self) {
-        for step in &self.steps {
-            step.build(self.bundle.clone(), &self.output_path).await;
+        Self {
+            bundle,
+            output_path,
+            steps,
         }
+    }
+
+    fn steps(&self) -> &[Box<dyn BuildStep>] {
+        &self.steps
+    }
+
+    fn bundle(&self) -> &KbdgenBundle {
+        &self.bundle
+    }
+
+    fn output_path(&self) -> &Path {
+        &self.output_path
     }
 }
 
@@ -42,7 +50,7 @@ pub struct GenerateSvg {}
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateSvg {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let document = Document::from_str(KEYBOARD_SVG).unwrap();
 
         println!("no explosion?");

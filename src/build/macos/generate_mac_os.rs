@@ -90,7 +90,7 @@ impl TransformIdManager {
     }
 }
 
-pub struct GenerateMacOs {}
+pub struct GenerateMacOs;
 
 fn generate_key_layout_files(
     bundle: &KbdgenBundle,
@@ -179,10 +179,7 @@ fn generate_key_layout_files(
 
             write_terminators(&mut document, &dead_keys);
 
-            key_layouts.insert(
-                language_tag.clone(),
-                (document, &layout.display_names),
-            );
+            key_layouts.insert(language_tag.clone(), (document, &layout.display_names));
         }
     }
 
@@ -191,7 +188,7 @@ fn generate_key_layout_files(
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateMacOs {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let key_layouts = generate_key_layout_files(&bundle);
 
         let mut key_layout_bundle =

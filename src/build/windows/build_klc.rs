@@ -10,7 +10,7 @@ pub struct BuildKlc {}
 
 #[async_trait(?Send)]
 impl BuildStep for BuildKlc {
-    async fn build(&self, _bundle: Arc<KbdgenBundle>, output_path: &Path) {
+    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) {
         ms_klc(output_path).await;
     }
 }

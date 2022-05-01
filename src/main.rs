@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use build::macos::{GenerateInstaller, GenerateMacOs};
+use build::BuildStep;
 use bundle::layout::MacOsTarget;
 use bundle::KbdgenBundle;
 use clap::{Args, Parser, Subcommand};
@@ -16,33 +18,17 @@ mod bundle;
 mod util;
 
 async fn macos_target(
-    bundle: Arc<KbdgenBundle>,
+    bundle: KbdgenBundle,
     output_path: PathBuf,
     target: &TargetMacOs,
 ) -> anyhow::Result<()> {
     match target.command {
         TargetMacOsCommand::Build(_) => {
-            let mut build = MacOsBuild {
-                bundle,
-                output_path,
-                steps: vec![],
-            };
-
-            build.populate_steps(); // This shouldn't be a thing
+            let build = MacOsBuild::new(bundle, output_path);
             build.build_full().await;
         }
-        TargetMacOsCommand::Generate(_) => {
-            // These are currently equivalent to Build because packaging isn't done yet
-            let mut build = MacOsBuild {
-                bundle,
-                output_path,
-                steps: vec![],
-            };
-
-            build.populate_steps(); // This shouldn't be a thing
-            build.build_full().await;
-        }
-        TargetMacOsCommand::Package(_) => todo!(),
+        TargetMacOsCommand::Generate(_) => GenerateMacOs.build(&bundle, &output_path).await,
+        TargetMacOsCommand::Installer(_) => GenerateInstaller.build(&bundle, &output_path).await,
     }
 
     Ok(())
@@ -57,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
     match &cli.command {
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
-            let bundle = Arc::new(read_kbdgen_bundle(&bundle_path)?);
+            let bundle = read_kbdgen_bundle(&bundle_path)?;
             let output_path = target_command_struct.output_path.to_path_buf();
 
             tracing::info!("Output Path: {:?}", &output_path);
@@ -65,26 +51,18 @@ async fn main() -> anyhow::Result<()> {
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
-                    let mut build = WindowsBuild {
-                        bundle,
-                        output_path: target_command_struct.output_path.clone(),
-                        steps: vec![],
-                    };
+                    let mut build =
+                        WindowsBuild::new(bundle, target_command_struct.output_path.clone());
 
-                    build.populate_steps(); // This shouldn't be a thing
                     build.build_full().await;
                 }
                 TargetCommand::MacOs(target) => {
                     macos_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Svg(_svg_command) => {
-                    let mut build = SvgBuild {
-                        bundle,
-                        output_path: target_command_struct.output_path.clone(),
-                        steps: vec![],
-                    };
+                    let mut build =
+                        SvgBuild::new(bundle, target_command_struct.output_path.clone());
 
-                    build.populate_steps(); // This shouldn't be a thing
                     build.build_full().await;
                 }
             }
@@ -148,8 +126,8 @@ enum TargetMacOsCommand {
     /// Run generation step (advanced)
     Generate(TargetMacOsGenerateCommand),
 
-    /// Run packaging step (advanced)
-    Package(TargetMacOsPackageCommand),
+    /// Run installer generation step (advanced)
+    Installer(TargetMacOsInstallerCommand),
 }
 
 #[derive(Parser)]
@@ -159,7 +137,7 @@ struct TargetMacOsBuildCommand {}
 struct TargetMacOsGenerateCommand {}
 
 #[derive(Parser)]
-struct TargetMacOsPackageCommand {}
+struct TargetMacOsInstallerCommand {}
 
 #[derive(Parser)]
 struct TargetSvgCommand {}
