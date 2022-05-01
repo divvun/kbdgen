@@ -481,7 +481,8 @@ fn create_dead_key_actions(
 
                 tracing::debug!(
                     "layer dead keys: {:?}, key: {}",
-                    layer_dead_keys, &key_map[cursor]
+                    layer_dead_keys,
+                    &key_map[cursor]
                 );
 
                 if layer_dead_keys.contains(&key_map[cursor]) {

@@ -9,8 +9,8 @@ pub enum MacOsKbdLayer {
     Alt,
     #[serde(rename = "alt+shift")]
     AltAndShift,
-    #[serde(rename = "caps+alt")]
-    CapsAndAlt,
+    #[serde(rename = "alt+caps")]
+    AltAndCaps,
     Ctrl,
     Cmd,
     #[serde(rename = "cmd+shift")]
