@@ -8,15 +8,19 @@ use language_tags::LanguageTag;
 use layout::Layout;
 use project::Project;
 use serde_yaml::Value;
-use target::Target;
+use target::Targets;
+
+use self::resources::Resources;
 
 pub mod layout;
-mod project;
-mod target;
+pub(crate) mod project;
+pub(crate) mod resources;
+pub(crate) mod target;
 
 const PROJECT_FILENAME: &str = "project.yaml";
 const LAYOUTS_FOLDER: &str = "layouts";
 const TARGETS_FOLDER: &str = "targets";
+const RESOURCES_FOLDER: &str = "resources";
 
 const YAML_EXT: &str = "yaml";
 
@@ -28,7 +32,18 @@ pub struct KbdgenBundle {
     pub path: PathBuf,
     pub project: Project,
     pub layouts: HashMap<LanguageTag, Layout>,
-    pub targets: Vec<Target>,
+    pub targets: Targets,
+    pub resources: Resources,
+}
+
+impl KbdgenBundle {
+    pub fn name(&self) -> &str {
+        self.path
+            .file_stem()
+            .expect("No file stem?")
+            .to_str()
+            .expect("Must be valid utf-8")
+    }
 }
 
 pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
@@ -42,15 +57,18 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
 
     let layouts_path = canonical_bundle_path.join(LAYOUTS_FOLDER);
     let targets_path = canonical_bundle_path.join(TARGETS_FOLDER);
+    let resources_path = canonical_bundle_path.join(RESOURCES_FOLDER);
 
     let layouts = read_layouts(&layouts_path)?;
     let targets = read_targets(&targets_path)?;
+    let resources = read_resources(&resources_path)?;
 
     Ok(KbdgenBundle {
         path: canonical_bundle_path,
         project,
         layouts,
         targets,
+        resources,
     })
 }
 
@@ -85,7 +103,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
 
             let _autonym = layout
                 .display_names
-                .get(&tag.primary_language().to_owned())
+                .get(&tag.primary_language().parse::<LanguageTag>().unwrap())
                 .unwrap_or_else(|| {
                     panic!("displayNames for the layout do not have the autonym");
                 });
@@ -127,44 +145,66 @@ where
     }
 }
 
-fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
-    Ok(read_dir(path)?
+fn read_resources(path: &Path) -> Result<Resources, Error> {
+    let mut resources = Resources::default();
+
+    let iter = read_dir(path)?
+        .filter_map(Result::ok)
+        .map(|file| file.path())
+        .filter(|path| path.is_dir());
+
+    for path in iter {
+        let target_name = path.file_name().map(|x| x.to_string_lossy()).unwrap();
+
+        match target_name.as_ref() {
+            "macos" => {
+                resources.macos = resources::MacOS::load(&path).ok();
+            }
+            name => {
+                tracing::warn!("Saw target with name {name} but did not parse");
+                continue;
+            }
+        };
+    }
+    Ok(resources)
+}
+
+fn read_targets(path: &Path) -> Result<Targets, Error> {
+    let mut targets = Targets::default();
+
+    let iter = read_dir(path)?
         .filter_map(Result::ok)
         .map(|file| file.path())
         .filter(|path| path.is_file())
         .filter(|path| match path.extension() {
             Some(ext) => ext == YAML_EXT,
             None => false,
-        })
-        .filter_map(|path| {
-            let target_name = path
-                .file_stem()
-                .ok_or_else(|| Error::NoFileStem { path: path.clone() })
-                .map(|x| x.to_string_lossy())
-                .ok()?;
+        });
 
-            let target: Target = match target_name.as_ref() {
-                "windows" => {
-                    let win_target = load_yaml(&path)?;
-                    Target::Windows(win_target)
-                }
-                "ios" => {
-                    let ios_target = load_yaml(&path)?;
-                    Target::iOS(ios_target)
-                }
-                "macos" => {
-                    let macos_target = load_yaml(&path)?;
-                    Target::MacOS(macos_target)
-                }
-                name => {
-                    tracing::warn!("Saw target with name {name} but did not parse");
-                    return None;
-                }
-            };
+    for path in iter {
+        let target_name = path
+            .file_stem()
+            .ok_or_else(|| Error::NoFileStem { path: path.clone() })
+            .map(|x| x.to_string_lossy())?;
 
-            Some(target)
-        })
-        .collect())
+        match target_name.as_ref() {
+            "windows" => {
+                targets.windows = load_yaml(&path);
+            }
+            "ios" => {
+                targets.ios = load_yaml(&path);
+            }
+            "macos" => {
+                targets.macos = load_yaml(&path);
+            }
+            name => {
+                tracing::warn!("Saw target with name {name} but did not parse");
+                continue;
+            }
+        };
+    }
+
+    Ok(targets)
 }
 
 #[derive(Debug, thiserror::Error)]

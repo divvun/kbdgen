@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use bundle::layout::MacOsTarget;
+use bundle::KbdgenBundle;
 use clap::{Args, Parser, Subcommand};
 
 use crate::build::macos::MacOsBuild;
@@ -13,24 +15,58 @@ mod build;
 mod bundle;
 mod util;
 
+async fn macos_target(
+    bundle: Arc<KbdgenBundle>,
+    output_path: PathBuf,
+    target: &TargetMacOs,
+) -> anyhow::Result<()> {
+    match target.command {
+        TargetMacOsCommand::Build(_) => {
+            let mut build = MacOsBuild {
+                bundle,
+                output_path,
+                steps: vec![],
+            };
+
+            build.populate_steps(); // This shouldn't be a thing
+            build.build_full().await;
+        }
+        TargetMacOsCommand::Generate(_) => {
+            // These are currently equivalent to Build because packaging isn't done yet
+            let mut build = MacOsBuild {
+                bundle,
+                output_path,
+                steps: vec![],
+            };
+
+            build.populate_steps(); // This shouldn't be a thing
+            build.build_full().await;
+        }
+        TargetMacOsCommand::Package(_) => todo!(),
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
     match &cli.command {
         Command::Target(target_command_struct) => {
-            let bundle_path = target_command_struct.bundle_path.clone();
-            let bundle = read_kbdgen_bundle(&bundle_path)?;
+            let bundle_path = &target_command_struct.bundle_path;
+            let bundle = Arc::new(read_kbdgen_bundle(&bundle_path)?);
+            let output_path = target_command_struct.output_path.to_path_buf();
 
-            tracing::info!("Output Path: {:?}", &target_command_struct.output_path);
-            std::fs::create_dir_all(&target_command_struct.output_path)?;
+            tracing::info!("Output Path: {:?}", &output_path);
+            std::fs::create_dir_all(&output_path)?;
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
                     let mut build = WindowsBuild {
-                        bundle: Arc::new(bundle),
+                        bundle,
                         output_path: target_command_struct.output_path.clone(),
                         steps: vec![],
                     };
@@ -38,19 +74,12 @@ async fn main() -> Result<(), Error> {
                     build.populate_steps(); // This shouldn't be a thing
                     build.build_full().await;
                 }
-                TargetCommand::Macos(_macos_command) => {
-                    let mut build = MacOsBuild {
-                        bundle: Arc::new(bundle),
-                        output_path: target_command_struct.output_path.clone(),
-                        steps: vec![],
-                    };
-
-                    build.populate_steps(); // This shouldn't be a thing
-                    build.build_full().await;
+                TargetCommand::MacOs(target) => {
+                    macos_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Svg(_svg_command) => {
                     let mut build = SvgBuild {
-                        bundle: Arc::new(bundle),
+                        bundle,
                         output_path: target_command_struct.output_path.clone(),
                         steps: vec![],
                     };
@@ -74,13 +103,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    #[clap(about = "Functionality relating to specific targets")]
     Target(TargetCommandStruct),
 }
 
 #[derive(Subcommand)]
 enum TargetCommand {
+    #[clap(about = "Windows functionality")]
     Windows(TargetWindowsCommand),
-    Macos(TargetMacOsCommand),
+    #[clap(name = "macos", about = "macOS functionality")]
+    MacOs(TargetMacOs),
+    #[clap(name = "macos", about = "SVG functionality")]
     Svg(TargetSvgCommand),
 }
 
@@ -89,27 +122,44 @@ struct TargetCommandStruct {
     #[clap(subcommand)]
     target_command: TargetCommand,
 
-    #[clap(parse(from_os_str))]
+    #[clap(short, long, parse(from_os_str))]
+    /// Path to a .kbdgen bundle to process
     bundle_path: PathBuf,
 
-    #[clap(parse(from_os_str))]
+    #[clap(short, long, parse(from_os_str))]
+    /// The directory to place generated output
     output_path: PathBuf,
 }
 
 #[derive(Parser)]
-struct TargetWindowsCommand {
-    #[clap(short, long)]
-    boop: Option<String>,
+struct TargetWindowsCommand {}
+
+#[derive(Parser)]
+struct TargetMacOs {
+    #[clap(subcommand)]
+    command: TargetMacOsCommand,
+}
+
+#[derive(Subcommand)]
+enum TargetMacOsCommand {
+    /// Run all build steps (recommended option)
+    Build(TargetMacOsBuildCommand),
+
+    /// Run generation step (advanced)
+    Generate(TargetMacOsGenerateCommand),
+
+    /// Run packaging step (advanced)
+    Package(TargetMacOsPackageCommand),
 }
 
 #[derive(Parser)]
-struct TargetMacOsCommand {
-    #[clap(short, long)]
-    boop3: Option<String>,
-}
+struct TargetMacOsBuildCommand {}
 
 #[derive(Parser)]
-struct TargetSvgCommand {
-    #[clap(short, long)]
-    aaa: Option<bool>,
-}
+struct TargetMacOsGenerateCommand {}
+
+#[derive(Parser)]
+struct TargetMacOsPackageCommand {}
+
+#[derive(Parser)]
+struct TargetSvgCommand {}

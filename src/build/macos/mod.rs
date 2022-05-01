@@ -8,6 +8,7 @@ use super::{BuildStep, BuildSteps};
 
 use generate_mac_os::GenerateMacOs;
 
+mod bundle;
 mod generate_mac_os;
 mod keymap;
 mod layers;

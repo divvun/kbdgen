@@ -33,3 +33,5 @@ serde_yaml = "0.8.23"
 thiserror = "1.0.30"
 
 pahkat-client = { git = "https://github.com/divvun/pahkat", features = ["prefix"] }
+anyhow = "1.0.57"
+tempfile = "3.3.0"

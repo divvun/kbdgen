@@ -5,7 +5,6 @@ use std::{path::Path, sync::Arc};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use serde::{Deserialize, Serialize};
 use xmlem::{Document, Element, NewElement, Selector};
 
 use crate::build::macos::keymap::{MACOS_HARDCODED, MACOS_KEYS};
@@ -15,28 +14,10 @@ use crate::bundle::layout::Transform;
 use crate::util::{decode_unicode_escapes, split_keys, TRANSFORM_ESCAPE};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
+use super::bundle::Bundle;
 use super::util::crc_hqx;
 
-pub const KEY_LAYOUT_EXT: &str = "keylayout";
-
-const TOP_FOLDER: &str = "Contents";
-const RESOURCES_FOLDER: &str = "Resources";
-const PLIST_FILENAME: &str = "Info.plist";
-
-const PLIST_TEMPLATE: &str = include_str!("../../../resources/template-macos-plist.xml");
 const LAYOUT_TEMPLATE: &str = include_str!("../../../resources/template-macos-layout.xml");
-
-#[derive(Serialize, Deserialize)]
-pub struct InfoPlist {
-    #[serde(rename = "CFBundleIdentifier")]
-    pub cf_bundle_identifier: String,
-    #[serde(rename = "CFBundleName")]
-    pub cf_bundle_name: String,
-    #[serde(rename = "CFBundleVersion")]
-    pub cf_bundle_version: String,
-    #[serde(rename = "CFBundleShortVersionString")]
-    pub cf_bundle_short_version_string: String,
-}
 
 #[derive(Debug)]
 pub enum KeyTransition {
@@ -111,115 +92,116 @@ impl TransformIdManager {
 
 pub struct GenerateMacOs {}
 
-#[async_trait(?Send)]
-impl BuildStep for GenerateMacOs {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
-        let contents_path = output_path.join(TOP_FOLDER);
-        let cloned_contents_path = contents_path.clone();
-        let resources_path = contents_path.join(RESOURCES_FOLDER);
+fn generate_key_layout_files(
+    bundle: &KbdgenBundle,
+) -> IndexMap<LanguageTag, (Document, &IndexMap<LanguageTag, String>)> {
+    let mut key_layouts = IndexMap::new();
 
-        std::fs::create_dir_all(contents_path).unwrap();
-        std::fs::create_dir_all(resources_path.clone()).unwrap();
+    // One .keylayout file in Resources folder per language with MacOS primary platform
+    for (language_tag, layout) in &bundle.layouts {
+        if let Some(mac_os_target) = &layout.mac_os {
+            let layers = &mac_os_target.primary.layers;
 
-        let mut plist: InfoPlist = plist::from_bytes(PLIST_TEMPLATE.as_bytes()).unwrap();
-        tracing::debug!(
-            "what's my CFBundleIdentifier: {}",
-            plist.cf_bundle_identifier
-        );
-        plist.cf_bundle_name = "MyAmazingKbdgenBundle".to_string();
+            let mut layered_key_transition_map: IndexMap<
+                MacOsKbdLayer,
+                IndexMap<String, KeyTransition>,
+            > = IndexMap::new();
+            let mut dead_keys: IndexMap<String, _> = IndexMap::new();
 
-        plist::to_file_xml(cloned_contents_path.join(PLIST_FILENAME), &plist).unwrap();
+            let mut document = Document::from_str(LAYOUT_TEMPLATE).expect("invalid template");
 
-        // One .keylayout file in Resources folder per language with MacOS primary platform
-        for (language_tag, layout) in &bundle.layouts {
-            if let Some(mac_os_target) = &layout.mac_os {
-                let layers = &mac_os_target.primary.layers;
+            let root = document.root();
 
-                let mut layered_key_transition_map: IndexMap<
-                    MacOsKbdLayer,
-                    IndexMap<String, KeyTransition>,
-                > = IndexMap::new();
-                let mut dead_keys: IndexMap<String, _> = IndexMap::new();
+            let keyboard_name = compute_language_name(language_tag);
+            let keyboard_id = compute_keyboard_id(&keyboard_name);
+            root.set_attribute(&mut document, "id", &keyboard_id);
+            root.set_attribute(&mut document, "name", &keyboard_name);
 
-                let mut document = Document::from_str(LAYOUT_TEMPLATE).expect("invalid template");
+            let selector = Selector::new("keyMapSet").unwrap();
+            let key_map_set = root
+                .query_selector(&document, &selector)
+                .expect("The template document should have a 'keyMapSet' tag");
 
-                let root = document.root();
+            add_layer_tags(&layers, &mut document, &key_map_set);
 
-                let keyboard_name = compute_language_name(language_tag);
-                root.set_attribute(&mut document, "id", &compute_keyboard_id(&keyboard_name));
-                root.set_attribute(&mut document, "name", &keyboard_name);
+            initialize_key_transition_map(&language_tag, &layers, &mut layered_key_transition_map);
 
-                let selector = Selector::new("keyMapSet").unwrap();
-                let key_map_set = root
-                    .query_selector(&document, &selector)
-                    .expect("The template document should have a 'keyMapSet' tag");
+            let mut id_manager = TransformIdManager::new();
 
-                add_layer_tags(&layers, &mut document, &key_map_set);
-
-                initialize_key_transition_map(
-                    &language_tag,
-                    &layers,
-                    &mut layered_key_transition_map,
-                );
-
-                let mut id_manager = TransformIdManager::new();
-
-                if let Some(transforms) = &layout.transforms {
-                    if let Some(target_dead_keys) = &mac_os_target.dead_keys {
-                        process_transforms(
-                            &layers,
-                            transforms,
-                            target_dead_keys,
-                            &mut dead_keys,
-                            &mut layered_key_transition_map,
-                            &mut id_manager,
-                        );
-                    } else {
-                        tracing::warn!(
-                            r#"No dead keys in {}:{}:{}"#,
-                            language_tag.to_string(),
-                            "MacOS",
-                            "Primary",
-                        );
-                    }
+            if let Some(transforms) = &layout.transforms {
+                if let Some(target_dead_keys) = &mac_os_target.dead_keys {
+                    process_transforms(
+                        &layers,
+                        transforms,
+                        target_dead_keys,
+                        &mut dead_keys,
+                        &mut layered_key_transition_map,
+                        &mut id_manager,
+                    );
                 } else {
                     tracing::warn!(
-                        r#"No transforms in {}:{}:{}"#,
+                        r#"No dead keys in {}:{}:{}"#,
                         language_tag.to_string(),
                         "MacOS",
                         "Primary",
                     );
                 }
-
-                if let Some(transforms) = &layout.transforms {
-                    if let Some(target_dead_keys) = &mac_os_target.dead_keys {
-                        create_dead_key_actions(
-                            &layers,
-                            &mut layered_key_transition_map,
-                            &target_dead_keys,
-                            &mut dead_keys,
-                            &mut id_manager,
-                        );
-                    }
-                }
-
-                let decimal = layout.decimal.as_deref().unwrap_or(".");
-
-                write_key_transition_map(
-                    &layers,
-                    &layered_key_transition_map,
-                    &mut document,
-                    &key_map_set,
-                    decimal,
+            } else {
+                tracing::warn!(
+                    r#"No transforms in {}:{}:{}"#,
+                    language_tag.to_string(),
+                    "MacOS",
+                    "Primary",
                 );
-
-                write_terminators(&mut document, &dead_keys);
-
-                let key_layout_path =
-                    resources_path.join(format!("{}.{}", language_tag.to_string(), KEY_LAYOUT_EXT));
-                std::fs::write(key_layout_path, document.to_string_pretty()).unwrap();
             }
+
+            if let Some(transforms) = &layout.transforms {
+                if let Some(target_dead_keys) = &mac_os_target.dead_keys {
+                    create_dead_key_actions(
+                        &layers,
+                        &mut layered_key_transition_map,
+                        &target_dead_keys,
+                        &mut dead_keys,
+                        &mut id_manager,
+                    );
+                }
+            }
+
+            let decimal = layout.decimal.as_deref().unwrap_or(".");
+
+            write_key_transition_map(
+                &layers,
+                &layered_key_transition_map,
+                &mut document,
+                &key_map_set,
+                decimal,
+            );
+
+            write_terminators(&mut document, &dead_keys);
+
+            key_layouts.insert(
+                language_tag.clone(),
+                (document, &layout.display_names),
+            );
         }
+    }
+
+    key_layouts
+}
+
+#[async_trait(?Send)]
+impl BuildStep for GenerateMacOs {
+    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path) {
+        let key_layouts = generate_key_layout_files(&bundle);
+
+        let mut key_layout_bundle =
+            Bundle::new(output_path.to_path_buf(), bundle.name(), &bundle).unwrap();
+
+        for (lang, (doc, names)) in key_layouts.into_iter() {
+            key_layout_bundle.add_key_layout(lang, doc, names);
+        }
+
+        key_layout_bundle.write_all().unwrap();
     }
 }
 

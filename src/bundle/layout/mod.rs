@@ -26,7 +26,7 @@ pub enum Transform {
 pub struct Layout {
     pub language_tag: LanguageTag,
 
-    pub display_names: IndexMap<String, String>,
+    pub display_names: IndexMap<LanguageTag, String>,
 
     pub decimal: Option<String>,
 
@@ -50,7 +50,7 @@ pub struct Layout {
 
 impl Layout {
     pub fn autonym(&self) -> &str {
-        let temp = self.language_tag.primary_language().to_string();
+        let temp: LanguageTag = self.language_tag.primary_language().parse().unwrap();
         &self
             .display_names
             .get(&temp)

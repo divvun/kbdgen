@@ -1,34 +1,40 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Target {
-    Windows(Windows),
-    MacOS(MacOS),
-    #[allow(non_camel_case_types)]
-    iOS(iOS),
+#[derive(Debug, Default)]
+pub struct Targets {
+    pub windows: Option<Windows>,
+    pub macos: Option<MacOS>,
+    pub ios: Option<iOS>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Windows {
-    app_name: String,
-    version: String,
-    url: String,
-    uuid: String,
-    build: String,
+    pub(crate) app_name: String,
+    pub(crate) version: String,
+    pub(crate) url: String,
+    pub(crate) uuid: String,
+    pub(crate) build: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MacOS {}
+#[serde(rename_all = "camelCase")]
+pub struct MacOS {
+    pub(crate) code_sign_id: String,
+    pub(crate) package_id: String,
+    pub(crate) bundle_name: String,
+    pub(crate) version: String,
+    pub(crate) build: String,
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct iOS {
-    code_sign_id: String,
-    provisioning_profile_id: String,
-    package_id: String,
-    bundle_name: String,
-    version: String,
-    build: String,
+    pub(crate) code_sign_id: String,
+    pub(crate) provisioning_profile_id: String,
+    pub(crate) package_id: String,
+    pub(crate) bundle_name: String,
+    pub(crate) version: String,
+    pub(crate) build: String,
 }
