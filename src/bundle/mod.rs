@@ -91,7 +91,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                 });
 
             if let Some(decimal) = layout.decimal.as_ref() {
-                if decimal != COMMA_DECIMAL || decimal != DEFAULT_DECIMAL {
+                if decimal != COMMA_DECIMAL && decimal != DEFAULT_DECIMAL {
                     tracing::error!(
                         "{} is not supported as a decimal character, setting to {}",
                         decimal,
