@@ -106,8 +106,29 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
         .collect()
 }
 
+fn load_yaml<T>(path: &Path) -> Option<T>
+where
+    T: for<'de> serde::Deserialize<'de>,
+{
+    let s = match fs::read_to_string(path) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(error = ?e, "Failed to read file to string");
+            return None;
+        }
+    };
+
+    match serde_yaml::from_str::<T>(&s) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            tracing::error!(error = ?e, "Error parsing YAML");
+            None
+        }
+    }
+}
+
 fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
-    read_dir(path)?
+    Ok(read_dir(path)?
         .filter_map(Result::ok)
         .map(|file| file.path())
         .filter(|path| path.is_file())
@@ -115,30 +136,35 @@ fn read_targets(path: &Path) -> Result<Vec<Target>, Error> {
             Some(ext) => ext == YAML_EXT,
             None => false,
         })
-        .map(|path| {
+        .filter_map(|path| {
             let target_name = path
                 .file_stem()
-                .ok_or_else(|| Error::NoFileStem { path: path.clone() })?
-                .to_string_lossy();
+                .ok_or_else(|| Error::NoFileStem { path: path.clone() })
+                .map(|x| x.to_string_lossy())
+                .ok()?;
 
             let target: Target = match target_name.as_ref() {
                 "windows" => {
-                    let win_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+                    let win_target = load_yaml(&path)?;
                     Target::Windows(win_target)
                 }
                 "ios" => {
-                    #[allow(non_snake_case)]
-                    let iOS_target = serde_yaml::from_str(&fs::read_to_string(path)?)?;
-                    Target::iOS(iOS_target)
+                    let ios_target = load_yaml(&path)?;
+                    Target::iOS(ios_target)
                 }
-                _ => {
-                    todo!()
+                "macos" => {
+                    let macos_target = load_yaml(&path)?;
+                    Target::MacOS(macos_target)
+                }
+                name => {
+                    tracing::warn!("Saw target with name {name} but did not parse");
+                    return None;
                 }
             };
 
-            Ok(target)
+            Some(target)
         })
-        .collect()
+        .collect())
 }
 
 #[derive(Debug, thiserror::Error)]
