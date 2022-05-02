@@ -14,7 +14,7 @@ use crate::bundle::layout::Transform;
 use crate::util::{decode_unicode_escapes, split_keys, TRANSFORM_ESCAPE};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
-use super::bundle::Bundle;
+use super::macos_bundle::MacOsBundle;
 use super::util::crc_hqx;
 
 const LAYOUT_TEMPLATE: &str = include_str!("../../../resources/template-macos-layout.xml");
@@ -192,7 +192,7 @@ impl BuildStep for GenerateMacOs {
         let key_layouts = generate_key_layout_files(&bundle);
 
         let mut key_layout_bundle =
-            Bundle::new(output_path.to_path_buf(), bundle.name(), &bundle).unwrap();
+            MacOsBundle::new(output_path.to_path_buf(), bundle.name(), &bundle).unwrap();
 
         for (lang, (doc, names)) in key_layouts.into_iter() {
             key_layout_bundle.add_key_layout(lang, doc, names);

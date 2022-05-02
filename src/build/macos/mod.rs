@@ -1,8 +1,8 @@
-mod bundle;
-mod generate_mac_os;
+mod generate_macos;
 mod keymap;
 mod layers;
-mod package_mac_os;
+mod macos_bundle;
+mod package_macos;
 mod util;
 
 use std::path::{Path, PathBuf};
@@ -11,8 +11,8 @@ use async_trait::async_trait;
 
 use super::{BuildStep, BuildSteps};
 use crate::bundle::KbdgenBundle;
-pub(crate) use generate_mac_os::GenerateMacOs;
-pub(crate) use package_mac_os::GenerateInstaller;
+pub(crate) use generate_macos::GenerateMacOs;
+pub(crate) use package_macos::GenerateInstaller;
 
 pub struct MacOsBuild {
     pub bundle: KbdgenBundle,

@@ -33,7 +33,7 @@ pub struct KlInfo {
     tis_intended_language: String,
 }
 
-pub struct Bundle {
+pub struct MacOsBundle {
     path: PathBuf,
     info_plist: InfoPlist,
     translation_strings: IndexMap<LanguageTag, IndexMap<String, String>>,
@@ -41,12 +41,12 @@ pub struct Bundle {
     icons: IndexMap<LanguageTag, PathBuf>,
 }
 
-impl Bundle {
+impl MacOsBundle {
     pub fn new(
         path: PathBuf,
         name: &str,
         kbdgen_bundle: &crate::bundle::KbdgenBundle,
-    ) -> Result<Bundle, std::io::Error> {
+    ) -> Result<MacOsBundle, std::io::Error> {
         let target = kbdgen_bundle.targets.macos.as_ref().unwrap();
         let icons = kbdgen_bundle
             .resources

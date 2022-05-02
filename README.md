@@ -21,3 +21,6 @@ This is a developer oriented Readme.
 `asciidoctor documentation/user/kbdgen.adoc`
 
 `asciidoctor documentation/dev/kbdgen.adoc`
+
+# old kbdgen for testing
+
