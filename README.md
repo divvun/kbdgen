@@ -6,6 +6,8 @@ This is a developer oriented Readme.
 
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/mac_blep macos build`
 
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/chrome_blep chromeos`
+
 `cargo run -- target -b C:\Projects\keyboard-sme\sme.kbdgen -o C:\KbdgenBuilds\mac_blep macos`
 
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/blep svg`

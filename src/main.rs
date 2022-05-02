@@ -96,7 +96,7 @@ enum Command {
 enum TargetCommand {
     #[clap(about = "Windows functionality")]
     Windows(TargetWindowsCommand),
-    #[clap(about = "ChromeOS functionality")]
+    #[clap(name = "chromeos", about = "ChromeOS functionality")]
     ChromeOs(TargetChromeOsCommand),
     #[clap(name = "macos", about = "macOS functionality")]
     MacOs(TargetMacOs),
