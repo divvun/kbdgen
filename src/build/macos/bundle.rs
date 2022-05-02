@@ -119,6 +119,13 @@ impl Bundle {
         );
     }
 
+    #[cfg(not(target_os = "macos"))]
+    pub fn write_icons(&self, language_tag: LanguageTag, name: &str) -> Result<(), std::io::Error> {
+        tracing::warn!("No icon generation due to not running on macOS!");
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
     pub fn write_icons(&self, language_tag: LanguageTag, name: &str) -> Result<(), std::io::Error> {
         const FILES: &[(&str, i32)] = &[
             ("icon_16x16", 16),

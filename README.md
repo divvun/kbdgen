@@ -2,19 +2,19 @@
 
 This is a developer oriented Readme.
 
-`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/blep windows`
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/blep windows`
 
-`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/mac_blep macos`
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/mac_blep macos build`
 
-`cargo run -- target C:\Projects\keyboard-sme\sme.kbdgen C:\KbdgenBuilds\mac_blep macos`
+`cargo run -- target -b C:\Projects\keyboard-sme\sme.kbdgen -o C:\KbdgenBuilds\mac_blep macos`
 
-`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/blep svg`
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/blep svg`
 
-`cargo run -- target ~/Projects/keyboard-sme svg`
+`cargo run -- target -b ~/Projects/keyboard-sme svg`
 
 ^ should have an error.
 
-`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen svg`
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen svg`
 
 # asciidoc
 

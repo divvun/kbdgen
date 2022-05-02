@@ -23,10 +23,19 @@ pub struct MacOsBuild {
 #[async_trait(?Send)]
 impl BuildSteps for MacOsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
+        let mut steps: Vec<Box<dyn BuildStep>> = vec![Box::new(GenerateMacOs)];
+        #[cfg(target_os = "macos")]
+        steps.push(Box::new(GenerateInstaller));
+        #[cfg(not(target_os = "macos"))]
+        {
+            tracing::warn!("Skipping Installer step");
+            tracing::warn!("pkgutil and friends are only available on macOS");
+        }
+
         MacOsBuild {
             bundle,
             output_path,
-            steps: vec![Box::new(GenerateMacOs), Box::new(GenerateInstaller)],
+            steps,
         }
     }
 
