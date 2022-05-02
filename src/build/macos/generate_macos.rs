@@ -191,14 +191,14 @@ impl BuildStep for GenerateMacOs {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let key_layouts = generate_key_layout_files(&bundle);
 
-        let mut key_layout_bundle =
+        let mut key_layout_macos_bundle =
             MacOsBundle::new(output_path.to_path_buf(), bundle.name(), &bundle).unwrap();
 
-        for (lang, (doc, names)) in key_layouts.into_iter() {
-            key_layout_bundle.add_key_layout(lang, doc, names);
+        for (language_tag, (document, names)) in key_layouts.into_iter() {
+            key_layout_macos_bundle.add_key_layout(language_tag, document, names);
         }
 
-        key_layout_bundle.write_all().unwrap();
+        key_layout_macos_bundle.write_all().unwrap();
     }
 }
 

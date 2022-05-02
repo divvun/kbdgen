@@ -37,7 +37,7 @@ pub struct MacOsBundle {
     path: PathBuf,
     info_plist: InfoPlist,
     translation_strings: IndexMap<LanguageTag, IndexMap<String, String>>,
-    layouts: IndexMap<LanguageTag, (String, String)>,
+    macos_layouts: IndexMap<LanguageTag, (String, String)>,
     icons: IndexMap<LanguageTag, PathBuf>,
 }
 
@@ -67,7 +67,7 @@ impl MacOsBundle {
 
         Ok(Self {
             path,
-            layouts: Default::default(),
+            macos_layouts: Default::default(),
             icons,
             info_plist: InfoPlist {
                 cf_bundle_identifier,
@@ -83,12 +83,12 @@ impl MacOsBundle {
     pub fn add_key_layout(
         &mut self,
         language_tag: LanguageTag,
-        layout_doc: Document,
+        kbd_layout_doc: Document,
         layout_names: &IndexMap<LanguageTag, String>,
     ) {
-        let name = layout_doc
+        let name = kbd_layout_doc
             .root()
-            .attribute(&layout_doc, "name")
+            .attribute(&kbd_layout_doc, "name")
             .expect("name attr must exist");
 
         let tis_input_source_id = format!("{}.{}", self.info_plist.cf_bundle_identifier, name);
@@ -113,9 +113,9 @@ impl MacOsBundle {
                 });
         }
 
-        self.layouts.insert(
+        self.macos_layouts.insert(
             language_tag,
-            (name.to_string(), layout_doc.to_string_pretty()),
+            (name.to_string(), kbd_layout_doc.to_string_pretty()),
         );
     }
 
@@ -126,7 +126,11 @@ impl MacOsBundle {
     }
 
     #[cfg(target_os = "macos")]
-    pub fn write_icons(&self, language_tag: LanguageTag, name: &str) -> Result<(), std::io::Error> {
+    pub fn write_icons(
+        &self,
+        language_tag: LanguageTag,
+        file_name: &str,
+    ) -> Result<(), std::io::Error> {
         const FILES: &[(&str, i32)] = &[
             ("icon_16x16", 16),
             ("icon_16x16@2x", 32),
@@ -164,7 +168,7 @@ impl MacOsBundle {
         let resources = self.path.join(TOP_FOLDER).join(RESOURCES_FOLDER);
         std::process::Command::new("iconutil")
             .args(&["--convert", "icns", "--output"])
-            .arg(resources.join(format!("{name}.icns")))
+            .arg(resources.join(format!("{file_name}.icns")))
             .arg(iconset_path)
             .output()
             .expect("iconutil failed to run");
@@ -180,13 +184,13 @@ impl MacOsBundle {
         .expect("Could not serialize Info.plist");
 
         let resources = self.path.join(TOP_FOLDER).join(RESOURCES_FOLDER);
-        for (tag, (name, layout_xml)) in self.layouts.iter() {
+        for (language_tag, (name, layout_xml)) in self.macos_layouts.iter() {
             let key_layout_path = resources.join(format!("{name}.{KEY_LAYOUT_EXT}"));
             tracing::debug!("Writing {name} to {key_layout_path:?}...");
             std::fs::write(key_layout_path, layout_xml)?;
 
             tracing::debug!("Writing icons for {name}...");
-            self.write_icons(tag.clone(), &name)?;
+            self.write_icons(language_tag.clone(), &name)?;
         }
 
         for (lang, text) in self.translation_strings {

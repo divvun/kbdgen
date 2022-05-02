@@ -5,6 +5,7 @@ use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
 
+pub mod chromeos;
 pub mod macos;
 #[cfg(target_os = "windows")]
 pub mod pahkat;
