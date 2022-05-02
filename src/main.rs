@@ -7,6 +7,7 @@ use bundle::layout::MacOsTarget;
 use bundle::KbdgenBundle;
 use clap::{Args, Parser, Subcommand};
 
+use crate::build::chromeos::ChromeOsBuild;
 use crate::build::macos::MacOsBuild;
 use crate::build::svg::SvgBuild;
 use crate::build::windows::WindowsBuild;
@@ -56,6 +57,12 @@ async fn main() -> anyhow::Result<()> {
 
                     build.build_full().await;
                 }
+                TargetCommand::ChromeOs(_chromeos_command) => {
+                    let mut build =
+                        ChromeOsBuild::new(bundle, target_command_struct.output_path.clone());
+
+                    build.build_full().await;
+                }
                 TargetCommand::MacOs(target) => {
                     macos_target(bundle, output_path, target).await?;
                 }
@@ -89,6 +96,8 @@ enum Command {
 enum TargetCommand {
     #[clap(about = "Windows functionality")]
     Windows(TargetWindowsCommand),
+    #[clap(about = "ChromeOS functionality")]
+    ChromeOs(TargetChromeOsCommand),
     #[clap(name = "macos", about = "macOS functionality")]
     MacOs(TargetMacOs),
     #[clap(name = "macos", about = "SVG functionality")]
@@ -111,6 +120,9 @@ struct TargetCommandStruct {
 
 #[derive(Parser)]
 struct TargetWindowsCommand {}
+
+#[derive(Parser)]
+struct TargetChromeOsCommand {}
 
 #[derive(Parser)]
 struct TargetMacOs {
