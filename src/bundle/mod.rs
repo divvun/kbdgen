@@ -164,7 +164,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
                 resources.chromeos = resources::ChromeOS::load(&path).ok();
             }
             name => {
-                tracing::warn!("Saw target with name {name} but did not parse");
+                tracing::warn!("Saw resource folder with name {name} but did not parse");
                 continue;
             }
         };
