@@ -4,13 +4,13 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_yaml::Value;
 
 use android::AndroidKbdLayer;
-use chrome::ChromeKbdLayer;
+use chrome::ChromeOsKbdLayer;
 use ios::IOsKbdLayer;
 use macos::MacOsKbdLayer;
 use windows::WindowsKbdLayer;
 
 mod android;
-mod chrome;
+pub mod chrome;
 mod ios;
 pub mod macos;
 pub mod windows;
@@ -80,7 +80,7 @@ pub struct ChromeOsTarget {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChromeOsPrimaryPlatform {
-    pub layers: IndexMap<ChromeKbdLayer, String>,
+    pub layers: IndexMap<ChromeOsKbdLayer, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

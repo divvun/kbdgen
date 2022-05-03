@@ -1,18 +1,47 @@
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
+use language_tags::LanguageTag;
 use pahkat_client::types::repo::Index;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::{
     build::BuildStep,
-    bundle::{layout::Transform, KbdgenBundle},
+    bundle::{
+        layout::{chrome::ChromeOsKbdLayer, Transform},
+        KbdgenBundle,
+    },
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ChromeOsLayout {
+const KEYBOARD_TEMPLATE: &str = include_str!("../../../resources/template-chromeos-keyboard.js");
+
+#[derive(Serialize, Deserialize)]
+pub struct ChromeOsBackground {
+    template: String,
+    descriptor: IndexMap<LanguageTag, ChromeOsDescriptor>,
+}
+
+impl fmt::Display for ChromeOsBackground {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}\n", self.template)?;
+        write!(f, "\n")?;
+        write!(f, "{}\n", json!(self.descriptor))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ChromeOsDescriptor {
+    pub dead_keys: IndexMap<ChromeOsKbdLayer, Vec<String>>,
     pub transforms: IndexMap<String, IndexMap<String, String>>,
+}
+
+impl fmt::Display for ChromeOsDescriptor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", json!(self.dead_keys))?;
+        write!(f, "{}", json!(self.transforms))
+    }
 }
 
 pub struct GenerateChromeOs;
@@ -20,11 +49,16 @@ pub struct GenerateChromeOs;
 #[async_trait(?Send)]
 impl BuildStep for GenerateChromeOs {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
-        // One .klc file per language with Windows primary platform
+        let background_file_path = output_path.join("background.js");
+
+        let template = KEYBOARD_TEMPLATE.clone();
+
+        let mut descriptor = IndexMap::new();
+
+        // layout information is to be aggregated into a descriptor and then appended
+        // to the end of the template
         for (language_tag, layout) in &bundle.layouts {
             if let Some(chromeos_target) = &layout.chrome_os {
-                let chrome_layout;
-
                 if let Some(layout_transforms) = &layout.transforms {
                     let layout_file_path = bundle
                         .path
@@ -40,21 +74,26 @@ impl BuildStep for GenerateChromeOs {
                     let json_transforms: IndexMap<String, IndexMap<String, String>> =
                         serde_yaml::from_value(owning_transform.clone()).unwrap();
 
-                    chrome_layout = ChromeOsLayout {
-                        transforms: json_transforms,
-                    };
-                } else {
-                    chrome_layout = ChromeOsLayout {
-                        transforms: IndexMap::new(),
-                    };
+                    descriptor.insert(
+                        language_tag.clone(),
+                        ChromeOsDescriptor {
+                            dead_keys: IndexMap::new(),
+                            transforms: json_transforms,
+                        },
+                    );
                 }
-
-                let serde_chrome_layout = serde_json::to_string_pretty(&chrome_layout).unwrap();
-
-                let temp_file_path = Path::new("temp.json");
-
-                std::fs::write(output_path.join(temp_file_path), serde_chrome_layout).unwrap();
             }
         }
+
+        let background = ChromeOsBackground {
+            template: template.to_string(),
+            descriptor,
+        };
+
+        std::fs::write(
+            output_path.join(background_file_path),
+            background.to_string(),
+        )
+        .unwrap();
     }
 }
