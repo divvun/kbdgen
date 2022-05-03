@@ -9,6 +9,7 @@ use self::generate_chromeos::GenerateChromeOs;
 use super::{BuildStep, BuildSteps};
 
 mod generate_chromeos;
+mod keymap;
 
 pub struct ChromeOsBuild {
     pub bundle: KbdgenBundle,
