@@ -4,17 +4,17 @@ This is a developer oriented Readme.
 
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/blep windows`
 
-`cargo run -- target -b ../keyboard-sme/sme.kbdgen -o ../KbdgenBuilds/blep windows`
+`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/blep windows`
 
 
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/mac_blep macos build`
 
-`cargo run -- target -b ../keyboard-sme/sme.kbdgen -o ../KbdgenBuilds/mac_blep macos build`
+`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/mac_blep macos build`
 
 
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/chrome_blep chromeos`
 
-`cargo run -- target -b ../keyboard-sme/sme.kbdgen -o ../KbdgenBuilds/chrome_blep chromeos`
+`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/chrome_blep chromeos`
 
 
 `cargo run -- target -b C:\Projects\keyboard-sme\sme.kbdgen -o C:\KbdgenBuilds\mac_blep macos`
@@ -32,6 +32,3 @@ This is a developer oriented Readme.
 `asciidoctor documentation/user/kbdgen.adoc`
 
 `asciidoctor documentation/dev/kbdgen.adoc`
-
-# old kbdgen for testing
-
