@@ -200,9 +200,7 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
             "macos" => {
                 targets.macos = load_yaml(&path);
             }
-            "chromeos" => {
-                targets.chromos = load_yaml(&path)
-            }
+            "chromeos" => targets.chromeos = load_yaml(&path),
             name => {
                 tracing::warn!("Saw target with name {name} but did not parse");
                 continue;

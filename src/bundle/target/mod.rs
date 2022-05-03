@@ -5,7 +5,7 @@ pub struct Targets {
     pub windows: Option<Windows>,
     pub macos: Option<MacOS>,
     pub ios: Option<iOS>,
-    pub chromos: Option<ChromeOS>,
+    pub chromeos: Option<ChromeOS>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
