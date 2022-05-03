@@ -160,6 +160,9 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
             "macos" => {
                 resources.macos = resources::MacOS::load(&path).ok();
             }
+            "chromeos" => {
+                resources.chromeos = resources::ChromeOS::load(&path).ok();
+            }
             name => {
                 tracing::warn!("Saw target with name {name} but did not parse");
                 continue;
@@ -196,6 +199,9 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
             }
             "macos" => {
                 targets.macos = load_yaml(&path);
+            }
+            "chromeos" => {
+                targets.chromos = load_yaml(&path)
             }
             name => {
                 tracing::warn!("Saw target with name {name} but did not parse");

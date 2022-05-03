@@ -5,6 +5,7 @@ pub struct Targets {
     pub windows: Option<Windows>,
     pub macos: Option<MacOS>,
     pub ios: Option<iOS>,
+    pub chromos: Option<ChromeOS>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,4 +38,12 @@ pub struct iOS {
     pub(crate) bundle_name: String,
     pub(crate) version: String,
     pub(crate) build: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChromeOS {
+    pub(crate) app_id: String,
+    pub(crate) build: String,
+    pub(crate) version: String,
 }
