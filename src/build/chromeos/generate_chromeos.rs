@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use pahkat_client::types::repo::Index;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, to_string_pretty};
 
 use crate::{
     build::BuildStep,
@@ -27,7 +27,14 @@ impl fmt::Display for ChromeOsBackground {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}\n", self.template)?;
         write!(f, "\n")?;
-        write!(f, "{}\n", json!(self.descriptor))
+        write!(
+            f,
+            "const descriptor = {}\n",
+            to_string_pretty(&self.descriptor).map_err(|err| fmt::Error)?
+        )?;
+        write!(f, "\nKeyboard.install(descriptor)")?;
+
+        Ok(())
     }
 }
 
@@ -39,8 +46,18 @@ pub struct ChromeOsDescriptor {
 
 impl fmt::Display for ChromeOsDescriptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", json!(self.dead_keys))?;
-        write!(f, "{}", json!(self.transforms))
+        write!(
+            f,
+            "{}",
+            to_string_pretty(&self.dead_keys).map_err(|err| fmt::Error)?
+        )?;
+        write!(
+            f,
+            "{}",
+            to_string_pretty(&self.transforms).map_err(|err| fmt::Error)?
+        )?;
+
+        Ok(())
     }
 }
 
