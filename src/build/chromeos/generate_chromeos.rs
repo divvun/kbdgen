@@ -80,10 +80,10 @@ impl BuildStep for GenerateChromeOs {
         // to the end of the template
         for (language_tag, layout) in &bundle.layouts {
             if let Some(chromeos_target) = &layout.chrome_os {
-                let mut dead_keys = IndexMap::new();
-                if let Some(temp_dead_keys)  = &chromeos_target.dead_keys {
-                    for (key, value) in temp_dead_keys {
-                        dead_keys.insert(key.clone(), value.to_vec());
+                let mut json_dead_keys = IndexMap::new();
+                if let Some(dead_keys)  = &chromeos_target.dead_keys {
+                    for (dead_key_name, dead_key_list) in dead_keys {
+                        json_dead_keys.insert(dead_key_name.clone(), dead_key_list.to_vec());
                     }
                 }
                 if let Some(layout_transforms) = &layout.transforms {
@@ -105,7 +105,7 @@ impl BuildStep for GenerateChromeOs {
 
                 let layers = &chromeos_target.primary.layers;
 
-                let mut modifiers = IndexMap::new();
+                let mut json_layers = IndexMap::new();
                 for (layer_name, key_map) in layers {
                     let key_map: Vec<String> = split_keys(&key_map);
 
@@ -127,20 +127,20 @@ impl BuildStep for GenerateChromeOs {
                         );
                     }
 
-                    let mut keys = IndexMap::new();
-                    for (cursor, (_iso_key, key_name)) in CHROMEOS_KEYS.iter().enumerate() {
-                        keys.insert(key_name.clone(), key_map[cursor].clone());
+                    let mut modifiers = IndexMap::new();
+                    for (cursor, (_iso_key, modifier_name)) in CHROMEOS_KEYS.iter().enumerate() {
+                        modifiers.insert(modifier_name.clone(), key_map[cursor].clone());
                     }
 
-                    modifiers.insert(layer_name.clone(), keys);
+                    json_layers.insert(layer_name.clone(), modifiers);
                 }
 
                 descriptor.insert(
                     language_tag.clone(),
                     ChromeOsDescriptor {
-                        dead_keys: dead_keys,
+                        dead_keys: json_dead_keys,
                         transforms: json_transforms,
-                        layers: modifiers,
+                        layers: json_layers,
                     },
                 );
             }
