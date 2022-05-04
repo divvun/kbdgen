@@ -80,6 +80,12 @@ impl BuildStep for GenerateChromeOs {
         // to the end of the template
         for (language_tag, layout) in &bundle.layouts {
             if let Some(chromeos_target) = &layout.chrome_os {
+                let mut dead_keys = IndexMap::new();
+                if let Some(temp_dead_keys)  = &chromeos_target.dead_keys {
+                    for (key, value) in temp_dead_keys {
+                        dead_keys.insert(key.clone(), value.to_vec());
+                    }
+                }
                 if let Some(layout_transforms) = &layout.transforms {
                     let layout_file_path = bundle
                         .path
@@ -132,7 +138,7 @@ impl BuildStep for GenerateChromeOs {
                 descriptor.insert(
                     language_tag.clone(),
                     ChromeOsDescriptor {
-                        dead_keys: IndexMap::new(),
+                        dead_keys: dead_keys,
                         transforms: json_transforms,
                         layers: modifiers,
                     },

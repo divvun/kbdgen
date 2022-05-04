@@ -73,12 +73,15 @@ pub struct WindowsPrimaryPlatform {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChromeOsTarget {
     pub config: ChromeConfig,
     pub primary: ChromeOsPrimaryPlatform,
+    pub dead_keys: Option<IndexMap<ChromeOsKbdLayer, Vec<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChromeOsPrimaryPlatform {
     pub layers: IndexMap<ChromeOsKbdLayer, String>,
 }
