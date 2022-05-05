@@ -65,8 +65,7 @@ async fn main() -> anyhow::Result<()> {
                     macos_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Svg(_svg_command) => {
-                    let build =
-                        SvgBuild::new(bundle, target_command_struct.output_path.clone());
+                    let build = SvgBuild::new(bundle, target_command_struct.output_path.clone());
 
                     build.build_full().await;
                 }

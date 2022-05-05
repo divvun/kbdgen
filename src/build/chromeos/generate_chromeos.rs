@@ -3,6 +3,7 @@ use std::{fmt, path::Path};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
 
@@ -19,8 +20,49 @@ use crate::{
 const BACKGROUND_FILE_NAME: &str = "background.js";
 const MANIFEST_FILE_NAME: &str = "manifest.json";
 const KEYBOARD_TEMPLATE: &str = include_str!("../../../resources/template-chromeos-keyboard.js");
-const DEFAULT_LOCALE: &str = "en-US";
+const DEFAULT_LOCALE: &str = "en";
+
+const DEFAULT_LONG_LOCALE: &str = "en-US";
 const DEFAULT_XKB_LAYOUT: &str = "us";
+
+const KEYBOARD_NAMES: Lazy<IndexMap<String, String>> = Lazy::new(|| {
+    let mut map = IndexMap::new();
+
+    {
+        let arr = [
+            ("nb", "{} tastatur"),
+            ("no", "{} tastatur"),
+            ("nn", "{} tastatur"),
+            ("da", "{} tastatur"),
+            ("sv", "{} tangentbord"),
+            ("en", "{} keyboard"),
+            ("fi", "{} näppäimistö"),
+        ];
+
+        for (key, value) in arr {
+            map.insert(key.to_string(), value.to_string());
+        }
+    }
+
+    map
+});
+
+// LOCALE START
+
+#[derive(Serialize, Deserialize)]
+pub struct LocaleMessage {
+    message: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Locale {
+    #[serde(flatten)]
+    locales: IndexMap<String, LocaleMessage>,
+    name: LocaleMessage,
+    description: LocaleMessage,
+}
+
+// LOCALE END
 
 #[derive(Serialize, Deserialize)]
 pub struct ChromeOsBackground {
@@ -82,10 +124,13 @@ impl BuildStep for GenerateChromeOs {
         let mut json_transforms: IndexMap<String, IndexMap<String, String>>;
 
         let mut manifest_input_components: Vec<ManifestInputComponent> = Vec::new();
+        let mut display_name_map: IndexMap<LanguageTag, String> = IndexMap::new();
         // layout information is to be aggregated into a descriptor and then appended
         // to the end of the template
         for (language_tag, layout) in &bundle.layouts {
             if let Some(chromeos_target) = &layout.chrome_os {
+                display_name_map.extend(layout.display_names.clone());
+
                 let input_component = ManifestInputComponent::from_config(
                     language_tag.to_string(),
                     chromeos_target
@@ -93,7 +138,7 @@ impl BuildStep for GenerateChromeOs {
                         .locale
                         .as_ref()
                         .map(|x| x.clone())
-                        .unwrap_or_else(|| DEFAULT_LOCALE.parse().unwrap()),
+                        .unwrap_or_else(|| DEFAULT_LONG_LOCALE.parse().unwrap()),
                     chromeos_target
                         .config
                         .xkb_layout
@@ -192,7 +237,7 @@ impl BuildStep for GenerateChromeOs {
                 },
                 permissions: vec!["input".to_string()],
                 input_components: manifest_input_components,
-                default_locale: "en".to_string(),
+                default_locale: DEFAULT_LOCALE.to_string(),
                 icons: ManifestIcons {
                     icon_16: "icon16.png".to_string(),
                     icon_48: "icon48.png".to_string(),
@@ -205,6 +250,70 @@ impl BuildStep for GenerateChromeOs {
                 serde_json::to_string_pretty(&manifest).unwrap(),
             )
             .unwrap();
+
+            let locales_path = output_path.join("_locales");
+            std::fs::create_dir_all(&locales_path).unwrap();
+
+            let default_locale_metadata = bundle
+                .project
+                .locales
+                .get(&DEFAULT_LOCALE.to_string())
+                .expect(&format!(
+                    "{} must be present in the project.yaml file",
+                    DEFAULT_LOCALE
+                ));
+
+            for (key, value) in display_name_map {
+                println!("POPULATING LOCALES: {}: {}", key, value);
+                let locale_path = locales_path.join(key.to_string());
+                std::fs::create_dir_all(&locale_path).unwrap();
+
+                let messages_path = locale_path.join("messages.json");
+                let locale_metadata = bundle
+                    .project
+                    .locales
+                    .get(&key.to_string())
+                    .unwrap_or(default_locale_metadata);
+
+                let mut locale_display_names: IndexMap<String, LocaleMessage> = IndexMap::new();
+                for (layout_name, layout) in &bundle.layouts {
+                    if let Some(_target) = &layout.chrome_os {
+                        let display_name = layout.display_names.get(&key);
+
+                        if let Some(display_name) = display_name {
+                            let temp = KEYBOARD_NAMES
+                                .get(&key.to_string())
+                                .cloned()
+                                .or_else(|| KEYBOARD_NAMES.get("en").cloned())
+                                .expect(&format!(
+                                    "no {} display name exists in {}.yaml",
+                                    DEFAULT_LOCALE, layout_name
+                                ));
+                            locale_display_names.insert(
+                                layout_name.to_string(),
+                                LocaleMessage {
+                                    message: temp.replace("{}", display_name),
+                                },
+                            );
+                        }
+                    }
+                }
+
+                std::fs::write(
+                    output_path.join(messages_path),
+                    serde_json::to_string_pretty(&Locale {
+                        locales: locale_display_names,
+                        name: LocaleMessage {
+                            message: locale_metadata.name.clone(),
+                        },
+                        description: LocaleMessage {
+                            message: locale_metadata.description.clone(),
+                        },
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
+            }
         }
     }
 }
