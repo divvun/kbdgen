@@ -25,6 +25,60 @@ pub struct ChromeOsBackground {
     descriptor: IndexMap<LanguageTag, ChromeOsDescriptor>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ManifestBackground {
+    scripts: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ManifestInputComponent {
+    name: String,
+    #[serde(rename = "type")]
+    input_type: String,
+    id: String,
+    description: String,
+    language: String,
+    layouts: Vec<String>,
+}
+
+impl ManifestInputComponent {
+    fn from_config(language_tag: String, locale: LanguageTag, xkb_layout: String) -> Self {
+        let underscore_name = format!("__MSG_{}__", language_tag.replace("-", "_"));
+        Self {
+            name: underscore_name.clone(),
+            input_type: "ime".to_string(),
+            id: language_tag.to_string(),
+            description: underscore_name.clone(),
+            language: locale.to_string(),
+            layouts: vec![xkb_layout.to_string()], // should somehow be able to get more?
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ManifestIcons {
+    #[serde(rename = "16")]
+    icon_16: String,
+    #[serde(rename = "48")]
+    icon_48: String,
+    #[serde(rename = "128")]
+    icon_128: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ChromeOsManifest {
+    name: String,
+    version: String,
+    version_name: String,
+    manifest_version: u8,
+    description: String,
+    background: ManifestBackground,
+    permissions: Vec<String>,
+    input_components: Vec<ManifestInputComponent>,
+    default_locale: String,
+    icons: ManifestIcons,
+}
+
 impl fmt::Display for ChromeOsBackground {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}\n", self.template)?;
@@ -70,18 +124,38 @@ pub struct GenerateChromeOs;
 impl BuildStep for GenerateChromeOs {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let background_file_path = output_path.join("background.js");
+        let manifest_file_path = output_path.join("manifest.json");
 
         let template = KEYBOARD_TEMPLATE.clone();
 
         let mut descriptor = IndexMap::new();
 
         let mut json_transforms: IndexMap<String, IndexMap<String, String>>;
+
+        let mut manifest_input_components: Vec<ManifestInputComponent> = Vec::new();
         // layout information is to be aggregated into a descriptor and then appended
         // to the end of the template
         for (language_tag, layout) in &bundle.layouts {
             if let Some(chromeos_target) = &layout.chrome_os {
+                let input_component = ManifestInputComponent::from_config(
+                    language_tag.to_string(),
+                    chromeos_target
+                        .config
+                        .locale
+                        .as_ref()
+                        .map(|x| x.clone())
+                        .unwrap_or_else(|| "en-US".parse().unwrap()),
+                    chromeos_target
+                        .config
+                        .xkb_layout
+                        .clone()
+                        .unwrap_or_else(|| "us".to_string()),
+                );
+
+                manifest_input_components.push(input_component);
+
                 let mut json_dead_keys = IndexMap::new();
-                if let Some(dead_keys)  = &chromeos_target.dead_keys {
+                if let Some(dead_keys) = &chromeos_target.dead_keys {
                     for (dead_key_name, dead_key_list) in dead_keys {
                         json_dead_keys.insert(dead_key_name.clone(), dead_key_list.to_vec());
                     }
@@ -156,5 +230,32 @@ impl BuildStep for GenerateChromeOs {
             background.to_string(),
         )
         .unwrap();
+
+        if let Some(target) = &bundle.targets.chromeos {
+            let manifest = ChromeOsManifest {
+                name: "__MSG_name__".to_string(),
+                version: target.build.clone(),
+                version_name: target.version.clone(),
+                manifest_version: 2,
+                description: "__MSG_description__".to_string(),
+                background: ManifestBackground {
+                    scripts: vec!["background.js".to_string()],
+                },
+                permissions: vec!["input".to_string()],
+                input_components: manifest_input_components,
+                default_locale: "en".to_string(),
+                icons: ManifestIcons {
+                    icon_16: "icon16.png".to_string(),
+                    icon_48: "icon48.png".to_string(),
+                    icon_128: "icon128.png".to_string(),
+                },
+            };
+
+            std::fs::write(
+                output_path.join(manifest_file_path),
+                serde_json::to_string_pretty(&manifest).unwrap(),
+            )
+            .unwrap();
+        }
     }
 }
