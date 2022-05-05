@@ -109,6 +109,10 @@ impl fmt::Display for ChromeOsDescriptor {
     }
 }
 
+fn to_chrome_locale(locale: String) -> String {
+    locale.replace("-", "_")
+}
+
 pub struct GenerateChromeOs;
 
 #[async_trait(?Send)]
@@ -264,8 +268,7 @@ impl BuildStep for GenerateChromeOs {
                 ));
 
             for (key, value) in display_name_map {
-                println!("POPULATING LOCALES: {}: {}", key, value);
-                let locale_path = locales_path.join(key.to_string());
+                let locale_path = locales_path.join(to_chrome_locale(key.to_string()));
                 std::fs::create_dir_all(&locale_path).unwrap();
 
                 let messages_path = locale_path.join("messages.json");
@@ -290,7 +293,7 @@ impl BuildStep for GenerateChromeOs {
                                     DEFAULT_LOCALE, layout_name
                                 ));
                             locale_display_names.insert(
-                                layout_name.to_string(),
+                                to_chrome_locale(layout_name.to_string()),
                                 LocaleMessage {
                                     message: temp.replace("{}", display_name),
                                 },
