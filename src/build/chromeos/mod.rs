@@ -10,6 +10,7 @@ use super::{BuildStep, BuildSteps};
 
 mod generate_chromeos;
 mod keymap;
+mod manifest;
 
 pub struct ChromeOsBuild {
     pub bundle: KbdgenBundle,

@@ -1,82 +1,34 @@
 use std::{fmt, path::Path};
 
-use crate::build::chromeos::keymap::CHROMEOS_KEYS;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use pahkat_client::types::repo::Index;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, to_string_pretty};
+use serde_json::{to_string_pretty};
 
+use crate::build::chromeos::keymap::CHROMEOS_KEYS;
+use crate::build::chromeos::manifest::{
+    ChromeOsManifest, ManifestBackground, ManifestIcons, ManifestInputComponent,
+};
 use crate::{
     build::BuildStep,
     bundle::{
-        layout::{chrome::ChromeOsKbdLayer, Transform},
+        layout::{chrome::ChromeOsKbdLayer},
         KbdgenBundle,
     },
     util::split_keys,
 };
 
+const BACKGROUND_FILE_NAME: &str = "background.js";
+const MANIFEST_FILE_NAME: &str = "manifest.json";
 const KEYBOARD_TEMPLATE: &str = include_str!("../../../resources/template-chromeos-keyboard.js");
+const DEFAULT_LOCALE: &str = "en-US";
+const DEFAULT_XKB_LAYOUT: &str = "us";
 
 #[derive(Serialize, Deserialize)]
 pub struct ChromeOsBackground {
     template: String,
     descriptor: IndexMap<LanguageTag, ChromeOsDescriptor>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ManifestBackground {
-    scripts: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ManifestInputComponent {
-    name: String,
-    #[serde(rename = "type")]
-    input_type: String,
-    id: String,
-    description: String,
-    language: String,
-    layouts: Vec<String>,
-}
-
-impl ManifestInputComponent {
-    fn from_config(language_tag: String, locale: LanguageTag, xkb_layout: String) -> Self {
-        let underscore_name = format!("__MSG_{}__", language_tag.replace("-", "_"));
-        Self {
-            name: underscore_name.clone(),
-            input_type: "ime".to_string(),
-            id: language_tag.to_string(),
-            description: underscore_name.clone(),
-            language: locale.to_string(),
-            layouts: vec![xkb_layout.to_string()], // should somehow be able to get more?
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ManifestIcons {
-    #[serde(rename = "16")]
-    icon_16: String,
-    #[serde(rename = "48")]
-    icon_48: String,
-    #[serde(rename = "128")]
-    icon_128: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ChromeOsManifest {
-    name: String,
-    version: String,
-    version_name: String,
-    manifest_version: u8,
-    description: String,
-    background: ManifestBackground,
-    permissions: Vec<String>,
-    input_components: Vec<ManifestInputComponent>,
-    default_locale: String,
-    icons: ManifestIcons,
 }
 
 impl fmt::Display for ChromeOsBackground {
@@ -123,8 +75,8 @@ pub struct GenerateChromeOs;
 #[async_trait(?Send)]
 impl BuildStep for GenerateChromeOs {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
-        let background_file_path = output_path.join("background.js");
-        let manifest_file_path = output_path.join("manifest.json");
+        let background_file_path = output_path.join(BACKGROUND_FILE_NAME);
+        let manifest_file_path = output_path.join(MANIFEST_FILE_NAME);
 
         let template = KEYBOARD_TEMPLATE.clone();
 
@@ -144,12 +96,12 @@ impl BuildStep for GenerateChromeOs {
                         .locale
                         .as_ref()
                         .map(|x| x.clone())
-                        .unwrap_or_else(|| "en-US".parse().unwrap()),
+                        .unwrap_or_else(|| DEFAULT_LOCALE.parse().unwrap()),
                     chromeos_target
                         .config
                         .xkb_layout
                         .clone()
-                        .unwrap_or_else(|| "us".to_string()),
+                        .unwrap_or_else(|| DEFAULT_XKB_LAYOUT.to_string()),
                 );
 
                 manifest_input_components.push(input_component);
@@ -160,7 +112,7 @@ impl BuildStep for GenerateChromeOs {
                         json_dead_keys.insert(dead_key_name.clone(), dead_key_list.to_vec());
                     }
                 }
-                if let Some(layout_transforms) = &layout.transforms {
+                if let Some(_layout_transforms) = &layout.transforms {
                     let layout_file_path = bundle
                         .path
                         .join("layouts")
@@ -239,7 +191,7 @@ impl BuildStep for GenerateChromeOs {
                 manifest_version: 2,
                 description: "__MSG_description__".to_string(),
                 background: ManifestBackground {
-                    scripts: vec!["background.js".to_string()],
+                    scripts: vec![BACKGROUND_FILE_NAME.to_string()],
                 },
                 permissions: vec!["input".to_string()],
                 input_components: manifest_input_components,
