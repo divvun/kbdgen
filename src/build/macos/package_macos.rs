@@ -1,7 +1,6 @@
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 
 use async_trait::async_trait;

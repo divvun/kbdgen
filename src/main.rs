@@ -1,9 +1,7 @@
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use build::macos::{GenerateInstaller, GenerateMacOs};
 use build::BuildStep;
-use bundle::layout::MacOsTarget;
 use bundle::KbdgenBundle;
 use clap::{Args, Parser, Subcommand};
 
@@ -12,7 +10,7 @@ use crate::build::macos::MacOsBuild;
 use crate::build::svg::SvgBuild;
 use crate::build::windows::WindowsBuild;
 use crate::build::BuildSteps;
-use crate::bundle::{read_kbdgen_bundle, Error};
+use crate::bundle::read_kbdgen_bundle;
 
 mod build;
 mod bundle;
@@ -52,13 +50,13 @@ async fn main() -> anyhow::Result<()> {
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
-                    let mut build =
+                    let build =
                         WindowsBuild::new(bundle, target_command_struct.output_path.clone());
 
                     build.build_full().await;
                 }
                 TargetCommand::ChromeOs(_chromeos_command) => {
-                    let mut build =
+                    let build =
                         ChromeOsBuild::new(bundle, target_command_struct.output_path.clone());
 
                     build.build_full().await;
@@ -67,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
                     macos_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Svg(_svg_command) => {
-                    let mut build =
+                    let build =
                         SvgBuild::new(bundle, target_command_struct.output_path.clone());
 
                     build.build_full().await;

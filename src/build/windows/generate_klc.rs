@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use async_trait::async_trait;
 use codecs::utf16::Utf16Ext;

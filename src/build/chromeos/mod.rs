@@ -21,7 +21,7 @@ pub struct ChromeOsBuild {
 #[async_trait(?Send)]
 impl BuildSteps for ChromeOsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let mut steps: Vec<Box<dyn BuildStep>> = vec![Box::new(GenerateChromeOs)];
+        let steps: Vec<Box<dyn BuildStep>> = vec![Box::new(GenerateChromeOs)];
 
         ChromeOsBuild {
             bundle,

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string_pretty};
+use serde_json::to_string_pretty;
 
 use crate::build::chromeos::keymap::CHROMEOS_KEYS;
 use crate::build::chromeos::manifest::{
@@ -12,10 +12,7 @@ use crate::build::chromeos::manifest::{
 };
 use crate::{
     build::BuildStep,
-    bundle::{
-        layout::{chrome::ChromeOsKbdLayer},
-        KbdgenBundle,
-    },
+    bundle::{layout::chrome::ChromeOsKbdLayer, KbdgenBundle},
     util::split_keys,
 };
 
@@ -38,7 +35,7 @@ impl fmt::Display for ChromeOsBackground {
         write!(
             f,
             "const descriptor = {}\n",
-            to_string_pretty(&self.descriptor).map_err(|err| fmt::Error)?
+            to_string_pretty(&self.descriptor).map_err(|_err| fmt::Error)?
         )?;
         write!(f, "\nKeyboard.install(descriptor)")?;
 
@@ -58,12 +55,12 @@ impl fmt::Display for ChromeOsDescriptor {
         write!(
             f,
             "{}",
-            to_string_pretty(&self.dead_keys).map_err(|err| fmt::Error)?
+            to_string_pretty(&self.dead_keys).map_err(|_err| fmt::Error)?
         )?;
         write!(
             f,
             "{}",
-            to_string_pretty(&self.transforms).map_err(|err| fmt::Error)?
+            to_string_pretty(&self.transforms).map_err(|_err| fmt::Error)?
         )?;
 
         Ok(())

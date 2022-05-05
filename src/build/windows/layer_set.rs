@@ -1,6 +1,4 @@
 use indexmap::IndexMap;
-use once_cell::sync::Lazy;
-use regex::Regex;
 
 use crate::{bundle::layout::windows::WindowsKbdLayer, util::decode_unicode_escapes};
 

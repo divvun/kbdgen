@@ -1,6 +1,6 @@
 use std::cmp;
+use std::path::Path;
 use std::str::FromStr;
-use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -155,7 +155,7 @@ fn generate_key_layout_files(
                 );
             }
 
-            if let Some(transforms) = &layout.transforms {
+            if let Some(_transforms) = &layout.transforms {
                 if let Some(target_dead_keys) = &mac_os_target.dead_keys {
                     create_dead_key_actions(
                         &layers,
@@ -257,7 +257,7 @@ fn initialize_key_transition_map(
     layers: &IndexMap<MacOsKbdLayer, String>,
     layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
 ) {
-    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+    for (_layer_index, (layer, key_map)) in layers.iter().enumerate() {
         let mut cursor = 0;
 
         layered_key_transition_map.insert(*layer, IndexMap::new());
@@ -310,12 +310,12 @@ fn process_transforms(
     layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
     id_manager: &mut TransformIdManager,
 ) {
-    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+    for (_layer_index, (layer, key_map)) in layers.iter().enumerate() {
         let mut cursor = 0;
 
         let layer_dead_keys = target_dead_keys.get(layer);
 
-        if let Some(layer_dead_keys) = layer_dead_keys {
+        if let Some(_layer_dead_keys) = layer_dead_keys {
             let key_transition_map = layered_key_transition_map
                 .get_mut(layer)
                 .expect("this map should be prefilled by now");
@@ -445,7 +445,7 @@ fn create_dead_key_actions(
     dead_keys: &IndexMap<String, DeadKeyOutput>,
     id_manager: &mut TransformIdManager,
 ) {
-    for (layer_index, (layer, key_map)) in layers.iter().enumerate() {
+    for (_layer_index, (layer, key_map)) in layers.iter().enumerate() {
         let mut cursor = 0;
 
         let layer_dead_keys = target_dead_keys.get(layer);

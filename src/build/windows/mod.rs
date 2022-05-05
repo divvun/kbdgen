@@ -1,6 +1,5 @@
 use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
+    path::{Path, PathBuf}
 };
 
 use async_trait::async_trait;
@@ -26,7 +25,7 @@ pub struct WindowsBuild {
 #[async_trait(?Send)]
 impl BuildSteps for WindowsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let mut steps = vec![Box::new(GenerateKlc {}) as _];
+        let steps = vec![Box::new(GenerateKlc {}) as _];
         #[cfg(target_os = "windows")]
         steps.push(Box::new(build_klc::BuildKlc {}));
         #[cfg(not(target_os = "windows"))]

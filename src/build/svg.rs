@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 //use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use async_trait::async_trait;
 use xmlem::Document;
@@ -24,7 +23,7 @@ pub struct SvgBuild {
 #[async_trait(?Send)]
 impl BuildSteps for SvgBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let mut steps = vec![];
+        let steps = vec![];
 
         Self {
             bundle,
