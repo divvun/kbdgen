@@ -5,6 +5,7 @@ use build::BuildStep;
 use bundle::KbdgenBundle;
 use clap::{Args, Parser, Subcommand};
 
+use crate::build::android::AndroidBuild;
 use crate::build::chromeos::ChromeOsBuild;
 use crate::build::macos::MacOsBuild;
 use crate::build::svg::SvgBuild;
@@ -69,6 +70,12 @@ async fn main() -> anyhow::Result<()> {
 
                     build.build_full().await;
                 }
+                TargetCommand::Android(_android_command) => {
+                    let build =
+                        AndroidBuild::new(bundle, target_command_struct.output_path.clone());
+
+                    build.build_full().await;
+                }
             }
         }
     };
@@ -97,8 +104,10 @@ enum TargetCommand {
     ChromeOs(TargetChromeOsCommand),
     #[clap(name = "macos", about = "macOS functionality")]
     MacOs(TargetMacOs),
-    #[clap(name = "macos", about = "SVG functionality")]
+    #[clap(name = "svg", about = "SVG functionality")]
     Svg(TargetSvgCommand),
+    #[clap(about = "Android functionality")]
+    Android(TargetAndroidCommand),
 }
 
 #[derive(Args)]
@@ -114,6 +123,9 @@ struct TargetCommandStruct {
     /// The directory to place generated output
     output_path: PathBuf,
 }
+
+#[derive(Parser)]
+struct TargetAndroidCommand {}
 
 #[derive(Parser)]
 struct TargetWindowsCommand {}

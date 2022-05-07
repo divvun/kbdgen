@@ -2,6 +2,9 @@
 
 This is a developer oriented Readme.
 
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android`
+
+
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/blep windows`
 
 `cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/blep windows`
@@ -32,3 +35,9 @@ This is a developer oriented Readme.
 `asciidoctor documentation/user/kbdgen.adoc`
 
 `asciidoctor documentation/dev/kbdgen.adoc`
+
+# old keyboard gen commands
+
+(run from old_kbdgen folder)
+
+`./kbdgen build android -o android-build ~/Projects/divvun-keyboard/divvun.kbdgen`
