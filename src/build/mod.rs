@@ -6,6 +6,7 @@ use crate::bundle::KbdgenBundle;
 
 pub mod android;
 pub mod chromeos;
+pub mod ios;
 pub mod macos;
 #[cfg(target_os = "windows")]
 pub mod pahkat;

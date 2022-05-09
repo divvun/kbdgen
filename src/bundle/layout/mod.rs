@@ -9,6 +9,8 @@ use ios::IOsKbdLayer;
 use macos::MacOsKbdLayer;
 use windows::WindowsKbdLayer;
 
+use crate::util::split_keys;
+
 mod android;
 pub mod chrome;
 mod ios;
@@ -146,7 +148,7 @@ where
 
     Ok(Some(
         map.into_iter()
-            .map(|(key, value)| (key, value.split(" ").map(|s| s.to_owned()).collect()))
+            .map(|(key, value)| (key, split_keys(&value)))
             .collect(),
     ))
 }

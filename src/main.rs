@@ -7,6 +7,7 @@ use clap::{Args, Parser, Subcommand};
 
 use crate::build::android::AndroidBuild;
 use crate::build::chromeos::ChromeOsBuild;
+use crate::build::ios::IosBuild;
 use crate::build::macos::MacOsBuild;
 use crate::build::svg::SvgBuild;
 use crate::build::windows::WindowsBuild;
@@ -76,6 +77,11 @@ async fn main() -> anyhow::Result<()> {
 
                     build.build_full().await;
                 }
+                TargetCommand::Ios(_android_command) => {
+                    let build = IosBuild::new(bundle, target_command_struct.output_path.clone());
+
+                    build.build_full().await;
+                }
             }
         }
     };
@@ -108,6 +114,8 @@ enum TargetCommand {
     Svg(TargetSvgCommand),
     #[clap(about = "Android functionality")]
     Android(TargetAndroidCommand),
+    #[clap(about = "Android functionality")]
+    Ios(TargetAndroidCommand),
 }
 
 #[derive(Args)]
@@ -126,6 +134,9 @@ struct TargetCommandStruct {
 
 #[derive(Parser)]
 struct TargetAndroidCommand {}
+
+#[derive(Parser)]
+struct TargetIosCommand {}
 
 #[derive(Parser)]
 struct TargetWindowsCommand {}
