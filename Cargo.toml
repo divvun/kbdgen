@@ -9,7 +9,7 @@ edition = "2021"
 clap = { version = "3.1.0", features = ["derive"] }
 pathos = "0.3.0-pre.5"
 regex = "1.5.5"
-xmlem = { git = "https://github.com/bbqsrc/xmlem" }
+xmlem = { git = "https://github.com/bbqsrc/xmlem", rev = "e98c929ccd6cbee0bf8c6be7ffe9d8d8a9de5541" }
 
 tracing = "0.1.32"
 tracing-subscriber = "0.3.9"

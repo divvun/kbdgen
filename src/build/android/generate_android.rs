@@ -12,6 +12,7 @@ use crate::{
     util::split_keys,
 };
 
+const ROWS_TEMPLATE: &str = include_str!("../../../resources/template-android-rows.xml");
 const ROWKEYS_TEMPLATE: &str = include_str!("../../../resources/template-android-rowkeys.xml");
 
 const TOP_FOLDER: &str = "app/src/main";
@@ -60,11 +61,16 @@ impl BuildStep for GenerateAndroid {
 
                 let layers = &android_target.primary.layers;
 
+                let rows_document =
+                    Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
+                let rows_root = rows_document.root();
+
                 let rowkeys_document =
-                    Document::from_str(ROWKEYS_TEMPLATE).expect("invalid template");
+                    Document::from_str(ROWKEYS_TEMPLATE).expect("invalid rowkeys template");
                 let rowkeys_root = rowkeys_document.root();
 
-                let outer_selector = Selector::new(OUTER_ROWKEYS_TAG).unwrap();
+                let outer_selector =
+                    Selector::new(OUTER_ROWKEYS_TAG).expect("outer rowtag must exist");
 
                 let mut rowkeys_docs_map = IndexMap::new();
 
@@ -190,6 +196,10 @@ impl BuildStep for GenerateAndroid {
                     }
                 }
 
+                create_and_write_layout_set(&main_xml_path, &rowkeys_display_name);
+
+                // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
+
                 // for each LAYOUT add a rows_northern_sami_keyboard -> points to these
             }
         }
@@ -311,6 +321,26 @@ impl BuildStep for GenerateAndroid {
 
         // modifiers????
     }
+}
+
+fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str) {
+    let mut layout_set_document = Document::new("KeyboardLayoutSet");
+    let layout_root = layout_set_document.root();
+
+    layout_root.set_attribute(
+        &mut layout_set_document,
+        "xmlns:latin",
+        "http://schemas.android.com/apk/res-auto",
+    );
+
+    std::fs::write(
+        main_xml_path.join(format!(
+            "keyboard_layout_sets_{}_keyboard.xml",
+            rowkeys_display_name,
+        )),
+        layout_set_document.to_string_pretty(),
+    )
+    .unwrap();
 }
 
 fn create_main_rowkeys() {}
