@@ -13,7 +13,7 @@ use crate::util::split_keys;
 
 pub mod android;
 pub mod chrome;
-mod ios;
+pub mod ios;
 pub mod macos;
 pub mod windows;
 
