@@ -105,25 +105,15 @@ pub struct MacOsPrimaryPlatform {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsTarget {
     pub config: IOsConfig,
-    pub primary: Option<IOsPrimaryPlatform>,
+    pub primary: Option<IOsPlatform>,
     #[serde(rename = "iPad-9in")]
-    pub i_pad_9in: Option<IOsIpad9InPlatform>,
+    pub i_pad_9in: Option<IOsPlatform>,
     #[serde(rename = "iPad-12in")]
-    pub i_pad_12in: Option<IOsIpad12InPlatform>,
+    pub i_pad_12in: Option<IOsPlatform>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct IOsPrimaryPlatform {
-    pub layers: IndexMap<IOsKbdLayer, String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct IOsIpad9InPlatform {
-    pub layers: IndexMap<IOsKbdLayer, String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct IOsIpad12InPlatform {
+pub struct IOsPlatform {
     pub layers: IndexMap<IOsKbdLayer, String>,
 }
 

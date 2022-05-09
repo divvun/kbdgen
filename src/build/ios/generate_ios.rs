@@ -4,11 +4,10 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::to_string_pretty;
 
 use crate::{
     build::BuildStep,
-    bundle::{layout::ios::IOsKbdLayer, KbdgenBundle},
+    bundle::{layout::{ios::IOsKbdLayer, IOsTarget, IOsPlatform}, KbdgenBundle},
     util::split_keys,
 };
 
@@ -20,28 +19,23 @@ pub struct IosInfo {
     space: String,
 }
 
-// #[derive(Serialize, Deserialize)]
-// pub struct PlatformDeadKeys;
-
-// #[derive(Serialize, Deserialize)]
-// pub struct IosDeadKeys {
-//     #[serde(flatten)]
-//     dead_keys: IndexMap<String, PlatformDeadKeys>
-// }
-
 pub fn keyboard_entity_from_string(input: String) -> Option<IosButton> {
-    let regex = Regex::new(r"\{(\w+):([\d | \.]+)\}").expect("valid regex");
+    let regex = Regex::new(r"\{(\w+):?([\d | \.]+)?\}").expect("valid regex");
     let captures = regex.captures(input.as_str());
 
     if let Some(captures) = captures {
         if let Some(id) = captures.get(1) {
+            let id = format!("_{}", id.as_str());
             if let Some(width) = captures.get(2) {
                 Some(IosButton {
-                    id: id.as_str().to_string(),
+                    id: id,
                     width: width.as_str().parse::<f32>().expect("invalid float value"),
                 })
             } else {
-                return None;
+                Some(IosButton {
+                    id: id,
+                    width: 1.0f32,
+                })
             }
         } else {
             return None;
@@ -51,13 +45,13 @@ pub fn keyboard_entity_from_string(input: String) -> Option<IosButton> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct IosButton {
     id: String,
     width: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum IosKeyMapTypes {
     Character(String),
@@ -67,7 +61,7 @@ pub enum IosKeyMapTypes {
 #[derive(Serialize, Deserialize)]
 pub struct IosNormalLayer {
     #[serde(flatten)]
-    layer: IndexMap<IOsKbdLayer, Vec<Vec<IosKeyMapTypes>>>,
+    layer: IndexMap<String, Vec<Vec<IosKeyMapTypes>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -75,10 +69,48 @@ pub struct IosKeyboardDefinitions {
     #[serde(flatten)]
     info: IosInfo,
     longpress: IndexMap<String, Vec<String>>,
-    // #[serde(rename = "camelCase")]
-    // dead_keys: IosDeadKeys,
-    // transforms: ????
     iphone: IosNormalLayer,
+    i_pad_9in: IosNormalLayer,
+    i_pad_12in: IosNormalLayer,
+}
+
+pub fn enum_to_output(layer: &IOsKbdLayer) -> String {
+    match layer {
+        IOsKbdLayer::Default => "normal",
+        IOsKbdLayer::Shift => "shifted",
+        IOsKbdLayer::Alt => "alt",
+        IOsKbdLayer::AltAndShift => "alt+shift",
+        IOsKbdLayer::Symbols1 => "symbols-1",
+        IOsKbdLayer::Symbols2 => "symbols-2",
+    }
+    .to_string()
+}
+
+
+pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<IosKeyMapTypes>>> {
+    let mut layers: IndexMap<String, Vec<Vec<IosKeyMapTypes>>> = IndexMap::new();
+    for (layer_name, layer_key_map) in &platform.layers {
+        let layer_name = enum_to_output(layer_name);
+        let key_map_rows: Vec<&str> =
+            layer_key_map.trim().split("\n").map(|x| x.clone()).collect();
+        let mut layer_rows: Vec<Vec<IosKeyMapTypes>> = Vec::new();
+        for key_map in key_map_rows {
+            let key_map = split_keys(key_map);
+            let mut new_key_map: Vec<IosKeyMapTypes> = Vec::new();
+            for key in key_map {
+                if let Some(keyboard_entity) =
+                    keyboard_entity_from_string(key.clone())
+                {
+                    new_key_map.push(IosKeyMapTypes::Button(keyboard_entity));
+                } else {
+                    new_key_map.push(IosKeyMapTypes::Character(key));
+                }
+            }
+                layer_rows.push(new_key_map)
+        }
+        layers.insert(layer_name, layer_rows);
+    }
+    layers
 }
 
 pub struct GenerateIos;
@@ -88,17 +120,12 @@ impl BuildStep for GenerateIos {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let keyboard_definitions_file_path = output_path.join("KeyboardDefinitions.json");
 
-        let info = IosInfo {
-            name: "test".to_string(),
-            locale: "te".to_string(),
-            enter: "Enter".to_string(),
-            space: "mellanslag".to_string(),
-        };
+        for (language_tag, layout) in &bundle.layouts {
+            let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
+            let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapTypes>>> = IndexMap::new();
+            let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapTypes>>> = IndexMap::new();
+            let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapTypes>>> = IndexMap::new();
 
-        let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
-        let mut json_layers: IndexMap<IOsKbdLayer, Vec<Vec<IosKeyMapTypes>>> = IndexMap::new();
-        // let mut dead_keys_list: IndexMap<String, PlatformDeadKeys> = IndexMap::new();
-        for (_language_tag, layout) in &bundle.layouts {
             if let Some(ios_target) = &layout.i_os {
                 if let Some(layout_longpress) = &layout.longpress {
                     for (key, value) in layout_longpress {
@@ -107,40 +134,36 @@ impl BuildStep for GenerateIos {
                 }
 
                 if let Some(primary_platform) = &ios_target.primary {
-                    for (layer_name, layer_key_map) in &primary_platform.layers {
-                        let key_map_rows: Vec<&str> =
-                            layer_key_map.split("\n").map(|x| x.clone()).collect();
-                        let mut layer_rows: Vec<Vec<IosKeyMapTypes>> = Vec::new();
-                        for key_map in key_map_rows {
-                            let key_map = split_keys(key_map);
-                            let mut new_key_map: Vec<IosKeyMapTypes> = Vec::new();
-                            for key in key_map {
-                                if let Some(keyboard_entity) =
-                                    keyboard_entity_from_string(key.clone())
-                                {
-                                    new_key_map.push(IosKeyMapTypes::Button(keyboard_entity));
-                                } else {
-                                    new_key_map.push(IosKeyMapTypes::Character(key));
-                                }
-                            }
-                            layer_rows.push(new_key_map)
-                        }
-                        json_layers.insert(layer_name.clone(), layer_rows);
-                    }
+                    iphone_layers.extend(generate_platform(&primary_platform));
                 }
+                if let Some(i_pad_9in_platform) = &ios_target.i_pad_9in {
+                    i_pad_9in_layers.extend(generate_platform(&i_pad_9in_platform));
+                }
+                if let Some(i_pad_12in_platform) = &ios_target.i_pad_12in {
+                    i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
+                }
+
+                if let Some(key_names) = &layout.key_names {
+                    std::fs::write(
+                        output_path.join(keyboard_definitions_file_path.clone()),
+                        serde_json::to_string_pretty(&[IosKeyboardDefinitions {
+                            info: IosInfo {
+                                name: layout.display_names.get(language_tag).expect("can't evaluate language tag of layout").to_string(),
+                                locale: language_tag.to_string(),
+                                enter: key_names.r#return.to_string(),
+                                space: key_names.space.to_string(),
+                            },
+                            longpress: longpress,
+                            iphone: IosNormalLayer { layer: iphone_layers },
+                            i_pad_9in: IosNormalLayer { layer: i_pad_9in_layers },
+                            i_pad_12in: IosNormalLayer { layer: i_pad_12in_layers },
+                        }])
+                        .unwrap(),
+                    )
+                    .unwrap();
+                }
+                
             }
         }
-
-        std::fs::write(
-            output_path.join(keyboard_definitions_file_path),
-            serde_json::to_string_pretty(&[IosKeyboardDefinitions {
-                info: info,
-                longpress: longpress,
-                // dead_keys: IosDeadKeys { dead_keys: dead_keys_list },
-                iphone: IosNormalLayer { layer: json_layers },
-            }])
-            .unwrap(),
-        )
-        .unwrap();
     }
 }
