@@ -196,6 +196,7 @@ impl BuildStep for GenerateAndroid {
                     }
                 }
 
+                create_and_write_kbd(&main_xml_path, &rowkeys_display_name);
                 create_and_write_layout_set(&main_xml_path, &rowkeys_display_name);
 
                 // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
@@ -323,6 +324,35 @@ impl BuildStep for GenerateAndroid {
     }
 }
 
+fn create_and_write_kbd(main_xml_path: &Path, rowkeys_display_name: &str) {
+    let mut kbd_document = Document::new("KeyboardLayoutSet");
+    let kbd_root = kbd_document.root();
+
+    kbd_root.set_attribute(
+        &mut kbd_document,
+        "xmlns:latin",
+        "http://schemas.android.com/apk/res-auto",
+    );
+
+    kbd_root.append_new_element(
+        &mut kbd_document,
+        NewElement {
+            name: "include".to_owned(),
+            attrs: [(
+                "latin:keyboardLayout".to_owned(),
+                format!("@xml/rows_{}_keyboard", rowkeys_display_name),
+            )]
+            .into(),
+        },
+    );
+
+    std::fs::write(
+        main_xml_path.join(format!("kbd_{}_keyboard.xml", rowkeys_display_name,)),
+        kbd_document.to_string_pretty(),
+    )
+    .unwrap();
+}
+
 fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str) {
     let mut layout_set_document = Document::new("KeyboardLayoutSet");
     let layout_root = layout_set_document.root();
@@ -333,17 +363,78 @@ fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str)
         "http://schemas.android.com/apk/res-auto",
     );
 
+    let keyboard_ref = format!("@xml/kbd_{}_keyboard", rowkeys_display_name);
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        NewElement {
+            name: "Element".to_owned(),
+            attrs: [
+                ("latin:elementName".to_owned(), "alphabet".to_owned()),
+                ("latin:elementKeyboard".to_owned(), keyboard_ref.clone()),
+                (
+                    "latin:enableProximityCharsCorrection".to_owned(),
+                    "true".to_owned(),
+                ),
+            ]
+            .into(),
+        },
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("alphabetAutomaticShifted", &keyboard_ref),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("alphabetManualShifted", &keyboard_ref),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("alphabetShiftLocked", &keyboard_ref),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("alphabetShiftLockShifted", &keyboard_ref),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("symbols", "@xml/kbd_symbols"),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("symbolsShifted", "@xml/kbd_symbols_shift"),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("phone", "@xml/kbd_phone"),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("phoneSymbols", "@xml/kbd_phone_symbols"),
+    );
+
+    layout_root.append_new_element(
+        &mut layout_set_document,
+        make_layout_set_element("number", "@xml/kbd_number"),
+    );
+
     std::fs::write(
         main_xml_path.join(format!(
-            "keyboard_layout_sets_{}_keyboard.xml",
+            "keyboard_layout_set_{}_keyboard.xml",
             rowkeys_display_name,
         )),
         layout_set_document.to_string_pretty(),
     )
     .unwrap();
 }
-
-fn create_main_rowkeys() {}
 
 fn create_key_xml_element(
     key: &str,
@@ -352,25 +443,25 @@ fn create_key_xml_element(
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
-    attrs.insert("latin:keySpec".to_string(), key.to_owned());
+    attrs.insert("latin:keySpec".to_owned(), key.to_owned());
 
     if let Some(key_hint_label_index) = key_hint_label_index {
         attrs.insert(
-            "latin:keyHintLabel".to_string(),
+            "latin:keyHintLabel".to_owned(),
             key_hint_label_index.to_string(),
         );
         attrs.insert(
-            "latin:additionalMoreKeys".to_string(),
+            "latin:additionalMoreKeys".to_owned(),
             key_hint_label_index.to_string(),
         );
     }
 
     if let Some(longpress) = longpress.as_ref() {
-        attrs.insert("latin:moreKeys".to_string(), longpress.clone());
+        attrs.insert("latin:moreKeys".to_owned(), longpress.clone());
     }
 
     NewElement {
-        name: "key".into(),
+        name: "key".to_owned(),
         attrs,
     }
 }
@@ -386,5 +477,12 @@ fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {
         return None;
     } else {
         return Some(key_hint_label_index);
+    }
+}
+
+fn make_layout_set_element(element_name: &str, keyboard: &str) -> NewElement {
+    NewElement {
+        name: "Element".to_owned(),
+        attrs: [(element_name.to_owned(), keyboard.to_owned())].into(),
     }
 }
