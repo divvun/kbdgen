@@ -1,8 +1,10 @@
 use std::path::Path;
+use std::str::FromStr;
 
 use async_trait::async_trait;
+use xmlem::{Document, Selector};
 
-use crate::{build::BuildStep, bundle::KbdgenBundle};
+use crate::{build::BuildStep, bundle::{KbdgenBundle, layout::android::AndroidKbdLayer}};
 
 const ROWKEYS_TEMPLATE: &str = include_str!("../../../resources/template-android-rowkeys.xml");
 
@@ -29,6 +31,42 @@ impl BuildStep for GenerateAndroid {
                 let layers = &android_target.primary.layers;
 
 
+
+                let mut rowkeys_document = Document::from_str(ROWKEYS_TEMPLATE).expect("invalid template");
+                let rowkeys_root = rowkeys_document.root();
+
+                let selector = Selector::new("merge.switch.case").unwrap();
+
+
+                if let Some(default_layer) = layers.get(&AndroidKbdLayer::Default) {
+
+
+                    let default_row_keys = rowkeys_root
+                        .query_selector(&rowkeys_document, &selector)
+                        .expect("The template document should have a tag at 'merge.switch.case'");
+
+
+                    
+
+
+                    /*
+                    default_row_keys.append_new_element(
+                        &mut rowkeys_document,
+                        NewElement {
+                            name: "key".into(),
+                            attrs: [
+                                ("latin:keySpec".into(), "aaaa"),
+
+                            ].into(),
+                        },
+                    );
+                     */
+
+
+
+                } else { // maybe just hardcode
+                    panic!("No default layer for android!")
+                }
             }
         }
 

@@ -11,7 +11,7 @@ use windows::WindowsKbdLayer;
 
 use crate::util::split_keys;
 
-mod android;
+pub mod android;
 pub mod chrome;
 mod ios;
 pub mod macos;
