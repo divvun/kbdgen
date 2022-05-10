@@ -154,18 +154,6 @@ impl BuildStep for GenerateIos {
         let keyboard_definitions_file_path = output_path.join("KeyboardDefinitions.json");
 
         for (language_tag, layout) in &bundle.layouts {
-            if let None = read_dir(output_path).unwrap().next() {
-                let repo_url = "https://github.com/divvun/giellakbd-ios.git";
-
-                Command::new("git")
-                    .arg("clone")
-                    .arg(repo_url)
-                    .arg(REPOSITORY)
-                    .current_dir(output_path.clone())
-                    .status()
-                    .expect("to clone a public repo with no hippos");
-            }
-
             let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
             let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
