@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, cmp::Ordering, str::Chars};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -23,13 +23,20 @@ pub struct IosInfo {
     space: String,
 }
 
+pub fn remove_all_occurances(input: String, character: char) -> String {
+    input.as_str().chars().filter(|x| x.cmp(&character) != Ordering::Equal).into_iter().collect::<String>()
+}
+
 pub fn keyboard_entity_from_string(input: String) -> Option<IosButton> {
     let regex = Regex::new(r"^\\s\{([^}:]+)(?::(\d+(?:\.\d+)?))?\}$").expect("valid regex");
     let captures = regex.captures(input.as_str());
 
     if let Some(captures) = captures {
         if let Some(id) = captures.get(1) {
-            let id = format!("_{}", id.as_str());
+            let id = match id.as_str().chars().next().unwrap().cmp(&'\"') {
+                Ordering::Equal => remove_all_occurances(id.as_str().to_string(), '\"'),
+                _ => format!("_{}", remove_all_occurances(id.as_str().to_string(), '\"'))
+            };
             if let Some(width) = captures.get(2) {
                 Some(IosButton {
                     id: id,
