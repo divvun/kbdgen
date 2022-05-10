@@ -1,12 +1,12 @@
 use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ManifestBackground {
     pub scripts: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ManifestInputComponent {
     pub name: String,
     #[serde(rename = "type")]
@@ -31,7 +31,7 @@ impl ManifestInputComponent {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ManifestIcons {
     #[serde(rename = "16")]
     pub icon_16: String,
@@ -41,7 +41,7 @@ pub struct ManifestIcons {
     pub icon_128: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ChromeOsManifest {
     pub name: String,
     pub version: String,
