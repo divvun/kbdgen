@@ -76,7 +76,7 @@ pub enum IosKeyMapType {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct IosLayer {
+pub struct IosLayout {
     #[serde(flatten)]
     layer: IndexMap<String, Vec<Vec<IosKeyMapType>>>,
 }
@@ -97,9 +97,9 @@ pub struct IosKeyboardDefinitions {
     longpress: IndexMap<String, Vec<String>>,
     dead_keys: IosDeadKeys,
     transforms: serde_json::value::Value,
-    iphone: IosLayer,
-    i_pad_9in: IosLayer,
-    i_pad_12in: IosLayer,
+    iphone: IosLayout,
+    i_pad_9in: IosLayout,
+    i_pad_12in: IosLayout,
 }
 
 pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
@@ -192,13 +192,13 @@ impl BuildStep for GenerateIos {
                                 i_pad_12in: IndexMap::new(),
                             },
                             transforms: serde_json::value::Value::Null,
-                            iphone: IosLayer {
+                            iphone: IosLayout {
                                 layer: iphone_layers,
                             },
-                            i_pad_9in: IosLayer {
+                            i_pad_9in: IosLayout {
                                 layer: i_pad_9in_layers,
                             },
-                            i_pad_12in: IosLayer {
+                            i_pad_12in: IosLayout {
                                 layer: i_pad_12in_layers,
                             },
                         }])
