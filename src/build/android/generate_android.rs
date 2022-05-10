@@ -4,6 +4,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
+use serde::Serialize;
 use url::Url;
 use xmlem::{Document, NewElement, Selector};
 
@@ -30,11 +31,13 @@ const SHIFT_ROWKEYS_TAG: &str = "case";
 
 const LONGPRESS_JOIN_CHARACTER: &str = ",";
 
+#[derive(Serialize)]
 pub struct AndroidLayout {
     pub transforms: IndexMap<String, String>,
     pub speller: AndroidSpeller,
 }
 
+#[derive(Serialize)]
 pub struct AndroidSpeller {
     pub path: String,
     pub package_url: Url,
@@ -48,9 +51,9 @@ impl BuildStep for GenerateAndroid {
         let top_path = output_path.join(Path::new(TOP_FOLDER));
 
         let assets_layouts_path = top_path.join(Path::new(ASSETS_LAYOUTS_PART));
+        std::fs::create_dir_all(&assets_layouts_path).unwrap();
 
-        let resources_path = top_path
-            .join(Path::new(RESOURCES_PART));
+        let resources_path = top_path.join(Path::new(RESOURCES_PART));
 
         let main_xml_path = resources_path.join(Path::new(MAIN_XML_PART));
         let short_width_xml_path = resources_path.join(Path::new(SHORT_WIDTH_XML_PART));
@@ -66,18 +69,33 @@ impl BuildStep for GenerateAndroid {
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
             if let Some(android_target) = &layout.android {
-
-                //assets_layouts_path
-
-                let layout = AndroidLayout {
+                let assets_layout = AndroidLayout {
                     transforms: IndexMap::new(), // should this be more? can mobile keys have transforms?
                     speller: AndroidSpeller {
-                        path: format!(".bhfst", language_tag.to_string()),
-                        package_url: "https://pahkat.uit.no/main/packages/speller-sme?platform=mobile".to_string(),
-                    }
+                        path: android_target
+                            .config
+                            .speller_path
+                            .as_ref()
+                            .expect("no speller path supplid for android!")
+                            .to_string(),
+                        package_url: Url::parse(
+                            &android_target
+                                .config
+                                .speller_package_key
+                                .as_ref()
+                                .expect("no speller package key provided for android!")
+                                .to_string(),
+                        )
+                        .expect("the speller package url to be parseable"),
+                    },
                 };
 
-
+                std::fs::write(
+                    assets_layouts_path.join(format!("{}.json", language_tag.to_string(),)),
+                    serde_json::to_string_pretty(&assets_layout)
+                        .expect("the generated assets layout to serialize correctly"),
+                )
+                .unwrap();
 
                 let longpress = &layout.longpress;
 
