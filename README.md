@@ -2,7 +2,10 @@
 
 This is a developer oriented Readme.
 
-`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android`
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android build`
+
+`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android generate`
+
 
 
 `cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/ios_blep ios`

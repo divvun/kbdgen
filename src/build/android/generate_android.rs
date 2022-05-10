@@ -1,7 +1,8 @@
-use std::path::Path;
 use std::str::FromStr;
+use std::{fs::File, path::Path};
 
 use async_trait::async_trait;
+use futures::stream::Select;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::Serialize;
@@ -22,6 +23,7 @@ const ROWKEYS_TEMPLATE: &str = include_str!("../../../resources/template-android
 const TOP_FOLDER: &str = "app/src/main";
 const ASSETS_LAYOUTS_PART: &str = "assets/layouts";
 const RESOURCES_PART: &str = "res";
+const MAIN_VALUES_PART: &str = "values";
 const MAIN_XML_PART: &str = "xml";
 const SHORT_WIDTH_XML_PART: &str = "xml-sw600dp";
 
@@ -53,6 +55,9 @@ impl BuildStep for GenerateAndroid {
         let top_path = output_path.join(Path::new(TOP_FOLDER));
         let assets_layouts_path = top_path.join(Path::new(ASSETS_LAYOUTS_PART));
         let resources_path = top_path.join(Path::new(RESOURCES_PART));
+
+        let main_values_path = resources_path.join(Path::new(MAIN_VALUES_PART));
+
         let main_xml_path = resources_path.join(Path::new(MAIN_XML_PART));
         let short_width_xml_path = resources_path.join(Path::new(SHORT_WIDTH_XML_PART));
 
@@ -101,8 +106,7 @@ impl BuildStep for GenerateAndroid {
                 let rowkeys_display_name = layout
                     .display_names
                     .get(&default_language_tag)
-                    .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE))
-                    .to_lowercase();
+                    .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
                 let layers = &android_target.primary.layers;
 
@@ -171,7 +175,7 @@ impl BuildStep for GenerateAndroid {
                     std::fs::write(
                         main_xml_path.join(format!(
                             "rowkeys_{}_keyboard{}.xml",
-                            rowkeys_display_name,
+                            rowkeys_display_name.to_lowercase(),
                             line_index + 1
                         )),
                         rowkey_doc.to_string_pretty(),
@@ -216,7 +220,7 @@ impl BuildStep for GenerateAndroid {
                         std::fs::write(
                             short_width_xml_path.join(format!(
                                 "rowkeys_{}_keyboard{}.xml",
-                                rowkeys_display_name,
+                                rowkeys_display_name.to_lowercase(),
                                 line_index + 1
                             )),
                             rowkey_doc.to_string_pretty(),
@@ -225,12 +229,52 @@ impl BuildStep for GenerateAndroid {
                     }
                 }
 
-                create_and_write_kbd(&main_xml_path, &rowkeys_display_name);
-                create_and_write_layout_set(&main_xml_path, &rowkeys_display_name);
+                create_and_write_kbd(&main_xml_path, &rowkeys_display_name.to_lowercase());
+                create_and_write_layout_set(&main_xml_path, &rowkeys_display_name.to_lowercase());
 
                 // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
 
                 // for each LAYOUT add a rows_northern_sami_keyboard -> points to these
+
+                // add strings here
+
+                let strings_appname_path = main_values_path.join(Path::new("strings-appname.xml"));
+                let file = File::open(strings_appname_path).expect(&format!(
+                    "strings-appname to exist in {:?} and open without issues",
+                    &main_values_path
+                ));
+                let strings_appname_doc =
+                    Document::from_file(file).expect("can't read strings-appname file");
+
+                let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
+                    .expect("css selector do work");
+
+                let ime = strings_appname_doc
+                    .root()
+                    .query_selector(&strings_appname_doc, &ime_selector)
+                    .expect("The strings file should have ime attr");
+
+                let child = ime.children(&strings_appname_doc).first().expect("aa");
+                //ime.remove_child(document, child)
+
+                let strings_path = main_values_path.join(Path::new("strings.xml"));
+                let file = File::open(strings_path).expect(&format!(
+                    "strings to exist in {:?} and open without issues",
+                    &main_values_path
+                ));
+                let mut strings_doc = Document::from_file(file).expect("can't read strings file");
+
+                let subtype = strings_doc.root().append_new_element(
+                    &mut strings_doc,
+                    NewElement {
+                        name: "string".to_owned(),
+                        attrs: [(
+                            "name".to_owned(),
+                            format!("subtype_{}", rowkeys_display_name),
+                        )]
+                        .into(),
+                    },
+                );
             }
         }
 
