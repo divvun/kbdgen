@@ -1,5 +1,5 @@
-use std::path::Path;
 use std::str::FromStr;
+use std::{path::Path, process::Command};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -17,6 +17,7 @@ use crate::{
 const ROWS_TEMPLATE: &str = include_str!("../../../resources/template-android-rows.xml");
 const ROWKEYS_TEMPLATE: &str = include_str!("../../../resources/template-android-rowkeys.xml");
 
+const REPOSITORY: &str = "repo";
 const TOP_FOLDER: &str = "app/src/main";
 const ASSETS_LAYOUTS_PART: &str = "assets/layouts";
 const RESOURCES_PART: &str = "res";
@@ -48,27 +49,43 @@ pub struct GenerateAndroid;
 #[async_trait(?Send)]
 impl BuildStep for GenerateAndroid {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+        let old_output_path = output_path;
+
+        let output_path = output_path.join(Path::new(REPOSITORY));
         let top_path = output_path.join(Path::new(TOP_FOLDER));
-
         let assets_layouts_path = top_path.join(Path::new(ASSETS_LAYOUTS_PART));
-        std::fs::create_dir_all(&assets_layouts_path).unwrap();
-
         let resources_path = top_path.join(Path::new(RESOURCES_PART));
-
         let main_xml_path = resources_path.join(Path::new(MAIN_XML_PART));
         let short_width_xml_path = resources_path.join(Path::new(SHORT_WIDTH_XML_PART));
 
-        std::fs::create_dir_all(&main_xml_path).unwrap();
-        std::fs::create_dir_all(&short_width_xml_path).unwrap();
-
         let default_language_tag =
             LanguageTag::parse(DEFAULT_LOCALE).expect("default language tag must parse");
+
+        let mut cloned_repo = false;
 
         // One set of rowkeys_{displayName}_keyboard{count}.xml file per language with an Android platform
         // x files for lines (should be 3)
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
             if let Some(android_target) = &layout.android {
+                if !cloned_repo {
+                    let repo_url = "https://github.com/divvun/giellakbd-android";
+
+                    Command::new("git")
+                        .arg("clone")
+                        .arg(repo_url)
+                        .arg(REPOSITORY)
+                        .current_dir(old_output_path)
+                        .status()
+                        .expect("to clone a public repo with no hippos");
+
+                    cloned_repo = true;
+
+                    std::fs::create_dir_all(&assets_layouts_path).unwrap();
+                    std::fs::create_dir_all(&main_xml_path).unwrap();
+                    std::fs::create_dir_all(&short_width_xml_path).unwrap();
+                }
+
                 let assets_layout = AndroidLayout {
                     transforms: IndexMap::new(), // should this be more? can mobile keys have transforms?
                     speller: AndroidSpeller {
