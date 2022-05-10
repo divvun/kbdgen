@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use build::android::clone_giellakbd::CloneGiellaKbd;
+use build::android::generate_android::GenerateAndroid;
 use build::macos::{GenerateInstaller, GenerateMacOs};
 use build::BuildStep;
 use bundle::KbdgenBundle;
@@ -17,6 +19,23 @@ use crate::bundle::read_kbdgen_bundle;
 mod build;
 mod bundle;
 mod util;
+
+async fn android_target(
+    bundle: KbdgenBundle,
+    output_path: PathBuf,
+    target: &TargetAndroid,
+) -> anyhow::Result<()> {
+    match target.command {
+        TargetAndroidCommand::Build(_) => {
+            let build = AndroidBuild::new(bundle, output_path);
+            build.build_full().await;
+        }
+        TargetAndroidCommand::Clone(_) => CloneGiellaKbd.build(&bundle, &output_path).await,
+        TargetAndroidCommand::Generate(_) => GenerateAndroid.build(&bundle, &output_path).await,
+    }
+
+    Ok(())
+}
 
 async fn macos_target(
     bundle: KbdgenBundle,
@@ -71,11 +90,8 @@ async fn main() -> anyhow::Result<()> {
 
                     build.build_full().await;
                 }
-                TargetCommand::Android(_android_command) => {
-                    let build =
-                        AndroidBuild::new(bundle, target_command_struct.output_path.clone());
-
-                    build.build_full().await;
+                TargetCommand::Android(target) => {
+                    android_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Ios(_android_command) => {
                     let build = IosBuild::new(bundle, target_command_struct.output_path.clone());
@@ -113,9 +129,9 @@ enum TargetCommand {
     #[clap(name = "svg", about = "SVG functionality")]
     Svg(TargetSvgCommand),
     #[clap(about = "Android functionality")]
-    Android(TargetAndroidCommand),
-    #[clap(about = "Android functionality")]
-    Ios(TargetAndroidCommand),
+    Android(TargetAndroid),
+    #[clap(about = "iOS functionality")]
+    Ios(TargetIosCommand),
 }
 
 #[derive(Args)]
@@ -132,17 +148,51 @@ struct TargetCommandStruct {
     output_path: PathBuf,
 }
 
+// Android
+
 #[derive(Parser)]
-struct TargetAndroidCommand {}
+struct TargetAndroid {
+    #[clap(subcommand)]
+    command: TargetAndroidCommand,
+}
+
+#[derive(Subcommand)]
+enum TargetAndroidCommand {
+    /// Run all build steps (recommended option)
+    Build(TargetAndroidBuildCommand),
+
+    /// Only clone the GiellaKbd repository (advanced)
+    Clone(TargetAndroidCloneGiellaKbdCommand),
+
+    /// Only generate the changes to the Android repository (advanced)
+    Generate(TargetAndroidGenerateCommand),
+}
+
+#[derive(Parser)]
+struct TargetAndroidBuildCommand {}
+
+#[derive(Parser)]
+struct TargetAndroidCloneGiellaKbdCommand {}
+
+#[derive(Parser)]
+struct TargetAndroidGenerateCommand {}
+
+// iOS
 
 #[derive(Parser)]
 struct TargetIosCommand {}
 
+// Windows
+
 #[derive(Parser)]
 struct TargetWindowsCommand {}
 
+// ChromeOS
+
 #[derive(Parser)]
 struct TargetChromeOsCommand {}
+
+// MacOS
 
 #[derive(Parser)]
 struct TargetMacOs {
@@ -170,6 +220,8 @@ struct TargetMacOsGenerateCommand {}
 
 #[derive(Parser)]
 struct TargetMacOsInstallerCommand {}
+
+// SVG
 
 #[derive(Parser)]
 struct TargetSvgCommand {}

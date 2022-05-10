@@ -1,5 +1,5 @@
+use std::path::Path;
 use std::str::FromStr;
-use std::{path::Path, process::Command};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -14,10 +14,11 @@ use crate::{
     util::split_keys,
 };
 
+use super::REPOSITORY_FOLDER;
+
 const ROWS_TEMPLATE: &str = include_str!("../../../resources/template-android-rows.xml");
 const ROWKEYS_TEMPLATE: &str = include_str!("../../../resources/template-android-rowkeys.xml");
 
-const REPOSITORY: &str = "repo";
 const TOP_FOLDER: &str = "app/src/main";
 const ASSETS_LAYOUTS_PART: &str = "assets/layouts";
 const RESOURCES_PART: &str = "res";
@@ -26,7 +27,6 @@ const SHORT_WIDTH_XML_PART: &str = "xml-sw600dp";
 
 const DEFAULT_LOCALE: &str = "en";
 
-const OUTER_ROWKEYS_TAG: &str = "switch";
 const DEFAULT_ROWKEYS_TAG: &str = "default";
 const SHIFT_ROWKEYS_TAG: &str = "case";
 
@@ -49,9 +49,7 @@ pub struct GenerateAndroid;
 #[async_trait(?Send)]
 impl BuildStep for GenerateAndroid {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
-        let old_output_path = output_path;
-
-        let output_path = output_path.join(Path::new(REPOSITORY));
+        let output_path = output_path.join(Path::new(REPOSITORY_FOLDER));
         let top_path = output_path.join(Path::new(TOP_FOLDER));
         let assets_layouts_path = top_path.join(Path::new(ASSETS_LAYOUTS_PART));
         let resources_path = top_path.join(Path::new(RESOURCES_PART));
@@ -61,31 +59,15 @@ impl BuildStep for GenerateAndroid {
         let default_language_tag =
             LanguageTag::parse(DEFAULT_LOCALE).expect("default language tag must parse");
 
-        let mut cloned_repo = false;
+        std::fs::create_dir_all(&assets_layouts_path).unwrap();
+        std::fs::create_dir_all(&main_xml_path).unwrap();
+        std::fs::create_dir_all(&short_width_xml_path).unwrap();
 
         // One set of rowkeys_{displayName}_keyboard{count}.xml file per language with an Android platform
         // x files for lines (should be 3)
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
             if let Some(android_target) = &layout.android {
-                if !cloned_repo {
-                    let repo_url = "https://github.com/divvun/giellakbd-android";
-
-                    Command::new("git")
-                        .arg("clone")
-                        .arg(repo_url)
-                        .arg(REPOSITORY)
-                        .current_dir(old_output_path)
-                        .status()
-                        .expect("to clone a public repo with no hippos");
-
-                    cloned_repo = true;
-
-                    std::fs::create_dir_all(&assets_layouts_path).unwrap();
-                    std::fs::create_dir_all(&main_xml_path).unwrap();
-                    std::fs::create_dir_all(&short_width_xml_path).unwrap();
-                }
-
                 let assets_layout = AndroidLayout {
                     transforms: IndexMap::new(), // should this be more? can mobile keys have transforms?
                     speller: AndroidSpeller {
@@ -124,16 +106,11 @@ impl BuildStep for GenerateAndroid {
 
                 let layers = &android_target.primary.layers;
 
-                let rows_document =
+                let _rows_document =
                     Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
-                let rows_root = rows_document.root();
 
                 let rowkeys_document =
                     Document::from_str(ROWKEYS_TEMPLATE).expect("invalid rowkeys template");
-                let rowkeys_root = rowkeys_document.root();
-
-                let outer_selector =
-                    Selector::new(OUTER_ROWKEYS_TAG).expect("outer rowtag must exist");
 
                 let mut rowkeys_docs_map = IndexMap::new();
 
@@ -154,13 +131,6 @@ impl BuildStep for GenerateAndroid {
                             .entry(line_index)
                             .or_insert(rowkeys_document.clone());
                         let new_rowkeys_root = new_rowkeys_document.root();
-
-                        let row_keys = new_rowkeys_root
-                            .query_selector(&new_rowkeys_document, &outer_selector)
-                            .expect(&format!(
-                                "The template document should have a {} tag",
-                                OUTER_ROWKEYS_TAG
-                            ));
 
                         let inner_selector = Selector::new(selector_string).unwrap();
 
@@ -208,7 +178,7 @@ impl BuildStep for GenerateAndroid {
                     )
                     .unwrap();
 
-                    for (layer_key, layer) in layers {
+                    for (layer_key, _layer) in layers {
                         let selector_string;
 
                         match layer_key {
@@ -221,10 +191,6 @@ impl BuildStep for GenerateAndroid {
                         };
 
                         let rowkey_doc_root = rowkey_doc.root();
-
-                        let row_keys = rowkey_doc_root
-                            .query_selector(&rowkey_doc, &outer_selector)
-                            .expect(&format!("Document should have a {} tag", OUTER_ROWKEYS_TAG));
 
                         let inner_selector = Selector::new(selector_string).unwrap();
 
@@ -267,31 +233,6 @@ impl BuildStep for GenerateAndroid {
                 // for each LAYOUT add a rows_northern_sami_keyboard -> points to these
             }
         }
-
-        // Files added for kbd-sme (confirm)
-
-        let top_folder = "app/src/main";
-
-        let json_folder_join = "assets/layouts"; // join top
-
-        // json file name: {layout}.json
-
-        let jni_libs = "jniLibs"; // join top
-        let arm = "arm64-v8a"; // join jni
-        let other_arm = "armeabi-v7a"; // join jni
-
-        let jni_file_1 = "libdivvunspell.so"; // join arm
-        let jni_file_2 = "libpahkat_client.so"; // join arm
-
-        let res_folder = "res"; // join top
-
-        let top_values = "values"; // join res
-                                   // top values folder. (non-critical, ignore initially)
-                                   // modify the 'strings-appname.xml' to make sure it has the
-                                   // appropriate keyboard display names
-
-        let xml_folder1 = "xml"; // join res
-        let xml_folder2 = "xml-sw600dp"; // join res. Do we support other screen ranges?
 
         /*
           (use "git add <file>..." to include in what will be committed)

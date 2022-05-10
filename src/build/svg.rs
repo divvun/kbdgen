@@ -49,14 +49,14 @@ pub struct GenerateSvg {}
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateSvg {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
-        let document = Document::from_str(KEYBOARD_SVG).unwrap();
+    async fn build(&self, bundle: &KbdgenBundle, _output_path: &Path) {
+        let _document = Document::from_str(KEYBOARD_SVG).unwrap();
 
         println!("no explosion?");
 
         // .svg files need to be generated in cases of windows, chromeOS, and macOS
         // we'll start with Windows first
-        for (language_tag, layout) in &bundle.layouts {
+        for (_language_tag, layout) in &bundle.layouts {
             if let Some(_windows_layout) = &layout.windows {
                 //let cloned_template = document.clone();
 

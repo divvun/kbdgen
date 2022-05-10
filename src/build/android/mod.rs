@@ -4,11 +4,14 @@ use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
 
-use self::generate_android::GenerateAndroid;
+use self::{clone_giellakbd::CloneGiellaKbd, generate_android::GenerateAndroid};
 
 use super::{BuildStep, BuildSteps};
 
-mod generate_android;
+pub mod clone_giellakbd;
+pub mod generate_android;
+
+const REPOSITORY_FOLDER: &str = "repo";
 
 pub struct AndroidBuild {
     pub bundle: KbdgenBundle,
@@ -19,7 +22,8 @@ pub struct AndroidBuild {
 #[async_trait(?Send)]
 impl BuildSteps for AndroidBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let steps: Vec<Box<dyn BuildStep>> = vec![Box::new(GenerateAndroid)];
+        let steps: Vec<Box<dyn BuildStep>> =
+            vec![Box::new(CloneGiellaKbd), Box::new(GenerateAndroid)];
 
         AndroidBuild {
             bundle,

@@ -10,6 +10,7 @@ pub mod ios;
 pub mod macos;
 #[cfg(target_os = "windows")]
 pub mod pahkat;
+#[allow(dead_code)]
 pub mod svg;
 pub mod windows;
 
