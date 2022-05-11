@@ -4,7 +4,9 @@ use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
 
-use self::{generate_ios::GenerateIos, clone_giellakbd::CloneGiellaKbd, generate_xcode::GenerateXcode};
+use self::{
+    clone_giellakbd::CloneGiellaKbd, generate_ios::GenerateIos, generate_xcode::GenerateXcode,
+};
 
 use super::{BuildStep, BuildSteps};
 
@@ -24,8 +26,11 @@ pub struct IosBuild {
 #[async_trait(?Send)]
 impl BuildSteps for IosBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let steps: Vec<Box<dyn BuildStep>> =
-            vec![Box::new(CloneGiellaKbd), Box::new(GenerateIos), Box::new(GenerateXcode)];
+        let steps: Vec<Box<dyn BuildStep>> = vec![
+            Box::new(CloneGiellaKbd),
+            Box::new(GenerateIos),
+            Box::new(GenerateXcode),
+        ];
 
         IosBuild {
             bundle,
