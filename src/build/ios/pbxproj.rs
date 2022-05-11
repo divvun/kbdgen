@@ -1,11 +1,28 @@
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 
 #[nova::newtype(serde)]
 pub type ObjectId = String;
 
+impl ObjectId {
+    pub fn random() -> Self {
+        use rand::Rng;
+        const CHARSET: &[u8] = b"0123456789ABCDEF";
+        const LEN: usize = 24;
+        let mut rng = rand::thread_rng();
+
+        let id: String = (0..LEN)
+            .map(|_| {
+                let idx = rng.gen_range(0..CHARSET.len());
+                CHARSET[idx] as char
+            })
+            .collect();
+
+        ObjectId(id)
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,7 +30,7 @@ pub struct Pbxproj {
     pub classes: serde_json::Value,
     pub object_version: String,
     pub archive_version: String,
-    pub objects: IndexMap<ObjectId, Object>
+    pub objects: IndexMap<ObjectId, Object>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
