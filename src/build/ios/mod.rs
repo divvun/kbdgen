@@ -11,6 +11,7 @@ use super::{BuildStep, BuildSteps};
 pub mod clone_giellakbd;
 pub mod generate_ios;
 pub mod generate_xcode;
+pub mod pbxproj;
 
 const REPOSITORY_FOLDER: &str = "repo";
 
