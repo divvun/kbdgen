@@ -151,7 +151,7 @@ impl BuildStep for GenerateIos {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let repository_path = output_path.join(REPOSITORY);
         let models_path = repository_path.join(MODELS);
-        let keyboard_definitions_file_path = output_path.join("KeyboardDefinitions.json");
+        let keyboard_definitions_file_path = models_path.join("KeyboardDefinitions.json");
 
         for (language_tag, layout) in &bundle.layouts {
             let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
@@ -176,41 +176,41 @@ impl BuildStep for GenerateIos {
                     i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
                 }
 
-                // if let Some(key_names) = &layout.key_names {
-                //     std::fs::write(
-                //         output_path.join(keyboard_definitions_file_path.clone()),
-                //         serde_json::to_string_pretty(&[IosKeyboardDefinitions {
-                //             info: IosInfo {
-                //                 name: layout
-                //                     .display_names
-                //                     .get(language_tag)
-                //                     .expect("can't evaluate language tag of layout")
-                //                     .to_string(),
-                //                 locale: language_tag.to_string(),
-                //                 enter: key_names.r#return.to_string(),
-                //                 space: key_names.space.to_string(),
-                //             },
-                //             longpress: longpress,
-                //             dead_keys: IosDeadKeys {
-                //                 iphone: IndexMap::new(),
-                //                 i_pad_9in: IndexMap::new(),
-                //                 i_pad_12in: IndexMap::new(),
-                //             },
-                //             transforms: serde_json::value::Value::Null,
-                //             iphone: IosPlatform {
-                //                 layer: iphone_layers,
-                //             },
-                //             i_pad_9in: IosPlatform {
-                //                 layer: i_pad_9in_layers,
-                //             },
-                //             i_pad_12in: IosPlatform {
-                //                 layer: i_pad_12in_layers,
-                //             },
-                //         }])
-                //         .unwrap(),
-                //     )
-                //     .unwrap();
-                // }
+                if let Some(key_names) = &layout.key_names {
+                    std::fs::write(
+                        output_path.join(keyboard_definitions_file_path.clone()),
+                        serde_json::to_string_pretty(&[IosKeyboardDefinitions {
+                            info: IosInfo {
+                                name: layout
+                                    .display_names
+                                    .get(language_tag)
+                                    .expect("can't evaluate language tag of layout")
+                                    .to_string(),
+                                locale: language_tag.to_string(),
+                                enter: key_names.r#return.to_string(),
+                                space: key_names.space.to_string(),
+                            },
+                            longpress: longpress,
+                            dead_keys: IosDeadKeys {
+                                iphone: IndexMap::new(),
+                                i_pad_9in: IndexMap::new(),
+                                i_pad_12in: IndexMap::new(),
+                            },
+                            transforms: serde_json::value::Value::Null,
+                            iphone: IosPlatform {
+                                layer: iphone_layers,
+                            },
+                            i_pad_9in: IosPlatform {
+                                layer: i_pad_9in_layers,
+                            },
+                            i_pad_12in: IosPlatform {
+                                layer: i_pad_12in_layers,
+                            },
+                        }])
+                        .unwrap(),
+                    )
+                    .unwrap();
+                }
             }
         }
     }
