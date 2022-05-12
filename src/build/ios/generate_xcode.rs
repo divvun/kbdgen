@@ -1,8 +1,6 @@
 use std::{cmp::Ordering, fmt, path::Path};
 
 use async_trait::async_trait;
-use language_tags::LanguageTag;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
@@ -12,8 +10,11 @@ const HOSTING_APP: &str = "HostingApp";
 const INFO_PLIST_STRINGS: &str = "InfoPlist.strings";
 
 const KEYBOARD: &str = "Keyboard";
-const NORTHERN_SAMI: &str = "northern-sami-keyboard";
 const INFO_PLIST: &str = "Info.plist";
+
+const SETTINGS_BUNDLE: &str = "Settings.bundle";
+const ROOT_PLIST: &str = "Root.plist";
+const ENTITLEMENTS_EXTENSION: &str = ".entitlements";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct XcodeInfoPlist {
@@ -94,6 +95,34 @@ pub struct LayoutInfoPlist {
 
 // LAYOUT PLIST END
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EntitlementsDict {
+    #[serde(rename = "com.apple.security.application-groups")]
+    com_apple_security_application_groups: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PreferenceSpecifier {
+    #[serde(rename = "Type")]
+    preference_type: String,
+    #[serde(rename = "Title")]
+    title: String,
+    #[serde(rename = "Key")]
+    key: String,
+    #[serde(rename = "DefaultValue")]
+    default_value: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SettingsRootDict {
+    #[serde(rename = "StringsTable")]
+    strings_table: String,
+    #[serde(rename = "PreferenceSpecifiers")]
+    preference_specifiers: Vec<PreferenceSpecifier>,
+    #[serde(rename = "ApplicationGroupContainerIdentifier")]
+    application_group_container_identifier: String,
+}
+
 pub fn replace_all_occurances(input: String, character: char, replace_with: char) -> String {
     input
         .as_str()
@@ -115,13 +144,14 @@ pub struct GenerateXcode;
 impl BuildStep for GenerateXcode {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let repository_path = output_path.join(REPOSITORY);
+        let hosting_app_path = repository_path.join(HOSTING_APP);
+        let keyboard_path = repository_path.join(KEYBOARD);
 
         for (layout_index, (language_tag, layout)) in bundle.layouts.iter().enumerate() {
             if let Some(target) = &bundle.targets.ios {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES
                     for (locale_name, locale_info) in &bundle.project.locales {
-                        let hosting_app_path = repository_path.join(HOSTING_APP);
                         let locale_name = if locale_name == "en" {
                             "Base"
                         } else {
@@ -154,7 +184,6 @@ impl BuildStep for GenerateXcode {
                         '-',
                     );
 
-                    let keyboard_path = repository_path.join(KEYBOARD);
                     let info_plist_template = keyboard_path.join(INFO_PLIST);
 
                     let layout_path = keyboard_path.join(keyboard_name);
@@ -176,6 +205,40 @@ impl BuildStep for GenerateXcode {
                     parsed_plist.divvun_keyboard_index = layout_index;
 
                     plist::to_file_xml(layout_info_plist_path.clone(), &parsed_plist).unwrap();
+
+                    // UPDATE ENTITLEMENTS
+                    let new_entitlements = format!("{}.{}", "group", target.package_id);
+
+                    // KEYBOARD
+                    let keyboard_entitlements_path =
+                        keyboard_path.join(format!("{}{}", KEYBOARD, ENTITLEMENTS_EXTENSION));
+                    let mut keyboard_entitlements: EntitlementsDict =
+                        plist::from_file(keyboard_entitlements_path.clone()).expect("valid stuff");
+                    keyboard_entitlements.com_apple_security_application_groups =
+                        vec![new_entitlements.clone()];
+                    plist::to_file_xml(keyboard_entitlements_path.clone(), &keyboard_entitlements)
+                        .unwrap();
+
+                    // HOSTING APP
+                    let hosting_app_entitlements_path =
+                        hosting_app_path.join(format!("{}{}", HOSTING_APP, ENTITLEMENTS_EXTENSION));
+                    let mut hosting_app_entitlements: EntitlementsDict =
+                        plist::from_file(hosting_app_entitlements_path.clone())
+                            .expect("valid stuff");
+                    hosting_app_entitlements.com_apple_security_application_groups =
+                        vec![new_entitlements.clone()];
+                    plist::to_file_xml(
+                        hosting_app_entitlements_path.clone(),
+                        &hosting_app_entitlements,
+                    )
+                    .unwrap();
+
+                    // ROOT PLIST
+                    let root_plist_path = hosting_app_path.join(SETTINGS_BUNDLE).join(ROOT_PLIST);
+                    let mut root_plist: SettingsRootDict =
+                        plist::from_file(root_plist_path.clone()).expect("valid stuff");
+                    root_plist.application_group_container_identifier = new_entitlements.clone();
+                    plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
                 }
             }
         }
