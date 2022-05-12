@@ -1,7 +1,8 @@
-use std::{fmt, path::Path};
+use std::{cmp::Ordering, fmt, path::Path};
 
 use async_trait::async_trait;
 use language_tags::LanguageTag;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
@@ -92,6 +93,22 @@ pub struct LayoutInfoPlist {
 }
 
 // LAYOUT PLIST END
+
+pub fn replace_all_occurances(input: String, character: char, replace_with: char) -> String {
+    input
+        .as_str()
+        .chars()
+        .map(|curr| {
+            if curr.cmp(&character) != Ordering::Equal {
+                curr
+            } else {
+                replace_with
+            }
+        })
+        .into_iter()
+        .collect::<String>()
+}
+
 pub struct GenerateXcode;
 
 #[async_trait(?Send)]
@@ -99,13 +116,10 @@ impl BuildStep for GenerateXcode {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let repository_path = output_path.join(REPOSITORY);
 
-        // let file = File::open(info_path).unwrap();
-        // let xml_info = Document::from_file(file);
-
-        // GENERATE LOCALES
         for (layout_index, (language_tag, layout)) in bundle.layouts.iter().enumerate() {
-            if let Some(ios_target) = &bundle.targets.ios {
+            if let Some(target) = &bundle.targets.ios {
                 if let Some(_ios_layout) = &layout.i_os {
+                    // GENERATE LOCALES
                     for (locale_name, locale_info) in &bundle.project.locales {
                         let hosting_app_path = repository_path.join(HOSTING_APP);
                         let locale_name = if locale_name == "en" {
@@ -124,30 +138,44 @@ impl BuildStep for GenerateXcode {
                             cf_bundle_display_name: locale_info.name.to_string(),
                         };
                         std::fs::write(info_path, info_plist.to_string()).unwrap();
-
-                        let keyboard_path = repository_path.join(KEYBOARD);
-                        let info_plist_template = keyboard_path.join(INFO_PLIST);
-
-                        let layout_path = keyboard_path.join(NORTHERN_SAMI);
-                        let layout_info_plist_path = layout_path.join(INFO_PLIST);
-
-                        std::fs::create_dir_all(&layout_path).unwrap();
-
-                        let mut parsed_plist: LayoutInfoPlist =
-                            plist::from_file(info_plist_template.clone()).expect("valid stuff");
-
-                        parsed_plist.cf_bundle_display_name = layout.autonym().to_string();
-                        parsed_plist.cf_bundle_short_version_string = ios_target.version.clone();
-                        parsed_plist.cf_bundle_version = ios_target.build.clone();
-                        parsed_plist.ls_application_queries_schemes[0] = ios_target.package_id.clone();
-                        parsed_plist
-                            .ns_extension
-                            .ns_extension_attributes
-                            .primary_language = language_tag.to_string();
-                        parsed_plist.divvun_keyboard_index = layout_index;
-
-                        plist::to_file_xml(layout_info_plist_path.clone(), &parsed_plist).unwrap();
                     }
+
+                    // GENERATE LAYOUTS
+
+                    let keyboard_name = replace_all_occurances(
+                        bundle
+                            .project
+                            .locales
+                            .get("en")
+                            .unwrap()
+                            .name
+                            .to_lowercase(),
+                        ' ',
+                        '-',
+                    );
+
+                    let keyboard_path = repository_path.join(KEYBOARD);
+                    let info_plist_template = keyboard_path.join(INFO_PLIST);
+
+                    let layout_path = keyboard_path.join(keyboard_name);
+                    let layout_info_plist_path = layout_path.join(INFO_PLIST);
+
+                    std::fs::create_dir_all(&layout_path).unwrap();
+
+                    let mut parsed_plist: LayoutInfoPlist =
+                        plist::from_file(info_plist_template.clone()).expect("valid stuff");
+
+                    parsed_plist.cf_bundle_display_name = layout.autonym().to_string();
+                    parsed_plist.cf_bundle_short_version_string = target.version.clone();
+                    parsed_plist.cf_bundle_version = target.build.clone();
+                    parsed_plist.ls_application_queries_schemes[0] = target.package_id.clone();
+                    parsed_plist
+                        .ns_extension
+                        .ns_extension_attributes
+                        .primary_language = language_tag.to_string();
+                    parsed_plist.divvun_keyboard_index = layout_index;
+
+                    plist::to_file_xml(layout_info_plist_path.clone(), &parsed_plist).unwrap();
                 }
             }
         }
