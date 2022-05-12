@@ -123,6 +123,34 @@ pub struct SettingsRootDict {
     application_group_container_identifier: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BundleSchemes {
+    CFBundleURLSchemes: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct HostingPlist {
+    CFBundleDevelopmentRegion: String,
+    CFBundleDisplayName: String,
+    CFBundleExecutable: String,
+    CFBundleIdentifier: String,
+    CFBundleInfoDictionaryVersion: String,
+    CFBundleName: String,
+    CFBundlePackageType: String,
+    CFBundleShortVersionString: String,
+    CFBundleSignature: String,
+    CFBundleURLTypes: Vec<BundleSchemes>,
+    CFBundleVersion: String,
+    ITSAppUsesNonExemptEncryption: bool,
+    LSApplicationQueriesSchemes: Vec<String>,
+    LSRequiresIPhoneOS: bool,
+    UIBackgroundModes: Vec<String>,
+    UILaunchStoryboardName: String,
+    UIRequiredDeviceCapabilities: Vec<String>,
+    UISupportedInterfaceOrientations: Vec<String>,
+    UIUserInterfaceStyle: String,
+}
+
 pub fn replace_all_occurances(input: String, character: char, replace_with: char) -> String {
     input
         .as_str()
@@ -172,7 +200,8 @@ impl BuildStep for GenerateXcode {
 
                     // GENERATE LAYOUTS
 
-                    let keyboard_name = replace_all_occurances(
+                    // KEYBOARD PLIST
+                    let keyboard_folder_name = replace_all_occurances(
                         bundle
                             .project
                             .locales
@@ -186,25 +215,42 @@ impl BuildStep for GenerateXcode {
 
                     let info_plist_template = keyboard_path.join(INFO_PLIST);
 
-                    let layout_path = keyboard_path.join(keyboard_name);
+                    let layout_path = keyboard_path.join(keyboard_folder_name);
                     let layout_info_plist_path = layout_path.join(INFO_PLIST);
 
                     std::fs::create_dir_all(&layout_path).unwrap();
 
-                    let mut parsed_plist: LayoutInfoPlist =
+                    let mut parsed_keyboard_plist: LayoutInfoPlist =
                         plist::from_file(info_plist_template.clone()).expect("valid stuff");
 
-                    parsed_plist.cf_bundle_display_name = layout.autonym().to_string();
-                    parsed_plist.cf_bundle_short_version_string = target.version.clone();
-                    parsed_plist.cf_bundle_version = target.build.clone();
-                    parsed_plist.ls_application_queries_schemes[0] = target.package_id.clone();
-                    parsed_plist
+                    parsed_keyboard_plist.cf_bundle_display_name = layout.autonym().to_string();
+                    parsed_keyboard_plist.cf_bundle_short_version_string = target.version.clone();
+                    parsed_keyboard_plist.cf_bundle_version = target.build.clone();
+                    parsed_keyboard_plist.ls_application_queries_schemes[0] =
+                        target.package_id.clone();
+                    parsed_keyboard_plist
                         .ns_extension
                         .ns_extension_attributes
                         .primary_language = language_tag.to_string();
-                    parsed_plist.divvun_keyboard_index = layout_index;
+                    parsed_keyboard_plist.divvun_keyboard_index = layout_index;
 
-                    plist::to_file_xml(layout_info_plist_path.clone(), &parsed_plist).unwrap();
+                    plist::to_file_xml(layout_info_plist_path.clone(), &parsed_keyboard_plist)
+                        .unwrap();
+
+                    // HOSTING APP PLIST
+                    let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
+                    let mut hosting_app_plist: HostingPlist =
+                        plist::from_file(hosting_app_plist_path.clone()).expect("valid stuff");
+
+                    hosting_app_plist.CFBundleDisplayName =
+                        bundle.project.locales.get("en").unwrap().name.clone();
+                    hosting_app_plist.CFBundleShortVersionString = target.version.clone();
+                    hosting_app_plist.CFBundleVersion = target.build.clone();
+                    hosting_app_plist.CFBundleURLTypes[0].CFBundleURLSchemes[0] =
+                        target.package_id.clone();
+                    hosting_app_plist.LSApplicationQueriesSchemes[0] = target.package_id.clone();
+
+                    plist::to_file_xml(hosting_app_plist_path.clone(), &hosting_app_plist).unwrap();
 
                     // UPDATE ENTITLEMENTS
                     let new_entitlements = format!("{}.{}", "group", target.package_id);
