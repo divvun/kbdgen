@@ -125,30 +125,50 @@ pub struct SettingsRootDict {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BundleSchemes {
-    CFBundleURLSchemes: Vec<String>,
+    #[serde(rename = "CFBundleURLSchemes")]
+    cf_bundle_url_schemes: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct HostingPlist {
-    CFBundleDevelopmentRegion: String,
-    CFBundleDisplayName: String,
-    CFBundleExecutable: String,
-    CFBundleIdentifier: String,
-    CFBundleInfoDictionaryVersion: String,
-    CFBundleName: String,
-    CFBundlePackageType: String,
-    CFBundleShortVersionString: String,
-    CFBundleSignature: String,
-    CFBundleURLTypes: Vec<BundleSchemes>,
-    CFBundleVersion: String,
-    ITSAppUsesNonExemptEncryption: bool,
-    LSApplicationQueriesSchemes: Vec<String>,
-    LSRequiresIPhoneOS: bool,
-    UIBackgroundModes: Vec<String>,
-    UILaunchStoryboardName: String,
-    UIRequiredDeviceCapabilities: Vec<String>,
-    UISupportedInterfaceOrientations: Vec<String>,
-    UIUserInterfaceStyle: String,
+    #[serde(rename = "CFBundleDevelopmentRegion")]
+    cf_bundle_development_region: String,
+    #[serde(rename = "CFBundleDisplayName")]
+    cf_bundle_display_name: String,
+    #[serde(rename = "CFBundleExecutable")]
+    cf_bundle_executable: String,
+    #[serde(rename = "CFBundleIdentifier")]
+    cf_bundle_identifier: String,
+    #[serde(rename = "CFBundleInfoDictionaryVersion")]
+    cf_bundle_info_dictionary_version: String,
+    #[serde(rename = "CFBundleName")]
+    cf_bundle_name: String,
+    #[serde(rename = "CFBundlePackageType")]
+    cf_bundle_package_type: String,
+    #[serde(rename = "CFBundleShortVersionString")]
+    cf_bundle_short_version_string: String,
+    #[serde(rename = "CFBundleSignature")]
+    cf_bundle_signature: String,
+    #[serde(rename = "CFBundleURLTypes")]
+    cf_bundle_url_types: Vec<BundleSchemes>,
+    #[serde(rename = "CFBundleVersion")]
+    cf_bundle_version: String,
+    #[serde(rename = "ITSAppUsesNonExemptEncryption")]
+    its_app_uses_non_exempt_encryption: bool,
+    #[serde(rename = "LSApplicationQueriesSchemes")]
+    ls_application_queries_schemes: Vec<String>,
+    #[serde(rename = "LSRequiresIPhoneOS")]
+    ls_requires_iphone_os: bool,
+    #[serde(rename = "UIBackgroundModes")]
+    ui_background_modes: Vec<String>,
+    #[serde(rename = "UILaunchStoryboardName")]
+    ui_launch_storyboard_name: String,
+    #[serde(rename = "UIRequiredDeviceCapabilities")]
+    ui_required_device_capabilities: Vec<String>,
+    #[serde(rename = "UISupportedInterfaceOrientations")]
+    ui_supported_interface_orientations: Vec<String>,
+    #[serde(rename = "UIUserInterfaceStyle")]
+    ui_user_interface_style: String,
 }
 
 pub fn replace_all_occurances(input: String, character: char, replace_with: char) -> String {
@@ -242,13 +262,13 @@ impl BuildStep for GenerateXcode {
                     let mut hosting_app_plist: HostingPlist =
                         plist::from_file(hosting_app_plist_path.clone()).expect("valid stuff");
 
-                    hosting_app_plist.CFBundleDisplayName =
+                    hosting_app_plist.cf_bundle_display_name =
                         bundle.project.locales.get("en").unwrap().name.clone();
-                    hosting_app_plist.CFBundleShortVersionString = target.version.clone();
-                    hosting_app_plist.CFBundleVersion = target.build.clone();
-                    hosting_app_plist.CFBundleURLTypes[0].CFBundleURLSchemes[0] =
+                    hosting_app_plist.cf_bundle_short_version_string = target.version.clone();
+                    hosting_app_plist.cf_bundle_version = target.build.clone();
+                    hosting_app_plist.cf_bundle_url_types[0].cf_bundle_url_schemes[0] =
                         target.package_id.clone();
-                    hosting_app_plist.LSApplicationQueriesSchemes[0] = target.package_id.clone();
+                    hosting_app_plist.ls_application_queries_schemes[0] = target.package_id.clone();
 
                     plist::to_file_xml(hosting_app_plist_path.clone(), &hosting_app_plist).unwrap();
 
