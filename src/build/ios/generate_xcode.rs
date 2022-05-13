@@ -190,7 +190,11 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
         .collect::<String>()
 }
 
-pub fn generate_keyboard_plist(template_path: PathBuf, value: IosSettings, output_path: PathBuf) {
+pub fn generate_keyboard_plist(
+    template_path: PathBuf,
+    value: IosKeyboardSettings,
+    output_path: PathBuf,
+) {
     let mut keyboard_plist: KeyboardInfoPlist =
         plist::from_file(template_path.clone()).expect("valid stuff");
 
@@ -207,7 +211,7 @@ pub fn generate_keyboard_plist(template_path: PathBuf, value: IosSettings, outpu
     plist::to_file_xml(output_path, &keyboard_plist).unwrap();
 }
 
-pub fn generate_hosting_plist(in_out_path: PathBuf, value: IosSettings) {
+pub fn generate_hosting_plist(in_out_path: PathBuf, value: IosKeyboardSettings) {
     let mut hosting_app_plist: HostingPlist =
         plist::from_file(in_out_path.clone()).expect("valid stuff");
 
@@ -228,7 +232,7 @@ pub fn update_entitlements(entitlements_path: PathBuf, new_entitlements: Vec<Str
 }
 
 #[derive(Clone)]
-pub struct IosSettings {
+pub struct IosKeyboardSettings {
     display_name: String,
     short_version: String,
     build_version: String,
@@ -287,7 +291,7 @@ impl BuildStep for GenerateXcode {
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
 
-                    let ios_keyboard_settings = IosSettings {
+                    let ios_keyboard_settings = IosKeyboardSettings {
                         display_name: layout.autonym().to_string(),
                         short_version: target.version.clone(),
                         build_version: target.build.clone(),
