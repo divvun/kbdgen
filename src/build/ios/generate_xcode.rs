@@ -1,4 +1,8 @@
-use std::{cmp::Ordering, fmt, path::Path};
+use std::{
+    cmp::Ordering,
+    fmt,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -7,7 +11,7 @@ use crate::{build::BuildStep, bundle::KbdgenBundle};
 
 const REPOSITORY: &str = "repo";
 const HOSTING_APP: &str = "HostingApp";
-const INFO_PLIST_STRINGS: &str = "InfoPlist.strings";
+const HOSTING_INFO_STRINGS: &str = "InfoPlist.strings";
 
 const KEYBOARD: &str = "Keyboard";
 const INFO_PLIST: &str = "Info.plist";
@@ -17,14 +21,14 @@ const ROOT_PLIST: &str = "Root.plist";
 const ENTITLEMENTS_EXTENSION: &str = ".entitlements";
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct XcodeInfoPlist {
+pub struct XcodeHostingInfoStrings {
     #[serde(rename = "CFBundleName")]
     cf_bundle_name: String,
     #[serde(rename = "CFBundleDisplayName")]
     cf_bundle_display_name: String,
 }
 
-impl fmt::Display for XcodeInfoPlist {
+impl fmt::Display for XcodeHostingInfoStrings {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(&format!(
             "\"CFBundleName\" = {:?};\n\"CFBundleDisplayName\" = {:?};",
@@ -48,7 +52,7 @@ pub struct LayoutInfoPlistExtensionAttributes {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct LayoutInfoPlistExtension {
+pub struct KeyboardInfoPlistExtension {
     #[serde(rename = "NSExtensionAttributes")]
     ns_extension_attributes: LayoutInfoPlistExtensionAttributes,
     #[serde(rename = "NSExtensionPointIdentifier")]
@@ -58,7 +62,7 @@ pub struct LayoutInfoPlistExtension {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct LayoutInfoPlist {
+pub struct KeyboardInfoPlist {
     #[serde(rename = "DivvunSpellerPath")]
     divvun_speller_path: String,
     #[serde(rename = "DivvunSpellerPackageKey")]
@@ -90,7 +94,7 @@ pub struct LayoutInfoPlist {
     #[serde(rename = "LSApplicationQueriesSchemes")]
     ls_application_queries_schemes: Vec<String>,
     #[serde(rename = "NSExtension")]
-    ns_extension: LayoutInfoPlistExtension,
+    ns_extension: KeyboardInfoPlistExtension,
 }
 
 // LAYOUT PLIST END
@@ -186,6 +190,53 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
         .collect::<String>()
 }
 
+pub fn generate_keyboard_plist(template_path: PathBuf, value: IosSettings, output_path: PathBuf) {
+    let mut keyboard_plist: KeyboardInfoPlist =
+        plist::from_file(template_path.clone()).expect("valid stuff");
+
+    keyboard_plist.cf_bundle_display_name = value.display_name;
+    keyboard_plist.cf_bundle_short_version_string = value.short_version;
+    keyboard_plist.cf_bundle_version = value.build_version;
+    keyboard_plist.ls_application_queries_schemes[0] = value.package_id;
+    keyboard_plist
+        .ns_extension
+        .ns_extension_attributes
+        .primary_language = value.primary_language;
+    keyboard_plist.divvun_keyboard_index = value.keyboard_index;
+
+    plist::to_file_xml(output_path, &keyboard_plist).unwrap();
+}
+
+pub fn generate_hosting_plist(in_out_path: PathBuf, value: IosSettings) {
+    let mut hosting_app_plist: HostingPlist =
+        plist::from_file(in_out_path.clone()).expect("valid stuff");
+
+    hosting_app_plist.cf_bundle_display_name = value.display_name;
+    hosting_app_plist.cf_bundle_short_version_string = value.short_version;
+    hosting_app_plist.cf_bundle_version = value.build_version;
+    hosting_app_plist.cf_bundle_url_types[0].cf_bundle_url_schemes[0] = value.package_id.clone();
+    hosting_app_plist.ls_application_queries_schemes[0] = value.package_id;
+
+    plist::to_file_xml(in_out_path, &hosting_app_plist).unwrap();
+}
+
+pub fn update_entitlements(entitlements_path: PathBuf, new_entitlements: Vec<String>) {
+    let mut keyboard_entitlements: EntitlementsDict =
+        plist::from_file(entitlements_path.clone()).expect("valid stuff");
+    keyboard_entitlements.com_apple_security_application_groups = new_entitlements;
+    plist::to_file_xml(entitlements_path, &keyboard_entitlements).unwrap();
+}
+
+#[derive(Clone)]
+pub struct IosSettings {
+    display_name: String,
+    short_version: String,
+    build_version: String,
+    package_id: String,
+    primary_language: String,
+    keyboard_index: usize,
+}
+
 pub struct GenerateXcode;
 
 #[async_trait(?Send)]
@@ -206,19 +257,17 @@ impl BuildStep for GenerateXcode {
                             locale_name
                         };
                         let locale_path = hosting_app_path.join(&format!("{}.lproj", locale_name));
-                        let info_path = locale_path.join(INFO_PLIST_STRINGS);
+                        let info_path = locale_path.join(HOSTING_INFO_STRINGS);
                         println!("{:?}", locale_path);
 
                         std::fs::create_dir_all(&locale_path).unwrap();
 
-                        let info_plist = XcodeInfoPlist {
+                        let info_strings = XcodeHostingInfoStrings {
                             cf_bundle_name: locale_info.name.to_string(),
                             cf_bundle_display_name: locale_info.name.to_string(),
                         };
-                        std::fs::write(info_path, info_plist.to_string()).unwrap();
+                        std::fs::write(info_path, info_strings.to_string()).unwrap();
                     }
-
-                    // GENERATE LAYOUTS
 
                     // KEYBOARD PLIST
                     let keyboard_folder_name = replace_all_occurances(
@@ -233,73 +282,49 @@ impl BuildStep for GenerateXcode {
                         '-',
                     );
 
-                    let info_plist_template = keyboard_path.join(INFO_PLIST);
+                    let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
+                    let current_layout_path = keyboard_path.join(keyboard_folder_name);
 
-                    let layout_path = keyboard_path.join(keyboard_folder_name);
-                    let layout_info_plist_path = layout_path.join(INFO_PLIST);
+                    std::fs::create_dir_all(&current_layout_path).unwrap();
 
-                    std::fs::create_dir_all(&layout_path).unwrap();
+                    let ios_keyboard_settings = IosSettings {
+                        display_name: layout.autonym().to_string(),
+                        short_version: target.version.clone(),
+                        build_version: target.build.clone(),
+                        package_id: target.package_id.clone(),
+                        primary_language: language_tag.to_string(),
+                        keyboard_index: layout_index,
+                    };
 
-                    let mut parsed_keyboard_plist: LayoutInfoPlist =
-                        plist::from_file(info_plist_template.clone()).expect("valid stuff");
-
-                    parsed_keyboard_plist.cf_bundle_display_name = layout.autonym().to_string();
-                    parsed_keyboard_plist.cf_bundle_short_version_string = target.version.clone();
-                    parsed_keyboard_plist.cf_bundle_version = target.build.clone();
-                    parsed_keyboard_plist.ls_application_queries_schemes[0] =
-                        target.package_id.clone();
-                    parsed_keyboard_plist
-                        .ns_extension
-                        .ns_extension_attributes
-                        .primary_language = language_tag.to_string();
-                    parsed_keyboard_plist.divvun_keyboard_index = layout_index;
-
-                    plist::to_file_xml(layout_info_plist_path.clone(), &parsed_keyboard_plist)
-                        .unwrap();
+                    // KEYBOARD PLIST
+                    let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
+                    generate_keyboard_plist(
+                        keyboard_plist_template,
+                        ios_keyboard_settings.clone(),
+                        layout_info_plist_path,
+                    );
 
                     // HOSTING APP PLIST
                     let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
-                    let mut hosting_app_plist: HostingPlist =
-                        plist::from_file(hosting_app_plist_path.clone()).expect("valid stuff");
+                    generate_hosting_plist(hosting_app_plist_path, ios_keyboard_settings);
 
-                    hosting_app_plist.cf_bundle_display_name =
-                        bundle.project.locales.get("en").unwrap().name.clone();
-                    hosting_app_plist.cf_bundle_short_version_string = target.version.clone();
-                    hosting_app_plist.cf_bundle_version = target.build.clone();
-                    hosting_app_plist.cf_bundle_url_types[0].cf_bundle_url_schemes[0] =
-                        target.package_id.clone();
-                    hosting_app_plist.ls_application_queries_schemes[0] = target.package_id.clone();
-
-                    plist::to_file_xml(hosting_app_plist_path.clone(), &hosting_app_plist).unwrap();
-
-                    // UPDATE ENTITLEMENTS
+                    // NEW ENTITLEMENTS
                     let new_entitlements = format!("{}.{}", "group", target.package_id);
 
-                    // KEYBOARD
+                    // UPDATE KEYBOARD ENTITLEMENTS
                     let keyboard_entitlements_path =
                         keyboard_path.join(format!("{}{}", KEYBOARD, ENTITLEMENTS_EXTENSION));
-                    let mut keyboard_entitlements: EntitlementsDict =
-                        plist::from_file(keyboard_entitlements_path.clone()).expect("valid stuff");
-                    keyboard_entitlements.com_apple_security_application_groups =
-                        vec![new_entitlements.clone()];
-                    plist::to_file_xml(keyboard_entitlements_path.clone(), &keyboard_entitlements)
-                        .unwrap();
+                    update_entitlements(keyboard_entitlements_path, vec![new_entitlements.clone()]);
 
-                    // HOSTING APP
+                    // UPDATE HOSTING APP ENTITLEMENTS
                     let hosting_app_entitlements_path =
                         hosting_app_path.join(format!("{}{}", HOSTING_APP, ENTITLEMENTS_EXTENSION));
-                    let mut hosting_app_entitlements: EntitlementsDict =
-                        plist::from_file(hosting_app_entitlements_path.clone())
-                            .expect("valid stuff");
-                    hosting_app_entitlements.com_apple_security_application_groups =
-                        vec![new_entitlements.clone()];
-                    plist::to_file_xml(
-                        hosting_app_entitlements_path.clone(),
-                        &hosting_app_entitlements,
-                    )
-                    .unwrap();
+                    update_entitlements(
+                        hosting_app_entitlements_path,
+                        vec![new_entitlements.clone()],
+                    );
 
-                    // ROOT PLIST
+                    // UPDATE ENTITLEMENTS IN SETTINGS BUNDLE PLIST
                     let root_plist_path = hosting_app_path.join(SETTINGS_BUNDLE).join(ROOT_PLIST);
                     let mut root_plist: SettingsRootDict =
                         plist::from_file(root_plist_path.clone()).expect("valid stuff");
