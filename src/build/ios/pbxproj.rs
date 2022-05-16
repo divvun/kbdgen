@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,41 @@ pub struct Pbxproj {
     pub object_version: String,
     pub archive_version: String,
     pub objects: IndexMap<ObjectId, Object>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlistFile {
+    #[serde(rename = "lastKnownFileType")]
+    last_known_file_type: String,
+    name: String,
+    path: String,
+    #[serde(rename = "sourceTree")]
+    source_tree: String,
+}
+
+impl Pbxproj {
+    pub fn from_path(path: &PathBuf) -> Self {
+        convert_pbxproj_to_json(path)
+    }
+
+    pub fn add_plist_file(&mut self, relative_plist_path: &PathBuf) {
+        let temp = PlistFile {
+            last_known_file_type: "text.plist.xml".to_string(),
+            name: relative_plist_path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string(),
+            path: relative_plist_path.to_str().unwrap().to_string(),
+            source_tree: "<group>".to_string(),
+        };
+
+        self.objects.insert(
+            ObjectId::random(),
+            Object::FileReference(serde_json::json!(temp)),
+        );
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

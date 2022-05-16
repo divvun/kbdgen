@@ -2,12 +2,18 @@ use std::{
     cmp::Ordering,
     fmt,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::{build::BuildStep, bundle::KbdgenBundle};
+use crate::{
+    build::{ios::pbxproj::Pbxproj, BuildStep},
+    bundle::KbdgenBundle,
+};
+
+use super::pbxproj::{self, convert_pbxproj_to_json};
 
 const REPOSITORY: &str = "repo";
 const HOSTING_APP: &str = "HostingApp";
@@ -249,6 +255,7 @@ impl BuildStep for GenerateXcode {
         let repository_path = output_path.join(REPOSITORY);
         let hosting_app_path = repository_path.join(HOSTING_APP);
         let keyboard_path = repository_path.join(KEYBOARD);
+        let xcodeproj_path = repository_path.join("GiellaKeyboard.xcodeproj");
 
         for (layout_index, (language_tag, layout)) in bundle.layouts.iter().enumerate() {
             if let Some(target) = &bundle.targets.ios {
@@ -337,5 +344,19 @@ impl BuildStep for GenerateXcode {
                 }
             }
         }
+
+        // let xcodeproj_relative_path = PathBuf::from_str("GiellaKeyboard.xcodeproj").unwrap();
+        // let pbxproj_relative_path = xcodeproj_relative_path.join("project.pbxproj");
+
+        // let pbxproj_absolute_path = repository_path.join(pbxproj_relative_path.clone());
+        // let mut pbxproj = Pbxproj::from_path(&pbxproj_absolute_path);
+
+        // pbxproj.add_plist_file(&pbxproj_relative_path);
+
+        // std::fs::write(
+        //     pbxproj_absolute_path.clone(),
+        //     serde_json::to_string_pretty(&pbxproj).unwrap(),
+        // )
+        // .unwrap();
     }
 }
