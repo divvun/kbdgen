@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    cmp::Ordering,
+    path::{Path, PathBuf},
+};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -7,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub type ObjectId = String;
 
 impl ObjectId {
-    pub fn random() -> Self {
+    pub fn new_random() -> Self {
         use rand::Rng;
         const CHARSET: &[u8] = b"0123456789ABCDEF";
         const LEN: usize = 24;
@@ -22,6 +25,10 @@ impl ObjectId {
 
         ObjectId(id)
     }
+
+    pub fn add_ref_to_group() {
+        println!("ADD_REF_TO_GROUP");
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,6 +38,7 @@ pub struct Pbxproj {
     pub object_version: String,
     pub archive_version: String,
     pub objects: IndexMap<ObjectId, Object>,
+    pub mainGroup: IndexMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,12 +51,21 @@ pub struct PlistFile {
     source_tree: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct PbxGroup {
+    children: Vec<String>,
+    isa: String,
+    path: String,
+    #[serde(rename = "sourceTree")]
+    source_tree: String,
+}
+
 impl Pbxproj {
     pub fn from_path(path: &PathBuf) -> Self {
         convert_pbxproj_to_json(path)
     }
 
-    pub fn add_plist_file(&mut self, relative_plist_path: &PathBuf) {
+    pub fn create_plist_file(&mut self, relative_plist_path: &PathBuf) -> ObjectId {
         let temp = PlistFile {
             last_known_file_type: "text.plist.xml".to_string(),
             name: relative_plist_path
@@ -61,10 +78,51 @@ impl Pbxproj {
             source_tree: "<group>".to_string(),
         };
 
+        let object = ObjectId::new_random();
+
         self.objects.insert(
-            ObjectId::random(),
+            object.clone(),
             Object::FileReference(serde_json::json!(temp)),
         );
+
+        return object;
+    }
+
+    // WTF IS HAPPENING IN THE PYTHON?
+    // create a self.main_group??
+    pub fn add_path(&self, path: &PathBuf) {
+        println!("ADD_PATH: {:?}", path);
+        let path_list: Vec<String> = path
+            .to_str()
+            .unwrap()
+            .to_string()
+            .split("/")
+            .map(|x| x.to_string())
+            .collect();
+
+        // let mut target = self.mainGroup;
+
+        // for path_name in path_list {
+        //     for child in target.children {
+        //         if child.get("path").cmp(&path_name) == Ordering::Equal {
+        //             target = child;
+        //             break;
+        //         } else {
+        //             let key = ObjectId::new_random();
+
+        //             let value = PbxGroup {
+        //                 children: vec![],
+        //                 isa: "PBXGroup".to_string(),
+        //                 path: path_name,
+        //                 source_tree: "<group>".to_string(),
+        //             };
+
+        //             self.objects.insert(key, Object::Group(serde_json::json!(value)));
+        //             target["children"].push(serde_json::json!(key));
+        //             target = self.objects.get(&key);
+        //         }
+        //     }
+        // }
     }
 }
 

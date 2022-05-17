@@ -247,6 +247,15 @@ pub struct IosKeyboardSettings {
     keyboard_index: usize,
 }
 
+pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
+    let mut path_string = path.to_str().unwrap().to_string();
+    path_string.replace_range(
+        0..path_string.find(relative_to).unwrap() + relative_to.len() + 1,
+        "",
+    );
+    return PathBuf::from_str(&path_string).unwrap();
+}
+
 pub struct GenerateXcode;
 
 #[async_trait(?Send)]
@@ -255,7 +264,10 @@ impl BuildStep for GenerateXcode {
         let repository_path = output_path.join(REPOSITORY);
         let hosting_app_path = repository_path.join(HOSTING_APP);
         let keyboard_path = repository_path.join(KEYBOARD);
+
         let xcodeproj_path = repository_path.join("GiellaKeyboard.xcodeproj");
+        let pbxproj_path = xcodeproj_path.join("project.pbxproj");
+        let mut pbxproj = Pbxproj::from_path(&pbxproj_path);
 
         for (layout_index, (language_tag, layout)) in bundle.layouts.iter().enumerate() {
             if let Some(target) = &bundle.targets.ios {
@@ -312,8 +324,12 @@ impl BuildStep for GenerateXcode {
                     generate_keyboard_plist(
                         keyboard_plist_template,
                         ios_keyboard_settings.clone(),
-                        layout_info_plist_path,
+                        layout_info_plist_path.clone(),
                     );
+
+                    // GENERATE .pbxproj
+                    pbxproj.create_plist_file(&PathBuf::from_str(INFO_PLIST).unwrap());
+                    pbxproj.add_path(&path_to_relative(&current_layout_path, REPOSITORY));
 
                     // HOSTING APP PLIST
                     let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
@@ -345,18 +361,10 @@ impl BuildStep for GenerateXcode {
             }
         }
 
-        // let xcodeproj_relative_path = PathBuf::from_str("GiellaKeyboard.xcodeproj").unwrap();
-        // let pbxproj_relative_path = xcodeproj_relative_path.join("project.pbxproj");
-
-        // let pbxproj_absolute_path = repository_path.join(pbxproj_relative_path.clone());
-        // let mut pbxproj = Pbxproj::from_path(&pbxproj_absolute_path);
-
-        // pbxproj.add_plist_file(&pbxproj_relative_path);
-
-        // std::fs::write(
-        //     pbxproj_absolute_path.clone(),
-        //     serde_json::to_string_pretty(&pbxproj).unwrap(),
-        // )
-        // .unwrap();
+        std::fs::write(
+            pbxproj_path.clone(),
+            serde_json::to_string_pretty(&pbxproj).unwrap(),
+        )
+        .unwrap();
     }
 }
