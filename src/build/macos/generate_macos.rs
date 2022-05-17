@@ -5,6 +5,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
+use qname::qname;
 use xmlem::{Document, Element, NewElement, Selector};
 
 use crate::build::macos::keymap::{MACOS_HARDCODED, MACOS_KEYS};
@@ -229,24 +230,24 @@ fn add_layer_tags(
         let key_map_select = modifier_map.append_new_element(
             document,
             NewElement {
-                name: "keyMapSelect".into(),
-                attrs: [("mapIndex".into(), layer_index.to_string())].into(),
+                name: qname!("keyMapSelect"),
+                attrs: [(qname!("mapIndex"), layer_index.to_string())].into(),
             },
         );
 
         key_map_select.append_new_element(
             document,
             NewElement {
-                name: "modifier".into(),
-                attrs: [("keys".into(), layer_attributes(layer))].into(),
+                name: qname!("modifier"),
+                attrs: [(qname!("keys"), layer_attributes(layer))].into(),
             },
         );
 
         key_map_set.append_new_element(
             document,
             NewElement {
-                name: "keyMap".into(),
-                attrs: [("index".into(), layer_index.to_string())].into(),
+                name: qname!("keyMap"),
+                attrs: [(qname!("index"), layer_index.to_string())].into(),
             },
         );
     }
@@ -524,10 +525,10 @@ fn write_key_transition_map(
                     xml_key_map.append_new_element(
                         document,
                         NewElement {
-                            name: "key".into(),
+                            name: qname!("key"),
                             attrs: [
-                                ("code".into(), dead_key_action.code.to_string()),
-                                ("action".into(), dead_key_action.id.clone()),
+                                (qname!("code"), dead_key_action.code.to_string()),
+                                (qname!("action"), dead_key_action.id.clone()),
                             ]
                             .into(),
                         },
@@ -536,8 +537,8 @@ fn write_key_transition_map(
                     let action = actions.append_new_element(
                         document,
                         NewElement {
-                            name: "action".into(),
-                            attrs: [("id".into(), dead_key_action.id.clone())].into(),
+                            name: qname!("action"),
+                            attrs: [(qname!("id"), dead_key_action.id.clone())].into(),
                         },
                     );
 
@@ -549,10 +550,10 @@ fn write_key_transition_map(
                     xml_key_map.append_new_element(
                         document,
                         NewElement {
-                            name: "key".into(),
+                            name: qname!("key"),
                             attrs: [
-                                ("code".into(), next_action.code.to_string()),
-                                ("action".into(), next_action.id.clone()),
+                                (qname!("code"), next_action.code.to_string()),
+                                (qname!("action"), next_action.id.clone()),
                             ]
                             .into(),
                         },
@@ -561,8 +562,8 @@ fn write_key_transition_map(
                     let action = actions.append_new_element(
                         document,
                         NewElement {
-                            name: "action".into(),
-                            attrs: [("id".into(), next_action.id.clone())].into(),
+                            name: qname!("action"),
+                            attrs: [(qname!("id"), next_action.id.clone())].into(),
                         },
                     );
 
@@ -605,7 +606,7 @@ fn write_terminators(document: &mut Document, dead_keys: &IndexMap<String, DeadK
         let terminators = document.root().append_new_element(
             document,
             NewElement {
-                name: "terminators".into(),
+                name: qname!("terminators"),
                 attrs: [].into(),
             },
         );
@@ -620,10 +621,10 @@ fn append_dead_key_output_element(element: &Element, document: &mut Document, ke
     element.append_new_element(
         document,
         NewElement {
-            name: "when".into(),
+            name: qname!("when"),
             attrs: [
-                ("state".to_string(), key.id.clone()),
-                ("output".to_string(), decode_unicode_escapes(&key.output)),
+                (qname!("state"), key.id.clone()),
+                (qname!("output"), decode_unicode_escapes(&key.output)),
             ]
             .into(),
         },
@@ -634,10 +635,10 @@ fn append_dead_key_next_element(element: &Element, document: &mut Document, key:
     element.append_new_element(
         document,
         NewElement {
-            name: "when".into(),
+            name: qname!("when"),
             attrs: [
-                ("state".to_string(), "none".to_string()),
-                ("next".to_string(), key.next.clone()),
+                (qname!("state"), "none".to_string()),
+                (qname!("next"), key.next.clone()),
             ]
             .into(),
         },
@@ -648,10 +649,10 @@ fn append_key_output_element(element: &Element, document: &mut Document, key: &K
     element.append_new_element(
         document,
         NewElement {
-            name: "key".into(),
+            name: qname!("key"),
             attrs: [
-                ("code".into(), key.code.to_string()),
-                ("output".into(), decode_unicode_escapes(&key.output)),
+                (qname!("code"), key.code.to_string()),
+                (qname!("output"), decode_unicode_escapes(&key.output)),
             ]
             .into(),
         },

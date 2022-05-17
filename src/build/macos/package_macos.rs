@@ -4,6 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use qname::qname;
 use xmlem::{Document, NewElement};
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
@@ -27,7 +28,7 @@ fn generate_distribution_xml(
     let title = root.append_new_element(
         &mut doc,
         NewElement {
-            name: "title".into(),
+            name: qname!("title"),
             attrs: [].into(),
         },
     );
@@ -35,10 +36,10 @@ fn generate_distribution_xml(
     let _options = root.append_new_element(
         &mut doc,
         NewElement {
-            name: "options".into(),
+            name: qname!("options"),
             attrs: [
-                ("customize".to_string(), "never".to_string()),
-                ("rootVolumeOnly".to_string(), "true".to_string()),
+                (qname!("customize"), "never".to_string()),
+                (qname!("rootVolumeOnly"), "true".to_string()),
             ]
             .into(),
         },
@@ -46,40 +47,40 @@ fn generate_distribution_xml(
     let choices_outline = root.append_new_element(
         &mut doc,
         NewElement {
-            name: "choices-outline".into(),
+            name: qname!("choices-outline"),
             attrs: [].into(),
         },
     );
     let line = choices_outline.append_new_element(
         &mut doc,
         NewElement {
-            name: "line".into(),
-            attrs: [("choice".to_string(), "default".to_string())].into(),
+            name: qname!("line"),
+            attrs: [(qname!("choice"), "default".to_string())].into(),
         },
     );
     line.append_new_element(
         &mut doc,
         NewElement {
-            name: "line".into(),
-            attrs: [("choice".to_string(), bundle_id.to_string())].into(),
+            name: qname!("line"),
+            attrs: [(qname!("choice"), bundle_id.to_string())].into(),
         },
     );
 
     root.append_new_element(
         &mut doc,
         NewElement {
-            name: "choice".into(),
-            attrs: [("id".to_string(), "default".to_string())].into(),
+            name: qname!("choice"),
+            attrs: [(qname!("id"), "default".to_string())].into(),
         },
     );
 
     let choice = root.append_new_element(
         &mut doc,
         NewElement {
-            name: "choice".into(),
+            name: qname!("choice"),
             attrs: [
-                ("id".to_string(), bundle_id.to_string()),
-                ("visible".to_string(), "false".to_string()),
+                (qname!("id"), bundle_id.to_string()),
+                (qname!("visible"), "false".to_string()),
             ]
             .into(),
         },
@@ -88,20 +89,20 @@ fn generate_distribution_xml(
     choice.append_new_element(
         &mut doc,
         NewElement {
-            name: "pkg-ref".into(),
-            attrs: [("id".to_string(), bundle_id.to_string())].into(),
+            name: qname!("pkg-ref"),
+            attrs: [(qname!("id"), bundle_id.to_string())].into(),
         },
     );
 
     let pkg_ref = root.append_new_element(
         &mut doc,
         NewElement {
-            name: "pkg-ref".into(),
+            name: qname!("pkg-ref"),
             attrs: [
-                ("id".into(), bundle_id.to_string()),
-                ("version".into(), "0".into()),
-                ("auth".into(), "root".into()),
-                ("onConclusion".into(), "RequireRestart".into()),
+                (qname!("id"), bundle_id.to_string()),
+                (qname!("version"), "0".into()),
+                (qname!("auth"), "root".into()),
+                (qname!("onConclusion"), "RequireRestart".into()),
             ]
             .into(),
         },

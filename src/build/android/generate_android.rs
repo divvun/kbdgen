@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use futures::stream::Select;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
+use qname::qname;
 use serde::Serialize;
 use url::Url;
 use xmlem::{Document, NewElement, Selector};
@@ -95,7 +96,7 @@ impl BuildStep for GenerateAndroid {
                 };
 
                 std::fs::write(
-                    assets_layouts_path.join(format!("{}.json", language_tag.to_string(),)),
+                    assets_layouts_path.join(format!("{}.json", language_tag.to_string())),
                     serde_json::to_string_pretty(&assets_layout)
                         .expect("the generated assets layout to serialize correctly"),
                 )
@@ -208,10 +209,10 @@ impl BuildStep for GenerateAndroid {
                         default_row_keys.append_new_element(
                             &mut rowkey_doc,
                             NewElement {
-                                name: "key".to_string(),
+                                name: qname!("key"),
                                 attrs: [
-                                    ("latin:keyStyle".to_string(), "deleteKeyStyle".to_string()),
-                                    ("latin:keyWidth".to_string(), "fillRight".to_string()),
+                                    (qname!("latin:keyStyle"), "deleteKeyStyle".to_string()),
+                                    (qname!("latin:keyWidth"), "fillRight".to_string()),
                                 ]
                                 .into(),
                             },
@@ -267,12 +268,9 @@ impl BuildStep for GenerateAndroid {
                 let subtype = strings_doc.root().append_new_element(
                     &mut strings_doc,
                     NewElement {
-                        name: "string".to_owned(),
-                        attrs: [(
-                            "name".to_owned(),
-                            format!("subtype_{}", rowkeys_display_name),
-                        )]
-                        .into(),
+                        name: qname!("string"),
+                        attrs: [(qname!("name"), format!("subtype_{}", rowkeys_display_name))]
+                            .into(),
                     },
                 );
             }
@@ -359,9 +357,9 @@ fn create_and_write_kbd(main_xml_path: &Path, rowkeys_display_name: &str) {
     kbd_root.append_new_element(
         &mut kbd_document,
         NewElement {
-            name: "include".to_owned(),
+            name: qname!("include"),
             attrs: [(
-                "latin:keyboardLayout".to_owned(),
+                qname!("latin:keyboardLayout"),
                 format!("@xml/rows_{}_keyboard", rowkeys_display_name),
             )]
             .into(),
@@ -390,12 +388,12 @@ fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str)
     layout_root.append_new_element(
         &mut layout_set_document,
         NewElement {
-            name: "Element".to_owned(),
+            name: qname!("Element"),
             attrs: [
-                ("latin:elementName".to_owned(), "alphabet".to_owned()),
-                ("latin:elementKeyboard".to_owned(), keyboard_ref.clone()),
+                (qname!("latin:elementName"), "alphabet".to_owned()),
+                (qname!("latin:elementKeyboard"), keyboard_ref.clone()),
                 (
-                    "latin:enableProximityCharsCorrection".to_owned(),
+                    qname!("latin:enableProximityCharsCorrection"),
                     "true".to_owned(),
                 ),
             ]
@@ -465,25 +463,25 @@ fn create_key_xml_element(
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
-    attrs.insert("latin:keySpec".to_owned(), key.to_owned());
+    attrs.insert(qname!("latin:keySpec"), key.to_owned());
 
     if let Some(key_hint_label_index) = key_hint_label_index {
         attrs.insert(
-            "latin:keyHintLabel".to_owned(),
+            qname!("latin:keyHintLabel"),
             key_hint_label_index.to_string(),
         );
         attrs.insert(
-            "latin:additionalMoreKeys".to_owned(),
+            qname!("latin:additionalMoreKeys"),
             key_hint_label_index.to_string(),
         );
     }
 
     if let Some(longpress) = longpress.as_ref() {
-        attrs.insert("latin:moreKeys".to_owned(), longpress.clone());
+        attrs.insert(qname!("latin:moreKeys"), longpress.clone());
     }
 
     NewElement {
-        name: "key".to_owned(),
+        name: qname!("key"),
         attrs,
     }
 }
@@ -504,7 +502,7 @@ fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {
 
 fn make_layout_set_element(element_name: &str, keyboard: &str) -> NewElement {
     NewElement {
-        name: "Element".to_owned(),
-        attrs: [(element_name.to_owned(), keyboard.to_owned())].into(),
+        name: qname!("Element"),
+        attrs: [(element_name.parse().unwrap(), keyboard.to_owned())].into(),
     }
 }
