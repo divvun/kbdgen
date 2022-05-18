@@ -23,7 +23,8 @@ pub struct WindowsBuild {
 #[async_trait(?Send)]
 impl BuildSteps for WindowsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let steps = vec![Box::new(GenerateKlc {}) as _];
+        let mut steps: Vec<Box<dyn BuildStep>> = vec![];
+        steps.push(Box::new(GenerateKlc {}));
         #[cfg(target_os = "windows")]
         steps.push(Box::new(build_klc::BuildKlc {}));
         #[cfg(not(target_os = "windows"))]
