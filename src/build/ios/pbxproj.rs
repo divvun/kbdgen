@@ -1,7 +1,4 @@
-use std::{
-    cmp::Ordering,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -24,10 +21,6 @@ impl ObjectId {
             .collect();
 
         ObjectId(id)
-    }
-
-    pub fn add_ref_to_group() {
-        println!("ADD_REF_TO_GROUP");
     }
 }
 
@@ -62,10 +55,6 @@ pub struct PbxGroup {
     #[serde(rename = "sourceTree")]
     source_tree: String,
     path: Option<String>,
-}
-
-impl PbxGroup {
-    pub fn add_child_ref(&mut self) {}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +153,43 @@ impl Pbxproj {
             self.group_mut(&target).unwrap().children.push(id.clone());
 
             target = id;
+        }
+    }
+
+    // TODO: almost identical to add_path
+    pub fn add_ref_to_group(&mut self, object_id: &ObjectId, group: &PathBuf) {
+        let group_names: Vec<String> = group
+            .components()
+            .map(|x| x.as_os_str().to_str().unwrap().to_string())
+            .collect();
+
+        let mut object = self.project().unwrap().main_group;
+
+        'boop: for group_name in group_names {
+            let children_references = &self.group(&object).unwrap().children;
+
+            for child_reference in children_references {
+                if let Some(child_group) = self.group(child_reference) {
+                    if let Some(path) = &child_group.path {
+                        if path == &group_name {
+                            object = child_reference.clone();
+                            continue 'boop;
+                        }
+                    }
+                }
+            }
+            let id = ObjectId::new_random();
+
+            let new_child = PbxGroup {
+                children: vec![],
+                path: Some(group_name.clone()),
+                source_tree: "<group>".to_string(),
+            };
+
+            self.objects.insert(id.clone(), Object::Group(new_child));
+            self.group_mut(&object).unwrap().children.push(id.clone());
+
+            object = id;
         }
     }
 }

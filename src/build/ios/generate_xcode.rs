@@ -328,8 +328,12 @@ impl BuildStep for GenerateXcode {
                     );
 
                     // GENERATE .pbxproj
-                    pbxproj.create_plist_file(&PathBuf::from_str(INFO_PLIST).unwrap());
+                    let temp = pbxproj.create_plist_file(&PathBuf::from_str(INFO_PLIST).unwrap());
                     pbxproj.add_path(&path_to_relative(&current_layout_path, REPOSITORY));
+                    pbxproj.add_ref_to_group(
+                        &temp,
+                        &&path_to_relative(&current_layout_path, REPOSITORY),
+                    );
 
                     // HOSTING APP PLIST
                     let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
