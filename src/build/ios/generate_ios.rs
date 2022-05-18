@@ -26,8 +26,8 @@ pub struct IosInfo {
     space: String,
 }
 
-/// Removes all occurances of `character` in `input`
-pub fn remove_all_occurances(input: String, character: char) -> String {
+/// Removes all occurrences of `character` in `input`
+pub fn remove_all_occurrences(input: String, character: char) -> String {
     input
         .as_str()
         .chars()
@@ -43,8 +43,8 @@ pub fn keyboard_component_from_string(input: String) -> Option<IosButton> {
     if let Some(captures) = captures {
         if let Some(id) = captures.get(1) {
             let id = match id.as_str().chars().next().unwrap().cmp(&'\"') {
-                Ordering::Equal => remove_all_occurances(id.as_str().to_string(), '\"'),
-                _ => format!("_{}", remove_all_occurances(id.as_str().to_string(), '\"')),
+                Ordering::Equal => remove_all_occurrences(id.as_str().to_string(), '\"'),
+                _ => format!("_{}", remove_all_occurrences(id.as_str().to_string(), '\"')),
             };
             if let Some(width) = captures.get(2) {
                 Some(IosButton {
