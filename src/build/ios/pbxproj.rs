@@ -33,12 +33,18 @@ impl ObjectId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Pbxproj {
-    pub classes: serde_json::Value,
-    pub object_version: String,
-    pub archive_version: String,
-    pub objects: IndexMap<ObjectId, Object>,
-    pub mainGroup: IndexMap<String, String>,
+pub struct PbxProject {
+    attributes: serde_json::Value,
+    build_configuration_list: ObjectId,
+    compatibility_version: String,
+    development_region: String,
+    has_scanned_for_encodings: String,
+    known_regions: serde_json::Value,
+    main_group: ObjectId,
+    product_ref_group: ObjectId,
+    project_dir_path: String,
+    project_root: String,
+    targets: Vec<ObjectId>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -50,19 +56,53 @@ pub struct PlistFile {
     #[serde(rename = "sourceTree")]
     source_tree: String,
 }
-
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PbxGroup {
-    children: Vec<String>,
-    isa: String,
-    path: String,
+    children: Vec<ObjectId>,
     #[serde(rename = "sourceTree")]
     source_tree: String,
+    path: Option<String>,
+}
+
+impl PbxGroup {
+    pub fn add_child_ref(&mut self) {}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Pbxproj {
+    pub classes: serde_json::Value,
+    pub object_version: String,
+    pub archive_version: String,
+    pub objects: IndexMap<ObjectId, Object>,
 }
 
 impl Pbxproj {
     pub fn from_path(path: &PathBuf) -> Self {
         convert_pbxproj_to_json(path)
+    }
+
+    pub fn project(&self) -> Option<PbxProject> {
+        for object in self.objects.values() {
+            if let Object::Project(project) = object {
+                return Some(project.clone());
+            }
+        }
+        None
+    }
+
+    pub fn group(&self, object_id: &ObjectId) -> Option<&PbxGroup> {
+        if let Some(Object::Group(main_group)) = self.objects.get(object_id) {
+            return Some(main_group);
+        }
+        return None;
+    }
+
+    pub fn group_mut(&mut self, object_id: &ObjectId) -> Option<&mut PbxGroup> {
+        if let Some(Object::Group(main_group)) = self.objects.get_mut(object_id) {
+            return Some(main_group);
+        }
+        return None;
     }
 
     pub fn create_plist_file(&mut self, relative_plist_path: &PathBuf) -> ObjectId {
@@ -88,41 +128,43 @@ impl Pbxproj {
         return object;
     }
 
-    // WTF IS HAPPENING IN THE PYTHON?
-    // create a self.main_group??
-    pub fn add_path(&self, path: &PathBuf) {
-        println!("ADD_PATH: {:?}", path);
-        let path_list: Vec<String> = path
-            .to_str()
-            .unwrap()
-            .to_string()
-            .split("/")
-            .map(|x| x.to_string())
+    pub fn add_path(&mut self, path: &PathBuf) {
+        let path_names: Vec<String> = path
+            .components()
+            .map(|x| x.as_os_str().to_str().unwrap().to_string())
             .collect();
 
-        // let mut target = self.mainGroup;
+        let mut target = self.project().unwrap().main_group;
 
-        // for path_name in path_list {
-        //     for child in target.children {
-        //         if child.get("path").cmp(&path_name) == Ordering::Equal {
-        //             target = child;
-        //             break;
-        //         } else {
-        //             let key = ObjectId::new_random();
+        'boop: for path_name in path_names {
+            let children_references = &self.group(&target).unwrap().children;
 
-        //             let value = PbxGroup {
-        //                 children: vec![],
-        //                 isa: "PBXGroup".to_string(),
-        //                 path: path_name,
-        //                 source_tree: "<group>".to_string(),
-        //             };
+            for child_reference in children_references {
+                if let Some(child_group) = self.group(child_reference) {
+                    if let Some(path) = &child_group.path {
+                        if path == &path_name {
+                            target = child_reference.clone();
+                            continue 'boop;
+                        }
+                    }
+                }
+            }
 
-        //             self.objects.insert(key, Object::Group(serde_json::json!(value)));
-        //             target["children"].push(serde_json::json!(key));
-        //             target = self.objects.get(&key);
-        //         }
-        //     }
-        // }
+            println!("Nothing exists create here");
+
+            let id = ObjectId::new_random();
+
+            let new_child = PbxGroup {
+                children: vec![],
+                path: Some(path_name.clone()),
+                source_tree: "<group>".to_string(),
+            };
+
+            self.objects.insert(id.clone(), Object::Group(new_child));
+            self.group_mut(&target).unwrap().children.push(id.clone());
+
+            target = id;
+        }
     }
 }
 
@@ -139,10 +181,10 @@ pub enum Object {
     CopyFilesBuildPhase(serde_json::Value),
 
     #[serde(rename = "PBXGroup")]
-    Group(serde_json::Value),
+    Group(PbxGroup),
 
     #[serde(rename = "PBXProject")]
-    Project(serde_json::Value),
+    Project(PbxProject),
 
     #[serde(rename = "XCConfigurationList")]
     ConfigurationList(serde_json::Value),
