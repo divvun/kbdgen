@@ -104,7 +104,7 @@ impl BuildStep for GenerateAndroid {
 
                 let longpress = &layout.longpress;
 
-                let rowkeys_display_name = layout
+                let default_display_name = layout
                     .display_names
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
@@ -176,7 +176,7 @@ impl BuildStep for GenerateAndroid {
                     std::fs::write(
                         main_xml_path.join(format!(
                             "rowkeys_{}_keyboard{}.xml",
-                            rowkeys_display_name.to_lowercase(),
+                            default_display_name.to_lowercase(),
                             line_index + 1
                         )),
                         rowkey_doc.to_string_pretty(),
@@ -221,7 +221,7 @@ impl BuildStep for GenerateAndroid {
                         std::fs::write(
                             short_width_xml_path.join(format!(
                                 "rowkeys_{}_keyboard{}.xml",
-                                rowkeys_display_name.to_lowercase(),
+                                default_display_name.to_lowercase(),
                                 line_index + 1
                             )),
                             rowkey_doc.to_string_pretty(),
@@ -230,8 +230,8 @@ impl BuildStep for GenerateAndroid {
                     }
                 }
 
-                create_and_write_kbd(&main_xml_path, &rowkeys_display_name.to_lowercase());
-                create_and_write_layout_set(&main_xml_path, &rowkeys_display_name.to_lowercase());
+                create_and_write_kbd(&main_xml_path, &default_display_name.to_lowercase());
+                create_and_write_layout_set(&main_xml_path, &default_display_name.to_lowercase());
 
                 // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
 
@@ -240,11 +240,11 @@ impl BuildStep for GenerateAndroid {
                 // add strings here
 
                 let strings_appname_path = main_values_path.join(Path::new("strings-appname.xml"));
-                let file = File::open(strings_appname_path).expect(&format!(
+                let file = File::open(strings_appname_path.clone()).expect(&format!(
                     "strings-appname to exist in {:?} and open without issues",
                     &main_values_path
                 ));
-                let strings_appname_doc =
+                let mut strings_appname_doc =
                     Document::from_file(file).expect("can't read strings-appname file");
 
                 let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
@@ -255,8 +255,17 @@ impl BuildStep for GenerateAndroid {
                     .query_selector(&strings_appname_doc, &ime_selector)
                     .expect("The strings file should have ime attr");
 
-                let child = ime.children(&strings_appname_doc).first().expect("aa");
-                //ime.remove_child(document, child)
+                ime.set_text(&mut strings_appname_doc, &default_display_name);
+
+                std::fs::write(
+                    strings_appname_path,
+                    strings_appname_doc.to_string_pretty(),
+                )
+                .unwrap();
+
+
+
+
 
                 let strings_path = main_values_path.join(Path::new("strings.xml"));
                 let file = File::open(strings_path).expect(&format!(
@@ -269,7 +278,7 @@ impl BuildStep for GenerateAndroid {
                     &mut strings_doc,
                     NewElement {
                         name: qname!("string"),
-                        attrs: [(qname!("name"), format!("subtype_{}", rowkeys_display_name))]
+                        attrs: [(qname!("name"), format!("subtype_{}", default_display_name))]
                             .into(),
                     },
                 );
