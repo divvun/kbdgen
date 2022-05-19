@@ -10,6 +10,7 @@ use serde::Serialize;
 use url::Url;
 use xmlem::{Document, NewElement, Selector};
 
+use crate::bundle::project::{self, LocaleProjectDescription};
 use crate::{
     build::BuildStep,
     bundle::{layout::android::AndroidKbdLayer, KbdgenBundle},
@@ -240,7 +241,8 @@ impl BuildStep for GenerateAndroid {
                 // add strings here
 
                 {
-                    let strings_appname_path = main_values_path.join(Path::new("strings-appname.xml"));
+                    let strings_appname_path =
+                        main_values_path.join(Path::new("strings-appname.xml"));
                     let file = File::open(strings_appname_path.clone()).expect(&format!(
                         "strings-appname to exist in {:?} and open without issues",
                         &main_values_path
@@ -258,11 +260,8 @@ impl BuildStep for GenerateAndroid {
 
                     ime.set_text(&mut strings_appname_doc, &default_display_name);
 
-                    std::fs::write(
-                        strings_appname_path,
-                        strings_appname_doc.to_string_pretty(),
-                    )
-                    .unwrap();
+                    std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty())
+                        .unwrap();
                 }
 
                 let current_language_tag_subtype = format!("subtype_{}", language_tag);
@@ -273,41 +272,88 @@ impl BuildStep for GenerateAndroid {
                         "strings to exist in {:?} and open without issues",
                         &main_values_path
                     ));
-                    let mut strings_doc = Document::from_file(file).expect("can't read strings file");
+                    let mut strings_doc =
+                        Document::from_file(file).expect("can't read strings file");
 
                     let subtype = strings_doc.root().append_new_element(
                         &mut strings_doc,
                         NewElement {
                             name: qname!("string"),
-                            attrs: [(qname!("name"), current_language_tag_subtype)]
-                                .into(),
+                            attrs: [(qname!("name"), current_language_tag_subtype.clone())].into(),
                         },
                     );
 
                     subtype.set_text(&mut strings_doc, &default_display_name);
 
-                    std::fs::write(
-                        strings_path,
-                        strings_doc.to_string_pretty(),
-                    )
-                    .unwrap();
+                    std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
                 }
 
+                // Obvious candidate for some code reuse, along with the above
+                // Also fix duplication if modified on previous route
                 for (language_tag, display_name) in &layout.display_names {
-                    let folder = Path::new(&format!("values-{}", language_tag.to_string()));
+                    let folder = resources_path.join(
+                        Path::new(&format!("values-{}", language_tag.to_string())).to_owned(),
+                    );
+                    let strings_path = folder.join(Path::new("strings.xml"));
 
-                    /*
+                    let mut strings_doc;
+
+                    if strings_path.is_file() {
+                        let file = File::open(strings_path.clone()).expect(&format!(
+                            "strings to exist in {:?} and open without issues",
+                            &folder
+                        ));
+                        strings_doc = Document::from_file(file).expect("can't read strings file");
+                    } else {
+                        strings_doc = Document::new("resources");
+                        std::fs::create_dir_all(&folder).unwrap();
+                    }
+
                     let subtype = strings_doc.root().append_new_element(
                         &mut strings_doc,
                         NewElement {
                             name: qname!("string"),
-                            attrs: [(qname!("name"), current_language_tag_subtype)]
-                                .into(),
+                            attrs: [(qname!("name"), current_language_tag_subtype.clone())].into(),
                         },
                     );
-                     */
+
+                    subtype.set_text(&mut strings_doc, &display_name);
+
+                    std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
                 }
             }
+        }
+
+        for (locale, LocaleProjectDescription { name, .. }) in &bundle.project.locales {
+            let folder = resources_path
+                .join(Path::new(&format!("values-{}", locale.to_string())).to_owned());
+
+            let strings_appname_path = folder.join(Path::new("strings-appname.xml"));
+
+            let mut strings_doc;
+
+            if strings_appname_path.is_file() {
+                let file = File::open(strings_appname_path.clone()).expect(&format!(
+                    "strings-appname to exist in {:?} and open without issues",
+                    &folder
+                ));
+                strings_doc = Document::from_file(file).expect("can't read strings file");
+            } else {
+                strings_doc = Document::new("resources");
+                std::fs::create_dir_all(&folder).unwrap();
+            }
+
+            let subtype = strings_doc.root().append_new_element(
+                &mut strings_doc,
+                NewElement {
+                    name: qname!("string"),
+                    attrs: [(qname!("name"), "english_ime_name".to_owned())].into(),
+                },
+            );
+
+            subtype.set_text(&mut strings_doc, &name);
+
+            std::fs::write(strings_appname_path, strings_doc.to_string_pretty()).unwrap();
         }
 
         /*
@@ -315,46 +361,7 @@ impl BuildStep for GenerateAndroid {
             app/src/main/assets/
             app/src/main/jniLibs/arm64-v8a/
             app/src/main/jniLibs/armeabi-v7a/
-            app/src/main/res/values-en/strings-appname.xml
-            app/src/main/res/values-nb/strings-appname.xml
-            app/src/main/res/values-nn/
-            app/src/main/res/values-no/
-            app/src/main/res/values-se/
-            app/src/main/res/xml-sw600dp/rowkeys_northern_sami_keyboard1.xml
-            app/src/main/res/xml-sw600dp/rowkeys_northern_sami_keyboard2.xml
-            app/src/main/res/xml-sw600dp/rowkeys_northern_sami_keyboard3.xml
-            app/src/main/res/xml-sw600dp/rows_northern_sami_keyboard.xml
-            app/src/main/res/xml/kbd_northern_sami_keyboard.xml
-            app/src/main/res/xml/keyboard_layout_set_northern_sami_keyboard.xml
-            app/src/main/res/xml/rowkeys_northern_sami_keyboard1.xml
-            app/src/main/res/xml/rowkeys_northern_sami_keyboard2.xml
-            app/src/main/res/xml/rowkeys_northern_sami_keyboard3.xml
-            app/src/main/res/xml/rows_northern_sami_keyboard.xml
         */
-
-        // Musings
-
-        // there are a lot of different folders, some of which seem to contain similar files
-
-        // Modified
-        // app/src/main/res/values/strings.xml
-        // app/src/main/res/values-da/strings.xml
-        // app/src/main/res/values-fi/strings.xml
-        // app/src/main/res/values-nb/strings.xml
-        // app/src/main/res/values-sv/strings.xml -> these seem to be based on display name
-        // entries
-        // subtle changes
-        // change in xml namespace that brendon said isn't super valid
-
-        // modified app/src/main/res/values/strings-appname.xml
-
-        // added
-        // app/src/main/res/values-en/strings-appname.xml
-        // app/src/main/res/values-nb/strings-appname.xml
-
-        // seem to be per major folder?
-        // just seem like names for things. probably derived from project.yaml
-        // since only en and nb got added
 
         // modified:
         // modified:   app/src/main/res/xml/method.xml
@@ -363,18 +370,11 @@ impl BuildStep for GenerateAndroid {
         // modified:   app/src/main/res/xml/spellchecker.xml
         // may just be comment removal
 
-        // added: app/src/main/assets/
-        // main thing added here seems to be a layouts.json inside of assets
-        // no info here just link to the bhdfst and pahkat sme stuff
-
         // added app/src/main/jniLibs/arm64-v8a/
         // 2 .so files... oi...
 
         // added app/src/main/jniLibs/armeabi-v7a/
         // 2 .so files... oi...
-
-        // added app/src/main/res/xml/rows_northern_sami_keyboard.xml
-        // same as above but for the non "-sw600dp" version
     }
 }
 

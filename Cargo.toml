@@ -7,7 +7,7 @@ edition = "2021"
 clap = { version = "3.1.0", features = ["derive"] }
 pathos = "0.3.0-pre.5"
 regex = "1.5.5"
-xmlem = "0.1.4"
+xmlem = "0.1.6"
 qname = "0.1.0"
 
 tracing = "0.1.32"
