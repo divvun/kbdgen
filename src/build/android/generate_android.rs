@@ -239,49 +239,74 @@ impl BuildStep for GenerateAndroid {
 
                 // add strings here
 
-                let strings_appname_path = main_values_path.join(Path::new("strings-appname.xml"));
-                let file = File::open(strings_appname_path.clone()).expect(&format!(
-                    "strings-appname to exist in {:?} and open without issues",
-                    &main_values_path
-                ));
-                let mut strings_appname_doc =
-                    Document::from_file(file).expect("can't read strings-appname file");
+                {
+                    let strings_appname_path = main_values_path.join(Path::new("strings-appname.xml"));
+                    let file = File::open(strings_appname_path.clone()).expect(&format!(
+                        "strings-appname to exist in {:?} and open without issues",
+                        &main_values_path
+                    ));
+                    let mut strings_appname_doc =
+                        Document::from_file(file).expect("can't read strings-appname file");
 
-                let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
-                    .expect("css selector do work");
+                    let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
+                        .expect("css selector do work");
 
-                let ime = strings_appname_doc
-                    .root()
-                    .query_selector(&strings_appname_doc, &ime_selector)
-                    .expect("The strings file should have ime attr");
+                    let ime = strings_appname_doc
+                        .root()
+                        .query_selector(&strings_appname_doc, &ime_selector)
+                        .expect("The strings file should have ime attr");
 
-                ime.set_text(&mut strings_appname_doc, &default_display_name);
+                    ime.set_text(&mut strings_appname_doc, &default_display_name);
 
-                std::fs::write(
-                    strings_appname_path,
-                    strings_appname_doc.to_string_pretty(),
-                )
-                .unwrap();
+                    std::fs::write(
+                        strings_appname_path,
+                        strings_appname_doc.to_string_pretty(),
+                    )
+                    .unwrap();
+                }
 
+                let current_language_tag_subtype = format!("subtype_{}", language_tag);
 
+                {
+                    let strings_path = main_values_path.join(Path::new("strings.xml"));
+                    let file = File::open(strings_path.clone()).expect(&format!(
+                        "strings to exist in {:?} and open without issues",
+                        &main_values_path
+                    ));
+                    let mut strings_doc = Document::from_file(file).expect("can't read strings file");
 
+                    let subtype = strings_doc.root().append_new_element(
+                        &mut strings_doc,
+                        NewElement {
+                            name: qname!("string"),
+                            attrs: [(qname!("name"), current_language_tag_subtype)]
+                                .into(),
+                        },
+                    );
 
+                    subtype.set_text(&mut strings_doc, &default_display_name);
 
-                let strings_path = main_values_path.join(Path::new("strings.xml"));
-                let file = File::open(strings_path).expect(&format!(
-                    "strings to exist in {:?} and open without issues",
-                    &main_values_path
-                ));
-                let mut strings_doc = Document::from_file(file).expect("can't read strings file");
+                    std::fs::write(
+                        strings_path,
+                        strings_doc.to_string_pretty(),
+                    )
+                    .unwrap();
+                }
 
-                let subtype = strings_doc.root().append_new_element(
-                    &mut strings_doc,
-                    NewElement {
-                        name: qname!("string"),
-                        attrs: [(qname!("name"), format!("subtype_{}", default_display_name))]
-                            .into(),
-                    },
-                );
+                for (language_tag, display_name) in &layout.display_names {
+                    let folder = Path::new(&format!("values-{}", language_tag.to_string()));
+
+                    /*
+                    let subtype = strings_doc.root().append_new_element(
+                        &mut strings_doc,
+                        NewElement {
+                            name: qname!("string"),
+                            attrs: [(qname!("name"), current_language_tag_subtype)]
+                                .into(),
+                        },
+                    );
+                     */
+                }
             }
         }
 
