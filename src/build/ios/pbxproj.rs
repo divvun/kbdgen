@@ -164,6 +164,17 @@ impl Pbxproj {
         None
     }
 
+    pub fn native_target_by_name_mut(&mut self, name: &str) -> Option<&mut NativeTarget> {
+        for object in self.objects.values_mut() {
+            if let Object::NativeTarget(native_target) = object {
+                if native_target.name == name {
+                    return Some(native_target);
+                }
+            }
+        }
+        None
+    }
+
     pub fn configuration_list_by_id(&self, object_id: &ObjectId) -> Option<&ConfigurationList> {
         for object in &self.objects {
             if let (id, Object::ConfigurationList(configuration_list)) = object {
@@ -384,6 +395,19 @@ impl Pbxproj {
         // self.add_ref_to_group(&new_appex_id, &PathBuf::from_str("Products").unwrap());
         self.add_target(&new_appex_id);
     }
+
+    // TODO: Do we even need this? There's no DEVELOPMENT_TEAM variable ever
+    // set in the old build file probably because it's set on the "Keyboard"
+    // native target that is later removed with remove_target...
+    // pub fn set_target_build_settings(&mut self, target_name: String, key: String, value: String) {
+    //     let target = self.native_target_by_name_mut(&target_name);
+    //     println!("TARGET FOUND: {:#?}", target);
+    // }
+
+    // TODO: Same as above? Modifies the "Keyboard" target that is later removed?
+    // pub fn set_target_package_id(&mut self, target_name: String, package_id: String) {
+    //     let mut target = self.native_target_by_name_mut(&target_name);
+    // }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
