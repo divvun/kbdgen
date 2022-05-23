@@ -306,7 +306,7 @@ impl BuildStep for GenerateXcode {
                     );
 
                     let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
-                    let current_layout_path = keyboard_path.join(keyboard_folder_name);
+                    let current_layout_path = keyboard_path.join(keyboard_folder_name.clone());
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
 
@@ -332,7 +332,12 @@ impl BuildStep for GenerateXcode {
                     pbxproj.add_path(&path_to_relative(&current_layout_path, REPOSITORY));
                     pbxproj.add_ref_to_group(
                         &temp,
-                        &&path_to_relative(&current_layout_path, REPOSITORY),
+                        &path_to_relative(&current_layout_path, REPOSITORY),
+                    );
+                    pbxproj.duplicate_target(
+                        KEYBOARD.to_string(),
+                        keyboard_folder_name,
+                        &path_to_relative(&layout_info_plist_path, REPOSITORY),
                     );
 
                     // HOSTING APP PLIST
