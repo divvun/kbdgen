@@ -8,6 +8,8 @@ use std::{
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+use crate::build;
+
 #[nova::newtype(serde)]
 pub type ObjectId = String;
 
@@ -57,6 +59,7 @@ pub struct PbxGroup {
     #[serde(rename = "sourceTree")]
     source_tree: String,
     path: Option<String>,
+    name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +93,20 @@ pub struct BuildConfiguration {
     #[serde(rename = "buildSettings")]
     build_settings: IndexMap<String, serde_json::Value>,
     name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PbxCopyFilesBuildPhase {
+    #[serde(rename = "buildActionMask")]
+    build_action_mask: String,
+    #[serde(rename = "dstPath")]
+    dst_path: String,
+    #[serde(rename = "dstSubfolderSpec")]
+    dst_subfolder_spec: String,
+    files: Vec<ObjectId>,
+    name: Option<String>,
+    #[serde(rename = "runOnlyForDeploymentPostprocessing")]
+    run_only_for_deployment_postprocessing: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,6 +170,19 @@ impl Pbxproj {
         None
     }
 
+    pub fn file_reference_id_by_path(&self, path_name: &str) -> Option<&ObjectId> {
+        for object in &self.objects {
+            if let (id, Object::FileReference(file_reference)) = object {
+                if let Some(file_reference_path) = file_reference.fields.get("path") {
+                    if file_reference_path == path_name {
+                        return Some(id);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub fn native_target_by_name(&self, name: &str) -> Option<&NativeTarget> {
         for object in self.objects.values() {
             if let Object::NativeTarget(native_target) = object {
@@ -164,16 +194,16 @@ impl Pbxproj {
         None
     }
 
-    pub fn native_target_by_name_mut(&mut self, name: &str) -> Option<&mut NativeTarget> {
-        for object in self.objects.values_mut() {
-            if let Object::NativeTarget(native_target) = object {
-                if native_target.name == name {
-                    return Some(native_target);
-                }
-            }
-        }
-        None
-    }
+    // pub fn native_target_by_name_mut(&mut self, name: &str) -> Option<&mut NativeTarget> {
+    //     for object in self.objects.values_mut() {
+    //         if let Object::NativeTarget(native_target) = object {
+    //             if native_target.name == name {
+    //                 return Some(native_target);
+    //             }
+    //         }
+    //     }
+    //     None
+    // }
 
     pub fn configuration_list_by_id(&self, object_id: &ObjectId) -> Option<&ConfigurationList> {
         for object in &self.objects {
@@ -189,6 +219,34 @@ impl Pbxproj {
     pub fn configuration_by_id(&self, object_id: &ObjectId) -> Option<&BuildConfiguration> {
         for object in &self.objects {
             if let (id, Object::BuildConfiguration(configuration_list)) = object {
+                if id == object_id {
+                    return Some(configuration_list);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn configuration_by_id_mut(
+        &mut self,
+        object_id: &ObjectId,
+    ) -> Option<&mut BuildConfiguration> {
+        for object in self.objects.borrow_mut() {
+            if let (id, Object::BuildConfiguration(configuration_list)) = object {
+                if id == object_id {
+                    return Some(configuration_list);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn build_phase_by_id_mut(
+        &mut self,
+        object_id: &ObjectId,
+    ) -> Option<&mut PbxCopyFilesBuildPhase> {
+        for object in self.objects.borrow_mut() {
+            if let (id, Object::CopyFilesBuildPhase(configuration_list)) = object {
                 if id == object_id {
                     return Some(configuration_list);
                 }
@@ -253,14 +311,13 @@ impl Pbxproj {
                 }
             }
 
-            println!("Nothing exists create here");
-
             let id = ObjectId::new_random();
 
             let new_child = PbxGroup {
                 children: vec![],
                 path: Some(path_name.clone()),
                 source_tree: "<group>".to_string(),
+                name: None,
             };
 
             self.objects.insert(id.clone(), Object::Group(new_child));
@@ -288,6 +345,11 @@ impl Pbxproj {
                             object = child_reference.clone();
                             break;
                         }
+                    } else if let Some(child_name) = &child_group.name {
+                        if child_name == &group_name {
+                            object = child_reference.clone();
+                            break;
+                        }
                     }
                 }
             }
@@ -301,8 +363,8 @@ impl Pbxproj {
 
     pub fn duplicate_target(
         &mut self,
-        source_name: String,
-        destination_name: String,
+        source_name: &str,
+        destination_name: &str,
         plist_path: &PathBuf,
     ) {
         let mut new_native_target = match self.native_target_by_name(&source_name) {
@@ -314,7 +376,7 @@ impl Pbxproj {
         };
 
         let new_native_target_id = ObjectId::new_random();
-        new_native_target.name = destination_name.clone();
+        new_native_target.name = destination_name.to_string();
 
         let new_configuration_list_id = ObjectId::new_random();
         let mut new_configuration_list = self
@@ -337,7 +399,7 @@ impl Pbxproj {
             );
             new_build_configuration.build_settings.insert(
                 "PRODUCT_NAME".to_string(),
-                serde_json::Value::String(destination_name.clone()),
+                serde_json::Value::String(destination_name.to_string()),
             );
             new_build_configuration.build_settings.insert(
                 "CODE_SIGN_STYLE".to_string(),
@@ -392,22 +454,63 @@ impl Pbxproj {
 
         // Finishing up
         // TODO: No "Products" group exists, create one?
-        // self.add_ref_to_group(&new_appex_id, &PathBuf::from_str("Products").unwrap());
+        self.add_ref_to_group(&new_appex_id, &PathBuf::from_str("Products").unwrap());
         self.add_target(&new_appex_id);
     }
 
-    // TODO: Do we even need this? There's no DEVELOPMENT_TEAM variable ever
-    // set in the old build file probably because it's set on the "Keyboard"
-    // native target that is later removed with remove_target...
-    // pub fn set_target_build_settings(&mut self, target_name: String, key: String, value: String) {
-    //     let target = self.native_target_by_name_mut(&target_name);
-    //     println!("TARGET FOUND: {:#?}", target);
-    // }
+    pub fn set_target_build_configuration(&mut self, target_name: &str, key: &str, value: &str) {
+        let target = self.native_target_by_name(&target_name).unwrap();
+        let configuration_list = self
+            .configuration_list_by_id(&target.build_configuration_list)
+            .unwrap()
+            .clone();
 
-    // TODO: Same as above? Modifies the "Keyboard" target that is later removed?
-    // pub fn set_target_package_id(&mut self, target_name: String, package_id: String) {
-    //     let mut target = self.native_target_by_name_mut(&target_name);
-    // }
+        for build_configuration_ref in &configuration_list.build_configurations {
+            let new_build_configuration = self
+                .configuration_by_id_mut(build_configuration_ref)
+                .unwrap();
+            new_build_configuration.build_settings.insert(
+                key.to_string(),
+                serde_json::Value::String(value.to_string()),
+            );
+        }
+    }
+
+    // TODO: Needs control flow cleanup
+    pub fn add_appex_to_target_embedded_binaries(&mut self, target_path: &str, appex_path: &str) {
+        let appex_id = self
+            .file_reference_id_by_path(&format!("{}.appex", appex_path))
+            .unwrap()
+            .clone();
+
+        let target = self.native_target_by_name(target_path).unwrap().clone();
+
+        for build_phase_id in &target.build_phases {
+            if let Some(build_phase) = self.build_phase_by_id_mut(build_phase_id) {
+                if build_phase.name.as_ref().unwrap() == "Embed App Extensions" {
+                    println!("BUILD PHASE: {:#?}", build_phase);
+                    build_phase.files.push(appex_id.clone());
+                    break;
+                }
+            }
+        }
+        let build_file_id = ObjectId::new_random();
+        self.objects.insert(
+            build_file_id,
+            Object::BuildFile(BuildFile { file_ref: appex_id }),
+        );
+    }
+
+    pub fn remove_appex_to_target_embedded_binaries(
+        &mut self,
+        target_path: &str,
+        appex_path: &str,
+    ) {
+        let appex_id = self
+            .file_reference_id_by_path(&format!("{}.appex", appex_path))
+            .unwrap()
+            .clone();
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -420,7 +523,7 @@ pub enum Object {
     FileReference(PBXFileReference),
 
     #[serde(rename = "PBXCopyFilesBuildPhase")]
-    CopyFilesBuildPhase(serde_json::Value),
+    CopyFilesBuildPhase(PbxCopyFilesBuildPhase),
 
     #[serde(rename = "PBXGroup")]
     Group(PbxGroup),

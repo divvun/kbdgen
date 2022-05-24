@@ -335,10 +335,22 @@ impl BuildStep for GenerateXcode {
                         &path_to_relative(&current_layout_path, REPOSITORY),
                     );
                     pbxproj.duplicate_target(
-                        KEYBOARD.to_string(),
-                        keyboard_folder_name,
+                        KEYBOARD,
+                        &keyboard_folder_name,
                         &path_to_relative(&layout_info_plist_path, REPOSITORY),
                     );
+                    pbxproj.set_target_build_configuration(
+                        &keyboard_folder_name,
+                        "PRODUCT_BUNDLE_IDENTIFIER",
+                        &target.package_id,
+                    );
+                    pbxproj.set_target_build_configuration(
+                        &keyboard_folder_name,
+                        "DEVELOPMENT_TEAM",
+                        &target.code_sign_id,
+                    );
+                    pbxproj
+                        .add_appex_to_target_embedded_binaries(HOSTING_APP, &keyboard_folder_name);
 
                     // HOSTING APP PLIST
                     let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
