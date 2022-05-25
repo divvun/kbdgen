@@ -137,7 +137,7 @@ fn create_component_pkg(working_path: &Path, bundle_path: &Path, version: &str) 
     pkg_path
 }
 
-pub(crate) struct GenerateInstaller;
+pub struct GenerateInstaller;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateInstaller {

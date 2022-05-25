@@ -1,6 +1,6 @@
 use std::{
     borrow::BorrowMut,
-    collections::HashMap,
+    collections::{BTreeMap, BTreeSet, HashMap},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -8,9 +8,7 @@ use std::{
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use crate::build;
-
-#[nova::newtype(serde)]
+#[nova::newtype(serde, display)]
 pub type ObjectId = String;
 
 impl ObjectId {
@@ -33,6 +31,7 @@ impl ObjectId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct PbxProject {
     attributes: serde_json::Value,
     build_configuration_list: ObjectId,
@@ -44,54 +43,61 @@ pub struct PbxProject {
     product_ref_group: ObjectId,
     project_dir_path: String,
     project_root: String,
-    targets: Vec<ObjectId>,
+    targets: BTreeSet<ObjectId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct PBXFileReference {
-    #[serde(flatten)]
-    fields: IndexMap<String, String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxGroup {
-    children: Vec<ObjectId>,
-    #[serde(rename = "sourceTree")]
-    source_tree: String,
-    path: Option<String>,
+    file_encoding: Option<String>,
+    include_in_index: Option<String>,
+    last_known_file_type: Option<String>,
+    explicit_file_type: Option<String>,
     name: Option<String>,
+    path: String,
+    source_tree: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct PbxGroup {
+    children: BTreeSet<ObjectId>,
+    source_tree: String,
+    name: Option<String>,
+    path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct NativeTarget {
-    #[serde(rename = "buildConfigurationList")]
+    product_type: Option<String>,
     build_configuration_list: ObjectId,
-    #[serde(rename = "productReference")]
     product_reference: ObjectId,
-    #[serde(rename = "productName")]
     product_name: String,
-    #[serde(rename = "buildPhases")]
-    build_phases: Vec<ObjectId>,
+    build_phases: BTreeSet<ObjectId>,
     dependencies: serde_json::Value,
     name: String,
-    #[serde(rename = "buildRules")]
     build_rules: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct ConfigurationList {
-    #[serde(rename = "buildConfigurations")]
-    build_configurations: Vec<ObjectId>,
-    #[serde(rename = "defaultConfigurationIsVisible")]
+    build_configurations: BTreeSet<ObjectId>,
     default_configuration_is_visible: String,
-    #[serde(rename = "defaultConfigurationName")]
     default_configuration_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct BuildConfiguration {
-    #[serde(rename = "buildSettings")]
     build_settings: IndexMap<String, serde_json::Value>,
+    base_configuration_reference: Option<ObjectId>,
     name: String,
 }
 
@@ -111,38 +117,51 @@ pub struct PbxCopyFilesBuildPhase {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct Pbxproj {
     pub classes: serde_json::Value,
     pub object_version: String,
     pub archive_version: String,
-    pub objects: IndexMap<ObjectId, Object>,
+    pub objects: BTreeMap<ObjectId, Object>,
+    pub root_object: ObjectId,
+}
+
+macro_rules! iter_object {
+    ($self:path, $ty:ident) => {
+        $self.objects.iter().filter_map(|(k, v)| {
+            if let Object::$ty(x) = v {
+                Some((k, x))
+            } else {
+                None
+            }
+        })
+    };
 }
 
 impl Pbxproj {
-    pub fn from_path(path: &PathBuf) -> Self {
+    pub fn from_path(path: &Path) -> Self {
         convert_pbxproj_to_json(path)
     }
 
-    pub fn project(&self) -> Option<PbxProject> {
-        for object in self.objects.values() {
-            if let Object::Project(project) = object {
-                return Some(project.clone());
-            }
+    pub fn project(&self) -> Option<&PbxProject> {
+        if let Some(Object::Project(project)) = self.objects.get(&self.root_object) {
+            return Some(project);
         }
         None
     }
 
     pub fn project_mut(&mut self) -> Option<&mut PbxProject> {
-        for object in self.objects.values_mut() {
-            if let Object::Project(project) = object {
-                return Some(project);
-            }
+        if let Some(Object::Project(project)) = self.objects.get_mut(&self.root_object) {
+            return Some(project);
         }
         None
     }
 
     pub fn add_target(&mut self, object_id: &ObjectId) {
-        self.project_mut().unwrap().targets.push(object_id.clone());
+        self.project_mut()
+            .unwrap()
+            .targets
+            .insert(object_id.clone());
     }
 
     pub fn group(&self, object_id: &ObjectId) -> Option<&PbxGroup> {
@@ -173,10 +192,8 @@ impl Pbxproj {
     pub fn file_reference_id_by_path(&self, path_name: &str) -> Option<&ObjectId> {
         for object in &self.objects {
             if let (id, Object::FileReference(file_reference)) = object {
-                if let Some(file_reference_path) = file_reference.fields.get("path") {
-                    if file_reference_path == path_name {
-                        return Some(id);
-                    }
+                if file_reference.path == path_name {
+                    return Some(id);
                 }
             }
         }
@@ -279,12 +296,12 @@ impl Pbxproj {
 
         let object = ObjectId::new_random();
 
-        self.objects.insert(
-            object.clone(),
-            Object::FileReference(PBXFileReference {
-                fields: plist_file_fields,
-            }),
-        );
+        // self.objects.insert(
+        //     object.clone(),
+        //     Object::FileReference(PBXFileReference {
+        //         fields: plist_file_fields,
+        //     }),
+        // );
 
         return object;
     }
@@ -295,7 +312,7 @@ impl Pbxproj {
             .map(|x| x.as_os_str().to_str().unwrap().to_string())
             .collect();
 
-        let mut target = self.project().unwrap().main_group;
+        let mut target = self.project().unwrap().main_group.clone();
 
         'boop: for path_name in path_names {
             let children_references = &self.group(&target).unwrap().children;
@@ -314,14 +331,14 @@ impl Pbxproj {
             let id = ObjectId::new_random();
 
             let new_child = PbxGroup {
-                children: vec![],
+                children: Default::default(),
+                name: None,
                 path: Some(path_name.clone()),
                 source_tree: "<group>".to_string(),
-                name: None,
             };
 
             self.objects.insert(id.clone(), Object::Group(new_child));
-            self.group_mut(&target).unwrap().children.push(id.clone());
+            self.group_mut(&target).unwrap().children.insert(id.clone());
 
             target = id;
         }
@@ -333,7 +350,7 @@ impl Pbxproj {
             .map(|x| x.as_os_str().to_str().unwrap().to_string())
             .collect();
 
-        let mut object = self.project().unwrap().main_group;
+        let mut object = self.project().unwrap().main_group.clone();
 
         for group_name in group_names {
             let children_references = &self.group(&object).unwrap().children;
@@ -358,7 +375,7 @@ impl Pbxproj {
         self.group_mut(&object)
             .unwrap()
             .children
-            .push(object_id.clone());
+            .insert(object_id.clone());
     }
 
     pub fn duplicate_target(
@@ -395,7 +412,7 @@ impl Pbxproj {
 
             new_build_configuration.build_settings.insert(
                 "INFOPLIST_FILE".to_string(),
-                serde_json::Value::String(plist_path.to_str().unwrap().to_string().clone()),
+                serde_json::Value::String(plist_path.to_str().unwrap().to_string()),
             );
             new_build_configuration.build_settings.insert(
                 "PRODUCT_NAME".to_string(),
@@ -406,7 +423,7 @@ impl Pbxproj {
                 serde_json::Value::String("CODE_SIGN_STYLE".to_string()),
             );
             new_build_configuration.build_settings.insert(
-                "PRODUCT_NAENABLE_BITCODEME".to_string(),
+                "PRODUCT_ENABLE_BITCODE".to_string(),
                 serde_json::Value::String("ENABLE_BITCODE".to_string()),
             );
 
@@ -419,7 +436,8 @@ impl Pbxproj {
             );
         }
         // Add all new build configuration references to the list
-        new_configuration_list.build_configurations = new_configuration_list_refs;
+        new_configuration_list.build_configurations =
+            new_configuration_list_refs.into_iter().collect();
 
         // add new configuration list reference to the new native target
         new_native_target.build_configuration_list = new_configuration_list_id.clone();
@@ -430,9 +448,9 @@ impl Pbxproj {
             .file_reference_by_id(&new_native_target.product_reference)
             .unwrap()
             .clone();
-        new_appex
-            .fields
-            .insert("path".to_string(), format!("{}.appex", destination_name));
+        // new_appex
+        //     .fields
+        //     .insert("path".to_string(), format!("{}.appex", destination_name));
 
         // Add new appex id to the new native target
         new_native_target.product_reference = new_appex_id.clone();
@@ -497,7 +515,10 @@ impl Pbxproj {
         let build_file_id = ObjectId::new_random();
         self.objects.insert(
             build_file_id,
-            Object::BuildFile(BuildFile { file_ref: appex_id }),
+            Object::BuildFile(BuildFile {
+                file_ref: appex_id,
+                settings: None,
+            }),
         );
     }
 
@@ -511,6 +532,126 @@ impl Pbxproj {
             .unwrap()
             .clone();
     }
+    // TODO: Same as above? Modifies the "Keyboard" target that is later removed?
+    // pub fn set_target_package_id(&mut self, target_name: String, package_id: String) {
+    //     let mut target = self.native_target_by_name_mut(&target_name);
+    // }
+
+    pub fn to_pbxproj_string(&self) -> String {
+        let mut s = String::from("// !$*UTF8*$!\n{\n");
+
+        s.push_str(&format!("\tarchiveVersion = {};\n", &self.archive_version));
+        s.push_str("\tclasses = {\n");
+        s.push_str("\t};\n");
+        s.push_str(&format!("\tobjectVersion = {};\n", &self.object_version));
+
+        // }};\n", &self.archive_version));
+        s.push_str("\tobjects = {\n\n");
+
+        s.push_str("/* Begin PBXBuildFile section */\n");
+        for (oid, build_file) in iter_object!(self, BuildFile) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{", oid, "TODO"));
+            s.push_str("isa = PBXBuildFile; fileRef = ");
+            s.push_str(&format!("{} /* {} */; }};", build_file.file_ref, "TODO"));
+            s.push('\n');
+        }
+        s.push_str("/* End PBXBuildFile section */\n\n");
+
+        s.push_str("/* Begin PBXContainerItemProxy section */\n");
+        for (oid, item_proxy) in iter_object!(self, ContainerItemProxy) {
+            s.push_str(&format!("\t\t{} /* PBXContainerItemProxy */ = {{\n", oid));
+            s.push_str("\t\t\tisa = PBXContainerItemProxy;\n");
+            s.push_str(&format!(
+                "\t\t\tcontainerPortal = {} /* {} */;\n",
+                item_proxy.container_portal, "TODO"
+            ));
+            s.push_str(&format!("\t\t\tproxyType = {};\n", item_proxy.proxy_type));
+            s.push_str(&format!(
+                "\t\t\tremoteGlobalIDString = {};\n",
+                item_proxy.remote_global_id_string
+            ));
+            s.push_str(&format!("\t\t\tremoteInfo = {};\n", item_proxy.remote_info));
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End PBXContainerItemProxy section */\n\n");
+
+        s.push_str("/* Begin PBXCopyFilesBuildPhase section */\n");
+        for (oid, phase) in iter_object!(self, CopyFilesBuildPhase) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = PBXCopyFilesBuildPhase;\n");
+            s.push_str(&format!(
+                "\t\t\tbuildActionMask = {};\n",
+                phase.build_action_mask
+            ));
+            s.push_str(&format!("\t\t\tdstPath = {:?};\n", phase.dst_path));
+            s.push_str(&format!(
+                "\t\t\tdstSubfolderSpec = {};\n",
+                phase.dst_subfolder_spec
+            ));
+            s.push_str("\t\t\tfiles = (\n");
+            for file in phase.files.iter() {
+                s.push_str(&format!("\t\t\t\t{} /* {} */;\n", file, "TODO"));
+            }
+            s.push_str("\t\t\t);\n");
+            if let Some(name) = phase.name.as_ref() {
+                s.push_str(&format!("\t\t\tname = {:?};\n", name));
+            }
+            s.push_str(&format!(
+                "\t\t\trunOnlyForDeploymentPostprocessing = {};\n",
+                phase.run_only_for_deployment_postprocessing
+            ));
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End PBXCopyFilesBuildPhase section */\n\n");
+
+        s.push_str("/* Start PBXFileReference section */\n\n");
+
+        for (oid, file_ref) in iter_object!(self, FileReference) {
+            s.push_str(&format!(
+                "\t\t{} /* {} */ = {{",
+                oid,
+                file_ref.name.as_deref().unwrap_or_else(|| &file_ref.path)
+            ));
+            s.push_str("isa = PBXFileReference; ");
+            if let Some(x) = file_ref.file_encoding.as_ref() {
+                s.push_str(&format!("fileEncoding = {}; ", x));
+            }
+            if let Some(x) = file_ref.include_in_index.as_ref() {
+                s.push_str(&format!("includeInIndex = {}; ", x));
+            }
+            if let Some(x) = file_ref.last_known_file_type.as_ref() {
+                s.push_str(&format!("lastKnownFileType = {}; ", x));
+            }
+            if let Some(x) = file_ref.name.as_ref() {
+                s.push_str(&format!("name = {}; ", x));
+            }
+            s.push_str(&format!("path = {:?}; ", file_ref.path));
+            s.push_str(&format!(
+                "sourceTree = {}; ",
+                if file_ref.source_tree == "<group>" {
+                    "\"<group>\""
+                } else {
+                    &file_ref.source_tree
+                }
+            ));
+
+            s.push_str("};\n");
+        }
+        s.push_str("/* End PBXFileReference section */\n\n");
+        s.push_str("\t};\n}\n");
+        s
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PBXCopyFilesBuildPhase {
+    build_action_mask: String,
+    dst_path: String,
+    dst_subfolder_spec: String,
+    files: BTreeSet<ObjectId>,
+    name: Option<String>,
+    run_only_for_deployment_postprocessing: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -562,12 +703,25 @@ pub enum Object {
     BuildConfiguration(BuildConfiguration),
 
     #[serde(rename = "PBXContainerItemProxy")]
-    ContainerItemProxy(serde_json::Value),
+    ContainerItemProxy(PBXContainerItemProxy),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct PBXContainerItemProxy {
+    pub container_portal: ObjectId,
+    pub proxy_type: String,
+    #[serde(rename = "remoteGlobalIDString")]
+    pub remote_global_id_string: ObjectId,
+    pub remote_info: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct BuildFile {
+    pub settings: Option<IndexMap<String, serde_json::Value>>,
     pub file_ref: ObjectId,
 }
 

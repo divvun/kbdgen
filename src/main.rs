@@ -1,24 +1,20 @@
 use std::path::PathBuf;
 
-use build::android::clone_giellakbd::CloneGiellaKbd;
-use build::android::generate_android::GenerateAndroid;
-use build::macos::{GenerateInstaller, GenerateMacOs};
-use build::BuildStep;
-use bundle::KbdgenBundle;
 use clap::{Args, Parser, Subcommand};
+use kbdgen::build::android::clone_giellakbd::CloneGiellaKbd;
+use kbdgen::build::android::generate_android::GenerateAndroid;
+use kbdgen::build::macos::{GenerateInstaller, GenerateMacOs};
+use kbdgen::build::BuildStep;
+use kbdgen::bundle::KbdgenBundle;
 
-use crate::build::android::AndroidBuild;
-use crate::build::chromeos::ChromeOsBuild;
-use crate::build::ios::IosBuild;
-use crate::build::macos::MacOsBuild;
-use crate::build::svg::SvgBuild;
-use crate::build::windows::WindowsBuild;
-use crate::build::BuildSteps;
-use crate::bundle::read_kbdgen_bundle;
-
-mod build;
-mod bundle;
-mod util;
+use kbdgen::build::android::AndroidBuild;
+use kbdgen::build::chromeos::ChromeOsBuild;
+use kbdgen::build::ios::IosBuild;
+use kbdgen::build::macos::MacOsBuild;
+use kbdgen::build::svg::SvgBuild;
+use kbdgen::build::windows::WindowsBuild;
+use kbdgen::build::BuildSteps;
+use kbdgen::bundle::read_kbdgen_bundle;
 
 async fn android_target(
     bundle: KbdgenBundle,

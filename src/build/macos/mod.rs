@@ -11,8 +11,8 @@ use async_trait::async_trait;
 
 use super::{BuildStep, BuildSteps};
 use crate::bundle::KbdgenBundle;
-pub(crate) use generate_macos::GenerateMacOs;
-pub(crate) use package_macos::GenerateInstaller;
+pub use generate_macos::GenerateMacOs;
+pub use package_macos::GenerateInstaller;
 
 pub struct MacOsBuild {
     pub bundle: KbdgenBundle,
