@@ -505,7 +505,6 @@ impl Pbxproj {
         );
 
         // Finishing up
-        // TODO: No "Products" group exists, create one?
         self.add_ref_to_group(&new_appex_id, &PathBuf::from_str("Products").unwrap());
         self.add_target(&new_appex_id);
     }
