@@ -8,7 +8,7 @@ use language_tags::LanguageTag;
 use qname::qname;
 use serde::Serialize;
 use url::Url;
-use xmlem::{Document, NewElement, Selector};
+use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::bundle::project::{self, LocaleProjectDescription};
 use crate::{
@@ -53,6 +53,20 @@ pub struct GenerateAndroid;
 #[async_trait(?Send)]
 impl BuildStep for GenerateAndroid {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+        let mut android_targets = false;
+
+        for (language_tag, layout) in &bundle.layouts {
+            if let Some(android_target) = &layout.android {
+                android_targets = true;
+                break;
+            }
+        }
+
+        if !android_targets {
+            tracing::warn!("No Android targets found in the supplied kbdgen bundle!");
+            return;
+        }
+
         let output_path = output_path.join(Path::new(REPOSITORY_FOLDER));
         let top_path = output_path.join(Path::new(TOP_FOLDER));
         let assets_layouts_path = top_path.join(Path::new(ASSETS_LAYOUTS_PART));
@@ -70,7 +84,24 @@ impl BuildStep for GenerateAndroid {
         std::fs::create_dir_all(&main_xml_path).unwrap();
         std::fs::create_dir_all(&short_width_xml_path).unwrap();
 
-        let mut subtypes = Vec::new();
+        let method_path = main_xml_path.join(Path::new("method.xml"));
+        let file = File::open(method_path.clone()).expect(&format!(
+            "method.xml to exist in {:?} and open without issues",
+            &main_xml_path
+        ));
+
+        let mut method_doc = Document::from_file(file).expect("can't read strings file");
+
+        let selector = Selector::new("subtype").expect("subtype selector");
+
+        let subtype = method_doc
+            .root()
+            .query_selector(&mut method_doc, &selector)
+            .expect("there should be a subtype");
+
+        method_doc
+            .root()
+            .remove_child(&mut method_doc, Node::Element(subtype));
 
         // One set of rowkeys_{displayName}_keyboard{count}.xml file per language with an Android platform
         // x files for lines (should be 3)
@@ -112,7 +143,8 @@ impl BuildStep for GenerateAndroid {
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
-                let lowecase_scored_display_name = default_display_name.to_lowercase().replace(" ", "_");
+                let lowecase_scored_display_name =
+                    default_display_name.to_lowercase().replace(" ", "_");
 
                 let layers = &android_target.primary.layers;
 
@@ -166,7 +198,7 @@ impl BuildStep for GenerateAndroid {
 
                             let new_elem = create_key_xml_element(
                                 &key,
-                                // incorrect for keyboard beyond 1 - review python code
+                                // incorrect for keyboard beyond 1 - take the first char of longpress
                                 compute_key_hint_label_index(key_index),
                                 longpress,
                             );
@@ -238,90 +270,17 @@ impl BuildStep for GenerateAndroid {
                 create_and_write_kbd(&main_xml_path, &lowecase_scored_display_name);
                 create_and_write_layout_set(&main_xml_path, &lowecase_scored_display_name);
 
+                // use rows template
                 // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
-
-                // for each LAYOUT add a rows_northern_sami_keyboard -> points to these
-
-                // add strings here
-
-                //create_and_write_values_strings(&main_values_path);
-
-                {
-                    
-                }
 
                 let current_language_tag_subtype = format!("subtype_{}", language_tag);
 
-                {
-                    let strings_path = main_values_path.join(Path::new("strings.xml"));
-                    let file = File::open(strings_path.clone()).expect(&format!(
-                        "strings to exist in {:?} and open without issues",
-                        &main_values_path
-                    ));
-                    let mut strings_doc =
-                        Document::from_file(file).expect("can't read strings file");
+                create_and_write_values_strings(
+                    &main_values_path,
+                    &default_display_name,
+                    &current_language_tag_subtype,
+                );
 
-                    let subtype = strings_doc.root().append_new_element(
-                        &mut strings_doc,
-                        NewElement {
-                            name: qname!("string"),
-                            attrs: [(qname!("name"), current_language_tag_subtype.clone())].into(),
-                        },
-                    );
-
-                    subtype.set_text(&mut strings_doc, &default_display_name);
-
-                    std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
-                }
-
-                // modified:
-                // modified:   app/src/main/res/xml/method.xml
-
-                {
-                    let method_path = main_xml_path.join(Path::new("method.xml"));
-                    let file = File::open(method_path.clone()).expect(&format!(
-                        "method.xml to exist in {:?} and open without issues",
-                        &main_xml_path
-                    ));
-
-                    let mut method_doc =
-                        Document::from_file(file).expect("can't read strings file");
-
-                    let selector = Selector::new("subtype")
-                        .expect("subtype selector");
-
-                    // todo: instead of subtype replacement
-                    // delete old subtype and
-                    // add subtype per layout
-                    let subtype = method_doc.root().query_selector(&mut method_doc, &selector).expect("there should be a subtype");
-
-                    subtype.set_attribute(&mut method_doc, "android:label", &format!("@string/subtype_{}", language_tag.to_string()));
-                    subtype.set_attribute(&mut method_doc, "android:imeSubtypeLocale", &language_tag.to_string());
-                    subtype.set_attribute(&mut method_doc, "android:imeSubtypeExtraValue", &format!("KeyboardLayoutSet={},AsciiCapable,EmojiCapable", lowecase_scored_display_name));
-
-                    subtypes.push(subtype);
-
-                    std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
-                }
-
-                // modified:   app/src/main/res/xml/spellchecker.xml
-                // may just be comment removal
-
-                {
-                    let spellchecker_path = main_xml_path.join(Path::new("spellchecker.xml"));
-                    let file = File::open(spellchecker_path.clone()).expect(&format!(
-                        "spellchecker.xml to exist in {:?} and open without issues",
-                        &main_xml_path
-                    ));
-
-                    let mut spellchecker_doc =
-                        Document::from_file(file).expect("can't read strings file");
-
-                    
-                }
-
-                // Obvious candidate for some code reuse, along with the above
-                // Also fix duplication if modified on previous route
                 for (language_tag, display_name) in &layout.display_names {
                     let folder = resources_path.join(
                         Path::new(&format!("values-{}", language_tag.to_string())).to_owned(),
@@ -353,6 +312,52 @@ impl BuildStep for GenerateAndroid {
 
                     std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
                 }
+
+                // Can use template here and insertion after for order preservation for neatness
+                let mut subtype = method_doc.root().append_new_element(
+                    &mut method_doc,
+                    NewElement {
+                        name: qname!("subtype"),
+                        attrs: [
+                            (
+                                qname!("android:icon"),
+                                "@drawable/ic_ime_switcher_dark".to_string(),
+                            ),
+                            (qname!("android:imeSubtypeMode"), "keyboard".to_string()),
+                        ]
+                        .into(),
+                    },
+                );
+
+                subtype.set_attribute(
+                    &mut method_doc,
+                    "android:label",
+                    &format!("@string/subtype_{}", language_tag.to_string()),
+                );
+                subtype.set_attribute(
+                    &mut method_doc,
+                    "android:imeSubtypeLocale",
+                    &language_tag.to_string(),
+                );
+                subtype.set_attribute(
+                    &mut method_doc,
+                    "android:imeSubtypeExtraValue",
+                    &format!(
+                        "KeyboardLayoutSet={},AsciiCapable,EmojiCapable",
+                        lowecase_scored_display_name
+                    ),
+                );
+
+                let spellchecker_path = main_xml_path.join(Path::new("spellchecker.xml"));
+                let file = File::open(spellchecker_path.clone()).expect(&format!(
+                    "spellchecker.xml to exist in {:?} and open without issues",
+                    &main_xml_path
+                ));
+
+                let mut spellchecker_doc =
+                    Document::from_file(file).expect("can't read strings file");
+
+                // write this file too, probably globally
             }
         }
 
@@ -387,6 +392,8 @@ impl BuildStep for GenerateAndroid {
 
             std::fs::write(strings_appname_path, strings_doc.to_string_pretty()).unwrap();
         }
+
+        std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
 
         /*
           (use "git add <file>..." to include in what will be committed)
@@ -514,11 +521,12 @@ fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str)
     .unwrap();
 }
 
-/*
-fn create_and_write_values_strings(main_values_path: &Path) {
-
-    let strings_appname_path =
-        main_values_path.join(Path::new("strings-appname.xml"));
+fn create_and_write_values_strings(
+    main_values_path: &Path,
+    default_display_name: &str,
+    current_language_tag_subtype: &str,
+) {
+    let strings_appname_path = main_values_path.join(Path::new("strings-appname.xml"));
     let file = File::open(strings_appname_path.clone()).expect(&format!(
         "strings-appname to exist in {:?} and open without issues",
         &main_values_path
@@ -526,20 +534,37 @@ fn create_and_write_values_strings(main_values_path: &Path) {
     let mut strings_appname_doc =
         Document::from_file(file).expect("can't read strings-appname file");
 
-    let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
-        .expect("css selector do work");
+    let ime_selector =
+        Selector::new(r#"string[name="english_ime_name"]"#).expect("css selector do work");
 
     let ime = strings_appname_doc
         .root()
         .query_selector(&strings_appname_doc, &ime_selector)
         .expect("The strings file should have ime attr");
 
-    ime.set_text(&mut strings_appname_doc, &default_display_name);
+    ime.set_text(&mut strings_appname_doc, default_display_name);
 
-    std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty())
-        .unwrap();
+    std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty()).unwrap();
+
+    let strings_path = main_values_path.join(Path::new("strings.xml"));
+    let file = File::open(strings_path.clone()).expect(&format!(
+        "strings to exist in {:?} and open without issues",
+        &main_values_path
+    ));
+    let mut strings_doc = Document::from_file(file).expect("can't read strings file");
+
+    let subtype = strings_doc.root().append_new_element(
+        &mut strings_doc,
+        NewElement {
+            name: qname!("string"),
+            attrs: [(qname!("name"), current_language_tag_subtype.to_string())].into(),
+        },
+    );
+
+    subtype.set_text(&mut strings_doc, &default_display_name);
+
+    std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
 }
- */
 
 fn create_key_xml_element(
     key: &str,
