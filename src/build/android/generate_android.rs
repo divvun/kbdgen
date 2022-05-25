@@ -221,21 +221,20 @@ impl BuildStep for GenerateAndroid {
 
                         for (key_index, key) in key_map.iter().enumerate() {
                             let longpress = match longpress {
-                                Some(longpress) => match longpress.get(key) {
-                                    Some(longpress_keys) => {
-                                        Some(longpress_keys.join(LONGPRESS_JOIN_CHARACTER))
-                                    }
-                                    None => None,
-                                },
+                                Some(longpress) => longpress.get(key),
                                 None => None,
                             };
 
-                            let new_elem = create_key_xml_element(
-                                &key,
-                                // incorrect for keyboard beyond 1 - take the first char of longpress
-                                compute_key_hint_label_index(key_index),
-                                longpress,
-                            );
+                            let new_elem;
+                            if line_index == 0 {
+                                new_elem = create_numbered_key_xml_element(
+                                    &key,
+                                    compute_key_hint_label_index(key_index),
+                                    longpress,
+                                );
+                            } else {
+                                new_elem = create_key_xml_element(&key, longpress);
+                            }
 
                             default_row_keys
                                 .append_new_element(&mut new_rowkeys_document, new_elem);
@@ -291,18 +290,20 @@ impl BuildStep for GenerateAndroid {
                             },
                         );
 
+                        let file_name = format!(
+                            "rowkeys_{}_keyboard{}.xml",
+                            lowecase_scored_display_name,
+                            line_index + 1
+                        );
+
+                        // commented out because xmlem bug
+                        /*
                         row_append = row_append.append_new_element_after(
                             &mut rows_document,
                             NewElement {
                                 name: qname!("Row"),
                                 attrs: [].into(),
                             },
-                        );
-
-                        let file_name = format!(
-                            "rowkeys_{}_keyboard{}.xml",
-                            lowecase_scored_display_name,
-                            line_index + 1
                         );
 
                         row_append.append_new_element(
@@ -318,7 +319,7 @@ impl BuildStep for GenerateAndroid {
                                 ]
                                 .into(),
                             },
-                        );
+                        );*/
 
                         std::fs::write(
                             short_width_xml_path.join(file_name),
@@ -635,10 +636,10 @@ fn create_and_write_values_strings(
     std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
 }
 
-fn create_key_xml_element(
+fn create_numbered_key_xml_element(
     key: &str,
     key_hint_label_index: Option<usize>,
-    longpress: Option<String>,
+    longpress: Option<&Vec<String>>,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -656,8 +657,33 @@ fn create_key_xml_element(
     }
 
     if let Some(longpress) = longpress.as_ref() {
-        attrs.insert(qname!("latin:moreKeys"), longpress.clone());
+        let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
+
+        attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
     }
+
+    NewElement {
+        name: qname!("key"),
+        attrs,
+    }
+}
+
+fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>) -> NewElement {
+    let mut attrs = IndexMap::new();
+
+    if let Some(longpress) = longpress {
+        let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
+
+        let longpress_hint = longpress
+            .first()
+            .expect("longpress to actually have at least one key");
+
+        attrs.insert(qname!("latin:keyHintLabel"), longpress_hint.to_owned());
+
+        attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
+    }
+
+    attrs.insert(qname!("latin:keySpec"), key.to_owned());
 
     NewElement {
         name: qname!("key"),
