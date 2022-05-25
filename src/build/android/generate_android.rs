@@ -52,6 +52,8 @@ pub struct GenerateAndroid;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateAndroid {
+    // The generator is currently not designed to be ran more than once
+    // it will generate extra subtypes for some of the files
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let mut android_targets = false;
 
@@ -84,6 +86,10 @@ impl BuildStep for GenerateAndroid {
         std::fs::create_dir_all(&main_xml_path).unwrap();
         std::fs::create_dir_all(&short_width_xml_path).unwrap();
 
+        let subtype_selector = Selector::new("subtype").expect("subtype selector");
+
+        // Method
+
         let method_path = main_xml_path.join(Path::new("method.xml"));
         let file = File::open(method_path.clone()).expect(&format!(
             "method.xml to exist in {:?} and open without issues",
@@ -92,16 +98,33 @@ impl BuildStep for GenerateAndroid {
 
         let mut method_doc = Document::from_file(file).expect("can't read strings file");
 
-        let selector = Selector::new("subtype").expect("subtype selector");
-
-        let subtype = method_doc
+        let method_subtype = method_doc
             .root()
-            .query_selector(&mut method_doc, &selector)
+            .query_selector(&mut method_doc, &subtype_selector)
             .expect("there should be a subtype");
 
         method_doc
             .root()
-            .remove_child(&mut method_doc, Node::Element(subtype));
+            .remove_child(&mut method_doc, Node::Element(method_subtype));
+
+        // Spellchecker
+
+        let spellchecker_path = main_xml_path.join(Path::new("spellchecker.xml"));
+        let file = File::open(spellchecker_path.clone()).expect(&format!(
+            "spellchecker.xml to exist in {:?} and open without issues",
+            &main_xml_path
+        ));
+
+        let mut spellchecker_doc = Document::from_file(file).expect("can't read strings file");
+
+        let spellchecker_subtype = spellchecker_doc
+            .root()
+            .query_selector(&mut spellchecker_doc, &subtype_selector)
+            .expect("there should be a subtype");
+
+        spellchecker_doc
+            .root()
+            .remove_child(&mut spellchecker_doc, Node::Element(spellchecker_subtype));
 
         // One set of rowkeys_{displayName}_keyboard{count}.xml file per language with an Android platform
         // x files for lines (should be 3)
@@ -148,8 +171,19 @@ impl BuildStep for GenerateAndroid {
 
                 let layers = &android_target.primary.layers;
 
-                let _rows_document =
+                // Rows
+
+                let mut rows_document =
                     Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
+
+                let include_selector = Selector::new("include").expect("this selector is fine");
+
+                let rows_include = rows_document
+                    .root()
+                    .query_selector(&mut rows_document, &include_selector)
+                    .expect("there should be an include");
+
+                // Rowkeys
 
                 let rowkeys_document =
                     Document::from_str(ROWKEYS_TEMPLATE).expect("invalid rowkeys template");
@@ -209,6 +243,8 @@ impl BuildStep for GenerateAndroid {
                     }
                 }
 
+                let mut row_append = rows_include;
+
                 for (line_index, mut rowkey_doc) in rowkeys_docs_map {
                     std::fs::write(
                         main_xml_path.join(format!(
@@ -255,12 +291,37 @@ impl BuildStep for GenerateAndroid {
                             },
                         );
 
+                        row_append = row_append.append_new_element_after(
+                            &mut rows_document,
+                            NewElement {
+                                name: qname!("Row"),
+                                attrs: [].into(),
+                            },
+                        );
+
+                        let file_name = format!(
+                            "rowkeys_{}_keyboard{}.xml",
+                            lowecase_scored_display_name,
+                            line_index + 1
+                        );
+
+                        row_append.append_new_element(
+                            &mut rows_document,
+                            NewElement {
+                                name: qname!("include"),
+                                attrs: [
+                                    (
+                                        qname!("latin:keyboardLayout"),
+                                        format!("@xml/{}", &file_name),
+                                    ),
+                                    (qname!("latin:keyWidth"), "8.18%p".to_owned()),
+                                ]
+                                .into(),
+                            },
+                        );
+
                         std::fs::write(
-                            short_width_xml_path.join(format!(
-                                "rowkeys_{}_keyboard{}.xml",
-                                lowecase_scored_display_name,
-                                line_index + 1
-                            )),
+                            short_width_xml_path.join(file_name),
                             rowkey_doc.to_string_pretty(),
                         )
                         .unwrap();
@@ -269,9 +330,6 @@ impl BuildStep for GenerateAndroid {
 
                 create_and_write_kbd(&main_xml_path, &lowecase_scored_display_name);
                 create_and_write_layout_set(&main_xml_path, &lowecase_scored_display_name);
-
-                // use rows template
-                // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
 
                 let current_language_tag_subtype = format!("subtype_{}", language_tag);
 
@@ -314,6 +372,8 @@ impl BuildStep for GenerateAndroid {
                 }
 
                 // Can use template here and insertion after for order preservation for neatness
+
+                // Method
                 let mut subtype = method_doc.root().append_new_element(
                     &mut method_doc,
                     NewElement {
@@ -348,16 +408,24 @@ impl BuildStep for GenerateAndroid {
                     ),
                 );
 
-                let spellchecker_path = main_xml_path.join(Path::new("spellchecker.xml"));
-                let file = File::open(spellchecker_path.clone()).expect(&format!(
-                    "spellchecker.xml to exist in {:?} and open without issues",
-                    &main_xml_path
-                ));
+                // Spellchecker
+                let mut subtype = spellchecker_doc.root().append_new_element(
+                    &mut spellchecker_doc,
+                    NewElement {
+                        name: qname!("subtype"),
+                        attrs: [(
+                            qname!("android:label"),
+                            "@string/subtype_generic".to_string(),
+                        )]
+                        .into(),
+                    },
+                );
 
-                let mut spellchecker_doc =
-                    Document::from_file(file).expect("can't read strings file");
-
-                // write this file too, probably globally
+                subtype.set_attribute(
+                    &mut method_doc,
+                    "android:imeSubtypeLocale",
+                    &language_tag.to_string(),
+                );
             }
         }
 
@@ -394,6 +462,7 @@ impl BuildStep for GenerateAndroid {
         }
 
         std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
+        std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
 
         /*
           (use "git add <file>..." to include in what will be committed)
