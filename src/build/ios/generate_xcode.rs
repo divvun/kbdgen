@@ -351,6 +351,7 @@ impl BuildStep for GenerateXcode {
                     );
                     pbxproj
                         .add_appex_to_target_embedded_binaries(HOSTING_APP, &keyboard_folder_name);
+                    pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
 
                     // HOSTING APP PLIST
                     let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);

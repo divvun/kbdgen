@@ -8,6 +8,8 @@ use std::{
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+use crate::bundle::target;
+
 #[nova::newtype(serde, display)]
 pub type ObjectId = String;
 
@@ -78,7 +80,7 @@ pub struct NativeTarget {
     product_reference: ObjectId,
     product_name: String,
     build_phases: BTreeSet<ObjectId>,
-    dependencies: serde_json::Value,
+    dependencies: BTreeSet<ObjectId>,
     name: String,
     build_rules: serde_json::Value,
 }
@@ -102,6 +104,14 @@ pub struct BuildConfiguration {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct PBXTargetDependency {
+    target: ObjectId,
+    target_proxy: ObjectId,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PbxCopyFilesBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
@@ -109,7 +119,7 @@ pub struct PbxCopyFilesBuildPhase {
     dst_path: String,
     #[serde(rename = "dstSubfolderSpec")]
     dst_subfolder_spec: String,
-    files: Vec<ObjectId>,
+    files: BTreeSet<ObjectId>,
     name: Option<String>,
     #[serde(rename = "runOnlyForDeploymentPostprocessing")]
     run_only_for_deployment_postprocessing: String,
@@ -211,16 +221,16 @@ impl Pbxproj {
         None
     }
 
-    // pub fn native_target_by_name_mut(&mut self, name: &str) -> Option<&mut NativeTarget> {
-    //     for object in self.objects.values_mut() {
-    //         if let Object::NativeTarget(native_target) = object {
-    //             if native_target.name == name {
-    //                 return Some(native_target);
-    //             }
-    //         }
-    //     }
-    //     None
-    // }
+    pub fn native_target_by_name_mut(&mut self, name: &str) -> Option<&mut NativeTarget> {
+        for object in self.objects.values_mut() {
+            if let Object::NativeTarget(native_target) = object {
+                if native_target.name == name {
+                    return Some(native_target);
+                }
+            }
+        }
+        None
+    }
 
     pub fn configuration_list_by_id(&self, object_id: &ObjectId) -> Option<&ConfigurationList> {
         for object in &self.objects {
@@ -273,38 +283,42 @@ impl Pbxproj {
     }
 
     pub fn create_plist_file(&mut self, relative_plist_path: &PathBuf) -> ObjectId {
-        let mut plist_file_fields: IndexMap<String, String> = IndexMap::new();
-
-        plist_file_fields.insert(
-            "lastKnownFileType".to_string(),
-            "text.plist.xml".to_string(),
-        );
-        plist_file_fields.insert(
-            "name".to_string(),
-            relative_plist_path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string(),
-        );
-        plist_file_fields.insert(
-            "path".to_string(),
-            relative_plist_path.to_str().unwrap().to_string(),
-        );
-        plist_file_fields.insert("sourceTree".to_string(), "<group>".to_string());
-
         let object = ObjectId::new_random();
 
-        // self.objects.insert(
-        //     object.clone(),
-        //     Object::FileReference(PBXFileReference {
-        //         fields: plist_file_fields,
-        //     }),
-        // );
+        self.objects.insert(
+            object.clone(),
+            Object::FileReference(PBXFileReference {
+                last_known_file_type: Some("text.plist.xml".to_string()),
+                name: Some(
+                    relative_plist_path
+                        .file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .to_string(),
+                ),
+                path: relative_plist_path.to_str().unwrap().to_string(),
+                source_tree: "<group>".to_string(),
+
+                file_encoding: None,
+                include_in_index: None,
+                explicit_file_type: None,
+            }),
+        );
 
         return object;
     }
+
+    // pub fn create_target_dependency(&mut self, dependency_id: &ObjectId, proxy_id: &ObjectId) -> ObjectId {
+    //     let id = ObjectId::new_random();
+
+    //     self.objects.insert(id.clone(), Object::TargetDependency(PBXTargetDependency {
+    //         target: dependency_id.clone(),
+    //         target_proxy: proxy_id.clone()
+    //     }));
+
+    //     return id
+    // }
 
     pub fn add_path(&mut self, path: &PathBuf) {
         let path_names: Vec<String> = path
@@ -402,7 +416,7 @@ impl Pbxproj {
             .clone();
 
         // Create new build configurations
-        let mut new_configuration_list_refs: Vec<ObjectId> = Vec::new();
+        let mut new_configuration_list_refs: BTreeSet<ObjectId> = BTreeSet::new();
         for build_configuration_id in &new_configuration_list.build_configurations {
             let new_build_configuration_id = ObjectId::new_random();
             let mut new_build_configuration = self
@@ -427,7 +441,7 @@ impl Pbxproj {
                 serde_json::Value::String("ENABLE_BITCODE".to_string()),
             );
 
-            new_configuration_list_refs.push(new_build_configuration_id.clone());
+            new_configuration_list_refs.insert(new_build_configuration_id.clone());
             // Add to the actual .pbxproj
             // Each new build configuration
             self.objects.insert(
@@ -448,9 +462,7 @@ impl Pbxproj {
             .file_reference_by_id(&new_native_target.product_reference)
             .unwrap()
             .clone();
-        // new_appex
-        //     .fields
-        //     .insert("path".to_string(), format!("{}.appex", destination_name));
+        new_appex.path = format!("{}.appex", destination_name);
 
         // Add new appex id to the new native target
         new_native_target.product_reference = new_appex_id.clone();
@@ -506,8 +518,7 @@ impl Pbxproj {
         for build_phase_id in &target.build_phases {
             if let Some(build_phase) = self.build_phase_by_id_mut(build_phase_id) {
                 if build_phase.name.as_ref().unwrap() == "Embed App Extensions" {
-                    println!("BUILD PHASE: {:#?}", build_phase);
-                    build_phase.files.push(appex_id.clone());
+                    build_phase.files.insert(appex_id.clone());
                     break;
                 }
             }
@@ -522,7 +533,7 @@ impl Pbxproj {
         );
     }
 
-    pub fn remove_appex_to_target_embedded_binaries(
+    pub fn remove_appex_from_target_embedded_binaries(
         &mut self,
         target_path: &str,
         appex_path: &str,
@@ -531,11 +542,22 @@ impl Pbxproj {
             .file_reference_id_by_path(&format!("{}.appex", appex_path))
             .unwrap()
             .clone();
+
+        let target = self.native_target_by_name_mut(target_path).unwrap();
+
+        // remove dependency that has been either automatically generated by xcode or us
+        target.dependencies.remove(&appex_id);
+
+        // remove build phase files
+        for build_phase_id in target.build_phases.clone() {
+            let build_phase = match self.build_phase_by_id_mut(&build_phase_id) {
+                Some(x) => x,
+                None => continue,
+            };
+
+            build_phase.files.remove(&appex_id);
+        }
     }
-    // TODO: Same as above? Modifies the "Keyboard" target that is later removed?
-    // pub fn set_target_package_id(&mut self, target_name: String, package_id: String) {
-    //     let mut target = self.native_target_by_name_mut(&target_name);
-    // }
 
     pub fn to_pbxproj_string(&self) -> String {
         let mut s = String::from("// !$*UTF8*$!\n{\n");
@@ -685,7 +707,7 @@ pub enum Object {
     ResourcesBuildPhase(serde_json::Value),
 
     #[serde(rename = "PBXTargetDependency")]
-    TargetDependency(serde_json::Value),
+    TargetDependency(PBXTargetDependency),
 
     #[serde(rename = "PBXVariantGroup")]
     VariantGroup(serde_json::Value),
