@@ -6,9 +6,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
-
-use crate::bundle::target;
+use serde::{de::value, Deserialize, Serialize};
 
 #[nova::newtype(serde, display)]
 pub type ObjectId = String;
@@ -188,6 +186,19 @@ impl Pbxproj {
         return None;
     }
 
+    pub fn group_by_name_mut(&mut self, name: &str) -> Option<&mut PbxGroup> {
+        for object in self.objects.borrow_mut() {
+            if let (_id, Object::Group(group)) = object {
+                if let Some(group_name) = group.name.clone() {
+                    if group_name == name {
+                        return Some(group);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub fn file_reference_by_id(&self, object_id: &ObjectId) -> Option<&PBXFileReference> {
         for object in &self.objects {
             if let (id, Object::FileReference(file_reference)) = object {
@@ -215,6 +226,17 @@ impl Pbxproj {
             if let Object::NativeTarget(native_target) = object {
                 if native_target.name == name {
                     return Some(native_target);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn native_target_id_by_name(&mut self, name: &str) -> Option<&ObjectId> {
+        for (key, value) in &self.objects {
+            if let Object::NativeTarget(native_target) = value {
+                if native_target.name == name {
+                    return Some(key);
                 }
             }
         }
@@ -486,6 +508,37 @@ impl Pbxproj {
         // TODO: No "Products" group exists, create one?
         self.add_ref_to_group(&new_appex_id, &PathBuf::from_str("Products").unwrap());
         self.add_target(&new_appex_id);
+    }
+
+    // TODO: set product reference to null??
+    pub fn remove_target(&mut self, target_name: &str) {
+        let target = self.native_target_by_name(target_name).unwrap().clone();
+        let target_id = self.native_target_id_by_name(target_name).unwrap().clone();
+
+        let product_reference = &target.product_reference;
+
+        // target.product_reference = None;
+
+        let mut references_to_remove: BTreeSet<ObjectId> = BTreeSet::new();
+        for (target_dependency_id, target_dependency) in &self.objects {
+            if let Object::TargetDependency(target_dependency) = target_dependency {
+                if target_dependency.target == target_id {
+                    references_to_remove.insert(target_dependency_id.clone());
+                }
+            }
+        }
+
+        for reference in references_to_remove {
+            self.objects.remove(&reference);
+        }
+
+        self.group_by_name_mut("Products")
+            .unwrap()
+            .children
+            .remove(product_reference);
+
+        self.project_mut().unwrap().targets.remove(&target_id);
+        self.objects.remove(&target_id);
     }
 
     pub fn set_target_build_configuration(&mut self, target_name: &str, key: &str, value: &str) {
