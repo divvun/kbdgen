@@ -70,6 +70,8 @@ impl BuildStep for GenerateAndroid {
         std::fs::create_dir_all(&main_xml_path).unwrap();
         std::fs::create_dir_all(&short_width_xml_path).unwrap();
 
+        let mut subtypes = Vec::new();
+
         // One set of rowkeys_{displayName}_keyboard{count}.xml file per language with an Android platform
         // x files for lines (should be 3)
         // (pretending we're following the primary approach for start)
@@ -109,6 +111,8 @@ impl BuildStep for GenerateAndroid {
                     .display_names
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
+
+                let lowecase_scored_display_name = default_display_name.to_lowercase().replace(" ", "_");
 
                 let layers = &android_target.primary.layers;
 
@@ -222,7 +226,7 @@ impl BuildStep for GenerateAndroid {
                         std::fs::write(
                             short_width_xml_path.join(format!(
                                 "rowkeys_{}_keyboard{}.xml",
-                                default_display_name.to_lowercase(),
+                                lowecase_scored_display_name,
                                 line_index + 1
                             )),
                             rowkey_doc.to_string_pretty(),
@@ -231,8 +235,8 @@ impl BuildStep for GenerateAndroid {
                     }
                 }
 
-                create_and_write_kbd(&main_xml_path, &default_display_name.to_lowercase());
-                create_and_write_layout_set(&main_xml_path, &default_display_name.to_lowercase());
+                create_and_write_kbd(&main_xml_path, &lowecase_scored_display_name);
+                create_and_write_layout_set(&main_xml_path, &lowecase_scored_display_name);
 
                 // let after_selector = Selector::new("include::after").expect("should be able to select after the include");
 
@@ -240,28 +244,10 @@ impl BuildStep for GenerateAndroid {
 
                 // add strings here
 
+                //create_and_write_values_strings(&main_values_path);
+
                 {
-                    let strings_appname_path =
-                        main_values_path.join(Path::new("strings-appname.xml"));
-                    let file = File::open(strings_appname_path.clone()).expect(&format!(
-                        "strings-appname to exist in {:?} and open without issues",
-                        &main_values_path
-                    ));
-                    let mut strings_appname_doc =
-                        Document::from_file(file).expect("can't read strings-appname file");
-
-                    let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
-                        .expect("css selector do work");
-
-                    let ime = strings_appname_doc
-                        .root()
-                        .query_selector(&strings_appname_doc, &ime_selector)
-                        .expect("The strings file should have ime attr");
-
-                    ime.set_text(&mut strings_appname_doc, &default_display_name);
-
-                    std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty())
-                        .unwrap();
+                    
                 }
 
                 let current_language_tag_subtype = format!("subtype_{}", language_tag);
@@ -286,6 +272,52 @@ impl BuildStep for GenerateAndroid {
                     subtype.set_text(&mut strings_doc, &default_display_name);
 
                     std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
+                }
+
+                // modified:
+                // modified:   app/src/main/res/xml/method.xml
+
+                {
+                    let method_path = main_xml_path.join(Path::new("method.xml"));
+                    let file = File::open(method_path.clone()).expect(&format!(
+                        "method.xml to exist in {:?} and open without issues",
+                        &main_xml_path
+                    ));
+
+                    let mut method_doc =
+                        Document::from_file(file).expect("can't read strings file");
+
+                    let selector = Selector::new("subtype")
+                        .expect("subtype selector");
+
+                    // todo: instead of subtype replacement
+                    // delete old subtype and
+                    // add subtype per layout
+                    let subtype = method_doc.root().query_selector(&mut method_doc, &selector).expect("there should be a subtype");
+
+                    subtype.set_attribute(&mut method_doc, "android:label", &format!("@string/subtype_{}", language_tag.to_string()));
+                    subtype.set_attribute(&mut method_doc, "android:imeSubtypeLocale", &language_tag.to_string());
+                    subtype.set_attribute(&mut method_doc, "android:imeSubtypeExtraValue", &format!("KeyboardLayoutSet={},AsciiCapable,EmojiCapable", lowecase_scored_display_name));
+
+                    subtypes.push(subtype);
+
+                    std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
+                }
+
+                // modified:   app/src/main/res/xml/spellchecker.xml
+                // may just be comment removal
+
+                {
+                    let spellchecker_path = main_xml_path.join(Path::new("spellchecker.xml"));
+                    let file = File::open(spellchecker_path.clone()).expect(&format!(
+                        "spellchecker.xml to exist in {:?} and open without issues",
+                        &main_xml_path
+                    ));
+
+                    let mut spellchecker_doc =
+                        Document::from_file(file).expect("can't read strings file");
+
+                    
                 }
 
                 // Obvious candidate for some code reuse, along with the above
@@ -358,17 +390,9 @@ impl BuildStep for GenerateAndroid {
 
         /*
           (use "git add <file>..." to include in what will be committed)
-            app/src/main/assets/
             app/src/main/jniLibs/arm64-v8a/
             app/src/main/jniLibs/armeabi-v7a/
         */
-
-        // modified:
-        // modified:   app/src/main/res/xml/method.xml
-        // may just be comment removal
-
-        // modified:   app/src/main/res/xml/spellchecker.xml
-        // may just be comment removal
 
         // added app/src/main/jniLibs/arm64-v8a/
         // 2 .so files... oi...
@@ -489,6 +513,33 @@ fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str)
     )
     .unwrap();
 }
+
+/*
+fn create_and_write_values_strings(main_values_path: &Path) {
+
+    let strings_appname_path =
+        main_values_path.join(Path::new("strings-appname.xml"));
+    let file = File::open(strings_appname_path.clone()).expect(&format!(
+        "strings-appname to exist in {:?} and open without issues",
+        &main_values_path
+    ));
+    let mut strings_appname_doc =
+        Document::from_file(file).expect("can't read strings-appname file");
+
+    let ime_selector = Selector::new(r#"string[name="english_ime_name"]"#)
+        .expect("css selector do work");
+
+    let ime = strings_appname_doc
+        .root()
+        .query_selector(&strings_appname_doc, &ime_selector)
+        .expect("The strings file should have ime attr");
+
+    ime.set_text(&mut strings_appname_doc, &default_display_name);
+
+    std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty())
+        .unwrap();
+}
+ */
 
 fn create_key_xml_element(
     key: &str,
