@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    collections::BTreeSet,
     fmt,
     path::{Path, PathBuf},
     str::FromStr,
@@ -12,8 +13,6 @@ use crate::{
     build::{ios::pbxproj::Pbxproj, BuildStep},
     bundle::KbdgenBundle,
 };
-
-use super::pbxproj::{self, convert_pbxproj_to_json};
 
 const REPOSITORY: &str = "repo";
 const HOSTING_APP: &str = "HostingApp";
@@ -269,10 +268,18 @@ impl BuildStep for GenerateXcode {
         let pbxproj_path = xcodeproj_path.join("project.pbxproj");
         let mut pbxproj = Pbxproj::from_path(&pbxproj_path);
 
+        // ADD PROJECT LOCALES TO ALL LOCALES LIST AND REPLACE "en" WITH "Base"
+        let mut all_locales: BTreeSet<String> =
+            bundle.project.locales.keys().map(|x| x.clone()).collect();
+        if all_locales.remove("en") {
+            all_locales.insert("Base".to_string());
+        }
+
         for (layout_index, (language_tag, layout)) in bundle.layouts.iter().enumerate() {
             if let Some(target) = &bundle.targets.ios {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES
+                    // TODO: Check if About.txt exists for locale before creating file reference
                     for (locale_name, locale_info) in &bundle.project.locales {
                         let locale_name = if locale_name == "en" {
                             "Base"
@@ -290,6 +297,20 @@ impl BuildStep for GenerateXcode {
                             cf_bundle_display_name: locale_info.name.to_string(),
                         };
                         std::fs::write(info_path, info_strings.to_string()).unwrap();
+
+                        if locale_name == "Base" {
+                            continue;
+                        } else {
+                            let about_id =
+                                pbxproj.create_file_reference("text", locale_name, "About.txt");
+                            pbxproj.add_file_ref_to_variant_group(about_id);
+                        };
+                    }
+
+                    // TODO: Is this even remotely correct?
+                    // ADD LAYOUT LOCALES TO ALL LOCALES LIST
+                    for value in layout.display_names.keys() {
+                        all_locales.insert(value.as_str().to_string());
                     }
 
                     // KEYBOARD PLIST
@@ -351,6 +372,7 @@ impl BuildStep for GenerateXcode {
                     );
                     pbxproj
                         .add_appex_to_target_embedded_binaries(HOSTING_APP, &keyboard_folder_name);
+
                     pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
                     pbxproj.remove_target(KEYBOARD);
 
@@ -380,10 +402,25 @@ impl BuildStep for GenerateXcode {
                         plist::from_file(root_plist_path.clone()).expect("valid stuff");
                     root_plist.application_group_container_identifier = new_entitlements.clone();
                     plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
+
+                    // UPDATE PBXPROJ
+                    pbxproj.set_target_build_configuration(
+                        HOSTING_APP,
+                        "PRODUCT_BUNDLE_IDENTIFIER",
+                        &target.package_id,
+                    );
+                    pbxproj.set_target_build_configuration(
+                        HOSTING_APP,
+                        "DEVELOPMENT_TEAM",
+                        &target.code_sign_id,
+                    );
                 }
             }
         }
 
+        pbxproj.update(HOSTING_APP, all_locales);
+
+        println!("WRITING TO PBXPROJ");
         std::fs::write(
             pbxproj_path.clone(),
             serde_json::to_string_pretty(&pbxproj).unwrap(),

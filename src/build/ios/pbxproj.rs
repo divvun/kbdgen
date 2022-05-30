@@ -1,12 +1,12 @@
 use std::{
     borrow::BorrowMut,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use indexmap::IndexMap;
-use serde::{de::value, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[nova::newtype(serde, display)]
 pub type ObjectId = String;
@@ -38,7 +38,7 @@ pub struct PbxProject {
     compatibility_version: String,
     development_region: String,
     has_scanned_for_encodings: String,
-    known_regions: serde_json::Value,
+    known_regions: BTreeSet<String>,
     main_group: ObjectId,
     product_ref_group: ObjectId,
     project_dir_path: String,
@@ -63,6 +63,17 @@ pub struct PBXFileReference {
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct PbxGroup {
+    children: BTreeSet<ObjectId>,
+    source_tree: String,
+    name: Option<String>,
+    path: Option<String>,
+}
+
+// TODO: currently same as PbxGroup, should we remove? Or will this vary?
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct PbxVariantGroup {
     children: BTreeSet<ObjectId>,
     source_tree: String,
     name: Option<String>,
@@ -124,6 +135,16 @@ pub struct PbxCopyFilesBuildPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PbxResourcesBuildPhase {
+    #[serde(rename = "buildActionMask")]
+    build_action_mask: String,
+    files: BTreeSet<ObjectId>,
+    name: Option<String>,
+    #[serde(rename = "runOnlyForDeploymentPostprocessing")]
+    run_only_for_deployment_postprocessing: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct Pbxproj {
@@ -165,6 +186,13 @@ impl Pbxproj {
         None
     }
 
+    pub fn known_regions_mut(&mut self) -> Option<&mut BTreeSet<String>> {
+        if let Some(Object::Project(project)) = self.objects.get_mut(&self.root_object) {
+            return Some(&mut project.known_regions);
+        }
+        None
+    }
+
     pub fn add_target(&mut self, object_id: &ObjectId) {
         self.project_mut()
             .unwrap()
@@ -189,6 +217,19 @@ impl Pbxproj {
     pub fn group_by_name_mut(&mut self, name: &str) -> Option<&mut PbxGroup> {
         for object in self.objects.borrow_mut() {
             if let (_id, Object::Group(group)) = object {
+                if let Some(group_name) = group.name.clone() {
+                    if group_name == name {
+                        return Some(group);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn variant_group_by_name_mut(&mut self, name: &str) -> Option<&mut PbxVariantGroup> {
+        for object in self.objects.borrow_mut() {
+            if let (_id, Object::VariantGroup(group)) = object {
                 if let Some(group_name) = group.name.clone() {
                     if group_name == name {
                         return Some(group);
@@ -290,6 +331,7 @@ impl Pbxproj {
         None
     }
 
+    // TODO: rename with build phase name prefix
     pub fn build_phase_by_id_mut(
         &mut self,
         object_id: &ObjectId,
@@ -304,6 +346,37 @@ impl Pbxproj {
         None
     }
 
+    // TODO: I hate this, but I'd love to move on, please future entity, fix my crimes
+    pub fn resources_build_phase_by_target_name_mut(
+        &mut self,
+        target_name: &str,
+    ) -> Option<&mut PbxResourcesBuildPhase> {
+        let mut the_id: Option<ObjectId> = None;
+
+        if let Some(native_target) = self.native_target_by_name(target_name) {
+            for build_phase_id in native_target.build_phases.clone() {
+                if let Some(Object::ResourcesBuildPhase(_build_phase)) =
+                    self.objects.get(&build_phase_id)
+                {
+                    the_id = Some(build_phase_id);
+                }
+            }
+        }
+
+        if let Some(phase_id) = the_id {
+            for (object_id, object) in self.objects.borrow_mut() {
+                if let Object::ResourcesBuildPhase(build_phase) = object {
+                    if object_id == &phase_id {
+                        return Some(build_phase);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    // TODO: use create_file_reference instead, this has duplicate functionality
     pub fn create_plist_file(&mut self, relative_plist_path: &PathBuf) -> ObjectId {
         let object = ObjectId::new_random();
 
@@ -329,6 +402,30 @@ impl Pbxproj {
         );
 
         return object;
+    }
+
+    pub fn create_file_reference(
+        &mut self,
+        file_type: &str,
+        locale_name: &str,
+        file_name: &str,
+    ) -> ObjectId {
+        let object_id = ObjectId::new_random();
+
+        self.objects.insert(
+            object_id.clone(),
+            Object::FileReference(PBXFileReference {
+                last_known_file_type: Some(file_type.to_string()),
+                name: Some(locale_name.to_string()),
+                path: format!("{}.lproj/{}", locale_name, file_name),
+                source_tree: "<group>".to_string(),
+                file_encoding: None,
+                include_in_index: None,
+                explicit_file_type: None,
+            }),
+        );
+
+        return object_id;
     }
 
     // pub fn create_target_dependency(&mut self, dependency_id: &ObjectId, proxy_id: &ObjectId) -> ObjectId {
@@ -412,6 +509,15 @@ impl Pbxproj {
             .unwrap()
             .children
             .insert(object_id.clone());
+    }
+
+    pub fn add_file_ref_to_variant_group(&mut self, object_id: ObjectId) {
+        println!("START: add_file_ref_to_variant_group");
+
+        let variant = self.variant_group_by_name_mut("About.txt").unwrap();
+        variant.children.insert(object_id);
+
+        println!("END: add_file_ref_to_variant_group");
     }
 
     pub fn duplicate_target(
@@ -611,6 +717,25 @@ impl Pbxproj {
         }
     }
 
+    pub fn update(&mut self, target_name: &str, locale_list: BTreeSet<String>) {
+        let known_regions = self.known_regions_mut().unwrap();
+        known_regions.extend(locale_list);
+
+        let resources_phase = self
+            .resources_build_phase_by_target_name_mut(target_name)
+            .unwrap();
+
+        // TODO: only thing left
+    }
+
+    // POSSIBLE ISSUES:
+    // -Not clearing target product reference when removing target
+    // -Not explicitly passing path and name when creating plist file
+    // -Whole loop structure for layouts, locales, targets is wrong
+    // -What is going on with project->knownRegions?
+    //
+    // keywords: *todo* *fix* *println*
+
     pub fn to_pbxproj_string(&self) -> String {
         let mut s = String::from("// !$*UTF8*$!\n{\n");
 
@@ -756,13 +881,13 @@ pub enum Object {
     FrameworksBuildPhase(serde_json::Value),
 
     #[serde(rename = "PBXResourcesBuildPhase")]
-    ResourcesBuildPhase(serde_json::Value),
+    ResourcesBuildPhase(PbxResourcesBuildPhase),
 
     #[serde(rename = "PBXTargetDependency")]
     TargetDependency(PBXTargetDependency),
 
     #[serde(rename = "PBXVariantGroup")]
-    VariantGroup(serde_json::Value),
+    VariantGroup(PbxVariantGroup),
 
     #[serde(rename = "PBXShellScriptBuildPhase")]
     ShellScriptBuildPhase(serde_json::Value),
