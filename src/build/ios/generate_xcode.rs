@@ -419,10 +419,6 @@ impl BuildStep for GenerateXcode {
 
         pbxproj.update(HOSTING_APP, all_locales);
 
-        std::fs::write(
-            pbxproj_path.clone(),
-            serde_json::to_string_pretty(&pbxproj).unwrap(),
-        )
-        .unwrap();
+        std::fs::write(pbxproj_path.clone(), pbxproj.to_pbxproj_string()).unwrap();
     }
 }
