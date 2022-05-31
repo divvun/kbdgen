@@ -176,11 +176,19 @@ impl BuildStep for GenerateAndroid {
                 let mut rows_document =
                     Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
 
+                let mut short_rows_document =
+                    Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
+
                 let include_selector = Selector::new("include").expect("this selector is fine");
 
                 let rows_include = rows_document
                     .root()
                     .query_selector(&mut rows_document, &include_selector)
+                    .expect("there should be an include");
+
+                let short_rows_include = short_rows_document
+                    .root()
+                    .query_selector(&mut short_rows_document, &include_selector)
                     .expect("there should be an include");
 
                 // Rowkeys
@@ -243,6 +251,7 @@ impl BuildStep for GenerateAndroid {
                 }
 
                 let mut row_append = rows_include;
+                let mut short_row_append = short_rows_include;
 
                 for (line_index, mut rowkey_doc) in rowkeys_docs_map {
                     std::fs::write(
@@ -289,45 +298,91 @@ impl BuildStep for GenerateAndroid {
                                 .into(),
                             },
                         );
-
-                        let file_name = format!(
-                            "rowkeys_{}_keyboard{}.xml",
-                            lowecase_scored_display_name,
-                            line_index + 1
-                        );
-
-                        // commented out because xmlem bug
-                        /*
-                        row_append = row_append.append_new_element_after(
-                            &mut rows_document,
-                            NewElement {
-                                name: qname!("Row"),
-                                attrs: [].into(),
-                            },
-                        );
-
-                        row_append.append_new_element(
-                            &mut rows_document,
-                            NewElement {
-                                name: qname!("include"),
-                                attrs: [
-                                    (
-                                        qname!("latin:keyboardLayout"),
-                                        format!("@xml/{}", &file_name),
-                                    ),
-                                    (qname!("latin:keyWidth"), "8.18%p".to_owned()),
-                                ]
-                                .into(),
-                            },
-                        );*/
-
-                        std::fs::write(
-                            short_width_xml_path.join(file_name),
-                            rowkey_doc.to_string_pretty(),
-                        )
-                        .unwrap();
                     }
+
+                    // Yes, row and short_row (sw600dp) are slightly different because mobile phones
+
+                    // Main Row
+
+                    let file_name = format!(
+                        "rowkeys_{}_keyboard{}.xml",
+                        lowecase_scored_display_name,
+                        line_index + 1
+                    );
+
+                    row_append = row_append.append_new_element_after(
+                        &mut rows_document,
+                        NewElement {
+                            name: qname!("Row"),
+                            attrs: [].into(),
+                        },
+                    );
+
+                    let key_width = match line_index + 1 {
+                        1 | 2 => "9.09%p",
+                        _ => "8.64%p",
+                    };
+
+                    row_append.append_new_element(
+                        &mut rows_document,
+                        NewElement {
+                            name: qname!("include"),
+                            attrs: [
+                                (
+                                    qname!("latin:keyboardLayout"),
+                                    format!("@xml/{}", &file_name),
+                                ),
+                                (qname!("latin:keyWidth"), key_width.to_owned()),
+                            ]
+                            .into(),
+                        },
+                    );
+
+                    // Short Row
+
+                    short_row_append = short_row_append.append_new_element_after(
+                        &mut short_rows_document,
+                        NewElement {
+                            name: qname!("Row"),
+                            attrs: [].into(),
+                        },
+                    );
+
+                    short_row_append.append_new_element(
+                        &mut short_rows_document,
+                        NewElement {
+                            name: qname!("include"),
+                            attrs: [
+                                (
+                                    qname!("latin:keyboardLayout"),
+                                    format!("@xml/{}", &file_name),
+                                ),
+                                (qname!("latin:keyWidth"), "8.18%p".to_owned()),
+                            ]
+                            .into(),
+                        },
+                    );
+
+                    std::fs::write(
+                        short_width_xml_path.join(file_name),
+                        rowkey_doc.to_string_pretty(),
+                    )
+                    .unwrap();
                 }
+
+                let rows_file_name = format!("rows_{}_keyboard.xml", lowecase_scored_display_name,);
+
+                std::fs::write(
+                    main_xml_path.join(&rows_file_name),
+                    rows_document.to_string_pretty(),
+                )
+                .unwrap();
+
+                std::fs::write(
+                    short_width_xml_path.join(rows_file_name),
+                    short_rows_document.to_string_pretty(),
+                )
+                .unwrap();
 
                 create_and_write_kbd(&main_xml_path, &lowecase_scored_display_name);
                 create_and_write_layout_set(&main_xml_path, &lowecase_scored_display_name);
