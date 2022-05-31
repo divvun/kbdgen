@@ -612,7 +612,10 @@ fn create_and_write_values_strings(
         .query_selector(&strings_appname_doc, &ime_selector)
         .expect("The strings file should have ime attr");
 
-    ime.set_text(&mut strings_appname_doc, default_display_name);
+    ime.set_text(
+        &mut strings_appname_doc,
+        &format!("{} Keyboard", default_display_name),
+    );
 
     std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty()).unwrap();
 
