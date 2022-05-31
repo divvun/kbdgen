@@ -288,7 +288,6 @@ impl BuildStep for GenerateXcode {
                         };
                         let locale_path = hosting_app_path.join(&format!("{}.lproj", locale_name));
                         let info_path = locale_path.join(HOSTING_INFO_STRINGS);
-                        println!("{:?}", locale_path);
 
                         std::fs::create_dir_all(&locale_path).unwrap();
 
@@ -420,7 +419,6 @@ impl BuildStep for GenerateXcode {
 
         pbxproj.update(HOSTING_APP, all_locales);
 
-        println!("WRITING TO PBXPROJ");
         std::fs::write(
             pbxproj_path.clone(),
             serde_json::to_string_pretty(&pbxproj).unwrap(),

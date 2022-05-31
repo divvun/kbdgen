@@ -428,6 +428,41 @@ impl Pbxproj {
         return object_id;
     }
 
+    pub fn create_variant_group(
+        &mut self,
+        children: BTreeSet<ObjectId>,
+        name: Option<String>,
+        path: Option<String>,
+    ) -> ObjectId {
+        let object_id = ObjectId::new_random();
+
+        let variant_group = PbxVariantGroup {
+            children: children,
+            source_tree: "<group>".to_string(),
+            name: name,
+            path: path,
+        };
+
+        self.objects
+            .insert(object_id.clone(), Object::VariantGroup(variant_group));
+
+        return object_id;
+    }
+
+    pub fn create_build_file(&mut self, file_ref: &ObjectId) -> ObjectId {
+        let object_id = ObjectId::new_random();
+
+        let variant_group = BuildFile {
+            file_ref: file_ref.clone(),
+            settings: None,
+        };
+
+        self.objects
+            .insert(object_id.clone(), Object::BuildFile(variant_group));
+
+        return object_id;
+    }
+
     // pub fn create_target_dependency(&mut self, dependency_id: &ObjectId, proxy_id: &ObjectId) -> ObjectId {
     //     let id = ObjectId::new_random();
 
@@ -512,12 +547,8 @@ impl Pbxproj {
     }
 
     pub fn add_file_ref_to_variant_group(&mut self, object_id: ObjectId) {
-        println!("START: add_file_ref_to_variant_group");
-
         let variant = self.variant_group_by_name_mut("About.txt").unwrap();
         variant.children.insert(object_id);
-
-        println!("END: add_file_ref_to_variant_group");
     }
 
     pub fn duplicate_target(
@@ -718,14 +749,35 @@ impl Pbxproj {
     }
 
     pub fn update(&mut self, target_name: &str, locale_list: BTreeSet<String>) {
+        // TODO: check that this is correct??
         let known_regions = self.known_regions_mut().unwrap();
-        known_regions.extend(locale_list);
+        known_regions.extend(locale_list.clone());
 
-        let resources_phase = self
+        let mut new_locale_ids: BTreeSet<ObjectId> = BTreeSet::new();
+        for locale in locale_list {
+            // create and add plist file: self.create_file_reference("text.plist.strings", locale, name)
+            let temp =
+                self.create_file_reference("text.plist.strings", &locale, "InfoPlist.strings");
+            new_locale_ids.insert(temp);
+        }
+
+        // create and add variant group for locales
+        let variant_group_id =
+            self.create_variant_group(new_locale_ids, Some("InfoPlist.strings".to_string()), None);
+        // create buildfile
+        let locale_group_build_file_id = self.create_build_file(&variant_group_id);
+        // add buildfile reference to resources phase files
+        let target_resources_phase = self
             .resources_build_phase_by_target_name_mut(target_name)
             .unwrap();
-
-        // TODO: only thing left
+        target_resources_phase
+            .files
+            .insert(locale_group_build_file_id);
+        // add variant reference to HostingApp/SupportingFiles group
+        self.add_ref_to_group(
+            &variant_group_id,
+            &PathBuf::from_str("HostingApp/Supporting Files").unwrap(),
+        );
     }
 
     // POSSIBLE ISSUES:
@@ -733,6 +785,7 @@ impl Pbxproj {
     // -Not explicitly passing path and name when creating plist file
     // -Whole loop structure for layouts, locales, targets is wrong
     // -What is going on with project->knownRegions?
+    // -File paths may have wrong root
     //
     // keywords: *todo* *fix* *println*
 
@@ -920,7 +973,7 @@ pub struct PBXContainerItemProxy {
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct BuildFile {
-    pub settings: Option<IndexMap<String, serde_json::Value>>,
+    pub settings: Option<BTreeMap<String, serde_json::Value>>,
     pub file_ref: ObjectId,
 }
 
