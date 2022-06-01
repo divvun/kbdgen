@@ -479,12 +479,6 @@ impl BuildStep for GenerateAndroid {
                         .into(),
                     },
                 );
-
-                subtype.set_attribute(
-                    &mut method_doc,
-                    "android:imeSubtypeLocale",
-                    &language_tag.to_string(),
-                );
             }
         }
 
