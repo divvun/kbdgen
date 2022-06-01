@@ -91,7 +91,7 @@ pub struct NativeTarget {
     build_phases: BTreeSet<ObjectId>,
     dependencies: BTreeSet<ObjectId>,
     name: String,
-    build_rules: serde_json::Value,
+    build_rules: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,6 +134,7 @@ pub struct PbxCopyFilesBuildPhase {
     run_only_for_deployment_postprocessing: String,
 }
 
+// TODO: All 4 build phase types are almost identical, will they vary?
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PbxResourcesBuildPhase {
     #[serde(rename = "buildActionMask")]
@@ -142,6 +143,57 @@ pub struct PbxResourcesBuildPhase {
     name: Option<String>,
     #[serde(rename = "runOnlyForDeploymentPostprocessing")]
     run_only_for_deployment_postprocessing: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PbxHeadersBuildPhase {
+    #[serde(rename = "buildActionMask")]
+    build_action_mask: String,
+    files: BTreeSet<ObjectId>,
+    #[serde(rename = "runOnlyForDeploymentPostprocessing")]
+    run_only_for_deployment_postprocessing: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PbxSourcesBuildPhase {
+    #[serde(rename = "buildActionMask")]
+    build_action_mask: String,
+    files: BTreeSet<ObjectId>,
+    #[serde(rename = "runOnlyForDeploymentPostprocessing")]
+    run_only_for_deployment_postprocessing: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PbxFrameworksBuildPhase {
+    #[serde(rename = "buildActionMask")]
+    build_action_mask: String,
+    files: BTreeSet<ObjectId>,
+    #[serde(rename = "runOnlyForDeploymentPostprocessing")]
+    run_only_for_deployment_postprocessing: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PbxShellScriptBuildPhase {
+    #[serde(rename = "buildActionMask")]
+    build_action_mask: String,
+    files: BTreeSet<ObjectId>,
+    #[serde(rename = "inputFileListPaths")]
+    input_file_list_paths: Option<BTreeSet<String>>,
+    #[serde(rename = "inputPaths")]
+    input_paths: BTreeSet<String>,
+    name: String,
+    #[serde(rename = "outputFileListPaths")]
+    output_file_list_paths: Option<BTreeSet<String>>,
+    #[serde(rename = "outputPaths")]
+    output_paths: BTreeSet<String>,
+    #[serde(rename = "runOnlyForDeploymentPostprocessing")]
+    run_only_for_deployment_postprocessing: String,
+    #[serde(rename = "shellPath")]
+    shell_path: String,
+    #[serde(rename = "shellScript")]
+    shell_script: String,
+    #[serde(rename = "showEnvVarsInLog")]
+    show_env_vars_in_log: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -786,6 +838,7 @@ impl Pbxproj {
     // -Whole loop structure for layouts, locales, targets is wrong
     // -What is going on with project->knownRegions?
     // -File paths may have wrong root
+    // -Line breaks in .pbxproj from build phases -> shellScript
     //
     // keywords: *todo* *fix* *println*
 
@@ -906,6 +959,8 @@ impl Pbxproj {
             } else {
                 if let Some(path) = group.path.as_deref() {
                     s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, path));
+                } else {
+                    s.push_str(&format!("\t\t{} = {{\n", oid));
                 }
             }
             s.push_str("\t\t\tisa = PBXGroup;\n");
@@ -1031,16 +1086,58 @@ impl Pbxproj {
         // START PBXSourcesBuildPhase
         s.push_str("/* Start PBXSourcesBuildPhase section */\n\n");
         for (oid, sources_build_phase) in iter_object!(self, SourcesBuildPhase) {
-            s.push_str(&serde_json::to_string_pretty(sources_build_phase).unwrap());
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = PBXSourcesBuildPhase;\n");
+            s.push_str(&format!(
+                "\t\t\tbuildActionMask = {};\n",
+                sources_build_phase.build_action_mask
+            ));
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = sources_build_phase.files.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
+            }
+            s.push_str(&format!(
+                "\t\t\trunOnlyForDeploymentPostprocessing = {};\n",
+                sources_build_phase.run_only_for_deployment_postprocessing
+            ));
+            s.push_str("\t\t};\n");
         }
-        s.push_str("/* End XCConfigurationList section */\n\n");
+        s.push_str("/* End PBXSourcesBuildPhase section */\n\n");
         s.push_str("\t};\n}\n");
         // END PBXSourcesBuildPhase
 
         // START PBXFrameworksBuildPhase
         s.push_str("/* Start PBXFrameworksBuildPhase section */\n\n");
         for (oid, frameworks_build_phase) in iter_object!(self, FrameworksBuildPhase) {
-            s.push_str(&serde_json::to_string_pretty(frameworks_build_phase).unwrap());
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = PBXSourcesBuildPhase;\n");
+            s.push_str(&format!(
+                "\t\t\tbuildActionMask = {};\n",
+                frameworks_build_phase.build_action_mask
+            ));
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = frameworks_build_phase.files.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
+            }
+            s.push_str(&format!(
+                "\t\t\trunOnlyForDeploymentPostprocessing = {};\n",
+                frameworks_build_phase.run_only_for_deployment_postprocessing
+            ));
+            s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXFrameworksBuildPhase section */\n\n");
         s.push_str("\t};\n}\n");
@@ -1064,7 +1161,7 @@ impl Pbxproj {
                         item_string.push_str(",");
                     }
                 }
-                s.push_str(&format!("\t\t\ttargets = ({}\n\t\t\t);\n", item_string));
+                s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
             }
             s.push_str(&format!(
                 "\t\t\trunOnlyForDeploymentPostprocessing = {};\n",
@@ -1121,20 +1218,254 @@ impl Pbxproj {
         s.push_str("\t};\n}\n");
         // END PBXVariantGroup
 
+        // START PBXShellScriptBuildPhase
+        s.push_str("/* Start PBXShellScriptBuildPhase section */\n\n");
+        for (oid, shell_script_build_phase) in iter_object!(self, ShellScriptBuildPhase) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = PBXShellScriptBuildPhase;\n");
+            s.push_str(&format!(
+                "\t\t\tbuildActionMask = {};\n",
+                shell_script_build_phase.build_action_mask
+            ));
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = shell_script_build_phase
+                    .files
+                    .clone()
+                    .into_iter()
+                    .peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
+            }
+            if let Some(input_list_paths) = shell_script_build_phase.input_file_list_paths.as_ref()
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = input_list_paths.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!(
+                    "\t\t\tinputFileListPaths = ({}\n\t\t\t);\n",
+                    item_string
+                ));
+            }
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = shell_script_build_phase
+                    .input_paths
+                    .clone()
+                    .into_iter()
+                    .peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t\"{}\"", item.as_str()));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\tinputPaths = ({}\n\t\t\t);\n", item_string));
+            }
+            s.push_str(&format!(
+                "\t\t\tname = \"{}\";\n",
+                shell_script_build_phase.name
+            ));
+            if let Some(output_list_paths) =
+                shell_script_build_phase.output_file_list_paths.as_ref()
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = output_list_paths.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!(
+                    "\t\t\toutputFileListPaths = ({}\n\t\t\t);\n",
+                    item_string
+                ));
+            }
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = shell_script_build_phase
+                    .output_paths
+                    .clone()
+                    .into_iter()
+                    .peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t\"{}\"", item.as_str()));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\toutputPaths = ({}\n\t\t\t);\n", item_string));
+            }
+            s.push_str(&format!(
+                "\t\t\trunOnlyForDeploymentPostprocessing = {};\n",
+                shell_script_build_phase.run_only_for_deployment_postprocessing
+            ));
+            s.push_str(&format!(
+                "\t\t\tshellPath = {};\n",
+                shell_script_build_phase.shell_path
+            ));
+            s.push_str(&format!(
+                "\t\t\tshellScript = \"{}\";\n",
+                shell_script_build_phase.shell_script
+            ));
+            if let Some(show_env_vars_in_log) =
+                shell_script_build_phase.show_env_vars_in_log.as_ref()
+            {
+                s.push_str(&format!(
+                    "\t\t\tshowEnvVarsInLog = {};\n",
+                    show_env_vars_in_log
+                ));
+            }
+        }
+        s.push_str("/* End PBXShellScriptBuildPhase section */\n\n");
+        s.push_str("\t};\n}\n");
+        // END PBXShellScriptBuildPhase
+
+        // START PBXHeadersBuildPhase
+        s.push_str("/* Start PBXHeadersBuildPhase section */\n\n");
+        for (oid, headers_build_phase) in iter_object!(self, HeadersBuildPhase) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = PBXHeadersBuildPhase;\n");
+            s.push_str(&format!(
+                "\t\t\tbuildActionMask = {};\n",
+                headers_build_phase.build_action_mask
+            ));
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = headers_build_phase.files.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\ttargets = ({}\n\t\t\t);\n", item_string));
+            }
+            s.push_str(&format!(
+                "\t\t\trunOnlyForDeploymentPostprocessing = {};\n",
+                headers_build_phase.run_only_for_deployment_postprocessing
+            ));
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End PBXHeadersBuildPhase section */\n\n");
+        s.push_str("\t};\n}\n");
+        // END PBXHeadersBuildPhase
+
+        // START PBXNativeTarget
+        s.push_str("/* Start PBXNativeTarget section */\n\n");
+        for (oid, native_target) in iter_object!(self, NativeTarget) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = PBXNativeTarget;\n");
+            s.push_str(&format!(
+                "\t\t\tbuildConfigurationList = {};\n",
+                native_target.build_configuration_list
+            ));
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = native_target.build_phases.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\tbuildPhases = ({}\n\t\t\t);\n", item_string));
+            }
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = native_target.build_rules.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!("\t\t\tbuildRules = ({}\n\t\t\t);\n", item_string));
+            }
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = native_target.dependencies.clone().into_iter().peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
+                    if item_iter.peek().is_some() {
+                        item_string.push_str(",");
+                    }
+                }
+                s.push_str(&format!(
+                    "\t\t\tdependencies = ({}\n\t\t\t);\n",
+                    item_string
+                ));
+            }
+            s.push_str(&format!("\t\t\tname = {};\n", native_target.name));
+            s.push_str(&format!(
+                "\t\t\tproductName = {};\n",
+                native_target.product_name
+            ));
+            if let Some(product_reference) = native_target.product_reference.as_ref() {
+                s.push_str(&format!(
+                    "\t\t\tproductReference = {} /* {} */;\n",
+                    product_reference, "TODO"
+                ));
+            }
+            if let Some(product_type) = native_target.product_type.as_ref() {
+                s.push_str(&format!("\t\t\tproductType = {};\n", product_type));
+            }
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End PBXNativeTarget section */\n\n");
+        s.push_str("\t};\n}\n");
+        // END PBXNativeTarget
+
+        // START XCBuildConfiguration
+        s.push_str("/* Start XCBuildConfiguration section */\n\n");
+        for (oid, build_configuration) in iter_object!(self, BuildConfiguration) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = XCBuildConfiguration;\n");
+            {
+                let mut item_string: String = String::new();
+                let mut item_iter = build_configuration
+                    .build_settings
+                    .clone()
+                    .into_iter()
+                    .peekable();
+                while let Some(item) = item_iter.next() {
+                    item_string.push_str(&format!("\n\t\t\t\t{} = {};", item.0, item.1));
+                }
+                s.push_str(&format!(
+                    "\t\t\tbuildSettings = {{{}\n\t\t\t}};\n",
+                    item_string
+                ));
+            }
+            s.push_str(&format!("\t\t\tname = {};\n", build_configuration.name));
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End XCBuildConfiguration section */\n\n");
+        s.push_str("\t};\n}\n");
+        // END XCBuildConfiguration
+
         // TODO: rootObject at the end of file
         return s;
     }
 }
 
 /*
-    ShellScriptBuildPhase
-    HeadersBuildPhase
-    NativeTarget
-    BuildConfiguration
     -Project
-    -SourcesBuildPhase
-    -FrameworksBuildPhase
 
+    --NativeTarget
+    --FrameworksBuildPhase
+    --SourcesBuildPhase
+    --ShellScriptBuildPhase
     --BuildFile
     --FileReference
     --CopyFilesBuildPhase
@@ -1144,6 +1475,8 @@ impl Pbxproj {
     --TargetDependency
     --VariantGroup
     --ContainerItemProxy
+    --BuildConfiguration
+    --HeadersBuildPhase
 */
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1179,10 +1512,10 @@ pub enum Object {
     ConfigurationList(ConfigurationList),
 
     #[serde(rename = "PBXSourcesBuildPhase")]
-    SourcesBuildPhase(serde_json::Value),
+    SourcesBuildPhase(PbxSourcesBuildPhase),
 
     #[serde(rename = "PBXFrameworksBuildPhase")]
-    FrameworksBuildPhase(serde_json::Value),
+    FrameworksBuildPhase(PbxFrameworksBuildPhase),
 
     #[serde(rename = "PBXResourcesBuildPhase")]
     ResourcesBuildPhase(PbxResourcesBuildPhase),
@@ -1194,10 +1527,10 @@ pub enum Object {
     VariantGroup(PbxVariantGroup),
 
     #[serde(rename = "PBXShellScriptBuildPhase")]
-    ShellScriptBuildPhase(serde_json::Value),
+    ShellScriptBuildPhase(PbxShellScriptBuildPhase),
 
     #[serde(rename = "PBXHeadersBuildPhase")]
-    HeadersBuildPhase(serde_json::Value),
+    HeadersBuildPhase(PbxHeadersBuildPhase),
 
     #[serde(rename = "PBXNativeTarget")]
     NativeTarget(NativeTarget),
