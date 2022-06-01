@@ -469,10 +469,13 @@ impl BuildStep for GenerateAndroid {
                     &mut spellchecker_doc,
                     NewElement {
                         name: qname!("subtype"),
-                        attrs: [(
-                            qname!("android:label"),
-                            "@string/subtype_generic".to_string(),
-                        )]
+                        attrs: [
+                            (
+                                qname!("android:label"),
+                                "@string/subtype_generic".to_string(),
+                            ),
+                            (qname!("android:subtypeLocale"), language_tag.to_string()),
+                        ]
                         .into(),
                     },
                 );
