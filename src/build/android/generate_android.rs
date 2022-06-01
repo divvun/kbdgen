@@ -88,25 +88,6 @@ impl BuildStep for GenerateAndroid {
 
         let subtype_selector = Selector::new("subtype").expect("subtype selector");
 
-        // Method
-
-        let method_path = main_xml_path.join(Path::new("method.xml"));
-        let file = File::open(method_path.clone()).expect(&format!(
-            "method.xml to exist in {:?} and open without issues",
-            &main_xml_path
-        ));
-
-        let mut method_doc = Document::from_file(file).expect("can't read strings file");
-
-        let method_subtype = method_doc
-            .root()
-            .query_selector(&mut method_doc, &subtype_selector)
-            .expect("there should be a subtype");
-
-        method_doc
-            .root()
-            .remove_child(&mut method_doc, Node::Element(method_subtype));
-
         // Spellchecker
 
         let spellchecker_path = main_xml_path.join(Path::new("spellchecker.xml"));
@@ -427,41 +408,10 @@ impl BuildStep for GenerateAndroid {
                     std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
                 }
 
-                // Can use template here and insertion after for order preservation for neatness
-
-                // Method
-                let mut subtype = method_doc.root().append_new_element(
-                    &mut method_doc,
-                    NewElement {
-                        name: qname!("subtype"),
-                        attrs: [
-                            (
-                                qname!("android:icon"),
-                                "@drawable/ic_ime_switcher_dark".to_string(),
-                            ),
-                            (qname!("android:imeSubtypeMode"), "keyboard".to_string()),
-                        ]
-                        .into(),
-                    },
-                );
-
-                subtype.set_attribute(
-                    &mut method_doc,
-                    "android:label",
-                    &format!("@string/subtype_{}", language_tag.to_string()),
-                );
-                subtype.set_attribute(
-                    &mut method_doc,
-                    "android:imeSubtypeLocale",
-                    &language_tag.to_string(),
-                );
-                subtype.set_attribute(
-                    &mut method_doc,
-                    "android:imeSubtypeExtraValue",
-                    &format!(
-                        "KeyboardLayoutSet={},AsciiCapable,EmojiCapable",
-                        lowecase_scored_display_name
-                    ),
+                update_method_file(
+                    &main_xml_path,
+                    &current_language_tag_subtype,
+                    &lowecase_scored_display_name,
                 );
 
                 // Spellchecker
@@ -514,7 +464,6 @@ impl BuildStep for GenerateAndroid {
             std::fs::write(strings_appname_path, strings_doc.to_string_pretty()).unwrap();
         }
 
-        std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
         std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
 
         /*
@@ -689,6 +638,67 @@ fn create_and_write_values_strings(
     subtype.set_text(&mut strings_doc, &default_display_name);
 
     std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
+}
+
+fn update_method_file(
+    main_xml_path: &Path,
+    current_language_tag_subtype: &str,
+    snake_case_display_name: &str,
+) {
+    let method_path = main_xml_path.join(Path::new("method.xml"));
+    let file = File::open(method_path.clone()).expect(&format!(
+        "method.xml to exist in {:?} and open without issues",
+        &main_xml_path
+    ));
+
+    let mut method_doc = Document::from_file(file).expect("can't read strings file");
+
+    let subtype_selector = Selector::new("subtype").expect("subtype selector");
+
+    let method_subtype = method_doc
+        .root()
+        .query_selector(&mut method_doc, &subtype_selector)
+        .expect("there should be a subtype");
+
+    method_doc
+        .root()
+        .remove_child(&mut method_doc, Node::Element(method_subtype));
+
+    let mut subtype = method_doc.root().append_new_element(
+        &mut method_doc,
+        NewElement {
+            name: qname!("subtype"),
+            attrs: [
+                (
+                    qname!("android:icon"),
+                    "@drawable/ic_ime_switcher_dark".to_string(),
+                ),
+                (qname!("android:imeSubtypeMode"), "keyboard".to_string()),
+            ]
+            .into(),
+        },
+    );
+
+    subtype.set_attribute(
+        &mut method_doc,
+        "android:label",
+        &format!("@string/subtype_{}", current_language_tag_subtype),
+    );
+    subtype.set_attribute(
+        &mut method_doc,
+        "android:imeSubtypeLocale",
+        current_language_tag_subtype,
+    );
+    subtype.set_attribute(
+        &mut method_doc,
+        "android:imeSubtypeExtraValue",
+        &format!(
+            "KeyboardLayoutSet={},AsciiCapable,EmojiCapable",
+            snake_case_display_name
+        ),
+    );
+
+    std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
 }
 
 fn create_numbered_key_xml_element(
