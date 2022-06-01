@@ -52,8 +52,8 @@ pub struct GenerateAndroid;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateAndroid {
-    // The generator is currently not designed to be ran more than once
-    // it will generate extra subtypes for some of the files
+    // The generator will currently create extra subtypes in some files
+    // if ran more than once
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
         let mut android_targets = false;
 
@@ -147,8 +147,7 @@ impl BuildStep for GenerateAndroid {
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
-                let lowecase_scored_display_name =
-                    default_display_name.to_lowercase().replace(" ", "_");
+                let snake_case_display_name = default_display_name.to_lowercase().replace(" ", "_");
 
                 let layers = &android_target.primary.layers;
 
@@ -287,7 +286,7 @@ impl BuildStep for GenerateAndroid {
 
                     let file_name = format!(
                         "rowkeys_{}_keyboard{}.xml",
-                        lowecase_scored_display_name,
+                        snake_case_display_name,
                         line_index + 1
                     );
 
@@ -351,7 +350,7 @@ impl BuildStep for GenerateAndroid {
                     .unwrap();
                 }
 
-                let rows_file_name = format!("rows_{}_keyboard.xml", lowecase_scored_display_name,);
+                let rows_file_name = format!("rows_{}_keyboard.xml", snake_case_display_name,);
 
                 std::fs::write(
                     main_xml_path.join(&rows_file_name),
@@ -365,8 +364,8 @@ impl BuildStep for GenerateAndroid {
                 )
                 .unwrap();
 
-                create_and_write_kbd(&main_xml_path, &lowecase_scored_display_name);
-                create_and_write_layout_set(&main_xml_path, &lowecase_scored_display_name);
+                create_and_write_kbd(&main_xml_path, &snake_case_display_name);
+                create_and_write_layout_set(&main_xml_path, &snake_case_display_name);
 
                 let current_language_tag_subtype = format!("subtype_{}", language_tag);
 
@@ -411,7 +410,7 @@ impl BuildStep for GenerateAndroid {
                 update_method_file(
                     &main_xml_path,
                     &current_language_tag_subtype,
-                    &lowecase_scored_display_name,
+                    &snake_case_display_name,
                 );
 
                 // Spellchecker
@@ -480,7 +479,7 @@ impl BuildStep for GenerateAndroid {
     }
 }
 
-fn create_and_write_kbd(main_xml_path: &Path, rowkeys_display_name: &str) {
+fn create_and_write_kbd(main_xml_path: &Path, snake_case_display_name: &str) {
     let mut kbd_document = Document::new("KeyboardLayoutSet");
     let kbd_root = kbd_document.root();
 
@@ -496,20 +495,20 @@ fn create_and_write_kbd(main_xml_path: &Path, rowkeys_display_name: &str) {
             name: qname!("include"),
             attrs: [(
                 qname!("latin:keyboardLayout"),
-                format!("@xml/rows_{}_keyboard", rowkeys_display_name),
+                format!("@xml/rows_{}_keyboard", snake_case_display_name),
             )]
             .into(),
         },
     );
 
     std::fs::write(
-        main_xml_path.join(format!("kbd_{}_keyboard.xml", rowkeys_display_name,)),
+        main_xml_path.join(format!("kbd_{}_keyboard.xml", snake_case_display_name,)),
         kbd_document.to_string_pretty(),
     )
     .unwrap();
 }
 
-fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str) {
+fn create_and_write_layout_set(main_xml_path: &Path, snake_case_display_name: &str) {
     let mut layout_set_document = Document::new("KeyboardLayoutSet");
     let layout_root = layout_set_document.root();
 
@@ -519,7 +518,7 @@ fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str)
         "http://schemas.android.com/apk/res-auto",
     );
 
-    let keyboard_ref = format!("@xml/kbd_{}_keyboard", rowkeys_display_name);
+    let keyboard_ref = format!("@xml/kbd_{}_keyboard", snake_case_display_name);
 
     layout_root.append_new_element(
         &mut layout_set_document,
@@ -585,7 +584,7 @@ fn create_and_write_layout_set(main_xml_path: &Path, rowkeys_display_name: &str)
     std::fs::write(
         main_xml_path.join(format!(
             "keyboard_layout_set_{}_keyboard.xml",
-            rowkeys_display_name,
+            snake_case_display_name,
         )),
         layout_set_document.to_string_pretty(),
     )
