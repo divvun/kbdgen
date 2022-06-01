@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 
-use crate::bundle::KbdgenBundle;
+use crate::{build::pahkat, bundle::KbdgenBundle};
 
 use self::{clone_giellakbd::CloneGiellaKbd, generate_android::GenerateAndroid};
 
@@ -19,11 +19,23 @@ pub struct AndroidBuild {
     pub steps: Vec<Box<dyn BuildStep>>,
 }
 
+pub struct DownloadDependencies;
+
+#[async_trait(?Send)]
+impl BuildStep for DownloadDependencies {
+    async fn build(&self, _bundle: &KbdgenBundle, _output_path: &Path) {
+        pahkat::install_android_deps().await
+    }
+}
+
 #[async_trait(?Send)]
 impl BuildSteps for AndroidBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let steps: Vec<Box<dyn BuildStep>> =
-            vec![Box::new(CloneGiellaKbd), Box::new(GenerateAndroid)];
+        let steps: Vec<Box<dyn BuildStep>> = vec![
+            Box::new(DownloadDependencies),
+            Box::new(CloneGiellaKbd),
+            Box::new(GenerateAndroid),
+        ];
 
         AndroidBuild {
             bundle,
