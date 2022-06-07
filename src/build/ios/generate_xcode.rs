@@ -300,17 +300,23 @@ impl BuildStep for GenerateXcode {
                         if locale_name == "Base" {
                             continue;
                         } else {
-                            let about_id =
-                                pbxproj.create_file_reference("text", locale_name, "About.txt");
-                            pbxproj.add_file_ref_to_variant_group(about_id);
+                            if Path::new(&format!(
+                                "{REPOSITORY}/{HOSTING_APP}/{locale_name}.lproj/About.txt"
+                            ))
+                            .exists()
+                            {
+                                let about_id =
+                                    pbxproj.create_file_reference("text", locale_name, "About.txt");
+                                pbxproj.add_file_ref_to_variant_group(about_id);
+                            }
                         };
                     }
 
                     // TODO: Is this even remotely correct?
                     // ADD LAYOUT LOCALES TO ALL LOCALES LIST
-                    for value in layout.display_names.keys() {
-                        all_locales.insert(value.as_str().to_string());
-                    }
+                    // for value in layout.display_names.keys() {
+                    //     all_locales.insert(value.as_str().to_string());
+                    // }
 
                     // KEYBOARD PLIST
                     let keyboard_folder_name = replace_all_occurances(
