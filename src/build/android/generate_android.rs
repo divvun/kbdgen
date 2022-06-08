@@ -250,6 +250,7 @@ impl BuildStep for GenerateAndroid {
                                     &key,
                                     compute_key_hint_label_index(key_index),
                                     longpress,
+                                    false,
                                 );
                             } else {
                                 new_elem = create_key_xml_element(&key, longpress);
@@ -265,6 +266,22 @@ impl BuildStep for GenerateAndroid {
                 let mut short_row_append = short_rows_include;
 
                 for (line_index, mut rowkey_doc) in rowkeys_docs_map {
+                    // modify rowkeys special keys according to main or short width path
+
+                    let shift_key_selector =
+                        Selector::new(r#"Key[keyStyle="shiftKeyStyle"]"#).expect("class selector");
+
+                    let backspace_key_selector =
+                        Selector::new(r#"Key[keyStyle="deleteKeyStyle"]"#).expect("class selector");
+
+
+
+                    if let Some(shift_key) = rowkey_doc.root().query_selector(&rowkey_doc, &shift_key_selector) {
+                        shift_key.set_attribute(&mut rowkey_doc, "latin:keyWidth", "15.45%");
+                    }
+
+                    //
+
                     std::fs::write(
                         main_xml_path.join(format!(
                             "rowkeys_{}{}.xml",
@@ -287,6 +304,7 @@ impl BuildStep for GenerateAndroid {
                             }
                         };
 
+                        /*
                         let rowkey_doc_root = rowkey_doc.root();
 
                         let inner_selector = Selector::new(selector_string).unwrap();
@@ -309,6 +327,7 @@ impl BuildStep for GenerateAndroid {
                                 .into(),
                             },
                         );
+                         */
                     }
 
                     // Yes, row and short_row (sw600dp) are slightly different because mobile phones
@@ -747,26 +766,33 @@ fn create_numbered_key_xml_element(
     key: &str,
     key_hint_label_index: Option<usize>,
     longpress: Option<&Vec<String>>,
+    short_width: bool,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
-    attrs.insert(qname!("latin:keySpec"), key.to_owned());
+    if key == "\\s{shift}" {
+        attrs.insert(qname!("latin:keyStyle"), "shiftKeyStyle".to_owned());
+    } else if key == "\\s{backspace}" {
+        attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
+    } else {
+         attrs.insert(qname!("latin:keySpec"), key.to_owned());
 
-    if let Some(key_hint_label_index) = key_hint_label_index {
-        attrs.insert(
-            qname!("latin:keyHintLabel"),
-            key_hint_label_index.to_string(),
-        );
-        attrs.insert(
-            qname!("latin:additionalMoreKeys"),
-            key_hint_label_index.to_string(),
-        );
-    }
+        if let Some(key_hint_label_index) = key_hint_label_index {
+            attrs.insert(
+                qname!("latin:keyHintLabel"),
+                key_hint_label_index.to_string(),
+            );
+            attrs.insert(
+                qname!("latin:additionalMoreKeys"),
+                key_hint_label_index.to_string(),
+            );
+        }
 
-    if let Some(longpress) = longpress.as_ref() {
-        let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
+        if let Some(longpress) = longpress.as_ref() {
+            let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
 
-        attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
+            attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
+        }
     }
 
     NewElement {
@@ -778,24 +804,32 @@ fn create_numbered_key_xml_element(
 fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>) -> NewElement {
     let mut attrs = IndexMap::new();
 
-    if let Some(longpress) = longpress {
-        let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
+    if key == "\\s{shift}" {
+        attrs.insert(qname!("latin:keyStyle"), "shiftKeyStyle".to_owned());
+        
+    } else if key == "\\s{backspace}" {
+        attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
+    } else {
+        if let Some(longpress) = longpress {
+            let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
 
-        let longpress_hint = longpress
-            .first()
-            .expect("longpress to actually have at least one key");
+            let longpress_hint = longpress
+                .first()
+                .expect("longpress to actually have at least one key");
 
-        attrs.insert(qname!("latin:keyHintLabel"), longpress_hint.to_owned());
+            attrs.insert(qname!("latin:keyHintLabel"), longpress_hint.to_owned());
 
-        attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
+            attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
+        }
+
+        attrs.insert(qname!("latin:keySpec"), key.to_owned());
     }
-
-    attrs.insert(qname!("latin:keySpec"), key.to_owned());
 
     NewElement {
         name: qname!("Key"),
         attrs,
     }
+
 }
 
 fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {

@@ -49,3 +49,5 @@ This is a developer oriented Readme.
 (run from old_kbdgen folder)
 
 `./kbdgen build android -o android-build ~/Projects/divvun-keyboard/divvun.kbdgen`
+
+`./kbdgen build android -o android-build ~/Projects/keyboard-sme-old/sme.kbdgen`
