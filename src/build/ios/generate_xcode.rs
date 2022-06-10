@@ -312,12 +312,6 @@ impl BuildStep for GenerateXcode {
                         };
                     }
 
-                    // TODO: Is this even remotely correct?
-                    // ADD LAYOUT LOCALES TO ALL LOCALES LIST
-                    // for value in layout.display_names.keys() {
-                    //     all_locales.insert(value.as_str().to_string());
-                    // }
-
                     // KEYBOARD PLIST
                     let keyboard_folder_name = replace_all_occurances(
                         bundle
@@ -368,7 +362,7 @@ impl BuildStep for GenerateXcode {
                     pbxproj.set_target_build_configuration(
                         &keyboard_folder_name,
                         "PRODUCT_BUNDLE_IDENTIFIER",
-                        &target.package_id,
+                        &format!("{}.{keyboard_folder_name}", &target.package_id),
                     );
                     pbxproj.set_target_build_configuration(
                         &keyboard_folder_name,

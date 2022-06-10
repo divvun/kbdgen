@@ -274,9 +274,10 @@ impl BuildStep for GenerateAndroid {
                     let backspace_key_selector =
                         Selector::new(r#"Key[keyStyle="deleteKeyStyle"]"#).expect("class selector");
 
-
-
-                    if let Some(shift_key) = rowkey_doc.root().query_selector(&rowkey_doc, &shift_key_selector) {
+                    if let Some(shift_key) = rowkey_doc
+                        .root()
+                        .query_selector(&rowkey_doc, &shift_key_selector)
+                    {
                         shift_key.set_attribute(&mut rowkey_doc, "latin:keyWidth", "15.45%");
                     }
 
@@ -334,11 +335,8 @@ impl BuildStep for GenerateAndroid {
 
                     // Main Row
 
-                    let file_name_attr = format!(
-                        "rowkeys_{}{}",
-                        snake_case_display_name,
-                        line_index + 1
-                    );
+                    let file_name_attr =
+                        format!("rowkeys_{}{}", snake_case_display_name, line_index + 1);
                     let file_name = format!("{}.xml", file_name_attr);
 
                     row_append = row_append.append_new_element_after(
@@ -755,11 +753,7 @@ fn update_method_file(
             snake_case_display_name
         ),
     );
-    subtype.set_attribute(
-        method_doc,
-        "android:isAsciiCapable",
-        "true",
-    );
+    subtype.set_attribute(method_doc, "android:isAsciiCapable", "true");
 }
 
 fn create_numbered_key_xml_element(
@@ -775,7 +769,7 @@ fn create_numbered_key_xml_element(
     } else if key == "\\s{backspace}" {
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
     } else {
-         attrs.insert(qname!("latin:keySpec"), key.to_owned());
+        attrs.insert(qname!("latin:keySpec"), key.to_owned());
 
         if let Some(key_hint_label_index) = key_hint_label_index {
             attrs.insert(
@@ -806,7 +800,6 @@ fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>) -> NewElem
 
     if key == "\\s{shift}" {
         attrs.insert(qname!("latin:keyStyle"), "shiftKeyStyle".to_owned());
-        
     } else if key == "\\s{backspace}" {
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
     } else {
@@ -829,7 +822,6 @@ fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>) -> NewElem
         name: qname!("Key"),
         attrs,
     }
-
 }
 
 fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {
@@ -849,6 +841,10 @@ fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {
 fn make_layout_set_element(element_name: &str, keyboard: &str) -> NewElement {
     NewElement {
         name: qname!("Element"),
-        attrs: [(qname!("latin:elementName"), element_name.parse().unwrap()), (qname!("latin:elementKeyboard"), keyboard.to_owned())].into(),
+        attrs: [
+            (qname!("latin:elementName"), element_name.parse().unwrap()),
+            (qname!("latin:elementKeyboard"), keyboard.to_owned()),
+        ]
+        .into(),
     }
 }
