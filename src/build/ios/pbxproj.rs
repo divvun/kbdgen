@@ -858,8 +858,6 @@ impl Pbxproj {
             .unwrap()
             .clone();
 
-        println!("THE PATH: {target_path}");
-
         let lol = self
             .build_file_id_by_file_ref_name(&format!("{}.appex", appex_path))
             .unwrap()
@@ -877,7 +875,6 @@ impl Pbxproj {
                 Some(x) => {
                     if x.name.as_ref().unwrap() == "Embed App Extensions" {
                         x.files.remove(&lol);
-                        println!("BUILD ID TO REMOVE: {build_phase_id}");
                         return;
                     }
                 }

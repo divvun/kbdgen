@@ -275,7 +275,7 @@ impl BuildStep for GenerateXcode {
             all_locales.insert("Base".to_string());
         }
 
-        for (layout_index, (language_tag, layout)) in bundle.layouts.iter().enumerate() {
+        for (layout_index, (language_tag, layout)) in bundle.layouts.iter().filter(|x| x.1.i_os.is_some()).enumerate() {
             if let Some(target) = &bundle.targets.ios {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES

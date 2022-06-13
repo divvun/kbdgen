@@ -22,7 +22,8 @@ const MODELS: &str = "Keyboard/Models";
 pub struct IosInfo {
     name: String,
     locale: String,
-    enter: String,
+    #[serde(rename = "return")]
+    return_button: String,
     space: String,
 }
 
@@ -97,11 +98,15 @@ pub struct IosDeadKeys {
 pub struct IosKeyboardDefinitions {
     #[serde(flatten)]
     info: IosInfo,
+    #[serde(rename = "longPress")]
     longpress: IndexMap<String, Vec<String>>,
+    #[serde(rename = "deadKeys")]
     dead_keys: IosDeadKeys,
     transforms: serde_json::value::Value,
     iphone: IosPlatform,
+    #[serde(rename = "ipad-9in")]
     i_pad_9in: IosPlatform,
+    #[serde(rename = "ipad-12in")]
     i_pad_12in: IosPlatform,
 }
 
@@ -187,7 +192,7 @@ impl BuildStep for GenerateIos {
                                     .expect("can't evaluate language tag of layout")
                                     .to_string(),
                                 locale: language_tag.to_string(),
-                                enter: key_names.r#return.to_string(),
+                                return_button: key_names.r#return.to_string(),
                                 space: key_names.space.to_string(),
                             },
                             longpress: longpress,
