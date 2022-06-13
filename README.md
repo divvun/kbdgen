@@ -40,9 +40,9 @@ This is a developer oriented Readme.
 
 # asciidoc
 
-`asciidoctor documentation/user/kbdgen.adoc`
+`asciidoctor docs/user/kbdgen.adoc`
 
-`asciidoctor documentation/dev/kbdgen.adoc`
+`asciidoctor docs/dev/kbdgen.adoc`
 
 # old keyboard gen commands
 

@@ -269,10 +269,10 @@ impl BuildStep for GenerateAndroid {
                     // modify rowkeys special keys according to main or short width path
 
                     let shift_key_selector =
-                        Selector::new(r#"Key[keyStyle="shiftKeyStyle"]"#).expect("class selector");
+                        Selector::new(r#"Key[latin\:keyStyle="shiftKeyStyle"]"#).expect("class selector");
 
                     let backspace_key_selector =
-                        Selector::new(r#"Key[keyStyle="deleteKeyStyle"]"#).expect("class selector");
+                        Selector::new(r#"Key[latin\:keyStyle="deleteKeyStyle"]"#).expect("class selector");
 
                     if let Some(shift_key) = rowkey_doc
                         .root()
