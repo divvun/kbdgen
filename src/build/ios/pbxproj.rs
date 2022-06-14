@@ -139,7 +139,7 @@ pub struct CopyFilesBuildPhase {
     run_only_for_deployment_postprocessing: String,
 }
 
-// TODO: All 4 build phase types are almost identical, will they vary?
+// All 4 build phase types are almost identical
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourcesBuildPhase {
     #[serde(rename = "buildActionMask")]
@@ -927,16 +927,6 @@ impl Pbxproj {
             &PathBuf::from_str("HostingApp/Supporting Files").unwrap(),
         );
     }
-
-    // POSSIBLE ISSUES:
-    // -Not clearing target product reference when removing target
-    // -Not explicitly passing path and name when creating plist file
-    // -Whole loop structure for layouts, locales, targets is wrong
-    // -What is going on with project->knownRegions?
-    // -File paths may have wrong root
-    // -Line breaks in .pbxproj from build phases -> shellScript
-    //
-    // keywords: *todo* *fix* *println*
 
     fn list_to_pbxproj_string<T: AsRef<str>>(&self, item_iter: impl Iterator<Item = T>) -> String {
         let mut item_iter = item_iter.peekable();
