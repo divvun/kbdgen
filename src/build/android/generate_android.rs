@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 use std::{fs::File, path::Path};
 
@@ -96,6 +97,22 @@ impl BuildStep for GenerateAndroid {
         std::fs::create_dir_all(&main_xml_path).unwrap();
         std::fs::create_dir_all(&short_width_xml_path).unwrap();
 
+        let supported_values_locales = std::fs::read_dir(&resources_path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|dir_entry| {
+                dir_entry
+                    .path()
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string()
+            })
+            .filter(|x| x.starts_with("values-"))
+            .map(|x| x.replace("values-", ""))
+            .collect::<HashSet<_>>();
+
         let subtype_selector = Selector::new("subtype").expect("subtype selector");
 
         // Method
@@ -180,7 +197,11 @@ impl BuildStep for GenerateAndroid {
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
-                let snake_case_display_name = default_display_name.to_lowercase().replace(" ", "_");
+                let snake_case_display_name = default_display_name
+                    .to_lowercase()
+                    .replace(" ", "_")
+                    .replace("(", "")
+                    .replace(")", "");
 
                 let layers = &android_target.primary.layers;
 
@@ -290,7 +311,11 @@ impl BuildStep for GenerateAndroid {
                     std::fs::write(
                         main_xml_path.join(format!(
                             "rowkeys_{}{}.xml",
-                            default_display_name.to_lowercase().replace(" ", "_"),
+                            default_display_name
+                                .to_lowercase()
+                                .replace(" ", "_")
+                                .replace("(", "")
+                                .replace(")", ""),
                             line_index + 1
                         )),
                         rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
@@ -420,7 +445,9 @@ impl BuildStep for GenerateAndroid {
                 create_and_write_kbd(&main_xml_path, &snake_case_display_name);
                 create_and_write_layout_set(&main_xml_path, &snake_case_display_name);
 
-                let current_language_tag_subtype = format!("subtype_{}", language_tag);
+                let subtype_language_tag =
+                    language_tag.to_string().replace("-", "_").to_lowercase();
+                let current_language_tag_subtype = format!("subtype_{}", &subtype_language_tag);
 
                 create_and_write_values_strings(
                     &main_values_path,
@@ -429,9 +456,12 @@ impl BuildStep for GenerateAndroid {
                 );
 
                 for (language_tag, display_name) in &layout.display_names {
-                    let folder = resources_path.join(
-                        Path::new(&format!("values-{}", language_tag.to_string())).to_owned(),
-                    );
+                    if !supported_values_locales.contains(&language_tag.to_string()) {
+                        tracing::trace!("Skipping name strings for {}", language_tag);
+                        continue;
+                    }
+                    let folder = resources_path
+                        .join(Path::new(&format!("values-{}", language_tag)).to_owned());
                     let strings_path = folder.join(Path::new("strings.xml"));
 
                     let mut strings_doc;
@@ -469,6 +499,7 @@ impl BuildStep for GenerateAndroid {
                     &mut method_doc,
                     language_tag,
                     &snake_case_display_name,
+                    &subtype_language_tag,
                 );
 
                 // Spellchecker
@@ -490,6 +521,11 @@ impl BuildStep for GenerateAndroid {
         }
 
         for (locale, LocaleProjectDescription { name, .. }) in &bundle.project.locales {
+            if !supported_values_locales.contains(&locale.to_string()) {
+                tracing::trace!("Skipping locales for {}", locale);
+                continue;
+            }
+
             let folder = resources_path
                 .join(Path::new(&format!("values-{}", locale.to_string())).to_owned());
 
@@ -723,6 +759,7 @@ fn update_method_file(
     method_doc: &mut Document,
     language_tag: &LanguageTag,
     snake_case_display_name: &str,
+    subtype_language_tag: &str,
 ) {
     let mut subtype = method_doc.root().append_new_element(
         method_doc,
@@ -742,7 +779,7 @@ fn update_method_file(
     subtype.set_attribute(
         method_doc,
         "android:label",
-        &format!("@string/subtype_{}", language_tag),
+        &format!("@string/subtype_{}", subtype_language_tag),
     );
     subtype.set_attribute(
         method_doc,
