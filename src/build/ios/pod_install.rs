@@ -7,7 +7,7 @@ pub struct PodInstall;
 
 #[async_trait(?Send)]
 impl BuildStep for PodInstall {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) {
         let path = output_path.join("repo");
 
         std::process::Command::new("pod")

@@ -8,8 +8,6 @@ use std::{
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use crate::build;
-
 #[nova::newtype(serde, display)]
 pub type ObjectId = String;
 
@@ -40,7 +38,7 @@ impl AsRef<str> for ObjectId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct PbxProject {
+pub struct Project {
     attributes: serde_json::Value,
     build_configuration_list: ObjectId,
     compatibility_version: String,
@@ -57,7 +55,7 @@ pub struct PbxProject {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct PBXFileReference {
+pub struct FileReference {
     file_encoding: Option<String>,
     include_in_index: Option<String>,
     last_known_file_type: Option<String>,
@@ -70,18 +68,17 @@ pub struct PBXFileReference {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct PbxGroup {
+pub struct Group {
     children: BTreeSet<ObjectId>,
     source_tree: String,
     name: Option<String>,
     path: Option<String>,
 }
 
-// TODO: currently same as PbxGroup, should we remove? Or will this vary?
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct PbxVariantGroup {
+pub struct VariantGroup {
     children: BTreeSet<ObjectId>,
     source_tree: String,
     name: Option<String>,
@@ -123,13 +120,13 @@ pub struct BuildConfiguration {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct PBXTargetDependency {
+pub struct TargetDependency {
     target: ObjectId,
     target_proxy: ObjectId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxCopyFilesBuildPhase {
+pub struct CopyFilesBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
     #[serde(rename = "dstPath")]
@@ -144,7 +141,7 @@ pub struct PbxCopyFilesBuildPhase {
 
 // TODO: All 4 build phase types are almost identical, will they vary?
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxResourcesBuildPhase {
+pub struct ResourcesBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
     files: BTreeSet<ObjectId>,
@@ -154,7 +151,7 @@ pub struct PbxResourcesBuildPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxHeadersBuildPhase {
+pub struct HeadersBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
     files: BTreeSet<ObjectId>,
@@ -163,7 +160,7 @@ pub struct PbxHeadersBuildPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxSourcesBuildPhase {
+pub struct SourcesBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
     files: BTreeSet<ObjectId>,
@@ -172,7 +169,7 @@ pub struct PbxSourcesBuildPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxFrameworksBuildPhase {
+pub struct FrameworksBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
     files: BTreeSet<ObjectId>,
@@ -181,7 +178,7 @@ pub struct PbxFrameworksBuildPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PbxShellScriptBuildPhase {
+pub struct ShellScriptBuildPhase {
     #[serde(rename = "buildActionMask")]
     build_action_mask: String,
     files: BTreeSet<ObjectId>,
@@ -207,6 +204,25 @@ pub struct PbxShellScriptBuildPhase {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
+pub struct ContainerItemProxy {
+    pub container_portal: ObjectId,
+    pub proxy_type: String,
+    #[serde(rename = "remoteGlobalIDString")]
+    pub remote_global_id_string: ObjectId,
+    pub remote_info: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct BuildFile {
+    pub settings: Option<BTreeMap<String, serde_json::Value>>,
+    pub file_ref: ObjectId,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct Pbxproj {
     pub classes: serde_json::Value,
     pub object_version: String,
@@ -226,7 +242,7 @@ fn print_pbxproj_object_children(
         serde_json::Value::Bool(_) => todo!(),
         serde_json::Value::Number(_) => todo!(),
         serde_json::Value::String(x) => {
-            if let Some(k) = key {
+            if let Some(_k) = key {
                 s.push_str(&format!("{x};\n"));
             } else {
                 panic!("no associated key found for value");
@@ -242,9 +258,6 @@ fn print_pbxproj_object_children(
 
                 match v {
                     serde_json::Value::Object(_) => {
-                        // for _i in 0..indent {
-                        //     s.push_str("\t");
-                        // }
                         s.push_str("{\n");
                         print_pbxproj_object_children(s, Some(k), v, indent + 1);
                         for _i in 0..indent {
@@ -278,14 +291,14 @@ impl Pbxproj {
         convert_pbxproj_to_json(path)
     }
 
-    pub fn project(&self) -> Option<&PbxProject> {
+    pub fn project(&self) -> Option<&Project> {
         if let Some(Object::Project(project)) = self.objects.get(&self.root_object) {
             return Some(project);
         }
         None
     }
 
-    pub fn project_mut(&mut self) -> Option<&mut PbxProject> {
+    pub fn project_mut(&mut self) -> Option<&mut Project> {
         if let Some(Object::Project(project)) = self.objects.get_mut(&self.root_object) {
             return Some(project);
         }
@@ -325,21 +338,21 @@ impl Pbxproj {
         return None;
     }
 
-    pub fn group(&self, object_id: &ObjectId) -> Option<&PbxGroup> {
+    pub fn group(&self, object_id: &ObjectId) -> Option<&Group> {
         if let Some(Object::Group(main_group)) = self.objects.get(object_id) {
             return Some(main_group);
         }
         return None;
     }
 
-    pub fn group_mut(&mut self, object_id: &ObjectId) -> Option<&mut PbxGroup> {
+    pub fn group_mut(&mut self, object_id: &ObjectId) -> Option<&mut Group> {
         if let Some(Object::Group(main_group)) = self.objects.get_mut(object_id) {
             return Some(main_group);
         }
         return None;
     }
 
-    pub fn group_by_name_mut(&mut self, name: &str) -> Option<&mut PbxGroup> {
+    pub fn group_by_name_mut(&mut self, name: &str) -> Option<&mut Group> {
         for object in self.objects.borrow_mut() {
             if let (_id, Object::Group(group)) = object {
                 if let Some(group_name) = group.name.clone() {
@@ -352,7 +365,7 @@ impl Pbxproj {
         None
     }
 
-    pub fn variant_group_by_name_mut(&mut self, name: &str) -> Option<&mut PbxVariantGroup> {
+    pub fn variant_group_by_name_mut(&mut self, name: &str) -> Option<&mut VariantGroup> {
         for object in self.objects.borrow_mut() {
             if let (_id, Object::VariantGroup(group)) = object {
                 if let Some(group_name) = group.name.clone() {
@@ -365,7 +378,7 @@ impl Pbxproj {
         None
     }
 
-    pub fn file_reference_by_id(&self, object_id: &ObjectId) -> Option<&PBXFileReference> {
+    pub fn file_reference_by_id(&self, object_id: &ObjectId) -> Option<&FileReference> {
         for object in &self.objects {
             if let (id, Object::FileReference(file_reference)) = object {
                 if id == object_id {
@@ -456,11 +469,10 @@ impl Pbxproj {
         None
     }
 
-    // TODO: rename with build phase name prefix
-    pub fn build_phase_by_id_mut(
+    pub fn copy_file_build_phase_by_id_mut(
         &mut self,
         object_id: &ObjectId,
-    ) -> Option<&mut PbxCopyFilesBuildPhase> {
+    ) -> Option<&mut CopyFilesBuildPhase> {
         for object in self.objects.borrow_mut() {
             if let (id, Object::CopyFilesBuildPhase(configuration_list)) = object {
                 if id == object_id {
@@ -471,11 +483,11 @@ impl Pbxproj {
         None
     }
 
-    // TODO: I hate this, but I'd love to move on, please future entity, fix my crimes
+    // TODO: Needs cleanup
     pub fn resources_build_phase_by_target_name_mut(
         &mut self,
         target_name: &str,
-    ) -> Option<&mut PbxResourcesBuildPhase> {
+    ) -> Option<&mut ResourcesBuildPhase> {
         let mut the_id: Option<ObjectId> = None;
 
         if let Some(native_target) = self.native_target_by_name(target_name) {
@@ -501,13 +513,13 @@ impl Pbxproj {
         None
     }
 
-    // TODO: use create_file_reference instead, this has duplicate functionality
+    // Very similar to create_file_reference
     pub fn create_plist_file(&mut self, relative_plist_path: &PathBuf) -> ObjectId {
         let object = ObjectId::new_random();
 
         self.objects.insert(
             object.clone(),
-            Object::FileReference(PBXFileReference {
+            Object::FileReference(FileReference {
                 last_known_file_type: Some("text.plist.xml".to_string()),
                 name: Some(
                     relative_plist_path
@@ -539,7 +551,7 @@ impl Pbxproj {
 
         self.objects.insert(
             object_id.clone(),
-            Object::FileReference(PBXFileReference {
+            Object::FileReference(FileReference {
                 last_known_file_type: Some(file_type.to_string()),
                 name: Some(locale_name.to_string()),
                 path: format!("{}.lproj/{}", locale_name, file_name),
@@ -561,7 +573,7 @@ impl Pbxproj {
     ) -> ObjectId {
         let object_id = ObjectId::new_random();
 
-        let variant_group = PbxVariantGroup {
+        let variant_group = VariantGroup {
             children: children,
             source_tree: "<group>".to_string(),
             name: name,
@@ -612,7 +624,7 @@ impl Pbxproj {
 
             let id = ObjectId::new_random();
 
-            let new_child = PbxGroup {
+            let new_child = Group {
                 children: Default::default(),
                 name: None,
                 path: Some(path_name.clone()),
@@ -813,7 +825,6 @@ impl Pbxproj {
         }
     }
 
-    // TODO: Needs control flow cleanup
     pub fn add_appex_to_target_embedded_binaries(&mut self, target_path: &str, appex_path: &str) {
         let appex_id = self
             .file_reference_id_by_path(&format!("{}.appex", appex_path))
@@ -823,7 +834,7 @@ impl Pbxproj {
         let target = self.native_target_by_name(target_path).unwrap().clone();
 
         for build_phase_id in &target.build_phases {
-            if let Some(build_phase) = self.build_phase_by_id_mut(build_phase_id) {
+            if let Some(build_phase) = self.copy_file_build_phase_by_id_mut(build_phase_id) {
                 if build_phase.name.as_ref().unwrap() == "Embed App Extensions" {
                     let build_file_id = ObjectId::new_random();
                     // Insert new build file that references our new keyboard appex
@@ -862,23 +873,22 @@ impl Pbxproj {
             .unwrap()
             .clone();
 
-        let lol = self
+        let build_file_id_to_remove = self
             .build_file_id_by_file_ref_name(&format!("{}.appex", appex_path))
             .unwrap()
             .clone();
 
         let target = self.native_target_by_name_mut(target_path).unwrap();
 
-        // TODO: Can nativetarget->dependencies be appex ids?
         // remove dependency that has been either automatically generated by xcode or us
         target.dependencies.remove(&appex_id);
 
         // remove build phase files
         for build_phase_id in target.build_phases.clone() {
-            match self.build_phase_by_id_mut(&build_phase_id) {
+            match self.copy_file_build_phase_by_id_mut(&build_phase_id) {
                 Some(x) => {
                     if x.name.as_ref().unwrap() == "Embed App Extensions" {
-                        x.files.remove(&lol);
+                        x.files.remove(&build_file_id_to_remove);
                         return;
                     }
                 }
@@ -888,7 +898,6 @@ impl Pbxproj {
     }
 
     pub fn update(&mut self, target_name: &str, locale_list: BTreeSet<String>) {
-        // TODO: check that this is correct??
         let known_regions = self.known_regions_mut().unwrap();
         known_regions.extend(locale_list.clone());
 
@@ -934,9 +943,6 @@ impl Pbxproj {
         let mut item_string: String = String::new();
         while let Some(item) = item_iter.next() {
             item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_ref(), "TODO"));
-            // if item_iter.peek().is_some() {
-            //     item_string.push_str(",");
-            // }
             item_string.push_str(",");
         }
 
@@ -1050,11 +1056,6 @@ impl Pbxproj {
                 s.push_str(&format!("lastKnownFileType = {}; ", x));
             }
             if let Some(x) = file_ref.name.as_ref() {
-                // if x.contains('.') {
-                //     s.push_str(&format!("name = {:?}; ", format!("{:?}", x)));
-                // } else {
-                //     s.push_str(&format!("name = {}; ", format!("{:?}", x)));
-                // }
                 if x.contains('-') || file_ref.path.contains('+') {
                     s.push_str(&format!("name = {:?}; ", x));
                 } else {
@@ -1080,7 +1081,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXFileReference section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXFileReference
 
         // START PBXFrameworksBuildPhase
@@ -1097,9 +1097,6 @@ impl Pbxproj {
                 let mut item_iter = frameworks_build_phase.files.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
@@ -1111,7 +1108,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXFrameworksBuildPhase section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXFrameworksBuildPhase
 
         // START PBXGroup
@@ -1178,9 +1174,6 @@ impl Pbxproj {
                 let mut item_iter = headers_build_phase.files.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
@@ -1192,7 +1185,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXHeadersBuildPhase section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXHeadersBuildPhase
 
         // START PBXNativeTarget
@@ -1209,9 +1201,6 @@ impl Pbxproj {
                 let mut item_iter = native_target.build_phases.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tbuildPhases = ({}\n\t\t\t);\n", item_string));
@@ -1221,9 +1210,6 @@ impl Pbxproj {
                 let mut item_iter = native_target.build_rules.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tbuildRules = ({}\n\t\t\t);\n", item_string));
@@ -1233,9 +1219,6 @@ impl Pbxproj {
                 let mut item_iter = native_target.dependencies.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!(
@@ -1260,7 +1243,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXNativeTarget section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXNativeTarget
 
         // START PBXProject
@@ -1291,9 +1273,6 @@ impl Pbxproj {
                 let mut item_iter = project.known_regions.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{}", item.as_str()));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!(
@@ -1322,7 +1301,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXProject section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXProject
 
         // START PBXResourcesBuildPhase
@@ -1339,9 +1317,6 @@ impl Pbxproj {
                 let mut item_iter = resources_build_phase.files.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
@@ -1353,7 +1328,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXResourcesBuildPhase section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXResourcesBuildPhase
 
         // START PBXShellScriptBuildPhase
@@ -1374,9 +1348,6 @@ impl Pbxproj {
                     .peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
@@ -1387,9 +1358,6 @@ impl Pbxproj {
                 let mut item_iter = input_list_paths.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!(
@@ -1406,9 +1374,6 @@ impl Pbxproj {
                     .peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t\"{}\"", item.as_str()));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tinputPaths = ({}\n\t\t\t);\n", item_string));
@@ -1424,9 +1389,6 @@ impl Pbxproj {
                 let mut item_iter = output_list_paths.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!(
@@ -1443,9 +1405,6 @@ impl Pbxproj {
                     .peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t\"{}\"", item.as_str()));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\toutputPaths = ({}\n\t\t\t);\n", item_string));
@@ -1473,7 +1432,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n")
         }
         s.push_str("/* End PBXShellScriptBuildPhase section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXShellScriptBuildPhase
 
         // START PBXSourcesBuildPhase
@@ -1490,9 +1448,6 @@ impl Pbxproj {
                 let mut item_iter = sources_build_phase.files.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tfiles = ({}\n\t\t\t);\n", item_string));
@@ -1504,7 +1459,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXSourcesBuildPhase section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXSourcesBuildPhase
 
         // START PBXTargetDependency
@@ -1520,7 +1474,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXTargetDependency section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXTargetDependency
 
         // START PBXVariantGroup
@@ -1533,9 +1486,6 @@ impl Pbxproj {
                 let mut item_iter = variant_group.children.clone().into_iter().peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!("\t\t\tchildren = ({}\n\t\t\t);\n", item_string));
@@ -1557,7 +1507,6 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End PBXVariantGroup section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END PBXVariantGroup
 
         // START XCBuildConfiguration
@@ -1575,15 +1524,13 @@ impl Pbxproj {
                 while let Some(item) = item_iter.next() {
                     match item.1 {
                         serde_json::Value::String(x) => {
-                            let mut new_key = String::new();
-                            let mut new_value = String::new();
-
+                            let new_key;
                             if item.0.contains('[') {
                                 new_key = format!("\"{}\"", item.0);
                             } else {
                                 new_key = format!("{}", item.0);
                             }
-                            new_value = format!("{:?}", x);
+                            let new_value = format!("{:?}", x);
 
                             item_string
                                 .push_str(&format!("\n\t\t\t\t{} = {};", new_key, new_value));
@@ -1621,9 +1568,6 @@ impl Pbxproj {
                     .peekable();
                 while let Some(item) = item_iter.next() {
                     item_string.push_str(&format!("\n\t\t\t\t{} /* {} */", item.as_str(), "TODO"));
-                    // if item_iter.peek().is_some() {
-                    //     item_string.push_str(",");
-                    // }
                     item_string.push_str(",");
                 }
                 s.push_str(&format!(
@@ -1651,26 +1595,6 @@ impl Pbxproj {
     }
 }
 
-/*
-    -Project
-
-    --NativeTarget
-    --FrameworksBuildPhase
-    --SourcesBuildPhase
-    --ShellScriptBuildPhase
-    --BuildFile
-    --FileReference
-    --CopyFilesBuildPhase
-    --Group
-    --ConfigurationList
-    --ResourcesBuildPhase
-    --TargetDependency
-    --VariantGroup
-    --ContainerItemProxy
-    --BuildConfiguration
-    --HeadersBuildPhase
-*/
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PBXCopyFilesBuildPhase {
@@ -1689,40 +1613,40 @@ pub enum Object {
     BuildFile(BuildFile),
 
     #[serde(rename = "PBXFileReference")]
-    FileReference(PBXFileReference),
+    FileReference(FileReference),
 
     #[serde(rename = "PBXCopyFilesBuildPhase")]
-    CopyFilesBuildPhase(PbxCopyFilesBuildPhase),
+    CopyFilesBuildPhase(CopyFilesBuildPhase),
 
     #[serde(rename = "PBXGroup")]
-    Group(PbxGroup),
+    Group(Group),
 
     #[serde(rename = "PBXProject")]
-    Project(PbxProject),
+    Project(Project),
 
     #[serde(rename = "XCConfigurationList")]
     ConfigurationList(ConfigurationList),
 
     #[serde(rename = "PBXSourcesBuildPhase")]
-    SourcesBuildPhase(PbxSourcesBuildPhase),
+    SourcesBuildPhase(SourcesBuildPhase),
 
     #[serde(rename = "PBXFrameworksBuildPhase")]
-    FrameworksBuildPhase(PbxFrameworksBuildPhase),
+    FrameworksBuildPhase(FrameworksBuildPhase),
 
     #[serde(rename = "PBXResourcesBuildPhase")]
-    ResourcesBuildPhase(PbxResourcesBuildPhase),
+    ResourcesBuildPhase(ResourcesBuildPhase),
 
     #[serde(rename = "PBXTargetDependency")]
-    TargetDependency(PBXTargetDependency),
+    TargetDependency(TargetDependency),
 
     #[serde(rename = "PBXVariantGroup")]
-    VariantGroup(PbxVariantGroup),
+    VariantGroup(VariantGroup),
 
     #[serde(rename = "PBXShellScriptBuildPhase")]
-    ShellScriptBuildPhase(PbxShellScriptBuildPhase),
+    ShellScriptBuildPhase(ShellScriptBuildPhase),
 
     #[serde(rename = "PBXHeadersBuildPhase")]
-    HeadersBuildPhase(PbxHeadersBuildPhase),
+    HeadersBuildPhase(HeadersBuildPhase),
 
     #[serde(rename = "PBXNativeTarget")]
     NativeTarget(NativeTarget),
@@ -1731,26 +1655,7 @@ pub enum Object {
     BuildConfiguration(BuildConfiguration),
 
     #[serde(rename = "PBXContainerItemProxy")]
-    ContainerItemProxy(PBXContainerItemProxy),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[serde(deny_unknown_fields)]
-pub struct PBXContainerItemProxy {
-    pub container_portal: ObjectId,
-    pub proxy_type: String,
-    #[serde(rename = "remoteGlobalIDString")]
-    pub remote_global_id_string: ObjectId,
-    pub remote_info: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[serde(deny_unknown_fields)]
-pub struct BuildFile {
-    pub settings: Option<BTreeMap<String, serde_json::Value>>,
-    pub file_ref: ObjectId,
+    ContainerItemProxy(ContainerItemProxy),
 }
 
 pub fn convert_pbxproj_to_json(path: &Path) -> Pbxproj {
