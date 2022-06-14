@@ -6,6 +6,7 @@ use crate::bundle::KbdgenBundle;
 
 use self::{
     clone_giellakbd::CloneGiellaKbd, generate_ios::GenerateIos, generate_xcode::GenerateXcode,
+    pod_install::PodInstall,
 };
 
 use super::{BuildStep, BuildSteps};
@@ -14,6 +15,7 @@ pub mod clone_giellakbd;
 pub mod generate_ios;
 pub mod generate_xcode;
 pub mod pbxproj;
+pub mod pod_install;
 
 const REPOSITORY_FOLDER: &str = "repo";
 
@@ -30,6 +32,7 @@ impl BuildSteps for IosBuild {
             Box::new(CloneGiellaKbd),
             Box::new(GenerateIos),
             Box::new(GenerateXcode),
+            Box::new(PodInstall),
         ];
 
         IosBuild {

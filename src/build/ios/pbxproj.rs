@@ -760,7 +760,6 @@ impl Pbxproj {
         self.add_target(&new_native_target_id);
     }
 
-    // TODO: set product reference to null??
     pub fn remove_target(&mut self, target_name: &str) {
         let mut target = self.native_target_by_name_mut(target_name).unwrap();
 
@@ -780,6 +779,11 @@ impl Pbxproj {
 
         for reference in references_to_remove {
             self.objects.remove(&reference);
+            for obj in self.objects.borrow_mut() {
+                if let (_any_target_id, Object::NativeTarget(any_target)) = obj {
+                    any_target.dependencies.remove(&reference);
+                }
+            }
         }
 
         self.group_by_name_mut("Products")
