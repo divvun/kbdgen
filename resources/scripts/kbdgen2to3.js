@@ -160,12 +160,16 @@ if (strings != null) {
     newDoc.keyNames = strings
 }
 
-const output = yaml.stringify(newDoc, null, { version: "1.1" }).replace(/('\[|\]')/g, (match) => {
-    if (match.startsWith("'")) {
-        return "["
-    } else {
-        return "]"
+const output = yaml.stringify(newDoc, null, {
+    version: "1.1",
+    lineWidth: 10000000,
+    singleQuote: true
+}).replace(/('\[(.*?)\]')/g, (match) => {
+    if (match === "'[\"\"]'") {
+        return "[]"
     }
+    const x = match.substring(3, match.length - 3).split("\", \"")
+    return `['${x.join("', '")}']`
 }).replace(/: >\n((?:\s+.+\n\n)*)/mg, (match) => {
     return match.replaceAll("\n\n", "\n").replace(": >", ": |")
 }).replace(/[\u{00a0}\u{00ad}]/ug, (match) => {
