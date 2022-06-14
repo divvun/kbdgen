@@ -32,7 +32,7 @@ async fn ms_klc(output_path: &Path) {
 }
 
 fn build_dll(klc_path: &Path, target: KlcBuildTarget, output_path: &Path) {
-    let kbdutool = prefix_dir()
+    let kbdutool = prefix_dir("windows")
         .join("pkg")
         .join("msklc")
         .join("bin")
