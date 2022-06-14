@@ -5,6 +5,7 @@ pub fn layer_attributes(layer: &MacOsKbdLayer) -> String {
         MacOsKbdLayer::Default => "command?",
         MacOsKbdLayer::Shift => "anyShift caps? command?",
         MacOsKbdLayer::Caps => "caps",
+        MacOsKbdLayer::CapsAndShift => "anyShift caps command?",
         MacOsKbdLayer::Alt => "anyOption command?",
         MacOsKbdLayer::AltAndShift => "anyOption anyShift caps? command?",
         MacOsKbdLayer::AltAndCaps => "caps anyOption command?",

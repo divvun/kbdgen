@@ -73,6 +73,7 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
 }
 
 fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
+    tracing::debug!("Reading layouts");
     read_dir(path)?
         .filter_map(Result::ok)
         .map(|file| file.path())
@@ -82,6 +83,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
             None => false,
         })
         .map(|path| {
+            tracing::debug!("Loading {}", path.display());
             let tag = path
                 .file_stem()
                 .ok_or_else(|| Error::NoFileStem { path: path.clone() })?
@@ -146,6 +148,7 @@ where
 }
 
 fn read_resources(path: &Path) -> Result<Resources, Error> {
+    tracing::debug!("Reading resources");
     let mut resources = Resources::default();
 
     let iter = read_dir(path)?
@@ -173,6 +176,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
 }
 
 fn read_targets(path: &Path) -> Result<Targets, Error> {
+    tracing::debug!("Reading targets");
     let mut targets = Targets::default();
 
     let iter = read_dir(path)?

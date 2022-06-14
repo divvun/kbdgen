@@ -93,6 +93,7 @@ pub struct ChromeOsPrimaryPlatform {
 pub struct MacOsTarget {
     pub primary: MacOsPrimaryPlatform,
     pub dead_keys: Option<IndexMap<MacOsKbdLayer, Vec<String>>>,
+    #[serde(default)]
     pub space: IndexMap<MacOsKbdLayer, String>,
 }
 
