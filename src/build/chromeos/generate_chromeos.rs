@@ -343,19 +343,22 @@ impl BuildStep for GenerateChromeOs {
             if let Some(chromeos_target) = &layout.chrome_os {
                 display_name_map.extend(layout.display_names.clone());
 
+                let locale = chromeos_target
+                    .config
+                    .as_ref()
+                    .and_then(|x| x.locale.as_ref().map(|x| x.clone()))
+                    .unwrap_or_else(|| DEFAULT_LONG_LOCALE.parse().unwrap());
+
+                let xkb_layout = chromeos_target
+                    .config
+                    .as_ref()
+                    .and_then(|x| x.xkb_layout.clone())
+                    .unwrap_or_else(|| DEFAULT_XKB_LAYOUT.to_string());
+
                 let input_component = ManifestInputComponent::from_config(
                     language_tag.to_string(),
-                    chromeos_target
-                        .config
-                        .locale
-                        .as_ref()
-                        .map(|x| x.clone())
-                        .unwrap_or_else(|| DEFAULT_LONG_LOCALE.parse().unwrap()),
-                    chromeos_target
-                        .config
-                        .xkb_layout
-                        .clone()
-                        .unwrap_or_else(|| DEFAULT_XKB_LAYOUT.to_string()),
+                    locale,
+                    xkb_layout,
                 );
 
                 manifest_input_components.push(input_component);

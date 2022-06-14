@@ -46,10 +46,10 @@ const PRETTY_CONFIG: xmlem::display::Config = xmlem::display::Config {
     indent_text_nodes: false,
 };
 
-#[derive(Serialize)]
+#[derive(Default, Serialize)]
 pub struct AndroidLayout {
     pub transforms: IndexMap<String, String>,
-    pub speller: AndroidSpeller,
+    pub speller: Option<AndroidSpeller>,
 }
 
 #[derive(Serialize)]
@@ -143,25 +143,27 @@ impl BuildStep for GenerateAndroid {
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
             if let Some(android_target) = &layout.android {
-                let assets_layout = AndroidLayout {
-                    transforms: IndexMap::new(), // should this be more? can mobile keys have transforms?
-                    speller: AndroidSpeller {
-                        path: android_target
-                            .config
-                            .speller_path
-                            .as_ref()
-                            .expect("no speller path supplid for android!")
-                            .to_string(),
-                        package_url: Url::parse(
-                            &android_target
-                                .config
-                                .speller_package_key
+                let assets_layout = if let Some(config) = android_target.config.as_ref() {
+                    AndroidLayout {
+                        transforms: IndexMap::new(), // should this be more? can mobile keys have transforms?
+                        speller: Some(AndroidSpeller {
+                            path: config
+                                .speller_path
                                 .as_ref()
-                                .expect("no speller package key provided for android!")
+                                .expect("no speller path supplid for android!")
                                 .to_string(),
-                        )
-                        .expect("the speller package url to be parseable"),
-                    },
+                            package_url: Url::parse(
+                                &config
+                                    .speller_package_key
+                                    .as_ref()
+                                    .expect("no speller package key provided for android!")
+                                    .to_string(),
+                            )
+                            .expect("the speller package url to be parseable"),
+                        }),
+                    }
+                } else {
+                    Default::default()
                 };
 
                 std::fs::write(
