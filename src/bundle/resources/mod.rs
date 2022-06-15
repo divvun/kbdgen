@@ -7,6 +7,7 @@ use language_tags::LanguageTag;
 pub struct Resources {
     pub(crate) macos: Option<MacOS>,
     pub(crate) chromeos: Option<ChromeOS>,
+    pub(crate) android: Option<Android>,
 }
 
 #[derive(Debug, Default)]
@@ -66,5 +67,24 @@ impl ChromeOS {
             .collect();
 
         Ok(Self { icons })
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Android {
+    pub(crate) icon: Option<PathBuf>,
+}
+
+impl Android {
+    pub fn load(path: &Path) -> Result<Self, std::io::Error> {
+        let icon_path = path.join("icon.png");
+
+        let icon = if icon_path.exists() {
+            Some(icon_path)
+        } else {
+            None
+        };
+
+        Ok(Self { icon })
     }
 }

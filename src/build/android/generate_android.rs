@@ -583,6 +583,49 @@ impl BuildStep for GenerateAndroid {
             .expect("failed to copy libpahkat_client from Pahkat repo");
         dircpy::copy_dir(libdivvunspell_path, &jni_libs_path)
             .expect("failed to copy libdivvunspell from Pahkat repo");
+
+        generate_icons(bundle, &resources_path);
+    }
+}
+
+fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
+    const ICON_SIZES: &[(&str, usize)] = &[
+        ("mdpi", 48),
+        ("hdpi", 72),
+        ("xhdpi", 96),
+        ("xxhdpi", 144),
+        ("xxxhdpi", 192),
+    ];
+
+    let icon = match bundle
+        .resources
+        .android
+        .as_ref()
+        .and_then(|x| x.icon.as_ref())
+    {
+        Some(v) => v,
+        None => {
+            tracing::warn!("No icon found; skipping.");
+            return;
+        }
+    };
+
+    for (suffix, dimension) in ICON_SIZES {
+        tracing::debug!("Generating {} - {}x{}", suffix, dimension, dimension);
+
+        let mipmap_path = format!("drawable-{suffix}");
+
+        std::process::Command::new("convert")
+            .args(&["convert", "-resize"])
+            .arg(format!("{dimension}x{dimension}"))
+            .arg(icon)
+            .arg(
+                resources_path
+                    .join(mipmap_path)
+                    .join("ic_launcher_keyboard.png"),
+            )
+            .output()
+            .unwrap();
     }
 }
 

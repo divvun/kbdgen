@@ -166,6 +166,9 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
             "chromeos" => {
                 resources.chromeos = resources::ChromeOS::load(&path).ok();
             }
+            "android" => {
+                resources.android = resources::Android::load(&path).ok();
+            }
             name => {
                 tracing::warn!("Saw resource folder with name {name} but did not parse");
                 continue;
