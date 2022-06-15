@@ -31,7 +31,7 @@ const ASSETS_LAYOUTS_PART: &str = "assets/layouts";
 const RESOURCES_PART: &str = "res";
 const MAIN_VALUES_PART: &str = "values";
 const MAIN_XML_PART: &str = "xml";
-const SHORT_WIDTH_XML_PART: &str = "xml-sw600dp";
+const TABLET_600_XML_PART: &str = "xml-sw600dp";
 
 const DEFAULT_LOCALE: &str = "en";
 
@@ -89,14 +89,14 @@ impl BuildStep for GenerateAndroid {
         let main_values_path = resources_path.join(Path::new(MAIN_VALUES_PART));
 
         let main_xml_path = resources_path.join(Path::new(MAIN_XML_PART));
-        let short_width_xml_path = resources_path.join(Path::new(SHORT_WIDTH_XML_PART));
+        let tablet_600_xml_path = resources_path.join(Path::new(TABLET_600_XML_PART));
 
         let default_language_tag =
             LanguageTag::parse(DEFAULT_LOCALE).expect("default language tag must parse");
 
         std::fs::create_dir_all(&assets_layouts_path).unwrap();
         std::fs::create_dir_all(&main_xml_path).unwrap();
-        std::fs::create_dir_all(&short_width_xml_path).unwrap();
+        std::fs::create_dir_all(&tablet_600_xml_path).unwrap();
 
         let supported_values_locales = std::fs::read_dir(&resources_path)
             .unwrap()
@@ -211,7 +211,7 @@ impl BuildStep for GenerateAndroid {
                 let mut rows_document =
                     Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
 
-                let mut short_rows_document =
+                let mut tablet_600_rows_document =
                     Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
 
                 let include_selector = Selector::new("include").expect("this selector is fine");
@@ -221,9 +221,9 @@ impl BuildStep for GenerateAndroid {
                     .query_selector(&mut rows_document, &include_selector)
                     .expect("there should be an include");
 
-                let short_rows_include = short_rows_document
+                let tablet_600_rows_include = tablet_600_rows_document
                     .root()
-                    .query_selector(&mut short_rows_document, &include_selector)
+                    .query_selector(&mut tablet_600_rows_document, &include_selector)
                     .expect("there should be an include");
 
                 // Rowkeys
@@ -232,6 +232,16 @@ impl BuildStep for GenerateAndroid {
                     Document::from_str(ROWKEYS_TEMPLATE).expect("invalid rowkeys template");
 
                 let mut rowkeys_docs_map = IndexMap::new();
+
+                let default_layer = layers.get(&AndroidKbdLayer::Default).unwrap();
+                let longest_row_count = default_layer
+                    .split("\n")
+                    .map(|line| split_keys(line).len())
+                    .max()
+                    .unwrap();
+
+                let key_width = 100.0f64 / longest_row_count as f64;
+                let tablet_600_key_width = 90.0f64 / longest_row_count as f64;
 
                 for (layer_key, layer) in layers {
                     let selector_string;
@@ -261,23 +271,23 @@ impl BuildStep for GenerateAndroid {
                             ));
 
                         let key_map: Vec<String> = split_keys(line);
+                        let current_keys_count = key_map.len();
+                        let special_keys_count = key_map.iter().filter(|x| x.starts_with("\\s")).count();
 
                         for (key_index, key) in key_map.iter().enumerate() {
                             let longpress = match longpress {
                                 Some(longpress) => longpress.get(key),
                                 None => None,
                             };
-
                             let new_elem;
                             if line_index == 0 {
                                 new_elem = create_numbered_key_xml_element(
                                     &key,
                                     compute_key_hint_label_index(key_index),
                                     longpress,
-                                    false,
                                 );
                             } else {
-                                new_elem = create_key_xml_element(&key, longpress);
+                                new_elem = create_key_xml_element(&key, longpress, key_width, current_keys_count, special_keys_count);
                             }
 
                             default_row_keys
@@ -287,28 +297,9 @@ impl BuildStep for GenerateAndroid {
                 }
 
                 let mut row_append = rows_include;
-                let mut short_row_append = short_rows_include;
+                let mut tablet_600_row_append = tablet_600_rows_include;
 
-                for (line_index, mut rowkey_doc) in rowkeys_docs_map {
-                    // modify rowkeys special keys according to main or short width path
-
-                    let shift_key_selector =
-                        Selector::new(r#"Key[latin\:keyStyle="shiftKeyStyle"]"#)
-                            .expect("class selector");
-
-                    let backspace_key_selector =
-                        Selector::new(r#"Key[latin\:keyStyle="deleteKeyStyle"]"#)
-                            .expect("class selector");
-
-                    if let Some(shift_key) = rowkey_doc
-                        .root()
-                        .query_selector(&rowkey_doc, &shift_key_selector)
-                    {
-                        shift_key.set_attribute(&mut rowkey_doc, "latin:keyWidth", "15.45%");
-                    }
-
-                    //
-
+                for (line_index, rowkey_doc) in rowkeys_docs_map {
                     std::fs::write(
                         main_xml_path.join(format!(
                             "rowkeys_{}{}.xml",
@@ -322,44 +313,6 @@ impl BuildStep for GenerateAndroid {
                         rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
                     )
                     .unwrap();
-
-                    for (layer_key, _layer) in layers {
-                        let selector_string;
-
-                        match layer_key {
-                            AndroidKbdLayer::Default => {
-                                selector_string = DEFAULT_ROWKEYS_TAG;
-                            }
-                            AndroidKbdLayer::Shift => {
-                                selector_string = SHIFT_ROWKEYS_TAG;
-                            }
-                        };
-
-                        /*
-                        let rowkey_doc_root = rowkey_doc.root();
-
-                        let inner_selector = Selector::new(selector_string).unwrap();
-
-                        let default_row_keys = rowkey_doc_root
-                            .query_selector(&rowkey_doc, &inner_selector)
-                            .expect(&format!(
-                                "Document should the inner {} tag",
-                                selector_string
-                            ));
-
-                        default_row_keys.append_new_element(
-                            &mut rowkey_doc,
-                            NewElement {
-                                name: qname!("Key"),
-                                attrs: [
-                                    (qname!("latin:keyStyle"), "deleteKeyStyle".to_string()),
-                                    (qname!("latin:keyWidth"), "fillRight".to_string()),
-                                ]
-                                .into(),
-                            },
-                        );
-                         */
-                    }
 
                     // Yes, row and short_row (sw600dp) are slightly different because mobile phones
 
@@ -377,11 +330,6 @@ impl BuildStep for GenerateAndroid {
                         },
                     );
 
-                    let key_width = match line_index + 1 {
-                        1 | 2 => "9.09%p",
-                        _ => "8.64%p",
-                    };
-
                     row_append.append_new_element(
                         &mut rows_document,
                         NewElement {
@@ -391,7 +339,7 @@ impl BuildStep for GenerateAndroid {
                                     qname!("latin:keyboardLayout"),
                                     format!("@xml/{}", &file_name_attr),
                                 ),
-                                (qname!("latin:keyWidth"), key_width.to_owned()),
+                                (qname!("latin:keyWidth"), format!("{key_width}%p")),
                             ]
                             .into(),
                         },
@@ -399,16 +347,16 @@ impl BuildStep for GenerateAndroid {
 
                     // Short Row
 
-                    short_row_append = short_row_append.append_new_element_after(
-                        &mut short_rows_document,
+                    tablet_600_row_append = tablet_600_row_append.append_new_element_after(
+                        &mut tablet_600_rows_document,
                         NewElement {
                             name: qname!("Row"),
                             attrs: [].into(),
                         },
                     );
 
-                    short_row_append.append_new_element(
-                        &mut short_rows_document,
+                    tablet_600_row_append.append_new_element(
+                        &mut tablet_600_rows_document,
                         NewElement {
                             name: qname!("include"),
                             attrs: [
@@ -416,14 +364,14 @@ impl BuildStep for GenerateAndroid {
                                     qname!("latin:keyboardLayout"),
                                     format!("@xml/{}", &file_name_attr),
                                 ),
-                                (qname!("latin:keyWidth"), "8.18%p".to_owned()),
+                                (qname!("latin:keyWidth"), format!("{tablet_600_key_width}%p")),
                             ]
                             .into(),
                         },
                     );
 
                     std::fs::write(
-                        short_width_xml_path.join(file_name),
+                        tablet_600_xml_path.join(file_name),
                         rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
                     )
                     .unwrap();
@@ -438,8 +386,8 @@ impl BuildStep for GenerateAndroid {
                 .unwrap();
 
                 std::fs::write(
-                    short_width_xml_path.join(rows_file_name),
-                    short_rows_document.to_string_pretty_with_config(&PRETTY_CONFIG),
+                    tablet_600_xml_path.join(rows_file_name),
+                    tablet_600_rows_document.to_string_pretty_with_config(&PRETTY_CONFIG),
                 )
                 .unwrap();
 
@@ -504,7 +452,7 @@ impl BuildStep for GenerateAndroid {
                 );
 
                 // Spellchecker
-                let mut subtype = spellchecker_doc.root().append_new_element(
+                let _subtype = spellchecker_doc.root().append_new_element(
                     &mut spellchecker_doc,
                     NewElement {
                         name: qname!("subtype"),
@@ -896,7 +844,6 @@ fn create_numbered_key_xml_element(
     key: &str,
     key_hint_label_index: Option<usize>,
     longpress: Option<&Vec<String>>,
-    short_width: bool,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -931,13 +878,20 @@ fn create_numbered_key_xml_element(
     }
 }
 
-fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>) -> NewElement {
+fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>, key_width: f64, keys_count: usize, special_keys_count: usize) -> NewElement {
     let mut attrs = IndexMap::new();
 
     if key == "\\s{shift}" {
         attrs.insert(qname!("latin:keyStyle"), "shiftKeyStyle".to_owned());
+        let normal_keys = keys_count - special_keys_count;
+        let total_width = key_width * normal_keys as f64;
+        let remaining_space = 100f64 - total_width;
+        let fill_left = remaining_space / special_keys_count as f64;
+        tracing::debug!("Shift fill left: {:.2}%", fill_left);
+        attrs.insert(qname!("latin:keyWidth"), format!("{fill_left:.2}%"));
     } else if key == "\\s{backspace}" {
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
+        attrs.insert(qname!("latin:keyWidth"), "fillRight".to_owned());
     } else {
         if let Some(longpress) = longpress {
             let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
