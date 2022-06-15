@@ -16,6 +16,7 @@ pub mod generate_ios;
 pub mod generate_xcode;
 pub mod pbxproj;
 pub mod pod_install;
+pub mod serialize_pbxproj;
 
 const REPOSITORY_FOLDER: &str = "repo";
 

@@ -7,11 +7,12 @@ use std::{
 };
 
 use async_trait::async_trait;
+use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     build::{ios::pbxproj::Pbxproj, BuildStep},
-    bundle::KbdgenBundle,
+    bundle::{KbdgenBundle, layout},
 };
 
 const REPOSITORY: &str = "repo";
@@ -24,6 +25,8 @@ const INFO_PLIST: &str = "Info.plist";
 const SETTINGS_BUNDLE: &str = "Settings.bundle";
 const ROOT_PLIST: &str = "Root.plist";
 const ENTITLEMENTS_EXTENSION: &str = ".entitlements";
+
+const DEFAULT_LOCALE: &str = "en";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct XcodeHostingInfoStrings {
@@ -198,29 +201,32 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
 pub fn generate_keyboard_plist(
     template_path: PathBuf,
     value: IosKeyboardSettings,
+    display_name: String,
+    keyboard_index: usize,
+    primary_language: String,
     output_path: PathBuf,
 ) {
     let mut keyboard_plist: KeyboardInfoPlist =
         plist::from_file(template_path.clone()).expect("valid stuff");
 
-    keyboard_plist.cf_bundle_display_name = value.display_name;
+    keyboard_plist.cf_bundle_display_name = display_name;
     keyboard_plist.cf_bundle_short_version_string = value.short_version;
     keyboard_plist.cf_bundle_version = value.build_version;
     keyboard_plist.ls_application_queries_schemes[0] = value.package_id;
     keyboard_plist
         .ns_extension
         .ns_extension_attributes
-        .primary_language = value.primary_language;
-    keyboard_plist.divvun_keyboard_index = value.keyboard_index;
+        .primary_language = primary_language;
+    keyboard_plist.divvun_keyboard_index = keyboard_index;
 
     plist::to_file_xml(output_path, &keyboard_plist).unwrap();
 }
 
-pub fn generate_hosting_plist(in_out_path: PathBuf, value: IosKeyboardSettings) {
+pub fn generate_hosting_plist(in_out_path: PathBuf, display_name: String, value: IosKeyboardSettings) {
     let mut hosting_app_plist: HostingPlist =
         plist::from_file(in_out_path.clone()).expect("valid stuff");
 
-    hosting_app_plist.cf_bundle_display_name = value.display_name;
+    hosting_app_plist.cf_bundle_display_name = display_name;
     hosting_app_plist.cf_bundle_short_version_string = value.short_version;
     hosting_app_plist.cf_bundle_version = value.build_version;
     hosting_app_plist.cf_bundle_url_types[0].cf_bundle_url_schemes[0] = value.package_id.clone();
@@ -238,12 +244,9 @@ pub fn update_entitlements(entitlements_path: PathBuf, new_entitlements: Vec<Str
 
 #[derive(Clone)]
 pub struct IosKeyboardSettings {
-    display_name: String,
     short_version: String,
     build_version: String,
     package_id: String,
-    primary_language: String,
-    keyboard_index: usize,
 }
 
 pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
@@ -275,16 +278,28 @@ impl BuildStep for GenerateXcode {
             all_locales.insert("Base".to_string());
         }
 
-        for (layout_index, (language_tag, layout)) in bundle
-            .layouts
-            .iter()
-            .filter(|x| x.1.i_os.is_some())
-            .enumerate()
-        {
-            if let Some(target) = &bundle.targets.ios {
+        let default_language_tag =
+            LanguageTag::parse(DEFAULT_LOCALE).expect("default language tag must parse");
+
+        if let Some(target) = &bundle.targets.ios {
+            let ios_keyboard_settings = IosKeyboardSettings {
+                short_version: target.version.clone(),
+                build_version: target.build.clone(),
+                package_id: target.package_id.clone(),
+            };
+
+            for (layout_index, (language_tag, layout)) in bundle
+                .layouts
+                .iter()
+                .filter(|x| x.1.i_os.is_some())
+                .enumerate()
+            {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES
                     // TODO: Check if About.txt exists for locale before creating file reference
+                    if language_tag.to_string() != "se" {
+                        continue
+                    }
                     for (locale_name, locale_info) in &bundle.project.locales {
                         let locale_name = if locale_name == "en" {
                             "Base"
@@ -318,37 +333,44 @@ impl BuildStep for GenerateXcode {
                     }
 
                     // KEYBOARD PLIST
-                    let keyboard_folder_name = replace_all_occurances(
-                        bundle
-                            .project
-                            .locales
-                            .get("en")
-                            .unwrap()
-                            .name
-                            .to_lowercase(),
-                        ' ',
-                        '-',
-                    );
+                    // let keyboard_folder_name = replace_all_occurances(
+                    //     bundle
+                    //         .project
+                    //         .locales
+                    //         .get("en")
+                    //         .unwrap()
+                    //         .name
+                    //         .to_lowercase(),
+                    //     ' ',
+                    //     '-',
+                    // );
+
+                    let default_display_name = layout
+                        .display_names
+                        .get(&default_language_tag)
+                        .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
+
+                    let layout_folder_name = default_display_name
+                        .to_lowercase()
+                        .replace(" ", "-")
+                        .replace("(", "")
+                        .replace(")", "");
+
+                    println!("LAYOUT: {}", layout_folder_name);
 
                     let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
-                    let current_layout_path = keyboard_path.join(keyboard_folder_name.clone());
+                    let current_layout_path = keyboard_path.join(layout_folder_name.clone());
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
-
-                    let ios_keyboard_settings = IosKeyboardSettings {
-                        display_name: layout.autonym().to_string(),
-                        short_version: target.version.clone(),
-                        build_version: target.build.clone(),
-                        package_id: target.package_id.clone(),
-                        primary_language: language_tag.to_string(),
-                        keyboard_index: layout_index,
-                    };
 
                     // KEYBOARD PLIST
                     let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
                     generate_keyboard_plist(
                         keyboard_plist_template,
                         ios_keyboard_settings.clone(),
+                        default_display_name.clone(),
+                        0,
+                        language_tag.to_string(),
                         layout_info_plist_path.clone(),
                     );
 
@@ -361,68 +383,66 @@ impl BuildStep for GenerateXcode {
                     );
                     pbxproj.duplicate_target(
                         KEYBOARD,
-                        &keyboard_folder_name,
+                        &layout_folder_name,
                         &path_to_relative(&layout_info_plist_path, REPOSITORY),
                     );
                     pbxproj.set_target_build_configuration(
-                        &keyboard_folder_name,
+                        &layout_folder_name,
                         "PRODUCT_BUNDLE_IDENTIFIER",
-                        &format!("{}.{keyboard_folder_name}", &target.package_id),
+                        &format!("{}.{layout_folder_name}", &target.package_id),
                     );
+                    println!("{}.{layout_folder_name}", &target.package_id);
                     pbxproj.set_target_build_configuration(
-                        &keyboard_folder_name,
+                        &layout_folder_name,
                         "DEVELOPMENT_TEAM",
                         &target.code_sign_id,
                     );
-                    pbxproj
-                        .add_appex_to_target_embedded_binaries(HOSTING_APP, &keyboard_folder_name);
-
-                    pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
-                    pbxproj.remove_target(KEYBOARD);
-
-                    // HOSTING APP PLIST
-                    let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
-                    generate_hosting_plist(hosting_app_plist_path, ios_keyboard_settings);
-
-                    // NEW ENTITLEMENTS
-                    let new_entitlements = format!("{}.{}", "group", target.package_id);
-
-                    // UPDATE KEYBOARD ENTITLEMENTS
-                    let keyboard_entitlements_path =
-                        keyboard_path.join(format!("{}{}", KEYBOARD, ENTITLEMENTS_EXTENSION));
-                    update_entitlements(keyboard_entitlements_path, vec![new_entitlements.clone()]);
-
-                    // UPDATE HOSTING APP ENTITLEMENTS
-                    let hosting_app_entitlements_path =
-                        hosting_app_path.join(format!("{}{}", HOSTING_APP, ENTITLEMENTS_EXTENSION));
-                    update_entitlements(
-                        hosting_app_entitlements_path,
-                        vec![new_entitlements.clone()],
-                    );
-
-                    // UPDATE ENTITLEMENTS IN SETTINGS BUNDLE PLIST
-                    let root_plist_path = hosting_app_path.join(SETTINGS_BUNDLE).join(ROOT_PLIST);
-                    let mut root_plist: SettingsRootDict =
-                        plist::from_file(root_plist_path.clone()).expect("valid stuff");
-                    root_plist.application_group_container_identifier = new_entitlements.clone();
-                    plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
-
-                    // UPDATE PBXPROJ
-                    pbxproj.set_target_build_configuration(
-                        HOSTING_APP,
-                        "PRODUCT_BUNDLE_IDENTIFIER",
-                        &target.package_id,
-                    );
-                    pbxproj.set_target_build_configuration(
-                        HOSTING_APP,
-                        "DEVELOPMENT_TEAM",
-                        &target.code_sign_id,
-                    );
+                    pbxproj.add_appex_to_target_embedded_binaries(HOSTING_APP, &layout_folder_name);
                 }
             }
-        }
 
-        pbxproj.update(HOSTING_APP, all_locales);
+            // HOSTING APP PLIST
+            let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
+            generate_hosting_plist(hosting_app_plist_path, target.bundle_name.clone(), ios_keyboard_settings);
+
+            // NEW ENTITLEMENTS
+            let new_entitlements = format!("{}.{}", "group", target.package_id);
+
+            // UPDATE KEYBOARD ENTITLEMENTS
+            let keyboard_entitlements_path =
+                keyboard_path.join(format!("{}{}", KEYBOARD, ENTITLEMENTS_EXTENSION));
+            update_entitlements(keyboard_entitlements_path, vec![new_entitlements.clone()]);
+
+            // UPDATE HOSTING APP ENTITLEMENTS
+            let hosting_app_entitlements_path =
+                hosting_app_path.join(format!("{}{}", HOSTING_APP, ENTITLEMENTS_EXTENSION));
+            update_entitlements(
+                hosting_app_entitlements_path,
+                vec![new_entitlements.clone()],
+            );
+
+            // UPDATE ENTITLEMENTS IN SETTINGS BUNDLE PLIST
+            let root_plist_path = hosting_app_path.join(SETTINGS_BUNDLE).join(ROOT_PLIST);
+            let mut root_plist: SettingsRootDict =
+                plist::from_file(root_plist_path.clone()).expect("valid stuff");
+            root_plist.application_group_container_identifier = new_entitlements.clone();
+            plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
+
+            // UPDATE PBXPROJ
+            pbxproj.set_target_build_configuration(
+                HOSTING_APP,
+                "PRODUCT_BUNDLE_IDENTIFIER",
+                &target.package_id,
+            );
+            pbxproj.set_target_build_configuration(
+                HOSTING_APP,
+                "DEVELOPMENT_TEAM",
+                &target.code_sign_id,
+            );
+            pbxproj.remove_target(KEYBOARD);
+            pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
+            pbxproj.update(HOSTING_APP, all_locales);
+        }
 
         std::fs::write(pbxproj_path.clone(), pbxproj.to_pbxproj_string()).unwrap();
     }

@@ -158,7 +158,13 @@ impl BuildStep for GenerateIos {
         let models_path = repository_path.join(MODELS);
         let keyboard_definitions_file_path = models_path.join("KeyboardDefinitions.json");
 
+        let mut all_layouts: Vec<IosKeyboardDefinitions> = Vec::new();
         for (language_tag, layout) in &bundle.layouts {
+
+            if language_tag.to_string() != "se" {
+                continue
+            }
+            
             let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
             let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
@@ -182,41 +188,41 @@ impl BuildStep for GenerateIos {
                 }
 
                 if let Some(key_names) = &layout.key_names {
-                    std::fs::write(
-                        output_path.join(keyboard_definitions_file_path.clone()),
-                        serde_json::to_string_pretty(&[IosKeyboardDefinitions {
-                            info: IosInfo {
-                                name: layout
-                                    .display_names
-                                    .get(language_tag)
-                                    .expect("can't evaluate language tag of layout")
-                                    .to_string(),
-                                locale: language_tag.to_string(),
-                                return_button: key_names.r#return.to_string(),
-                                space: key_names.space.to_string(),
-                            },
-                            longpress: longpress,
-                            dead_keys: IosDeadKeys {
-                                iphone: IndexMap::new(),
-                                i_pad_9in: IndexMap::new(),
-                                i_pad_12in: IndexMap::new(),
-                            },
-                            transforms: serde_json::value::Value::Null,
-                            iphone: IosPlatform {
-                                layer: iphone_layers,
-                            },
-                            i_pad_9in: IosPlatform {
-                                layer: i_pad_9in_layers,
-                            },
-                            i_pad_12in: IosPlatform {
-                                layer: i_pad_12in_layers,
-                            },
-                        }])
-                        .unwrap(),
-                    )
-                    .unwrap();
+                    all_layouts.push(IosKeyboardDefinitions {
+                        info: IosInfo {
+                            name: layout
+                                .display_names
+                                .get(language_tag)
+                                .expect("can't evaluate language tag of layout")
+                                .to_string(),
+                            locale: language_tag.to_string(),
+                            return_button: key_names.r#return.to_string(),
+                            space: key_names.space.to_string(),
+                        },
+                        longpress: longpress,
+                        dead_keys: IosDeadKeys {
+                            iphone: IndexMap::new(),
+                            i_pad_9in: IndexMap::new(),
+                            i_pad_12in: IndexMap::new(),
+                        },
+                        transforms: serde_json::value::Value::Null,
+                        iphone: IosPlatform {
+                            layer: iphone_layers,
+                        },
+                        i_pad_9in: IosPlatform {
+                            layer: i_pad_9in_layers,
+                        },
+                        i_pad_12in: IosPlatform {
+                            layer: i_pad_12in_layers,
+                        },
+                    })
                 }
             }
         }
+        std::fs::write(
+            output_path.join(keyboard_definitions_file_path.clone()),
+            serde_json::to_string_pretty(&all_layouts).unwrap(),
+        )
+        .unwrap();
     }
 }

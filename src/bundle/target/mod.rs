@@ -33,7 +33,7 @@ pub struct MacOS {
 #[serde(rename_all = "camelCase")]
 pub struct iOS {
     pub(crate) code_sign_id: String,
-    pub(crate) provisioning_profile_id: String,
+    pub(crate) provisioning_profile_id: Option<String>,
     pub(crate) package_id: String,
     pub(crate) bundle_name: String,
     pub(crate) version: String,
