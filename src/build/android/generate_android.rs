@@ -784,7 +784,7 @@ fn update_method_file(
     subtype.set_attribute(
         method_doc,
         "android:imeSubtypeLocale",
-        &language_tag.to_string(),
+        &language_tag.to_string().replace("-", "_"),
     );
     subtype.set_attribute(
         method_doc,
