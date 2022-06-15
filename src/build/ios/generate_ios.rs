@@ -124,14 +124,19 @@ pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
 
 pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<IosKeyMapType>>> {
     let mut layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
+    println!("PLATOFRM: {:#?}", platform);
     for (layer_name, layer_key_map) in &platform.layers {
         let layer_name = ios_layer_name(layer_name);
+        println!("LAYER NAME: {}", layer_name);
         let key_map_rows: Vec<&str> = layer_key_map
             .trim()
             .split("\n")
             .map(|x| x.clone())
             .collect();
         let mut layer_rows: Vec<Vec<IosKeyMapType>> = Vec::new();
+        if layer_name == "symbols-2" {
+            println!("{:#?}", key_map_rows);
+        }
         for key_map in key_map_rows {
             let key_map = split_keys(key_map);
             let mut new_key_map: Vec<IosKeyMapType> = Vec::new();
@@ -159,12 +164,7 @@ impl BuildStep for GenerateIos {
         let keyboard_definitions_file_path = models_path.join("KeyboardDefinitions.json");
 
         let mut all_layouts: Vec<IosKeyboardDefinitions> = Vec::new();
-        for (language_tag, layout) in &bundle.layouts {
-
-            if language_tag.to_string() != "se" {
-                continue
-            }
-            
+        for (language_tag, layout) in &bundle.layouts {          
             let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
             let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();

@@ -297,9 +297,7 @@ impl BuildStep for GenerateXcode {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES
                     // TODO: Check if About.txt exists for locale before creating file reference
-                    if language_tag.to_string() != "se" {
-                        continue
-                    }
+
                     for (locale_name, locale_info) in &bundle.project.locales {
                         let locale_name = if locale_name == "en" {
                             "Base"
@@ -369,7 +367,7 @@ impl BuildStep for GenerateXcode {
                         keyboard_plist_template,
                         ios_keyboard_settings.clone(),
                         default_display_name.clone(),
-                        0,
+                        layout_index,
                         language_tag.to_string(),
                         layout_info_plist_path.clone(),
                     );
