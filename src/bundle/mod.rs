@@ -47,13 +47,15 @@ impl KbdgenBundle {
 }
 
 pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
-    let canonical_bundle_path: PathBuf = canonicalize(path)?;
+    let canonical_bundle_path: PathBuf =
+        canonicalize(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
 
     tracing::info!("Canonical Bundle Path: {:?}", &canonical_bundle_path);
 
-    let project: Project = serde_yaml::from_str(&fs::read_to_string(
-        canonical_bundle_path.join(PROJECT_FILENAME),
-    )?)?;
+    let project_text = fs::read_to_string(canonical_bundle_path.join(PROJECT_FILENAME))
+        .map_err(|e| Error::Io(path.to_path_buf(), e))?;
+    let project: Project =
+        serde_yaml::from_str(&project_text).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
     let layouts_path = canonical_bundle_path.join(LAYOUTS_FOLDER);
     let targets_path = canonical_bundle_path.join(TARGETS_FOLDER);
@@ -74,7 +76,8 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
 
 fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
     tracing::debug!("Reading layouts");
-    read_dir(path)?
+    read_dir(path)
+        .map_err(|e| Error::Io(path.to_path_buf(), e))?
         .filter_map(Result::ok)
         .map(|file| file.path())
         .filter(|path| path.is_file())
@@ -93,7 +96,10 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                 tag: tag.to_string(),
             })?;
 
-            let mut yaml: Value = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+            let yaml_text =
+                fs::read_to_string(&path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
+            let mut yaml: Value =
+                serde_yaml::from_str(&yaml_text).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
             yaml.as_mapping_mut()
                 .expect("top level yaml type must be a mapping")
                 .insert(
@@ -101,7 +107,8 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                     Value::String(tag.to_string()),
                 );
 
-            let mut layout: Layout = serde_yaml::from_value(yaml)?;
+            let mut layout: Layout =
+                serde_yaml::from_value(yaml).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
             let _autonym = layout
                 .display_names
@@ -126,24 +133,62 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
         .collect()
 }
 
-fn load_yaml<T>(path: &Path) -> Option<T>
+fn load_yaml<T>(path: &Path) -> Result<T, Error>
 where
     T: for<'de> serde::Deserialize<'de>,
 {
     let s = match fs::read_to_string(path) {
         Ok(v) => v,
         Err(e) => {
-            tracing::error!(error = ?e, "Failed to read file to string");
-            return None;
+            return Err(Error::Io(path.to_path_buf(), e));
         }
     };
 
     match serde_yaml::from_str::<T>(&s) {
-        Ok(v) => Some(v),
+        Ok(v) => Ok(v),
         Err(e) => {
-            tracing::error!(error = ?e, "Error parsing YAML");
-            None
+            return Err(Error::Yaml(path.to_path_buf(), e));
         }
+    }
+}
+
+fn load_yaml_with_env<T>(path: &Path, env_vars: HashMap<&str, &str>) -> Result<T, Error>
+where
+    T: for<'de> serde::Deserialize<'de>,
+{
+    let s = match fs::read_to_string(path) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(Error::Io(path.to_path_buf(), e));
+        }
+    };
+
+    let mut raw: serde_yaml::Value = match serde_yaml::from_str(&s) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(Error::Yaml(path.to_path_buf(), e));
+        }
+    };
+
+    {
+        let root = raw.as_mapping_mut().unwrap();
+
+        for (env_var, field_name) in env_vars {
+            let value = match std::env::var(env_var) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            root.insert(
+                serde_yaml::Value::String(field_name.to_string()),
+                serde_yaml::Value::String(value),
+            );
+        }
+    }
+
+    match serde_yaml::from_value::<T>(raw) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(Error::Yaml(path.to_path_buf(), e)),
     }
 }
 
@@ -151,7 +196,8 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
     tracing::debug!("Reading resources");
     let mut resources = Resources::default();
 
-    let iter = read_dir(path)?
+    let iter = read_dir(path)
+        .map_err(|e| Error::Io(path.to_path_buf(), e))?
         .filter_map(Result::ok)
         .map(|file| file.path())
         .filter(|path| path.is_dir());
@@ -182,7 +228,8 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets");
     let mut targets = Targets::default();
 
-    let iter = read_dir(path)?
+    let iter = read_dir(path)
+        .map_err(|e| Error::Io(path.to_path_buf(), e))?
         .filter_map(Result::ok)
         .map(|file| file.path())
         .filter(|path| path.is_file())
@@ -199,15 +246,29 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
 
         match target_name.as_ref() {
             "windows" => {
-                targets.windows = load_yaml(&path);
+                targets.windows = load_yaml(&path)?;
             }
             "ios" => {
-                targets.ios = load_yaml(&path);
+                targets.ios = load_yaml(&path)?;
             }
             "macos" => {
-                targets.macos = load_yaml(&path);
+                targets.macos = load_yaml(&path)?;
             }
-            "chromeos" => targets.chromeos = load_yaml(&path),
+            "chromeos" => targets.chromeos = load_yaml(&path)?,
+            "android" => {
+                targets.android = load_yaml_with_env(
+                    &path,
+                    [
+                        ("ANDROID_KEYSTORE", "keyStore"),
+                        ("ANDROID_KEYALIAS", "keyAlias"),
+                        ("PLAY_STORE_ACCOUNT", "playStoreAccount"),
+                        ("PLAY_STORE_P12", "playStoreP12"),
+                        ("STORE_PW", "storePassword"),
+                        ("KEY_PW", "keyPassword"),
+                    ]
+                    .into(),
+                )?
+            }
             name => {
                 tracing::warn!("Saw target with name {name} but did not parse");
                 continue;
@@ -220,11 +281,11 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("{0}")]
-    IoError(#[from] std::io::Error),
+    #[error("IO error for path: {0}")]
+    Io(PathBuf, #[source] std::io::Error),
 
-    #[error("{0}")]
-    YamlError(#[from] serde_yaml::Error),
+    #[error("Error parsing YAML for path: {0}")]
+    Yaml(PathBuf, #[source] serde_yaml::Error),
 
     #[error(".yaml files must have a stem, failed to parse: `{}`", path.display())]
     NoFileStem { path: PathBuf },

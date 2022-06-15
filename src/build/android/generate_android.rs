@@ -14,6 +14,7 @@ use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::build::pahkat;
 use crate::bundle::project::{self, LocaleProjectDescription};
+use crate::bundle::target;
 use crate::{
     build::BuildStep,
     bundle::{layout::android::AndroidKbdLayer, KbdgenBundle},
@@ -585,7 +586,58 @@ impl BuildStep for GenerateAndroid {
             .expect("failed to copy libdivvunspell from Pahkat repo");
 
         generate_icons(bundle, &resources_path);
+        if let Some(target) = bundle.targets.android.as_ref() {
+            generate_gradle_local(target, &output_path.join("app"));
+        } else {
+            tracing::warn!("No target configuration found; no package identifier set.");
+        }
     }
+}
+
+fn escape_quotes(input: Option<&str>) -> Option<String> {
+    match input {
+        Some(v) => Some(v.replace("\"", "\\\"")),
+        None => None,
+    }
+}
+
+fn generate_gradle_local(target: &target::Android, app_path: &Path) {
+    let store_file = target
+        .key_store
+        .as_ref()
+        .and_then(|x| {
+            std::fs::canonicalize(x)
+                .ok()
+                .map(|x| x.to_str().unwrap().to_string().replace("\\", "\\\\"))
+        })
+        .unwrap_or_else(|| "".to_string());
+    let key_alias = escape_quotes(target.key_alias.as_deref()).unwrap_or_else(|| "".to_string());
+    let store_pw =
+        escape_quotes(target.store_password.as_deref()).unwrap_or_else(|| "".to_string());
+    let key_pw = escape_quotes(target.key_password.as_deref()).unwrap_or_else(|| "".to_string());
+    let play_email =
+        escape_quotes(target.play_store_account.as_deref()).unwrap_or_else(|| "".to_string());
+    let play_creds =
+        escape_quotes(target.play_store_p12.as_deref()).unwrap_or_else(|| "".to_string());
+    let pkg_name = &target.package_id;
+    let version = &target.version;
+    let build = &target.build;
+
+    let text = format!(
+        r#"ext.app = [
+    storeFile: "{store_file}",
+    keyAlias: "{key_alias}",
+    storePassword: "{store_pw}",
+    keyPassword: "{key_pw}",
+    packageName: "{pkg_name}",
+    versionCode: {build},
+    versionName: "{version}",
+    playEmail: "{play_email}",
+    playCredentials: "{play_creds}"
+]"#
+    ).replace("$", "\\$");
+
+    std::fs::write(app_path.join("gradle.local"), text).expect("Failed to write gradle.local file");
 }
 
 fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
