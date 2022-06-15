@@ -77,9 +77,13 @@ if (modes.ios != null) {
 
     const defaultLayer = modes.ios.default.split("\n").map(x => x.trim().split(/\s+/).join(" ")).join("\n")
     const shiftLayer = modes.ios.shift.split("\n").map(x => x.trim().split(/\s+/).join(" ")).join("\n")
+    const symbols1Layer = modes.ios["symbols-1"].split("\n").map(x => x.trim().split(/\s+/).join(" ")).join("\n")
+    const symbols2Layer  = modes.ios["symbols-2"].split("\n").map(x => x.trim().split(/\s+/).join(" ")).join("\n")
 
     newDoc.iOS.primary.layers.default = defaultLayer
     newDoc.iOS.primary.layers.shift = shiftLayer
+    newDoc.iOS.primary.layers["symbols-1"] = symbols1Layer
+    newDoc.iOS.primary.layers["symbols-2"] = symbols2Layer
 
     if (targets.ios != null && targets.ios.spellerPackageKey != null) {
         newDoc.iOS.config.spellerPackageKey = targets.ios.spellerPackageKey
