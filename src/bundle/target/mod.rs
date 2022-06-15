@@ -32,7 +32,9 @@ pub struct MacOS {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct iOS {
-    pub(crate) code_sign_id: String,
+    #[serde(default)]
+    pub(crate) code_sign_id: Option<String>,
+    #[serde(default)]
     pub(crate) provisioning_profile_id: Option<String>,
     pub(crate) package_id: String,
     pub(crate) bundle_name: String,

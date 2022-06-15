@@ -395,7 +395,7 @@ impl BuildStep for GenerateXcode {
                     pbxproj.set_target_build_configuration(
                         &layout_folder_name,
                         "DEVELOPMENT_TEAM",
-                        &target.code_sign_id,
+                        &target.code_sign_id.as_deref().unwrap_or("Unknown"),
                     );
                     pbxproj.add_appex_to_target_embedded_binaries(HOSTING_APP, &layout_folder_name);
                 }
@@ -437,7 +437,7 @@ impl BuildStep for GenerateXcode {
             pbxproj.set_target_build_configuration(
                 HOSTING_APP,
                 "DEVELOPMENT_TEAM",
-                &target.code_sign_id,
+                &target.code_sign_id.as_deref().unwrap_or("Unknown"),
             );
             pbxproj.remove_target(KEYBOARD);
             pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
