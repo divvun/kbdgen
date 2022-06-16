@@ -28,4 +28,4 @@ typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`:
 
 * `\s{shift}` - Shift
 * `\s{backspace}` - Delete
-* `\s{enter}` - Enter
+* `\s{return}` - Enter

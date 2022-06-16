@@ -460,6 +460,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel1">
 <li><a href="#_windows">Windows</a></li>
 <li><a href="#_android">Android</a></li>
+<li><a href="#_ios">iOS</a></li>
+<li><a href="#_macos">MacOS</a></li>
 </ul>
 </li>
 </ul>
@@ -680,10 +682,115 @@ typically to 3 lines of the keyboard. Special keys need to be preceeded by <code
 <p><code>\s{backspace}</code> - Delete</p>
 </li>
 <li>
-<p><code>\s{enter}</code> - Enter</p>
+<p><code>\s{return}</code> - Enter</p>
 </li>
 </ul>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_ios">iOS</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>iOS is one of the few keyboard layouts that handle more than one platform.
+Additionally, it also requires the <code>symbols</code> layers.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>iOS:
+  config:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+  primary:
+    layers:
+      default: |
+        á š e r t y u i o p ŋ
+        a s d f g h j k l đ ŧ
+        \s{shift:1.25} \s{spacer:0.25} ž z č c v b n m \s{spacer:0.25} \s{backspace:1.25}
+      shift: |
+        Á Š E R T Y U I O P Ŋ
+        A S D F G H J K L Đ Ŧ
+        \s{shift:1.25} \s{spacer:0.25} Ž Z Č C V B N M \s{spacer:0.25} \s{backspace:1.25}
+      symbols-1: |
+        1 2 3 4 5 6 7 8 9 0
+        - / : ; ( ) kr &amp; @ "
+        \s{shiftSymbols} \s{spacer:0.25} . , ? ! ' \s{spacer:0.25} \s{backspace}
+      symbols-2: |
+        [ ] { } # % ^ * + =
+        _ \ | ~ &lt; &gt; € $ £ •
+        \s{shiftSymbols} \s{spacer:0.25} . , ? ! ' \s{spacer:0.25} \s{backspace}
+
+  iPad-9in:
+    layers:
+      default: |
+        \s{"`":0.75}  á š e r t y u i o p ŋ \s{backspace:1.25}
+        \s{shift}     a s d f g h j k l đ ŧ \s{shift}
+          \s{spacer:0.5}  ž z č c v b n m , . \s{spacer:0.5} \s{return:2}
+      shift: |
+        \s{"@":0.75}  Á Š E R T Y U I O P Ŋ \s{backspace:1.25}
+        \s{shift}     A S D F G H J K L Đ Ŧ \s{shift}
+        \s{spacer:0.5}  Ž Z Č C V B N M ! ? \s{spacer:0.5} \s{return:2}
+      alt: |
+        \s{"@":0.75}  1 2 3  4 5 6 7 8 9 0 å \s{backspace:1.25}
+        \s{shift}     % # kr &amp; * ( ) ' " ø æ \s{shift}
+        \s{spacer:0.5}  q w  x - = / ; : ! ? \s{spacer:0.5} \s{return:2}
+      alt+shift: |
+        \s{"@":0.75}  1 2 3  4 5 6 7 8 9 0 Å \s{backspace:1.25}
+        \s{shift}     % # kr &amp; * ( ) ' " Ø Æ \s{shift}
+        \s{spacer:0.5}  Q W  X - = / ; : ! ? \s{spacer:0.5} \s{return:2}
+      symbols-1: |
+        \s{spacer:0.75} 1 2 3 4 5 6 7 8 9 0 ` \s{backspace:1.25}
+        \s{shiftSymbols} @ # kr &amp; * ( ) ' " + • \s{shiftSymbols}
+        \s{spacer:1.5} % _ - = / ; : , . \s{spacer:0.5} \s{return:2}
+      symbols-2: |
+        \s{spacer:0.75}  1 2 3 4 5 6 7 8 9 0 ´ \s{backspace:1.25}
+        \s{shiftSymbols} € $ £ ^ [ ] { } — ° … \s{shiftSymbols}
+        \s{spacer:1.5}    § | ~ ≠ \ &lt; &gt; ! ?    \s{spacer:0.5} \s{return:2}
+
+  iPad-12in:
+    layers:
+      ...</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A longpress section is also needed for alternative keys.</p>
+</div>
+<div class="paragraph">
+<p>The <code>config</code> section is used by Pahkat to ???.</p>
+</div>
+<div class="paragraph">
+<p>Just two layers are standard, <code>default</code> and <code>shift</code>. Each layer is split by line,
+typically to 3 lines of the keyboard. Special keys need to be preceeded by <code>\s</code>,
+with a number after <code>:</code> representing the desired width of the key:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>\s{spacer:0.5}</code> - not a key, just a spacer (Brendan?)</p>
+</li>
+<li>
+<p><code>\s{shift}</code> - Shift (no width for you, Brendan)</p>
+</li>
+<li>
+<p><code>\s{backspace:1.25}</code> - Delete</p>
+</li>
+<li>
+<p><code>\s{return:2}</code> - Enter</p>
+</li>
+<li>
+<p><code>\s{"@":0.75}</code> - send help Brendan</p>
+</li>
+<li>
+<p><code>\s{shiftSymbols}</code> - Brendan</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_macos">MacOS</h2>
+<div class="sectionbody">
+
 </div>
 </div>
 </div>

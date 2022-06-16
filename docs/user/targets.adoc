@@ -3,3 +3,7 @@
 include::windows.adoc[]
 
 include::android.adoc[]
+
+include::ios.adoc[]
+
+include::macos.adoc[]
