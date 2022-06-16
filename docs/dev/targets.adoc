@@ -1,6 +1,9 @@
 = Target Specific information
 
 include::windows.adoc[]
+
 include::chromeos.adoc[]
+
 include::macos.adoc[]
+
 include::ios.adoc[]

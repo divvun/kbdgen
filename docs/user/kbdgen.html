@@ -459,6 +459,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_target_specific_information">Target Specific information</a>
 <ul class="sectlevel1">
 <li><a href="#_windows">Windows</a></li>
+<li><a href="#_android">Android</a></li>
 </ul>
 </li>
 </ul>
@@ -633,6 +634,55 @@ as invalid.</p>
 </div>
 <div class="paragraph">
 <p>For details on the .klc format, please see the developer documentation.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_android">Android</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Android layouts tend to be quite simple:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    android:
+    config:
+        spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+        spellerPath: se.bhfst
+    primary:
+        layers:
+            default: |
+                á š e r t y u i o p ŋ
+                a s d f g h j k l đ ŧ
+                \s{shift} ž z č c v b n m \s{backspace}
+            shift: |
+                Á Š E R T Y U I O P Ŋ
+                A S D F G H J K L Đ Ŧ
+                \s{shift} Ž Z Č C V B N M \s{backspace}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A longpress section is also needed for alternative keys.</p>
+</div>
+<div class="paragraph">
+<p>The <code>config</code> section is used by Pahkat to ???.</p>
+</div>
+<div class="paragraph">
+<p>Just two layers are standard, <code>default</code> and <code>shift</code>. Each layer is split by line,
+typically to 3 lines of the keyboard. Special keys need to be preceeded by <code>\s</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>\s{shift}</code> - Shift</p>
+</li>
+<li>
+<p><code>\s{backspace}</code> - Delete</p>
+</li>
+<li>
+<p><code>\s{enter}</code> - Enter</p>
+</li>
+</ul>
 </div>
 </div>
 </div>

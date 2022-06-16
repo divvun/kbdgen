@@ -1,2 +1,31 @@
 == Android
 
+Android layouts tend to be quite simple:
+
+```
+    android:
+    config:
+        spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+        spellerPath: se.bhfst
+    primary:
+        layers:
+            default: |
+                á š e r t y u i o p ŋ
+                a s d f g h j k l đ ŧ
+                \s{shift} ž z č c v b n m \s{backspace}
+            shift: |
+                Á Š E R T Y U I O P Ŋ
+                A S D F G H J K L Đ Ŧ
+                \s{shift} Ž Z Č C V B N M \s{backspace}
+```
+
+A longpress section is also needed for alternative keys.
+
+The `config` section is used by Pahkat to ???.
+
+Just two layers are standard, `default` and `shift`. Each layer is split by line,
+typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`:
+
+* `\s{shift}` - Shift
+* `\s{backspace}` - Delete
+* `\s{enter}` - Enter
