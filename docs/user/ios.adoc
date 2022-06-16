@@ -63,13 +63,13 @@ A longpress section is also needed for alternative keys.
 
 The `config` section is used by Pahkat to ???.
 
-Just two layers are standard, `default` and `shift`. Each layer is split by line,
+iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. Each layer is split by line,
 typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`,
 with a number after `:` representing the desired width of the key:
 
-* `\s{spacer:0.5}` - not a key, just a spacer (Brendan?)
+* `\s{spacer:0.5}` - not a key, just a spacer
 * `\s{shift}` - Shift (no width for you, Brendan)
 * `\s{backspace:1.25}` - Delete
 * `\s{return:2}` - Enter
-* `\s{"@":0.75}` - send help Brendan
-* `\s{shiftSymbols}` - Brendan
+* `\s{"@":0.75}` - a given key, but with a custom width
+* `\s{shiftSymbols}` - Jacob
