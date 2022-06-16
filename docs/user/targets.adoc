@@ -2,8 +2,10 @@
 
 include::windows.adoc[]
 
-include::android.adoc[]
+include::chromeos.adoc[]
 
 include::ios.adoc[]
 
 include::macos.adoc[]
+
+include::android.adoc[]

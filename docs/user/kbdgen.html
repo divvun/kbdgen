@@ -458,10 +458,25 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_target_specific_information">Target Specific information</a>
 <ul class="sectlevel1">
-<li><a href="#_windows">Windows</a></li>
-<li><a href="#_android">Android</a></li>
+<li><a href="#_windows">Windows</a>
+<ul class="sectlevel2">
+<li><a href="#_layout_sample">Layout Sample</a></li>
+<li><a href="#_generation">Generation</a></li>
+</ul>
+</li>
+<li><a href="#_chrome_os">Chrome OS</a>
+<ul class="sectlevel2">
+<li><a href="#_layout_sample_2">Layout Sample</a></li>
+<li><a href="#_generation_2">Generation</a></li>
+</ul>
+</li>
 <li><a href="#_ios">iOS</a></li>
-<li><a href="#_macos">MacOS</a></li>
+<li><a href="#_macos">MacOS</a>
+<ul class="sectlevel2">
+<li><a href="#_layout_sample_3">Layout Sample</a></li>
+</ul>
+</li>
+<li><a href="#_android">Android</a></li>
 </ul>
 </li>
 </ul>
@@ -615,6 +630,67 @@ per target configuration.</p>
 <div class="sect1">
 <h2 id="_windows">Windows</h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="_layout_sample">Layout Sample</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>windows:
+  config:
+    locale: se-Latn-FI
+  primary:
+    layers:
+      default: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+          á š e r t y u i o p å ŋ
+          a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % &amp; / ( ) = ? `
+          Á Š E R T Y U I O P Å Ŋ
+          A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      caps: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+          Á Š E R T Y U I O P Å Ŋ
+          A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M , . -
+      caps+shift: |
+        ½ ! " # ¤ % &amp; / ( ) = ? `
+          á š e r t y u i o p å ŋ
+          a s d f g h j k l ö ä đ
+        ž z č c v b n m ; : _
+      alt: |
+        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
+              q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
+              â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
+        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     &lt;     &gt;     \u{0}
+      alt+shift: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+              Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
+              Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
+        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+      ctrl: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+  deadKeys:
+    default: [´]
+    shift: ['`']
+    caps: [´]
+    caps+shift: ['`']
+    alt: ['~', ¨]
+    alt+shift: [^, ˇ]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Keys in the format of <code>\u{}</code> are written in Unicode to avoid display issues. In
+particular, <code>\u{0}</code> is an absent key. Note that KLC cannot support keys outside the
+Basic Multilingual Plane, even if Unicode supports them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_generation">Generation</h3>
 <div class="paragraph">
 <p>Generating a Windows keyboard layout in the current implementation of <code>kbdgen</code> mainly
 concerns the generation of .klc files, and then subsequent building of those files
@@ -639,52 +715,67 @@ as invalid.</p>
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="_android">Android</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Android layouts tend to be quite simple:</p>
 </div>
+<div class="sect1">
+<h2 id="_chrome_os">Chrome OS</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_layout_sample_2">Layout Sample</h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code>    android:
-    config:
-        spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
-        spellerPath: se.bhfst
-    primary:
-        layers:
-            default: |
-                á š e r t y u i o p ŋ
-                a s d f g h j k l đ ŧ
-                \s{shift} ž z č c v b n m \s{backspace}
-            shift: |
-                Á Š E R T Y U I O P Ŋ
-                A S D F G H J K L Đ Ŧ
-                \s{shift} Ž Z Č C V B N M \s{backspace}</code></pre>
+<pre class="highlight"><code>chromeOS:
+  config:
+    locale: fi
+  primary:
+    layers:
+      default: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+          á š e r t y u i o p å ŋ
+          a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % &amp; / ( ) = ? `
+          Á Š E R T Y U I O P Å Ŋ
+          A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      caps: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+          Á Š E R T Y U I O P Å Ŋ
+          A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M , . -
+      caps+shift: |
+        ½ ! " # ¤ % &amp; / ( ) = ? `
+          á š e r t y u i o p å ŋ
+          a s d f g h j k l ö ä đ
+        ž z č c v b n m ; : _
+      alt: |
+        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
+              q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
+              â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
+        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     &lt;     &gt;     \u{0}
+      alt+shift: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+              Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
+              Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
+        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+      ctrl: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>A longpress section is also needed for alternative keys.</p>
+<p>The Chrome OS keyboard was modeled after the Windows one and so shares a lot of similarities.
+In the same vein, Keys in the format of <code>\u{}</code> are written in Unicode to avoid display issues.</p>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_generation_2">Generation</h3>
 <div class="paragraph">
-<p>The <code>config</code> section is used by Pahkat to ???.</p>
+<p>Chrome OS generation mainly involves adding keyboard layout information to a
+JavaScript file.</p>
 </div>
-<div class="paragraph">
-<p>Just two layers are standard, <code>default</code> and <code>shift</code>. Each layer is split by line,
-typically to 3 lines of the keyboard. Special keys need to be preceeded by <code>\s</code>:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>\s{shift}</code> - Shift</p>
-</li>
-<li>
-<p><code>\s{backspace}</code> - Delete</p>
-</li>
-<li>
-<p><code>\s{return}</code> - Enter</p>
-</li>
-</ul>
 </div>
 </div>
 </div>
@@ -791,7 +882,134 @@ with a number after <code>:</code> representing the desired width of the key (ke
 <div class="sect1">
 <h2 id="_macos">MacOS</h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="_layout_sample_3">Layout Sample</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>macOS:
+  primary:
+    layers:
+      default: |
+        ' 1 2 3 4 5 6 7 8 9 0 + ´
+          á š e r t y u i o p å ŋ
+          a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        § ! " # $ % &amp; / ( ) = ? `
+          Á Š E R T Y U I O P Å Ŋ
+          A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      caps: |
+        ' 1 2 3 4 5 6 7 8 9 0 + ´
+          Á Š E R T Y U I O P Å Ŋ
+          A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M , . -
+      alt: |
+        ' © ™ £ € ˆ § | [ ] ˝ ± \u{301}
+          q w é ˇ ŧ þ ˀ ʼ œ ˙ ˚ ¨
+          ¯ ß ð ƒ . ˛ ˘ ˜ - ø æ @
+        &lt; ÷ x ¸ ‹ › ‘ ’ ‚ … –
+      alt+shift: |
+        § ¡       ® ¥       ¢       \u{302} ¶       \       {       }       \u{30B} ¿       \u{300}
+          Q       W É       \u{30C} Ŧ       Þ       \u{309} \u{31B} Œ       \u{307} \u{30A} \u{308}
+          \u{304} № Ð       ʔ       \u{323} \u{328} \u{306} \u{303} \u{335} Ø       Æ       *
+        &gt; ⁄       X \u{327} «       »       “       ”       „       ·       —
+      alt+caps: |
+        ' © ™  £ € ˆ § | [ ] ˝ ± \u{301}
+          Q W  É ˇ Ŧ Þ ˀ ʼ Œ ˙ ˚ ¨
+          ¯ SS Ð ƒ . ˛ ˘ ˜ - Ø Æ @
+        &lt; ÷ X  ¸ ‹ › ‘ ’ ‚ … –
+      ctrl: |
+        0 1 2 3 4 5 6 7 8 9 0 \u{1F} =
+          \u{11} \u{17} \u{5} \u{12} \u{14} \u{19} \u{15} \u{9} \u{F} \u{10} \u{1B} \u{1D}
+          \u{1} \u{13} \u{4} \u{6} \u{7} \u{8} \u{A} \u{B} \u{C} ; ' \u{1C}
+        ` \u{1A} \u{18} \u{3} \u{16} \u{2} \u{E} \u{D} , . /
+      cmd: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+          q w e r t y u i o p å ¨
+          a s d f g h j k l ö ä '
+        &lt; z x c v b n m , . -
+      cmd+shift: |
+        ° ! " # € % &amp; / ( ) = ? `
+          Q W E R T Y U I O P Å ˆ
+          A S D F G H J K L Ö Ä *
+        &gt; Z X C V B N M ; : _
+      cmd+alt: |
+        € © ™ £ € § \u{0} | [ ] ≈ ± `
+          • , é \u{0} ŧ µ ü ı œ þ ˙ ˜
+          ¯ ß ð ƒ \u{0} ħ ˝ ª ł ø æ '
+        ≤ ÷ đ ¸ ‹ › ‘ ’ ‚ … –
+  deadKeys:
+    default: [´]
+    shift: ['`']
+    caps: [´]
+    alt: ['-', ., ¨, ¯, ¸, ƒ, ʼ, ˀ, ˆ, ˇ, ˘, ˙, ˚, ˛, ˜, ˝]
+    alt+shift: [ʔ, №]
+    alt+caps: ['-', ., ¨, ¯, ¸, ƒ, ʼ, ˀ, ˆ, ˇ, ˘, ˙, ˚, ˛, ˜, ˝]
+    cmd+alt: [',', ¯, ¸, ƒ, ˙, ˜, ˝]
 
+  space:
+    caps: '\u{A0}'
+    alt: '\u{A0}'
+    alt+shift: '\u{A0}'
+    alt+caps: '\u{A0}'
+    cmd+alt: '\u{A0}'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Keys in the format of <code>\u{}</code> are written in Unicode to avoid display issues. In
+particular, <code>\u{0}</code> is an absent key.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_android">Android</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Android layouts tend to be quite simple:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>    android:
+    config:
+        spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+        spellerPath: se.bhfst
+    primary:
+        layers:
+            default: |
+                á š e r t y u i o p ŋ
+                a s d f g h j k l đ ŧ
+                \s{shift} ž z č c v b n m \s{backspace}
+            shift: |
+                Á Š E R T Y U I O P Ŋ
+                A S D F G H J K L Đ Ŧ
+                \s{shift} Ž Z Č C V B N M \s{backspace}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A longpress section is also needed for alternative keys.</p>
+</div>
+<div class="paragraph">
+<p>The <code>config</code> section is used by Pahkat to ???.</p>
+</div>
+<div class="paragraph">
+<p>Just two layers are standard, <code>default</code> and <code>shift</code>. Each layer is split by line,
+typically to 3 lines of the keyboard. Special keys need to be preceeded by <code>\s</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>\s{shift}</code> - Shift</p>
+</li>
+<li>
+<p><code>\s{backspace}</code> - Delete</p>
+</li>
+<li>
+<p><code>\s{return}</code> - Enter</p>
+</li>
+</ul>
+</div>
 </div>
 </div>
 </div>

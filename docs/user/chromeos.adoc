@@ -1,11 +1,11 @@
-== Windows
+== Chrome OS
 
 === Layout Sample
 
 ```
-windows:
+chromeOS:
   config:
-    locale: se-Latn-FI
+    locale: fi
   primary:
     layers:
       default: |
@@ -43,34 +43,12 @@ windows:
         \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
         \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
         \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-  deadKeys:
-    default: [´]
-    shift: ['`']
-    caps: [´]
-    caps+shift: ['`']
-    alt: ['~', ¨]
-    alt+shift: [^, ˇ]
 ```
 
-Keys in the format of `\u{}` are written in Unicode to avoid display issues. In
-particular, `\u{0}` is an absent key. Note that KLC cannot support keys outside the
-Basic Multilingual Plane, even if Unicode supports them.
+The Chrome OS keyboard was modeled after the Windows one and so shares a lot of similarities.
+In the same vein, Keys in the format of `\u{}` are written in Unicode to avoid display issues.
 
 === Generation
 
-Generating a Windows keyboard layout in the current implementation of `kbdgen` mainly
-concerns the generation of .klc files, and then subsequent building of those files
-on a Windows system.
-
-KLC is Windows's format for keyboard layouts, meaning Keyboard
-Layout Creator, which is also the tool that can be used to view and modify
-.klc files. The tool can be downloaded from Microsoft:
-https://www.microsoft.com/en-us/download/details.aspx?id=102134
-
-Installing MSKLC requires enabling .NET Framework 3.5 in Windows Programs and Features.
-
-\.klc is a format that has specific requirements for how a keyboard is described and
-must be encoded as UTF-16, with Windows style CRLF, or the file will be perceived
-as invalid.
-
-For details on the .klc format, please see the developer documentation.
+Chrome OS generation mainly involves adding keyboard layout information to a
+JavaScript file.

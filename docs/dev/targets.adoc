@@ -7,3 +7,5 @@ include::chromeos.adoc[]
 include::macos.adoc[]
 
 include::ios.adoc[]
+
+include::android[]
