@@ -272,7 +272,8 @@ impl BuildStep for GenerateAndroid {
 
                         let key_map: Vec<String> = split_keys(line);
                         let current_keys_count = key_map.len();
-                        let special_keys_count = key_map.iter().filter(|x| x.starts_with("\\s")).count();
+                        let special_keys_count =
+                            key_map.iter().filter(|x| x.starts_with("\\s")).count();
 
                         for (key_index, key) in key_map.iter().enumerate() {
                             let longpress = match longpress {
@@ -287,7 +288,13 @@ impl BuildStep for GenerateAndroid {
                                     longpress,
                                 );
                             } else {
-                                new_elem = create_key_xml_element(&key, longpress, key_width, current_keys_count, special_keys_count);
+                                new_elem = create_key_xml_element(
+                                    &key,
+                                    longpress,
+                                    key_width,
+                                    current_keys_count,
+                                    special_keys_count,
+                                );
                             }
 
                             default_row_keys
@@ -364,7 +371,10 @@ impl BuildStep for GenerateAndroid {
                                     qname!("latin:keyboardLayout"),
                                     format!("@xml/{}", &file_name_attr),
                                 ),
-                                (qname!("latin:keyWidth"), format!("{tablet_600_key_width}%p")),
+                                (
+                                    qname!("latin:keyWidth"),
+                                    format!("{tablet_600_key_width}%p"),
+                                ),
                             ]
                             .into(),
                         },
@@ -879,7 +889,13 @@ fn create_numbered_key_xml_element(
     }
 }
 
-fn create_key_xml_element(key: &str, longpress: Option<&Vec<String>>, key_width: f64, keys_count: usize, special_keys_count: usize) -> NewElement {
+fn create_key_xml_element(
+    key: &str,
+    longpress: Option<&Vec<String>>,
+    key_width: f64,
+    keys_count: usize,
+    special_keys_count: usize,
+) -> NewElement {
     let mut attrs = IndexMap::new();
 
     if key == "\\s{shift}" {

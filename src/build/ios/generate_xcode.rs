@@ -1,12 +1,14 @@
 use std::{
     cmp::Ordering,
     collections::BTreeSet,
+    fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use async_trait::async_trait;
 use language_tags::LanguageTag;
+use rayon::prelude::*;
 
 use crate::{
     build::{ios::pbxproj::Pbxproj, ios::xcode_structures::*, BuildStep},
@@ -103,6 +105,64 @@ pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
         "",
     );
     return PathBuf::from_str(&path_string).unwrap();
+}
+
+pub fn generate_icons(bundle: &KbdgenBundle, path: &Path) {
+    let icon = bundle
+        .resources
+        .ios
+        .as_ref()
+        .unwrap()
+        .icons
+        .get(&LanguageTag::from_str("png").unwrap())
+        .expect("no icon found for ios");
+
+    let images_path = path.join("Images.xcassets");
+    let appiconset_path = images_path.join("AppIcon.appiconset");
+    let contents_path = appiconset_path.join("Contents.json");
+
+    let mut contents: AppIconSetContents = serde_json::from_str(
+        &fs::read_to_string(&contents_path).expect("could not read appicon file"),
+    )
+    .expect("could not parse appiconset contents");
+
+    contents.images.par_iter_mut().for_each(|content| {
+        tracing::debug!("Generating icon at scale {}", &content.scale);
+        let filename = format!(
+            "{}-{}@{}.png",
+            &content.idiom, &content.size, &content.scale
+        );
+
+        let size_axis: Vec<f32> = content
+            .size
+            .split("x")
+            .map(|x| serde_json::from_str::<f32>(x).unwrap())
+            .collect::<Vec<f32>>();
+        let axis_multiplier =
+            serde_json::from_str::<f32>(&content.scale.replace("x", "").to_string()).unwrap();
+        let new_axis = size_axis.first().unwrap() * axis_multiplier;
+        std::process::Command::new("convert")
+            .arg("-resize")
+            .arg(&format!("{new_axis}x{new_axis}"))
+            .args(&[
+                "-background",
+                "transparent",
+                "-gravity",
+                "center",
+                "-extent",
+            ])
+            .arg(&format!("{new_axis}x{new_axis}"))
+            .arg(icon)
+            .arg(appiconset_path.join(&filename))
+            .output()
+            .expect("convert failed to run");
+        content.filename = Some(filename);
+    });
+    fs::write(
+        contents_path,
+        serde_json::to_string_pretty(&contents).unwrap(),
+    )
+    .unwrap();
 }
 
 pub struct GenerateXcode;
@@ -278,6 +338,9 @@ impl BuildStep for GenerateXcode {
             pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
             pbxproj.update(HOSTING_APP, all_locales);
         }
+
+        // GENERATE ICONS
+        generate_icons(&bundle, &hosting_app_path);
 
         std::fs::write(pbxproj_path.clone(), pbxproj.to_pbxproj_string()).unwrap();
     }

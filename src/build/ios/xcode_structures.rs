@@ -156,3 +156,17 @@ pub struct HostingPlist {
     #[serde(rename = "UIUserInterfaceStyle")]
     pub ui_user_interface_style: String,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct IconDefinition {
+    pub idiom: String,
+    pub size: String,
+    pub scale: String,
+    pub filename: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AppIconSetContents {
+    pub images: Vec<IconDefinition>,
+    pub info: serde_json::Value,
+}

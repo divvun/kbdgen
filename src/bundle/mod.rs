@@ -215,6 +215,9 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
             "android" => {
                 resources.android = resources::Android::load(&path).ok();
             }
+            "ios" => {
+                resources.ios = resources::IOS::load(&path).ok();
+            }
             name => {
                 tracing::warn!("Saw resource folder with name {name} but did not parse");
                 continue;
