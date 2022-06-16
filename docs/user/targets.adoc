@@ -1,3 +1,4 @@
 = Target Specific information
 
 include::windows.adoc[]
+include::android.adoc[]
