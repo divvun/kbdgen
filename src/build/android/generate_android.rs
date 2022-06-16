@@ -583,7 +583,8 @@ fn generate_gradle_local(target: &target::Android, app_path: &Path) {
     playEmail: "{play_email}",
     playCredentials: "{play_creds}"
 ]"#
-    ).replace("$", "\\$");
+    )
+    .replace("$", "\\$");
 
     std::fs::write(app_path.join("gradle.local"), text).expect("Failed to write gradle.local file");
 }

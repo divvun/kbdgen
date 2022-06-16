@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     build::{ios::pbxproj::Pbxproj, BuildStep},
-    bundle::{KbdgenBundle, layout},
+    bundle::KbdgenBundle,
 };
 
 const REPOSITORY: &str = "repo";
@@ -222,7 +222,11 @@ pub fn generate_keyboard_plist(
     plist::to_file_xml(output_path, &keyboard_plist).unwrap();
 }
 
-pub fn generate_hosting_plist(in_out_path: PathBuf, display_name: String, value: IosKeyboardSettings) {
+pub fn generate_hosting_plist(
+    in_out_path: PathBuf,
+    display_name: String,
+    value: IosKeyboardSettings,
+) {
     let mut hosting_app_plist: HostingPlist =
         plist::from_file(in_out_path.clone()).expect("valid stuff");
 
@@ -331,18 +335,6 @@ impl BuildStep for GenerateXcode {
                     }
 
                     // KEYBOARD PLIST
-                    // let keyboard_folder_name = replace_all_occurances(
-                    //     bundle
-                    //         .project
-                    //         .locales
-                    //         .get("en")
-                    //         .unwrap()
-                    //         .name
-                    //         .to_lowercase(),
-                    //     ' ',
-                    //     '-',
-                    // );
-
                     let default_display_name = layout
                         .display_names
                         .get(&default_language_tag)
@@ -353,8 +345,6 @@ impl BuildStep for GenerateXcode {
                         .replace(" ", "-")
                         .replace("(", "")
                         .replace(")", "");
-
-                    println!("LAYOUT: {}", layout_folder_name);
 
                     let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
                     let current_layout_path = keyboard_path.join(layout_folder_name.clone());
@@ -389,7 +379,7 @@ impl BuildStep for GenerateXcode {
                         "PRODUCT_BUNDLE_IDENTIFIER",
                         &format!("{}.{layout_folder_name}", &target.package_id),
                     );
-                    println!("{}.{layout_folder_name}", &target.package_id);
+
                     pbxproj.set_target_build_configuration(
                         &layout_folder_name,
                         "DEVELOPMENT_TEAM",
@@ -401,7 +391,11 @@ impl BuildStep for GenerateXcode {
 
             // HOSTING APP PLIST
             let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
-            generate_hosting_plist(hosting_app_plist_path, target.bundle_name.clone(), ios_keyboard_settings);
+            generate_hosting_plist(
+                hosting_app_plist_path,
+                target.bundle_name.clone(),
+                ios_keyboard_settings,
+            );
 
             // NEW ENTITLEMENTS
             let new_entitlements = format!("{}.{}", "group", target.package_id);
