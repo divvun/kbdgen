@@ -15,6 +15,7 @@ pub mod clone_giellakbd;
 pub mod generate_ios;
 pub mod generate_xcode;
 pub mod pbxproj;
+pub mod xcode_structures;
 pub mod pod_install;
 pub mod serialize_pbxproj;
 
