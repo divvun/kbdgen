@@ -759,14 +759,15 @@ Additionally, it also requires the <code>symbols</code> layers.</p>
 <p>The <code>config</code> section is used by Pahkat to ???.</p>
 </div>
 <div class="paragraph">
-<p>Just two layers are standard, <code>default</code> and <code>shift</code>. Each layer is split by line,
+<p>iOS supports some standard keyboard layers in addition to <code>symbols-1</code> and <code>symbols-2</code>. Each layer is split by line,
 typically to 3 lines of the keyboard. Special keys need to be preceeded by <code>\s</code>,
-with a number after <code>:</code> representing the desired width of the key:</p>
+with a number after <code>:</code> representing the desired width of the key (keywidth is 1
+ by default, centered):</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>\s{spacer:0.5}</code> - not a key, just a spacer (Brendan?)</p>
+<p><code>\s{spacer:0.5}</code> - not a key, just a spacer</p>
 </li>
 <li>
 <p><code>\s{shift}</code> - Shift (no width for you, Brendan)</p>
@@ -778,10 +779,10 @@ with a number after <code>:</code> representing the desired width of the key:</p
 <p><code>\s{return:2}</code> - Enter</p>
 </li>
 <li>
-<p><code>\s{"@":0.75}</code> - send help Brendan</p>
+<p><code>\s{"@":0.75}</code> - a given key, but with a custom width</p>
 </li>
 <li>
-<p><code>\s{shiftSymbols}</code> - Brendan</p>
+<p><code>\s{shiftSymbols}</code> - Jacob</p>
 </li>
 </ul>
 </div>

@@ -65,7 +65,8 @@ The `config` section is used by Pahkat to ???.
 
 iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. Each layer is split by line,
 typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`,
-with a number after `:` representing the desired width of the key:
+with a number after `:` representing the desired width of the key (keywidth is 1
+ by default, centered):
 
 * `\s{spacer:0.5}` - not a key, just a spacer
 * `\s{shift}` - Shift (no width for you, Brendan)
