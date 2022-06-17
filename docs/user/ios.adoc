@@ -59,13 +59,25 @@ iOS:
       ...
 ```
 
-A longpress section is also needed for alternative keys.
+A longpress section like this is also needed for alternative keys but isn't specifically exclusive to iOS but rather defined independently in the layout file and shared between Android and iOS
+```
+  longpress:
+    A: Å Æ Ä   À Â Ã Ā Ạ
+    Á: Q
+    E: Ë É È Ê Ẽ Ē Ẹ Ė Ǝ
+    I: Ï Í Ì Î Ĩ Ī Ị I
+    ...
+```
 
-The `config` section is used by Pahkat to ???.
+The `config` section is use by Pahkat for spellchecking, the two fields, `spellerPackageKey` defines the url for the spellchecking of the layout we want to generate and `spellerPath` defines ???.
 
-iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. Each layer is split by line,
-typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`,
-with a number after `:` representing the desired width of the key (keywidth is 1
+iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. 
+
+Each layer is split by line,
+typically to 3 lines of the keyboard. 
+
+Special keys need to be preceeded by `\s`,
+and is sometimes followed by a number after `:` representing the desired width of the key (keywidth is 1
  by default, centered):
 
 * `\s{spacer:0.5}` - not a key, just a spacer
