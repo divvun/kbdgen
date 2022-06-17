@@ -68,6 +68,8 @@ fn list_to_pbxproj_string<T: AsRef<str>>(item_iter: impl Iterator<Item = T>) -> 
 
 impl Pbxproj {
     pub fn to_pbxproj_string(&self) -> String {
+        tracing::debug!("Started serializing pbxproj from json back to original format");
+
         let mut s = String::from("// !$*UTF8*$!\n{\n");
 
         s.push_str(&format!("\tarchiveVersion = {};\n", &self.archive_version));
@@ -618,6 +620,9 @@ impl Pbxproj {
         s.push_str("\t};\n");
         s.push_str(&format!("\trootObject = {};\n", self.root_object));
         s.push_str("}\n");
+
+        tracing::debug!("Finished serializing pbxproj");
+
         return s;
     }
 }

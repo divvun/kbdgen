@@ -166,6 +166,8 @@ impl BuildStep for GenerateIos {
             let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
 
             if let Some(ios_target) = &layout.i_os {
+                tracing::debug!("Generating json for {}", &language_tag);
+
                 if let Some(layout_longpress) = &layout.longpress {
                     for (key, value) in layout_longpress {
                         longpress.insert(key.clone(), value.clone());

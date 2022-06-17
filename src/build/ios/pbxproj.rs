@@ -258,6 +258,7 @@ impl Pbxproj {
     }
 
     pub fn add_target(&mut self, object_id: &ObjectId) {
+        tracing::debug!("Adding target with ref: {}", &object_id);
         self.project_mut()
             .unwrap()
             .targets
@@ -494,6 +495,13 @@ impl Pbxproj {
     ) -> ObjectId {
         let object_id = ObjectId::new_random();
 
+        tracing::debug!(
+            "Adding filereference {} for {} with ref: {}",
+            &file_name,
+            &locale_name,
+            &object_id
+        );
+
         self.objects.insert(
             object_id.clone(),
             Object::FileReference(FileReference {
@@ -518,6 +526,8 @@ impl Pbxproj {
     ) -> ObjectId {
         let object_id = ObjectId::new_random();
 
+        tracing::debug!("Adding variant group with ref: {}", &object_id);
+
         let variant_group = VariantGroup {
             children: children,
             source_tree: "<group>".to_string(),
@@ -533,6 +543,8 @@ impl Pbxproj {
 
     pub fn create_build_file(&mut self, file_ref: &ObjectId) -> ObjectId {
         let object_id = ObjectId::new_random();
+
+        tracing::debug!("Adding build file with ref: {}", &object_id);
 
         let variant_group = BuildFile {
             file_ref: file_ref.clone(),
@@ -843,6 +855,8 @@ impl Pbxproj {
     }
 
     pub fn update(&mut self, target_name: &str, locale_list: BTreeSet<String>) {
+        tracing::debug!("Updating target {} with new locales", &target_name);
+
         let known_regions = self.known_regions_mut().unwrap();
         known_regions.extend(locale_list.clone());
 
@@ -938,6 +952,8 @@ pub enum Object {
 }
 
 pub fn convert_pbxproj_to_json(path: &Path) -> Pbxproj {
+    tracing::debug!("Getting .pbxproj as json");
+
     let tempdir = tempfile::tempdir().unwrap();
     let pbxproj_path = tempdir.path().join("tmp.pbxproj");
     std::fs::copy(path, &pbxproj_path).unwrap();

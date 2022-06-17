@@ -51,6 +51,8 @@ pub fn generate_keyboard_plist(
     primary_language: String,
     output_path: PathBuf,
 ) {
+    tracing::debug!("Generating keyboard plist for {}", &display_name);
+
     let mut keyboard_plist: KeyboardInfoPlist =
         plist::from_file(template_path.clone()).expect("valid stuff");
 
@@ -72,6 +74,8 @@ pub fn generate_hosting_plist(
     display_name: String,
     value: IosKeyboardSettings,
 ) {
+    tracing::debug!("Generating hosting plist for {}", &display_name);
+
     let mut hosting_app_plist: HostingPlist =
         plist::from_file(in_out_path.clone()).expect("valid stuff");
 
@@ -85,6 +89,8 @@ pub fn generate_hosting_plist(
 }
 
 pub fn update_entitlements(entitlements_path: PathBuf, new_entitlements: Vec<String>) {
+    tracing::debug!("Updating entitlements in {:?}", &entitlements_path);
+
     let mut keyboard_entitlements: EntitlementsDict =
         plist::from_file(entitlements_path.clone()).expect("valid stuff");
     keyboard_entitlements.com_apple_security_application_groups = new_entitlements;
@@ -211,6 +217,9 @@ impl BuildStep for GenerateXcode {
                         } else {
                             locale_name
                         };
+
+                        tracing::debug!("Generating locale {} for {}", &locale_name, &language_tag);
+
                         let locale_path = hosting_app_path.join(&format!("{}.lproj", locale_name));
                         let info_path = locale_path.join(HOSTING_INFO_STRINGS);
 
@@ -342,6 +351,7 @@ impl BuildStep for GenerateXcode {
         // GENERATE ICONS
         generate_icons(&bundle, &hosting_app_path);
 
+        tracing::debug!("Write to the .pbxproj");
         std::fs::write(pbxproj_path.clone(), pbxproj.to_pbxproj_string()).unwrap();
     }
 }
