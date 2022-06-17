@@ -73,4 +73,4 @@ with a number after `:` representing the desired width of the key (keywidth is 1
 * `\s{backspace:1.25}` - Delete
 * `\s{return:2}` - Enter
 * `\s{"@":0.75}` - a given key, but with a custom width
-* `\s{shiftSymbols}` - Jacob
+* `\s{shiftSymbols}` - switch between symbols-1 and symbols-2 layers
