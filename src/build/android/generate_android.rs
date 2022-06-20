@@ -206,6 +206,8 @@ impl BuildStep for GenerateAndroid {
 
                 let layers = &android_target.primary.layers;
 
+                // call func on layers here
+
                 // Rows
 
                 let mut rows_document =
@@ -550,6 +552,10 @@ impl BuildStep for GenerateAndroid {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
     }
+}
+
+fn generate_rows() {
+    
 }
 
 fn escape_quotes(input: Option<&str>) -> Option<String> {
