@@ -6,6 +6,8 @@ This is a developer oriented Readme.
 
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android build`
 
+`cargo run -- target -b ~/Projects/divvun-keyboard/divvun.kbdgen -o ~/KbdgenBuilds/android_blep android build`
+
 `cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android generate`
 
 
