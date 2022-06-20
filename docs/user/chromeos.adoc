@@ -1,5 +1,5 @@
-== Chrome OS
-Chrome OS generation mainly involves adding keyboard layout information to a
+== ChromeOS
+ChromeOS generation mainly involves adding keyboard layout information to a
 JavaScript file.
 
 === Target configuration
@@ -18,7 +18,7 @@ The fields define what follows:
 * `build` - current app build
 
 === Keyboard layouts
-The Chrome OS keyboard was modeled after the Windows one and so shares a lot of similarities.
+The ChromeOS keyboard was modeled after the Windows one and so shares a lot of similarities.
 
 ```
 chromeOS:

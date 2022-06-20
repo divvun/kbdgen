@@ -1,6 +1,9 @@
 == MacOS
 
-=== Layout Sample
+=== Target configuration
+A MacOS target file does not have to be specified. ??
+
+=== Keyboard layouts
 
 ```
 macOS:
@@ -73,5 +76,7 @@ macOS:
     cmd+alt: '\u{A0}'
 ```
 
-Keys in the format of `\u{}` are written in Unicode to avoid display issues. In
+==== Layers
+Each layer is split by line,
+typically to 3 lines of the keyboard. Keys in the format of `\u{}` are written in Unicode to avoid display issues. In
 particular, `\u{0}` is an absent key.
