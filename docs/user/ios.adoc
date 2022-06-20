@@ -69,7 +69,7 @@ A longpress section like this is also needed for alternative keys but isn't spec
     ...
 ```
 
-The `config` section is use by Pahkat for spellchecking, the two fields, `spellerPackageKey` defines the url for the spellchecking of the layout we want to generate and `spellerPath` defines ???.
+The `config` section is used by Pahkat for spellchecking, the two fields, `spellerPackageKey` defines the url for the spellchecking files of the layout we want to generate and `spellerPath` defines which spellchecker file to use.
 
 iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. 
 
