@@ -59,6 +59,7 @@ iOS:
       ...
 ```
 
+=== Longpress
 A longpress section like this is also needed for alternative keys but isn't specifically exclusive to iOS but rather defined independently in the layout file and shared between Android and iOS
 ```
   longpress:
@@ -69,8 +70,24 @@ A longpress section like this is also needed for alternative keys but isn't spec
     ...
 ```
 
-The `config` section is used by Pahkat for spellchecking, the two fields, `spellerPackageKey` defines the url for the spellchecking files of the layout we want to generate and `spellerPath` defines which spellchecker file to use.
+=== Config
+The `config` section is used by Pahkat for spellchecking, the fields:
 
+* `spellerPackageKey` - defines the url for the spellchecking files of the layout we want to generate
+* `spellerPath` - defines which spellchecker file to use.
+* `space` - name of space key
+* `r#return` - name of return key
+
+=== Platforms
+Three platforms are supported, all of which have to be defined, `primary`, `iPad-9in`, `iPad-12in`.
+```
+iPad-9in:
+    layers:
+      default: |
+        ...
+```
+
+=== Layers
 iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. 
 
 Each layer is split by line,
@@ -81,7 +98,7 @@ and is sometimes followed by a number after `:` representing the desired width o
  by default, centered):
 
 * `\s{spacer:0.5}` - not a key, just a spacer
-* `\s{shift}` - Shift (no width for you, Brendan)
+* `\s{shift}` - Shift
 * `\s{backspace:1.25}` - Delete
 * `\s{return:2}` - Enter
 * `\s{"@":0.75}` - a given key, but with a custom width
