@@ -1,5 +1,32 @@
 == iOS
 
+=== Target configuration
+A file for the desired target has to be specified, and in this case for iOS, it could look like this:
+```
+codeSignId: "Apple Distribution: The University of Tromso (2K5J2584NX)"
+teamId: 2K5J2584NX
+packageId: no.uit.giella.keyboards.Sami
+bundleName: Divvun Keyboards
+sentryDsn: https://94b33a64dc8e4471a7c8cb2f40ce37dc@sentry.io/1227106
+aboutDir: ../aboutFiles
+version: 3.2.1
+build: 278
+
+```
+
+The fields define what follows:
+
+* `codeSignId` - the id for codesigning
+* `teamId` - team id
+* `packageId` - package id
+* `bundleName` - name of the bundle
+* `sentryDsn` - url to sentry
+* `aboutDir` - a path to files each containing a localized description about the app
+* `version` - current app version
+* `build` - current app build
+
+
+=== Keyboard layouts
 iOS is one of the few keyboard layouts that handle more than one platform.
 Additionally, it also requires the `symbols` layers.
 
@@ -59,7 +86,7 @@ iOS:
       ...
 ```
 
-=== Longpress
+==== Longpress
 A longpress section like this is also needed for alternative keys but isn't specifically exclusive to iOS but rather defined independently in the layout file and shared between Android and iOS
 ```
   longpress:
@@ -70,7 +97,7 @@ A longpress section like this is also needed for alternative keys but isn't spec
     ...
 ```
 
-=== Config
+==== Config
 The `config` section is used by Pahkat for spellchecking, the fields:
 
 * `spellerPackageKey` - defines the url for the spellchecking files of the layout we want to generate
@@ -78,7 +105,7 @@ The `config` section is used by Pahkat for spellchecking, the fields:
 * `space` - name of space key
 * `r#return` - name of return key
 
-=== Platforms
+==== Platforms
 Three platforms are supported, all of which have to be defined, `primary`, `iPad-9in`, `iPad-12in`.
 ```
 iPad-9in:
@@ -87,7 +114,7 @@ iPad-9in:
         ...
 ```
 
-=== Layers
+==== Layers
 iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. 
 
 Each layer is split by line,
