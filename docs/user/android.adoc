@@ -1,5 +1,31 @@
 == Android
 
+=== Target configuration
+A file for the desired target has to be specified, and in this case for Android, it could look like this:
+```
+packageId: no.uit.giella.keyboards.Sami
+keyAlias: sami_keyboard
+sentryDsn: https://8f857d788e764bd2a13aaafdf0018c92@sentry.io/1341912
+version: 3.2.0
+build: 113
+
+```
+
+The fields define what follows:
+
+* `packageId` - the id of the package
+* `keyAlias` - name
+* `sentryDsn` - url to sentry
+* `version` - current app version
+* `build` - current app build
+* `key_store` - store ??
+* `key_alias` - alias ??
+* `play_store_account` - play store email ??
+* `play_store_p12` - play store ??
+* `store_password` - password ??
+* `key_password` - password ??
+
+=== Keyboard layouts
 Android layouts tend to be quite simple:
 
 ```
@@ -19,10 +45,24 @@ Android layouts tend to be quite simple:
                 \s{shift} Ž Z Č C V B N M \s{backspace}
 ```
 
-A longpress section is also needed for alternative keys.
+==== Longpress
+A longpress section like this is also needed for alternative keys but isn't specifically exclusive to Android but rather defined independently in the layout file and shared between Android and iOS
+```
+  longpress:
+    A: Å Æ Ä   À Â Ã Ā Ạ
+    Á: Q
+    E: Ë É È Ê Ẽ Ē Ẹ Ė Ǝ
+    I: Ï Í Ì Î Ĩ Ī Ị I
+    ...
+```
 
-The `config` section is used by Pahkat to ???.
+==== Config
+The `config` section is used by Pahkat for spellchecking, the fields:
 
+* `spellerPackageKey` - defines the url for the spellchecking files of the layout we want to generate
+* `spellerPath` - defines which spellchecker file to use.
+
+==== Layers
 Just two layers are standard, `default` and `shift`. Each layer is split by line,
 typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`:
 
