@@ -121,11 +121,13 @@ pub struct IOsPlatform {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AndroidTarget {
     pub config: Option<AndroidConfig>,
-    pub primary: AndroidPrimaryPlatform,
+    pub primary: AndroidPlatform,
+    #[serde(rename = "tablet-600")]
+    pub tablet_600: AndroidPlatform,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AndroidPrimaryPlatform {
+pub struct AndroidPlatform {
     pub layers: IndexMap<AndroidKbdLayer, String>,
 }
 

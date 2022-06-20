@@ -204,204 +204,25 @@ impl BuildStep for GenerateAndroid {
                     .replace("(", "")
                     .replace(")", "");
 
-                let layers = &android_target.primary.layers;
+                let primary_layers = &android_target.primary.layers;
+                let tablet_600_layers = &android_target.tablet_600.layers;
 
-                // call func on layers here
-
-                // Rows
-
-                let mut rows_document =
-                    Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
-
-                let mut tablet_600_rows_document =
-                    Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
-
-                let include_selector = Selector::new("include").expect("this selector is fine");
-
-                let rows_include = rows_document
-                    .root()
-                    .query_selector(&mut rows_document, &include_selector)
-                    .expect("there should be an include");
-
-                let tablet_600_rows_include = tablet_600_rows_document
-                    .root()
-                    .query_selector(&mut tablet_600_rows_document, &include_selector)
-                    .expect("there should be an include");
-
-                // Rowkeys
-
-                let rowkeys_document =
-                    Document::from_str(ROWKEYS_TEMPLATE).expect("invalid rowkeys template");
-
-                let mut rowkeys_docs_map = IndexMap::new();
-
-                let default_layer = layers.get(&AndroidKbdLayer::Default).unwrap();
-                let longest_row_count = default_layer
-                    .split("\n")
-                    .map(|line| split_keys(line).len())
-                    .max()
-                    .unwrap();
-
-                let key_width = 100.0f64 / longest_row_count as f64;
-                let tablet_600_key_width = 90.0f64 / longest_row_count as f64;
-
-                for (layer_key, layer) in layers {
-                    let selector_string;
-
-                    match layer_key {
-                        AndroidKbdLayer::Default => {
-                            selector_string = DEFAULT_ROWKEYS_TAG;
-                        }
-                        AndroidKbdLayer::Shift => {
-                            selector_string = SHIFT_ROWKEYS_TAG;
-                        }
-                    };
-
-                    for (line_index, line) in layer.lines().enumerate() {
-                        let mut new_rowkeys_document = rowkeys_docs_map
-                            .entry(line_index)
-                            .or_insert(rowkeys_document.clone());
-                        let new_rowkeys_root = new_rowkeys_document.root();
-
-                        let inner_selector = Selector::new(selector_string).unwrap();
-
-                        let default_row_keys = new_rowkeys_root
-                            .query_selector(&new_rowkeys_document, &inner_selector)
-                            .expect(&format!(
-                                "The template document should the inner {} tag",
-                                selector_string
-                            ));
-
-                        let key_map: Vec<String> = split_keys(line);
-                        let current_keys_count = key_map.len();
-                        let special_keys_count =
-                            key_map.iter().filter(|x| x.starts_with("\\s")).count();
-
-                        for (key_index, key) in key_map.iter().enumerate() {
-                            let longpress = match longpress {
-                                Some(longpress) => longpress.get(key),
-                                None => None,
-                            };
-                            let new_elem;
-                            if line_index == 0 {
-                                new_elem = create_numbered_key_xml_element(
-                                    &key,
-                                    compute_key_hint_label_index(key_index),
-                                    longpress,
-                                );
-                            } else {
-                                new_elem = create_key_xml_element(
-                                    &key,
-                                    longpress,
-                                    key_width,
-                                    current_keys_count,
-                                    special_keys_count,
-                                );
-                            }
-
-                            default_row_keys
-                                .append_new_element(&mut new_rowkeys_document, new_elem);
-                        }
-                    }
-                }
-
-                let mut row_append = rows_include;
-                let mut tablet_600_row_append = tablet_600_rows_include;
-
-                for (line_index, rowkey_doc) in rowkeys_docs_map {
-                    std::fs::write(
-                        main_xml_path.join(format!(
-                            "rowkeys_{}{}.xml",
-                            default_display_name
-                                .to_lowercase()
-                                .replace(" ", "_")
-                                .replace("(", "")
-                                .replace(")", ""),
-                            line_index + 1
-                        )),
-                        rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-                    )
-                    .unwrap();
-
-                    // Yes, row and short_row (sw600dp) are slightly different because mobile phones
-
-                    // Main Row
-
-                    let file_name_attr =
-                        format!("rowkeys_{}{}", snake_case_display_name, line_index + 1);
-                    let file_name = format!("{}.xml", file_name_attr);
-
-                    row_append = row_append.append_new_element_after(
-                        &mut rows_document,
-                        NewElement {
-                            name: qname!("Row"),
-                            attrs: [].into(),
-                        },
-                    );
-
-                    row_append.append_new_element(
-                        &mut rows_document,
-                        NewElement {
-                            name: qname!("include"),
-                            attrs: [
-                                (
-                                    qname!("latin:keyboardLayout"),
-                                    format!("@xml/{}", &file_name_attr),
-                                ),
-                                (qname!("latin:keyWidth"), format!("{key_width}%p")),
-                            ]
-                            .into(),
-                        },
-                    );
-
-                    // Short Row
-
-                    tablet_600_row_append = tablet_600_row_append.append_new_element_after(
-                        &mut tablet_600_rows_document,
-                        NewElement {
-                            name: qname!("Row"),
-                            attrs: [].into(),
-                        },
-                    );
-
-                    tablet_600_row_append.append_new_element(
-                        &mut tablet_600_rows_document,
-                        NewElement {
-                            name: qname!("include"),
-                            attrs: [
-                                (
-                                    qname!("latin:keyboardLayout"),
-                                    format!("@xml/{}", &file_name_attr),
-                                ),
-                                (
-                                    qname!("latin:keyWidth"),
-                                    format!("{tablet_600_key_width}%p"),
-                                ),
-                            ]
-                            .into(),
-                        },
-                    );
-
-                    std::fs::write(
-                        tablet_600_xml_path.join(file_name),
-                        rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-                    )
-                    .unwrap();
-                }
-
-                let rows_file_name = format!("rows_{}.xml", snake_case_display_name);
-
-                std::fs::write(
-                    main_xml_path.join(&rows_file_name),
-                    rows_document.to_string_pretty_with_config(&PRETTY_CONFIG),
-                )
-                .unwrap();
-
-                std::fs::write(
-                    tablet_600_xml_path.join(rows_file_name),
-                    tablet_600_rows_document.to_string_pretty_with_config(&PRETTY_CONFIG),
-                )
-                .unwrap();
+                create_and_write_rows_keys_for_layer(
+                    false,
+                    primary_layers,
+                    longpress.as_ref(),
+                    &default_display_name,
+                    &snake_case_display_name,
+                    &main_xml_path,
+                );
+                create_and_write_rows_keys_for_layer(
+                    true,
+                    tablet_600_layers,
+                    longpress.as_ref(),
+                    &default_display_name,
+                    &snake_case_display_name,
+                    &tablet_600_xml_path,
+                );
 
                 create_and_write_kbd(&main_xml_path, &snake_case_display_name);
                 create_and_write_layout_set(&main_xml_path, &snake_case_display_name);
@@ -554,8 +375,141 @@ impl BuildStep for GenerateAndroid {
     }
 }
 
-fn generate_rows() {
-    
+fn create_and_write_rows_keys_for_layer(
+    tablet_600: bool,
+    layers: &IndexMap<AndroidKbdLayer, String>,
+    longpress: Option<&IndexMap<String, Vec<String>>>,
+    default_display_name: &str,
+    snake_case_display_name: &str,
+    xml_path: &Path,
+) {
+    let mut rows_document = Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
+
+    let include_selector = Selector::new("include").expect("this selector is fine");
+
+    let rows_include = rows_document
+        .root()
+        .query_selector(&mut rows_document, &include_selector)
+        .expect("there should be an include");
+
+    let rowkeys_document = Document::from_str(ROWKEYS_TEMPLATE).expect("invalid rowkeys template");
+
+    let mut rowkeys_docs_map = IndexMap::new();
+
+    let default_layer = layers.get(&AndroidKbdLayer::Default).unwrap();
+    let longest_row_count = default_layer
+        .split("\n")
+        .map(|line| split_keys(line).len())
+        .max()
+        .unwrap();
+
+    let key_width = if tablet_600 {
+        100.0f64 / longest_row_count as f64
+    } else {
+        90.0f64 / longest_row_count as f64
+    };
+
+    for (layer_key, layer) in layers {
+        let selector_string;
+
+        match layer_key {
+            AndroidKbdLayer::Default => {
+                selector_string = DEFAULT_ROWKEYS_TAG;
+            }
+            AndroidKbdLayer::Shift => {
+                selector_string = SHIFT_ROWKEYS_TAG;
+            }
+        };
+
+        for (line_index, line) in layer.lines().enumerate() {
+            let mut new_rowkeys_document = rowkeys_docs_map
+                .entry(line_index)
+                .or_insert(rowkeys_document.clone());
+            let new_rowkeys_root = new_rowkeys_document.root();
+
+            let inner_selector = Selector::new(selector_string).unwrap();
+
+            let default_row_keys = new_rowkeys_root
+                .query_selector(&new_rowkeys_document, &inner_selector)
+                .expect(&format!(
+                    "The template document should the inner {} tag",
+                    selector_string
+                ));
+
+            let key_map: Vec<String> = split_keys(line);
+            let current_keys_count = key_map.len();
+            let special_keys_count = key_map.iter().filter(|x| x.starts_with("\\s")).count();
+
+            for (key_index, key) in key_map.iter().enumerate() {
+                let longpress = match longpress {
+                    Some(longpress) => longpress.get(key),
+                    None => None,
+                };
+                let new_elem;
+                if line_index == 0 {
+                    new_elem = create_numbered_key_xml_element(
+                        &key,
+                        compute_key_hint_label_index(key_index),
+                        longpress,
+                    );
+                } else {
+                    new_elem = create_key_xml_element(
+                        &key,
+                        longpress,
+                        key_width,
+                        current_keys_count,
+                        special_keys_count,
+                    );
+                }
+
+                default_row_keys.append_new_element(&mut new_rowkeys_document, new_elem);
+            }
+        }
+    }
+
+    let mut row_append = rows_include;
+
+    for (line_index, rowkey_doc) in rowkeys_docs_map {
+        let file_name_attr = format!("rowkeys_{}{}", snake_case_display_name, line_index + 1);
+        let file_name = format!("{}.xml", file_name_attr);
+
+        row_append = row_append.append_new_element_after(
+            &mut rows_document,
+            NewElement {
+                name: qname!("Row"),
+                attrs: [].into(),
+            },
+        );
+
+        row_append.append_new_element(
+            &mut rows_document,
+            NewElement {
+                name: qname!("include"),
+                attrs: [
+                    (
+                        qname!("latin:keyboardLayout"),
+                        format!("@xml/{}", &file_name_attr),
+                    ),
+                    (qname!("latin:keyWidth"), format!("{key_width}%p")),
+                ]
+                .into(),
+            },
+        );
+
+        std::fs::write(
+            xml_path.join(file_name),
+            rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
+        )
+        .unwrap();
+    }
+
+    let rows_file_name = format!("rows_{}.xml", snake_case_display_name);
+
+    std::fs::write(
+        xml_path.join(&rows_file_name),
+        rows_document.to_string_pretty_with_config(&PRETTY_CONFIG),
+    )
+    .unwrap();
 }
 
 fn escape_quotes(input: Option<&str>) -> Option<String> {
