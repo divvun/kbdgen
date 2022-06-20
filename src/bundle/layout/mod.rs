@@ -209,8 +209,6 @@ pub struct ChromeConfig {
 pub struct IOsConfig {
     pub speller_package_key: Option<String>,
     pub speller_path: Option<String>,
-    pub space: Option<String>,
-    pub r#return: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
