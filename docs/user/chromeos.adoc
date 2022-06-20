@@ -1,6 +1,24 @@
 == Chrome OS
+Chrome OS generation mainly involves adding keyboard layout information to a
+JavaScript file.
 
-=== Layout Sample
+=== Target configuration
+A file for the desired target has to be specified, and in this case for ChromeOS, it could look like this:
+```
+appId: dnihbfekindancgddjehgonciaopmkbe
+build: 11
+version: 1.0.0
+
+```
+
+The fields define what follows:
+
+* `appId` - the id of the app
+* `version` - current app version
+* `build` - current app build
+
+=== Keyboard layouts
+The Chrome OS keyboard was modeled after the Windows one and so shares a lot of similarities.
 
 ```
 chromeOS:
@@ -45,10 +63,12 @@ chromeOS:
         \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
 ```
 
-The Chrome OS keyboard was modeled after the Windows one and so shares a lot of similarities.
-In the same vein, Keys in the format of `\u{}` are written in Unicode to avoid display issues.
+==== Config
+The `config` section is used by Pahkat for spellchecking, the fields:
 
-=== Generation
+* `locale` - defines the language locale
+* `xkbLayout` - defines the layout ??
 
-Chrome OS generation mainly involves adding keyboard layout information to a
-JavaScript file.
+==== Layers
+Each layer is split by line,
+typically to 3 lines of the keyboard. Keys in the format of `\u{}` are written in Unicode to avoid display issues.
