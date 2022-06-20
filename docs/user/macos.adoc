@@ -80,3 +80,9 @@ macOS:
 Each layer is split by line,
 typically to 3 lines of the keyboard. Keys in the format of `\u{}` are written in Unicode to avoid display issues. In
 particular, `\u{0}` is an absent key.
+
+==== Dead keys
+Dead keys
+
+==== Space
+Space
