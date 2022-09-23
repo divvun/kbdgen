@@ -1,0 +1,6 @@
+== `kbdgen` documentation
+
+The documentation is split in two parts:
+
+* <<user/kbdgen.adoc#user documentation>>
+* <<dev/kbdgen.adoc#developer documentation>>
