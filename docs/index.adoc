@@ -2,5 +2,5 @@
 
 The documentation is split in two parts:
 
-* <<user/kbdgen.adoc#user documentation>>
-* <<dev/kbdgen.adoc#developer documentation>>
+* link:user/kbdgen.html[User documentation]
+* link:dev/kbdgen.html[Developer documentation]
