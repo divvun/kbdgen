@@ -1,5 +1,7 @@
 # kbdgen
 
+[Documentation](https://divvun.github.io/kbdgen/).
+
 ## License
 
 This project is licensed under either of
