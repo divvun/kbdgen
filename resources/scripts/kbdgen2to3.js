@@ -59,6 +59,13 @@ if (modes.android != null) {
         newDoc.android.primary.layers.default = defaultLayer.map(x => x.join(" ")).join("\n")
         newDoc.android.primary.layers.shift = shiftLayer.map(x => x.join(" ")).join("\n")
     }
+
+    if (deadKeys != null && deadKeys.android != null) {
+        newDoc.android.deadKeys = Object.entries(fixLayer(deadKeys.android)).reduce((acc, [k, v]) => {
+            acc[k] = `["${v.join("\", \"")}"]`
+            return acc
+        }, {})
+    }
 }
 
 if (modes.ios != null) {
@@ -84,6 +91,13 @@ if (modes.ios != null) {
     newDoc.iOS.primary.layers.shift = shiftLayer
     newDoc.iOS.primary.layers["symbols-1"] = symbols1Layer
     newDoc.iOS.primary.layers["symbols-2"] = symbols2Layer
+
+    if (deadKeys != null && deadKeys.ios != null) {
+        newDoc.iOS.deadKeys = Object.entries(fixLayer(deadKeys.ios)).reduce((acc, [k, v]) => {
+            acc[k] = `["${v.join("\", \"")}"]`
+            return acc
+        }, {})
+    }
 
     if (targets.ios != null && targets.ios.spellerPackageKey != null) {
         newDoc.iOS.config.spellerPackageKey = targets.ios.spellerPackageKey
