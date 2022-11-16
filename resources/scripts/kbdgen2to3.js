@@ -22,30 +22,44 @@ if (modes.android != null) {
     }
 
     newDoc.android.primary.layers = modes.android
-    if (targets.android.spellerPackageKey != null) {
-        newDoc.android.config.spellerPackageKey = targets.android.spellerPackageKey
-    }
-    if (targets.android.spellerPath != null) {
-        newDoc.android.config.spellerPath = targets.android.spellerPath
-    }
-    if (targets.android.styles != null) {
-        const { shift, backspace } = targets.android.styles.phone.actions
-        // TODO: handle tablet
-
-        const defaultLayer = newDoc.android.primary.layers.default.split("\n").map(x => x.trim().split(" "))
-        const shiftLayer = newDoc.android.primary.layers.shift.split("\n").map(x => x.trim().split(" "))
-
-        const shiftKeyIndex = shift[0] - 1
-        const backspaceKeyIndex = backspace[0] - 1
-
-        defaultLayer[shiftKeyIndex].unshift("\\s{shift}")
-        defaultLayer[backspaceKeyIndex].push("\\s{backspace}")
-
-        shiftLayer[shiftKeyIndex].unshift("\\s{shift}")
-        shiftLayer[backspaceKeyIndex].push("\\s{backspace}")
-
-        newDoc.android.primary.layers.default = defaultLayer.map(x => x.join(" ")).join("\n")
-        newDoc.android.primary.layers.shift = shiftLayer.map(x => x.join(" ")).join("\n")
+    if (targets.android != null) {
+        if (targets.android.spellerPackageKey != null) {
+            newDoc.android.config.spellerPackageKey = targets.android.spellerPackageKey
+        }
+        if (targets.android.spellerPath != null) {
+            newDoc.android.config.spellerPath = targets.android.spellerPath
+        }
+        if (targets.android.styles != null) {
+            const { shift, backspace } = targets.android.styles.phone.actions
+            // TODO: handle tablet
+    
+            const defaultLayer = newDoc.android.primary.layers.default.split("\n").map(x => x.trim().split(" "))
+            const shiftLayer = newDoc.android.primary.layers.shift.split("\n").map(x => x.trim().split(" "))
+    
+            const shiftKeyIndex = shift[0] - 1
+            const backspaceKeyIndex = backspace[0] - 1
+    
+            defaultLayer[shiftKeyIndex].unshift("\\s{shift}")
+            defaultLayer[backspaceKeyIndex].push("\\s{backspace}")
+    
+            shiftLayer[shiftKeyIndex].unshift("\\s{shift}")
+            shiftLayer[backspaceKeyIndex].push("\\s{backspace}")
+    
+            newDoc.android.primary.layers.default = defaultLayer.map(x => x.join(" ")).join("\n")
+            newDoc.android.primary.layers.shift = shiftLayer.map(x => x.join(" ")).join("\n")
+        } else {
+            const defaultLayer = newDoc.android.primary.layers.default.split("\n").map(x => x.trim().split(" "))
+            const shiftLayer = newDoc.android.primary.layers.shift.split("\n").map(x => x.trim().split(" "))
+    
+            defaultLayer[defaultLayer.length - 2].unshift("\\s{shift}")
+            defaultLayer[defaultLayer.length - 2].push("\\s{backspace}")
+    
+            shiftLayer[shiftLayer.length - 2].unshift("\\s{shift}")
+            shiftLayer[shiftLayer.length - 2].push("\\s{backspace}")
+    
+            newDoc.android.primary.layers.default = defaultLayer.map(x => x.join(" ")).join("\n")
+            newDoc.android.primary.layers.shift = shiftLayer.map(x => x.join(" ")).join("\n")
+        }
     } else {
         const defaultLayer = newDoc.android.primary.layers.default.split("\n").map(x => x.trim().split(" "))
         const shiftLayer = newDoc.android.primary.layers.shift.split("\n").map(x => x.trim().split(" "))
