@@ -1,6 +1,34 @@
 # kbdgen
 
-[Documentation](https://divvun.github.io/kbdgen/).
+[![](https://divvun-tc.thetc.se/api/github/v1/repository/divvun/kbdgen/main/badge.svg)](https://divvun-tc.thetc.se/api/github/v1/repository/divvun/kbdgen/main/latest)
+
+A tool to build keyboard packages for a multitude of platforms using a single, simple text file definition. Supported outputs:
+
+- Linux (X11)
+- macOS
+- Windows
+- ChromeOS
+- iOS/iPadOS
+- Android
+- SVG
+
+We think it's pretty cool.
+[Documentation](https://divvun.github.io/kbdgen/) (under construction).
+
+## Installation
+
+1. get [Rust](https://www.rust-lang.org/learn/get-started)
+1. clone this repo: `git clone https://github.com/divvun/kbdgen.git`
+2. `cd kbdgen`
+1. `cargo install --path .`
+
+**Alternatively** - download a precompiled binary from nightly builds:
+
+* [Linux  ](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=linux)   (x86_64)
+* [macOS  ](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=macos)   (x86_64)
+* [Windows](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=windows) (i686)
+
+Extract the archive, and move the binary to somewhere on your `$PATH`.
 
 ## License
 
