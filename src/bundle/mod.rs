@@ -54,8 +54,9 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
 
     let project_text = fs::read_to_string(canonical_bundle_path.join(PROJECT_FILENAME))
         .map_err(|e| Error::Io(path.to_path_buf(), e))?;
-    let project: Project =
-        serde_yaml::from_str(&project_text).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+    let deserializer = serde_yaml::Deserializer::from_str(&project_text);
+    let project: Project = serde_path_to_error::deserialize(deserializer)
+        .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
     let layouts_path = canonical_bundle_path.join(LAYOUTS_FOLDER);
     let targets_path = canonical_bundle_path.join(TARGETS_FOLDER);
@@ -98,8 +99,9 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
 
             let yaml_text =
                 fs::read_to_string(&path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
-            let mut yaml: Value =
-                serde_yaml::from_str(&yaml_text).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+            let deserializer = serde_yaml::Deserializer::from_str(&yaml_text);
+            let mut yaml: Value = serde_path_to_error::deserialize(deserializer)
+                .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
             yaml.as_mapping_mut()
                 .expect("top level yaml type must be a mapping")
                 .insert(
@@ -107,8 +109,8 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                     Value::String(tag.to_string()),
                 );
 
-            let mut layout: Layout =
-                serde_yaml::from_value(yaml).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+            let mut layout: Layout = serde_path_to_error::deserialize(yaml)
+                .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
             let _autonym = layout
                 .display_names
@@ -144,12 +146,8 @@ where
         }
     };
 
-    match serde_yaml::from_str::<T>(&s) {
-        Ok(v) => Ok(v),
-        Err(e) => {
-            return Err(Error::Yaml(path.to_path_buf(), e));
-        }
-    }
+    let deserializer = serde_yaml::Deserializer::from_str(&s);
+    serde_path_to_error::deserialize(deserializer).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
 fn load_yaml_with_env<T>(path: &Path, env_vars: HashMap<&str, &str>) -> Result<T, Error>
@@ -163,12 +161,9 @@ where
         }
     };
 
-    let mut raw: serde_yaml::Value = match serde_yaml::from_str(&s) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(Error::Yaml(path.to_path_buf(), e));
-        }
-    };
+    let deserializer = serde_yaml::Deserializer::from_str(&s);
+    let mut raw: serde_yaml::Value = serde_path_to_error::deserialize(deserializer)
+        .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
     {
         let root = raw.as_mapping_mut().unwrap();
@@ -186,7 +181,7 @@ where
         }
     }
 
-    match serde_yaml::from_value::<T>(raw) {
+    match serde_path_to_error::deserialize(raw) {
         Ok(v) => Ok(v),
         Err(e) => Err(Error::Yaml(path.to_path_buf(), e)),
     }
@@ -287,8 +282,11 @@ pub enum Error {
     #[error("IO error for path: {0}")]
     Io(PathBuf, #[source] std::io::Error),
 
-    #[error("Error parsing YAML for path: {0}")]
-    Yaml(PathBuf, #[source] serde_yaml::Error),
+    #[error("Error parsing YAML for path: {0} at {}", .1.path())]
+    Yaml(
+        PathBuf,
+        #[source] serde_path_to_error::Error<serde_yaml::Error>,
+    ),
 
     #[error(".yaml files must have a stem, failed to parse: `{}`", path.display())]
     NoFileStem { path: PathBuf },
