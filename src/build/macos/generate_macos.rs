@@ -481,7 +481,7 @@ fn create_dead_key_actions(
                             .insert(key_map[cursor].clone(), KeyTransition::Next(action));
                     } else {
                         panic!(
-                            "dead key {} in target list but not the transforms noooooo",
+                            "dead key `{}` in target list but not the transforms.",
                             &key_map[cursor]
                         );
                     }
