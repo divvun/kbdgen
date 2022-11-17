@@ -3,6 +3,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use codecs::utf16::Utf16Ext;
 use language_tags::LanguageTag;
+use tracing::{trace, debug};
 
 use crate::{
     build::BuildStep,
@@ -31,9 +32,12 @@ pub struct GenerateKlc {}
 #[async_trait(?Send)]
 impl BuildStep for GenerateKlc {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+        trace!("Generating klc files");
         // One .klc file per language with Windows primary platform
         for (language_tag, layout) in &bundle.layouts {
+            trace!("Checking if we need a klc file for {}", language_tag);
             if let Some(windows_target) = &layout.windows {
+                debug!("Generating klc for {}", language_tag);
                 let metadata =
                     generate_metadata(bundle.clone(), language_tag, layout, windows_target);
 
