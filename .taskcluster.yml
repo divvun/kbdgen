@@ -59,8 +59,7 @@ tasks:
           - "object:upload:divvun:*"
         payload:
           maxRunTime: 3600
-          # TODO: Change this to a set tag and push dockerfile
-          image: "registry.gitlab.com/bastien.orivel.tc/divvun-ci-docker:latest"
+          image: "ghcr.io/divvun/taskcluster-decision-task-image:main"
           features:
             # Needed for the decision task to create other tasks
             taskclusterProxy: true
