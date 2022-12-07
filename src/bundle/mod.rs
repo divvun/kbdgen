@@ -12,10 +12,13 @@ use target::Targets;
 
 use self::resources::Resources;
 
+pub(crate) mod fetch;
 pub mod layout;
 pub(crate) mod project;
 pub(crate) mod resources;
 pub(crate) mod target;
+
+pub use fetch::fetch;
 
 const PROJECT_FILENAME: &str = "project.yaml";
 const LAYOUTS_FOLDER: &str = "layouts";

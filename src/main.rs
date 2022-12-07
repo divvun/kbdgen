@@ -57,12 +57,18 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
+        Command::Fetch(options) => {
+            let bundle_path = &options.bundle_path;
+            let bundle = read_kbdgen_bundle(&bundle_path)?;
+
+            kbdgen::bundle::fetch(&bundle.path, &bundle.project).await?;
+        }
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(&bundle_path)?;
             let output_path = target_command_struct.output_path.to_path_buf();
 
-            tracing::info!("Output Path: {:?}", &output_path);
+            tracing::debug!("Output Path: {:?}", &output_path);
             std::fs::create_dir_all(&output_path)?;
 
             match &target_command_struct.target_command {
@@ -112,6 +118,16 @@ struct Cli {
 enum Command {
     #[clap(about = "Functionality relating to specific targets")]
     Target(TargetCommandStruct),
+
+    #[clap(about = "Fetch dependencies for provided project")]
+    Fetch(FetchCommand),
+}
+
+#[derive(Args)]
+struct FetchCommand {
+    #[clap(short, long, parse(from_os_str))]
+    /// Path to a .kbdgen bundle to process
+    bundle_path: PathBuf,
 }
 
 #[derive(Subcommand)]

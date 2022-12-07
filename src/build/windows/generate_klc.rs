@@ -3,7 +3,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use codecs::utf16::Utf16Ext;
 use language_tags::LanguageTag;
-use tracing::{trace, debug};
+use tracing::{debug, trace};
 
 use crate::{
     build::BuildStep,

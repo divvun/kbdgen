@@ -42,3 +42,5 @@ fs_extra = "1.2.0"
 dircpy = "0.3.9"
 rayon = "1.5.3"
 serde_path_to_error = "0.1.8"
+reqwest = { version = "0.11.13", features = ["rustls", "rustls-tls", "gzip", "tokio-rustls"], default-features = false }
+zip = "0.6.3"
