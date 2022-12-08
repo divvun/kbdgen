@@ -2,6 +2,7 @@ use std::cmp;
 use std::path::Path;
 use std::str::FromStr;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
@@ -189,7 +190,7 @@ fn generate_key_layout_files(
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateMacOs {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let key_layouts = generate_key_layout_files(&bundle);
 
         let mut key_layout_macos_bundle =
@@ -200,6 +201,8 @@ impl BuildStep for GenerateMacOs {
         }
 
         key_layout_macos_bundle.write_all().unwrap();
+
+        Ok(())
     }
 }
 

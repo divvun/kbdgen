@@ -1,13 +1,14 @@
 use std::path::Path;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
+use anyhow::Result;
 use async_trait::async_trait;
 
 pub struct PodInstall;
 
 #[async_trait(?Send)]
 impl BuildStep for PodInstall {
-    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let path = output_path.join("repo");
 
         tracing::debug!("Run pod install on {:?}", &path);
@@ -19,5 +20,7 @@ impl BuildStep for PodInstall {
             .unwrap();
 
         tracing::debug!("Pod install finished");
+
+        Ok(())
     }
 }

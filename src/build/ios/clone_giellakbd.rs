@@ -1,5 +1,6 @@
 use std::{path::Path, process::Command};
 
+use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
@@ -10,7 +11,7 @@ pub struct CloneGiellaKbd;
 
 #[async_trait(?Send)]
 impl BuildStep for CloneGiellaKbd {
-    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let repo_url = "https://github.com/divvun/giellakbd-ios.git";
 
         Command::new("git")
@@ -20,5 +21,7 @@ impl BuildStep for CloneGiellaKbd {
             .current_dir(output_path)
             .status()
             .expect("to clone a public repo with no hippos");
+
+        Ok(())
     }
 }

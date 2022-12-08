@@ -3,6 +3,7 @@ use std::{
     str::FromStr,
 };
 
+use anyhow::Result;
 use async_trait::async_trait;
 use qname::qname;
 use xmlem::{Document, NewElement};
@@ -141,8 +142,9 @@ pub struct GenerateInstaller;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateInstaller {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         create_installer(bundle, output_path);
+        Ok(())
     }
 }
 

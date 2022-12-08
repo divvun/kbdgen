@@ -1,5 +1,6 @@
 use std::{fmt, path::Path};
 
+use anyhow::Result;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
@@ -333,7 +334,7 @@ pub struct GenerateChromeOs;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateChromeOs {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let mut descriptor = IndexMap::new();
         let mut manifest_input_components: Vec<ManifestInputComponent> = Vec::new();
         let mut display_name_map: IndexMap<LanguageTag, String> = IndexMap::new();
@@ -385,5 +386,7 @@ impl BuildStep for GenerateChromeOs {
         } else {
             panic!("Could not generate background.js")
         }
+
+        Ok(())
     }
 }

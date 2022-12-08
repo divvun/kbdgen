@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
+use anyhow::Result;
 
 pub mod android;
 pub mod chromeos;
@@ -23,14 +24,17 @@ pub trait BuildSteps {
     fn bundle(&self) -> &KbdgenBundle;
     fn output_path(&self) -> &Path;
 
-    async fn build_full(&self) {
+    async fn build_full(&self) -> Result<()> {
         for step in self.steps() {
-            step.build(self.bundle().clone(), self.output_path()).await;
+            step.build(self.bundle().clone(), self.output_path())
+                .await?;
         }
+
+        Ok(())
     }
 }
 
 #[async_trait(?Send)]
 pub trait BuildStep {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path);
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()>;
 }

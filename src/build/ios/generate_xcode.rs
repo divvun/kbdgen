@@ -6,6 +6,7 @@ use std::{
     str::FromStr,
 };
 
+use anyhow::Result;
 use async_trait::async_trait;
 use language_tags::LanguageTag;
 use rayon::prelude::*;
@@ -175,7 +176,7 @@ pub struct GenerateXcode;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateXcode {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let repository_path = output_path.join(REPOSITORY);
         let hosting_app_path = repository_path.join(HOSTING_APP);
         let keyboard_path = repository_path.join(KEYBOARD);
@@ -353,5 +354,7 @@ impl BuildStep for GenerateXcode {
 
         tracing::debug!("Write to the .pbxproj");
         std::fs::write(pbxproj_path.clone(), pbxproj.to_pbxproj_string()).unwrap();
+
+        Ok(())
     }
 }

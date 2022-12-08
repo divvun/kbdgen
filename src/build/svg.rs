@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 //use std::rc::Rc;
 use std::str::FromStr;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use xmlem::Document;
 
@@ -49,7 +50,7 @@ pub struct GenerateSvg {}
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateSvg {
-    async fn build(&self, bundle: &KbdgenBundle, _output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, _output_path: &Path) -> Result<()> {
         let _document = Document::from_str(KEYBOARD_SVG).unwrap();
 
         println!("no explosion?");
@@ -65,6 +66,8 @@ impl BuildStep for GenerateSvg {
                 //std::fs::write(svg_path, cloned_template.to_string()).unwrap();
             }
         }
+
+        Ok(())
     }
 }
 

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::{fs::File, path::Path};
 
+use anyhow::Result;
 use async_trait::async_trait;
 use fs_extra::dir::CopyOptions;
 use futures::stream::Select;
@@ -66,7 +67,7 @@ pub struct GenerateAndroid;
 impl BuildStep for GenerateAndroid {
     // The generator will currently create extra subtypes in some files
     // if ran more than once
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let mut android_targets = false;
 
         for (language_tag, layout) in &bundle.layouts {
@@ -78,7 +79,7 @@ impl BuildStep for GenerateAndroid {
 
         if !android_targets {
             tracing::warn!("No Android targets found in the supplied kbdgen bundle!");
-            return;
+            return Ok(());
         }
 
         let output_path = output_path.join(Path::new(REPOSITORY_FOLDER));
@@ -372,6 +373,8 @@ impl BuildStep for GenerateAndroid {
         } else {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
+
+        Ok(())
     }
 }
 

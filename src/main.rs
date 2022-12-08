@@ -24,10 +24,10 @@ async fn android_target(
     match target.command {
         TargetAndroidCommand::Build(_) => {
             let build = AndroidBuild::new(bundle, output_path);
-            build.build_full().await;
+            build.build_full().await?;
         }
-        TargetAndroidCommand::Clone(_) => CloneGiellaKbd.build(&bundle, &output_path).await,
-        TargetAndroidCommand::Generate(_) => GenerateAndroid.build(&bundle, &output_path).await,
+        TargetAndroidCommand::Clone(_) => CloneGiellaKbd.build(&bundle, &output_path).await?,
+        TargetAndroidCommand::Generate(_) => GenerateAndroid.build(&bundle, &output_path).await?,
     }
 
     Ok(())
@@ -41,10 +41,10 @@ async fn macos_target(
     match target.command {
         TargetMacOsCommand::Build(_) => {
             let build = MacOsBuild::new(bundle, output_path);
-            build.build_full().await;
+            build.build_full().await?
         }
-        TargetMacOsCommand::Generate(_) => GenerateMacOs.build(&bundle, &output_path).await,
-        TargetMacOsCommand::Installer(_) => GenerateInstaller.build(&bundle, &output_path).await,
+        TargetMacOsCommand::Generate(_) => GenerateMacOs.build(&bundle, &output_path).await?,
+        TargetMacOsCommand::Installer(_) => GenerateInstaller.build(&bundle, &output_path).await?,
     }
 
     Ok(())
@@ -76,13 +76,13 @@ async fn main() -> anyhow::Result<()> {
                     let build =
                         WindowsBuild::new(bundle, target_command_struct.output_path.clone());
 
-                    build.build_full().await;
+                    build.build_full().await?;
                 }
                 TargetCommand::ChromeOs(_chromeos_command) => {
                     let build =
                         ChromeOsBuild::new(bundle, target_command_struct.output_path.clone());
 
-                    build.build_full().await;
+                    build.build_full().await?;
                 }
                 TargetCommand::MacOs(target) => {
                     macos_target(bundle, output_path, target).await?;
@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
                 TargetCommand::Svg(_svg_command) => {
                     let build = SvgBuild::new(bundle, target_command_struct.output_path.clone());
 
-                    build.build_full().await;
+                    build.build_full().await?;
                 }
                 TargetCommand::Android(target) => {
                     android_target(bundle, output_path, target).await?;
@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
                 TargetCommand::Ios(_android_command) => {
                     let build = IosBuild::new(bundle, target_command_struct.output_path.clone());
 
-                    build.build_full().await;
+                    build.build_full().await?;
                 }
             }
         }

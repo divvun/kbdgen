@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use codecs::utf16::Utf16Ext;
 use language_tags::LanguageTag;
@@ -31,7 +32,7 @@ pub struct GenerateKlc {}
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateKlc {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         trace!("Generating klc files");
         // One .klc file per language with Windows primary platform
         for (language_tag, layout) in &bundle.layouts {
@@ -180,6 +181,8 @@ impl BuildStep for GenerateKlc {
                 std::fs::write(klc_path, klc_bytes).unwrap();
             }
         }
+
+        Ok(())
     }
 }
 

@@ -1,5 +1,6 @@
 use std::{cmp::Ordering, path::Path};
 
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use regex::Regex;
@@ -153,7 +154,7 @@ pub struct GenerateIos;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateIos {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let repository_path = output_path.join(REPOSITORY);
         let models_path = repository_path.join(MODELS);
         let keyboard_definitions_file_path = models_path.join("KeyboardDefinitions.json");
@@ -220,6 +221,13 @@ impl BuildStep for GenerateIos {
             output_path.join(keyboard_definitions_file_path.clone()),
             serde_json::to_string_pretty(&all_layouts).unwrap(),
         )
-        .unwrap();
+        .with_context(|| {
+            format!(
+                "Writing to {:?}",
+                output_path.join(keyboard_definitions_file_path.clone())
+            )
+        })?;
+
+        Ok(())
     }
 }

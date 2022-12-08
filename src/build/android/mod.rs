@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::{build::pahkat, bundle::KbdgenBundle};
@@ -23,8 +24,10 @@ pub struct DownloadDependencies;
 
 #[async_trait(?Send)]
 impl BuildStep for DownloadDependencies {
-    async fn build(&self, _bundle: &KbdgenBundle, _output_path: &Path) {
-        pahkat::install_android_deps().await
+    async fn build(&self, _bundle: &KbdgenBundle, _output_path: &Path) -> Result<()> {
+        pahkat::install_android_deps().await;
+
+        Ok(())
     }
 }
 
