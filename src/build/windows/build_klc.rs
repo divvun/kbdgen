@@ -1,5 +1,6 @@
 use std::{path::Path, sync::Arc};
 
+use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::build::pahkat::{install_msklc, prefix_dir};
@@ -10,8 +11,9 @@ pub struct BuildKlc {}
 
 #[async_trait(?Send)]
 impl BuildStep for BuildKlc {
-    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) {
+    async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         ms_klc(output_path).await;
+        Ok(())
     }
 }
 
