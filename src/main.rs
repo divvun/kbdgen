@@ -9,7 +9,7 @@ use kbdgen::bundle::KbdgenBundle;
 
 use kbdgen::build::android::AndroidBuild;
 use kbdgen::build::chromeos::ChromeOsBuild;
-use kbdgen::build::ios::IosBuild;
+use kbdgen::build::ios::{IosBuild, IosProjectExt};
 use kbdgen::build::macos::MacOsBuild;
 use kbdgen::build::svg::SvgBuild;
 use kbdgen::build::windows::WindowsBuild;
@@ -66,21 +66,21 @@ async fn main() -> anyhow::Result<()> {
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(&bundle_path)?;
-            let output_path = target_command_struct.output_path.to_path_buf();
+            let output_path = &target_command_struct.output_path;
 
             tracing::debug!("Output Path: {:?}", &output_path);
             std::fs::create_dir_all(&output_path)?;
 
+            let output_path = dunce::canonicalize(output_path).unwrap();
+
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
-                    let build =
-                        WindowsBuild::new(bundle, target_command_struct.output_path.clone());
+                    let build = WindowsBuild::new(bundle, output_path.clone());
 
                     build.build_full().await?;
                 }
                 TargetCommand::ChromeOs(_chromeos_command) => {
-                    let build =
-                        ChromeOsBuild::new(bundle, target_command_struct.output_path.clone());
+                    let build = ChromeOsBuild::new(bundle, output_path.clone());
 
                     build.build_full().await?;
                 }
@@ -88,18 +88,27 @@ async fn main() -> anyhow::Result<()> {
                     macos_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Svg(_svg_command) => {
-                    let build = SvgBuild::new(bundle, target_command_struct.output_path.clone());
+                    let build = SvgBuild::new(bundle, output_path.clone());
 
                     build.build_full().await?;
                 }
                 TargetCommand::Android(target) => {
                     android_target(bundle, output_path, target).await?;
                 }
-                TargetCommand::Ios(_android_command) => {
-                    let build = IosBuild::new(bundle, target_command_struct.output_path.clone());
+                TargetCommand::Ios(options) => match options.command {
+                    TargetIosCommand::Build(_) => {
+                        let build = IosBuild::new(bundle, output_path.clone());
 
-                    build.build_full().await?;
-                }
+                        build.build_full().await?;
+                    }
+                    TargetIosCommand::PrintPkgIds(_) => {
+                        use IosProjectExt;
+
+                        for id in bundle.all_pkg_ids() {
+                            println!("{}", id);
+                        }
+                    }
+                },
             }
         }
     };
@@ -143,7 +152,7 @@ enum TargetCommand {
     #[clap(about = "Android functionality")]
     Android(TargetAndroid),
     #[clap(about = "iOS functionality")]
-    Ios(TargetIosCommand),
+    Ios(TargetIos),
 }
 
 #[derive(Args)]
@@ -192,7 +201,25 @@ struct TargetAndroidGenerateCommand {}
 // iOS
 
 #[derive(Parser)]
-struct TargetIosCommand {}
+struct TargetIos {
+    #[clap(subcommand)]
+    command: TargetIosCommand,
+}
+
+#[derive(Subcommand)]
+enum TargetIosCommand {
+    /// Run all build steps (recommended option)
+    Build(TargetIosBuildCommand),
+
+    /// Print all package identifiers
+    PrintPkgIds(TargetIosPrintPkgIds),
+}
+
+#[derive(Parser)]
+struct TargetIosBuildCommand {}
+
+#[derive(Parser)]
+struct TargetIosPrintPkgIds {}
 
 // Windows
 

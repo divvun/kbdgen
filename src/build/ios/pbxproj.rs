@@ -674,14 +674,14 @@ impl Pbxproj {
                 "PRODUCT_NAME".to_string(),
                 serde_json::Value::String(destination_name.to_string()),
             );
-            new_build_configuration.build_settings.insert(
-                "CODE_SIGN_STYLE".to_string(),
-                serde_json::Value::String("CODE_SIGN_STYLE".to_string()),
-            );
-            new_build_configuration.build_settings.insert(
-                "PRODUCT_ENABLE_BITCODE".to_string(),
-                serde_json::Value::String("ENABLE_BITCODE".to_string()),
-            );
+            // new_build_configuration.build_settings.insert(
+            //     "CODE_SIGN_STYLE".to_string(),
+            //     serde_json::Value::String("CODE_SIGN_STYLE".to_string()),
+            // );
+            // new_build_configuration.build_settings.insert(
+            //     "PRODUCT_ENABLE_BITCODE".to_string(),
+            //     serde_json::Value::String("ENABLE_BITCODE".to_string()),
+            // );
 
             new_configuration_list_refs.insert(new_build_configuration_id.clone());
             // Add to the actual .pbxproj
@@ -885,6 +885,25 @@ impl Pbxproj {
             &variant_group_id,
             &PathBuf::from_str("HostingApp/Supporting Files").unwrap(),
         );
+    }
+
+    pub fn set_build_target_setting(&mut self, target_name: &str, key: &str, value: &str) {
+        tracing::debug!(
+            target_name = target_name,
+            key = key,
+            value = value,
+            "Setting build target setting"
+        );
+        let target = self.native_target_by_name(target_name).unwrap().clone();
+        let list = self
+            .configuration_list_by_id(&target.build_configuration_list)
+            .unwrap()
+            .clone();
+
+        for id in list.build_configurations.iter() {
+            let cfg = self.configuration_by_id_mut(id).unwrap();
+            cfg.build_settings.insert(key.to_string(), value.into());
+        }
     }
 }
 

@@ -159,6 +159,8 @@ impl BuildStep for GenerateIos {
         let models_path = repository_path.join(MODELS);
         let keyboard_definitions_file_path = models_path.join("KeyboardDefinitions.json");
 
+        // panic!("{:?} {:?} {:?}", repository_path, models_path, keyboard_definitions_file_path);
+
         let mut all_layouts: Vec<IosKeyboardDefinitions> = Vec::new();
         for (language_tag, layout) in &bundle.layouts {
             let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
@@ -218,15 +220,10 @@ impl BuildStep for GenerateIos {
             }
         }
         std::fs::write(
-            output_path.join(keyboard_definitions_file_path.clone()),
+            &keyboard_definitions_file_path,
             serde_json::to_string_pretty(&all_layouts).unwrap(),
         )
-        .with_context(|| {
-            format!(
-                "Writing to {:?}",
-                output_path.join(keyboard_definitions_file_path.clone())
-            )
-        })?;
+        .with_context(|| format!("Writing to '{}'", keyboard_definitions_file_path.display()))?;
 
         Ok(())
     }

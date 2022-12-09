@@ -12,7 +12,11 @@ use language_tags::LanguageTag;
 use rayon::prelude::*;
 
 use crate::{
-    build::{ios::pbxproj::Pbxproj, ios::xcode_structures::*, BuildStep},
+    build::{
+        ios::xcode_structures::*,
+        ios::{pbxproj::Pbxproj, IosProjectExt},
+        BuildStep,
+    },
     bundle::KbdgenBundle,
 };
 
@@ -198,7 +202,7 @@ impl BuildStep for GenerateXcode {
         if let Some(target) = &bundle.targets.ios {
             let ios_keyboard_settings = IosKeyboardSettings {
                 short_version: target.version.clone(),
-                build_version: target.build.clone(),
+                build_version: target.build.to_string(),
                 package_id: target.package_id.clone(),
             };
 
@@ -253,11 +257,8 @@ impl BuildStep for GenerateXcode {
                         .get(&default_language_tag)
                         .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
-                    let layout_folder_name = default_display_name
-                        .to_lowercase()
-                        .replace(" ", "-")
-                        .replace("(", "")
-                        .replace(")", "");
+                    let pkg_id = bundle.pkg_id(layout);
+                    let layout_folder_name = pkg_id.split(".").last().unwrap();
 
                     let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
                     let current_layout_path = keyboard_path.join(layout_folder_name.clone());

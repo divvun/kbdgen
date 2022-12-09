@@ -115,12 +115,17 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
             let mut layout: Layout = serde_path_to_error::deserialize(yaml)
                 .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
-            let _autonym = layout
+            let _autonym = match layout
                 .display_names
                 .get(&tag.primary_language().parse::<LanguageTag>().unwrap())
-                .unwrap_or_else(|| {
-                    panic!("displayNames for the layout do not have the autonym");
-                });
+            {
+                Some(v) => v,
+                None => {
+                    return Err(Error::MissingMandatoryDisplayName {
+                        tag: tag.to_string(),
+                    });
+                }
+            };
 
             if let Some(decimal) = layout.decimal.as_ref() {
                 if decimal != COMMA_DECIMAL && decimal != DEFAULT_DECIMAL {
@@ -250,7 +255,20 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
                 targets.windows = load_yaml(&path)?;
             }
             "ios" => {
-                targets.ios = load_yaml(&path)?;
+                targets.ios = load_yaml_with_env(
+                    &path,
+                    [
+                        ("MATCH_GIT_URL", "matchGitUrl"),
+                        ("MATCH_PASSWORD", "matchPassword"),
+                        ("FASTLANE_USER", "fastlaneUser"),
+                        ("PRODUCE_USERNAME", "fastlaneUser"),
+                        ("FASTLANE_PASSWORD", "fastlanePassword"),
+                        ("APP_STORE_KEY_JSON", "appStoreKeyJson"),
+                        ("TEAM_ID", "teamId"),
+                        ("CODE_SIGN_ID", "codeSignId"),
+                    ]
+                    .into(),
+                )?;
             }
             "macos" => {
                 targets.macos = load_yaml(&path)?;
@@ -296,4 +314,7 @@ pub enum Error {
 
     #[error("Failed to parse language tag: `{}`", tag)]
     InvalidLanguageTag { tag: String },
+
+    #[error("Missing mandatory display name for language tag: `{}`", tag)]
+    MissingMandatoryDisplayName { tag: String },
 }
