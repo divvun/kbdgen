@@ -49,17 +49,17 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
 }
 
 pub fn generate_keyboard_plist(
-    template_path: PathBuf,
+    template_path: &Path,
     value: IosKeyboardSettings,
     display_name: String,
     keyboard_index: usize,
     primary_language: String,
-    output_path: PathBuf,
+    output_path: &Path,
 ) {
     tracing::debug!("Generating keyboard plist for {}", &display_name);
 
     let mut keyboard_plist: KeyboardInfoPlist =
-        plist::from_file(template_path.clone()).expect("valid stuff");
+        plist::from_file(template_path).expect("valid stuff");
 
     keyboard_plist.cf_bundle_display_name = display_name;
     keyboard_plist.cf_bundle_short_version_string = value.short_version;
@@ -71,6 +71,7 @@ pub fn generate_keyboard_plist(
         .primary_language = primary_language;
     keyboard_plist.divvun_keyboard_index = keyboard_index;
 
+    tracing::debug!("Writing plist to {:?}", output_path);
     plist::to_file_xml(output_path, &keyboard_plist).unwrap();
 }
 
@@ -268,17 +269,19 @@ impl BuildStep for GenerateXcode {
                     // KEYBOARD PLIST
                     let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
                     generate_keyboard_plist(
-                        keyboard_plist_template,
+                        &keyboard_plist_template,
                         ios_keyboard_settings.clone(),
                         default_display_name.clone(),
                         layout_index,
                         language_tag.to_string(),
-                        layout_info_plist_path.clone(),
+                        &layout_info_plist_path,
                     );
 
                     // GENERATE .pbxproj
-                    let temp = pbxproj.create_plist_file(&PathBuf::from_str(INFO_PLIST).unwrap());
-                    pbxproj.add_path(&path_to_relative(&current_layout_path, REPOSITORY));
+                    let temp = pbxproj.create_plist_file(&Path::new(INFO_PLIST));
+                    let hmm = path_to_relative(&current_layout_path, REPOSITORY);
+                    tracing::debug!("Relpath: {}", hmm.display());
+                    pbxproj.add_path(&hmm);
                     pbxproj.add_ref_to_group(
                         &temp,
                         &path_to_relative(&current_layout_path, REPOSITORY),

@@ -460,7 +460,7 @@ impl Pbxproj {
     }
 
     // Very similar to create_file_reference
-    pub fn create_plist_file(&mut self, relative_plist_path: &PathBuf) -> ObjectId {
+    pub fn create_plist_file(&mut self, relative_plist_path: &Path) -> ObjectId {
         let object = ObjectId::new_random();
 
         self.objects.insert(
