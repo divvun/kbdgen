@@ -56,6 +56,8 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
+    tracing::info!("kbdgen {}", env!("CARGO_PKG_VERSION"));
+
     match &cli.command {
         Command::Fetch(options) => {
             let bundle_path = &options.bundle_path;
