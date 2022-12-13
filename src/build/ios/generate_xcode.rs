@@ -17,6 +17,7 @@ use crate::{
         ios::{pbxproj::Pbxproj, IosProjectExt},
         BuildStep,
     },
+    bundle::layout::IOsTarget,
     bundle::KbdgenBundle,
 };
 
@@ -50,10 +51,11 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
 
 pub fn generate_keyboard_plist(
     template_path: &Path,
-    value: IosKeyboardSettings,
-    display_name: String,
+    target: &IOsTarget,
+    value: &IosKeyboardSettings,
+    display_name: &str,
     keyboard_index: usize,
-    primary_language: String,
+    primary_language: &LanguageTag,
     output_path: &Path,
 ) {
     tracing::debug!("Generating keyboard plist for {}", &display_name);
@@ -61,14 +63,26 @@ pub fn generate_keyboard_plist(
     let mut keyboard_plist: KeyboardInfoPlist =
         plist::from_file(template_path).expect("valid stuff");
 
-    keyboard_plist.cf_bundle_display_name = display_name;
-    keyboard_plist.cf_bundle_short_version_string = value.short_version;
-    keyboard_plist.cf_bundle_version = value.build_version;
-    keyboard_plist.ls_application_queries_schemes[0] = value.package_id;
+    if let (Some(key), Some(path)) = (
+        target.config.speller_package_key.as_deref(),
+        target.config.speller_path.as_deref(),
+    ) {
+        keyboard_plist.divvun_speller_package_key = Some(key.to_string());
+        keyboard_plist.divvun_speller_path = Some(path.to_string());
+    } else {
+        keyboard_plist.divvun_speller_package_key = None;
+        keyboard_plist.divvun_speller_path = None;
+    }
+
+    // keyboard_plist
+    keyboard_plist.cf_bundle_display_name = display_name.to_string();
+    keyboard_plist.cf_bundle_short_version_string = value.short_version.to_string();
+    keyboard_plist.cf_bundle_version = value.build_version.to_string();
+    keyboard_plist.ls_application_queries_schemes[0] = value.package_id.to_string();
     keyboard_plist
         .ns_extension
         .ns_extension_attributes
-        .primary_language = primary_language;
+        .primary_language = primary_language.to_string();
     keyboard_plist.divvun_keyboard_index = keyboard_index;
 
     tracing::debug!("Writing plist to {:?}", output_path);
@@ -271,10 +285,11 @@ impl BuildStep for GenerateXcode {
                     let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
                     generate_keyboard_plist(
                         &keyboard_plist_template,
-                        ios_keyboard_settings.clone(),
-                        default_display_name.clone(),
+                        layout.i_os.as_ref().unwrap(),
+                        &ios_keyboard_settings,
+                        &default_display_name,
                         layout_index,
-                        language_tag.to_string(),
+                        language_tag,
                         &layout_info_plist_path,
                     );
 

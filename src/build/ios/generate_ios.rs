@@ -190,11 +190,7 @@ impl BuildStep for GenerateIos {
                 if let Some(key_names) = &layout.key_names {
                     all_layouts.push(IosKeyboardDefinitions {
                         info: IosInfo {
-                            name: layout
-                                .display_names
-                                .get(language_tag)
-                                .expect("can't evaluate language tag of layout")
-                                .to_string(),
+                            name: layout.autonym().to_string(),
                             locale: language_tag.to_string(),
                             return_button: key_names.r#return.to_string(),
                             space: key_names.space.to_string(),

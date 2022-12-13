@@ -105,7 +105,8 @@ pub struct MacOsPrimaryPlatform {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsTarget {
-    pub config: Option<IOsConfig>,
+    #[serde(default)]
+    pub config: IOsConfig,
     pub primary: Option<IOsPlatform>,
     #[serde(rename = "iPad-9in")]
     pub i_pad_9in: Option<IOsPlatform>,
@@ -206,14 +207,14 @@ pub struct ChromeConfig {
     pub xkb_layout: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IOsConfig {
     pub speller_package_key: Option<String>,
     pub speller_path: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AndroidConfig {
     pub speller_package_key: Option<String>,
