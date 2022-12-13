@@ -111,12 +111,13 @@ pub struct IosKeyboardSettings {
 }
 
 pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
-    let mut path_string = path.to_str().unwrap().to_string();
-    path_string.replace_range(
-        0..path_string.find(relative_to).unwrap() + relative_to.len() + 1,
-        "",
-    );
-    return PathBuf::from_str(&path_string).unwrap();
+    let mut reversed_components = path
+        .components()
+        .rev()
+        .take_while(|x| x.as_os_str() != relative_to)
+        .collect::<Vec<_>>();
+    reversed_components.reverse();
+    reversed_components.into_iter().collect()
 }
 
 pub fn generate_icons(bundle: &KbdgenBundle, path: &Path) {

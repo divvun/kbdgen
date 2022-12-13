@@ -68,12 +68,11 @@ async fn main() -> anyhow::Result<()> {
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(&bundle_path)?;
+
             let output_path = &target_command_struct.output_path;
-
-            tracing::debug!("Output Path: {:?}", &output_path);
             std::fs::create_dir_all(&output_path)?;
-
             let output_path = dunce::canonicalize(output_path).unwrap();
+            tracing::debug!("Output Path: {:?}", &output_path);
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
