@@ -9,7 +9,7 @@ use kbdgen::bundle::KbdgenBundle;
 
 use kbdgen::build::android::AndroidBuild;
 use kbdgen::build::chromeos::ChromeOsBuild;
-use kbdgen::build::ios::{IosBuild, IosProjectExt};
+use kbdgen::build::ios::{self, IosBuild, IosProjectExt};
 use kbdgen::build::macos::MacOsBuild;
 use kbdgen::build::svg::SvgBuild;
 use kbdgen::build::windows::WindowsBuild;
@@ -97,6 +97,9 @@ async fn main() -> anyhow::Result<()> {
                     android_target(bundle, output_path, target).await?;
                 }
                 TargetCommand::Ios(options) => match options.command {
+                    TargetIosCommand::Init(_) => {
+                        ios::init(bundle, &output_path).await?;
+                    }
                     TargetIosCommand::Build(_) => {
                         let build = IosBuild::new(bundle, output_path.clone());
 
@@ -214,6 +217,9 @@ enum TargetIosCommand {
 
     /// Print all package identifiers
     PrintPkgIds(TargetIosPrintPkgIds),
+
+    /// Initialise package ids with App Store Connect
+    Init(TargetIosPrintPkgIds),
 }
 
 #[derive(Parser)]

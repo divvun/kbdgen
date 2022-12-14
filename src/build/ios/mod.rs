@@ -14,7 +14,7 @@ use self::{
     generate_ios::GenerateIos,
     generate_xcode::GenerateXcode,
     pod_install::PodInstall,
-    xcodebuild::{BuildXcarchive, FastlaneProvisioning},
+    xcodebuild::{fastlane_env, BuildXcarchive, FastlaneProvisioning},
 };
 
 use super::{BuildStep, BuildSteps};
@@ -122,4 +122,79 @@ impl IosProjectExt for KbdgenBundle {
             .filter(|(_, layout)| layout.i_os.is_some())
             .collect()
     }
+}
+
+pub async fn init(bundle: KbdgenBundle, path: &Path) -> anyhow::Result<()> {
+    let target = bundle.targets.ios.as_ref().cloned().unwrap();
+    let app_name = bundle.project.locales["en"].name.to_string();
+    let base_id = target.package_id.to_string();
+
+    let env = fastlane_env(&target);
+
+    tracing::debug!(id = base_id, "registering id");
+    tokio::process::Command::new("fastlane")
+        .current_dir(path)
+        .envs(&env)
+        .args(["produce", "-a", &base_id, "--app_name", &app_name])
+        .output()
+        .await?;
+
+    tracing::debug!(id = base_id, "registering base group");
+    tokio::process::Command::new("fastlane")
+        .current_dir(path)
+        .envs(&env)
+        .args(["produce", "group", "-g"])
+        .arg(format!("group.{base_id}"))
+        .arg("-n")
+        .arg(format!("{} Group", &app_name))
+        .output()
+        .await?;
+
+    let ids = bundle.all_pkg_ids();
+    let futs = ids.into_iter().map(|id| {
+        let path = path.to_path_buf();
+        let base_id = base_id.to_string();
+        let target = target.clone();
+        let app_name = app_name.clone();
+
+        tokio::spawn(async move {
+            if id != base_id {
+                tracing::debug!(id = id, "registering id");
+                let _output = tokio::process::Command::new("fastlane")
+                    .current_dir(&path)
+                    .envs(fastlane_env(&target))
+                    .args(["produce", "-a", &id, "--app_name"])
+                    .arg(format!("{app_name}: {}", id.rsplit(".").next().unwrap()))
+                    .arg("--skip_itc")
+                    .output()
+                    .await?;
+            }
+
+            tracing::debug!(id = id, "enabling app group");
+            let _output = tokio::process::Command::new("fastlane")
+                .current_dir(&path)
+                .envs(fastlane_env(&target))
+                .args(["produce", "enable_services", "-a", &id, "--app-group"])
+                .output()
+                .await?;
+
+            
+            tracing::debug!(id = id, "associating group");
+            let _output = tokio::process::Command::new("fastlane")
+                .current_dir(&path)
+                .envs(fastlane_env(&target))
+                .args(["produce", "associate_group", "-a", &id])
+                .arg(format!("group.{base_id}"))
+                .output()
+                .await?;
+
+            Ok::<_, std::io::Error>(())
+        })}
+    ).collect::<Vec<_>>();
+
+    for fut in futs.into_iter() {
+        let _mm = fut.await?;
+    }
+
+    Ok(())
 }

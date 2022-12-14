@@ -81,7 +81,7 @@ impl BuildStep for BuildXcarchive {
     }
 }
 
-fn fastlane_env(ios_target: &iOS) -> HashMap<&'static str, String> {
+pub fn fastlane_env(ios_target: &iOS) -> HashMap<&'static str, String> {
     let mut o = HashMap::new();
 
     if let Some(value) = ios_target.match_git_url.as_deref() {
@@ -242,10 +242,14 @@ impl BuildStep for FastlaneProvisioning {
                 Ok(Ok((id, output, is_signing))) => {
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    tracing::trace!(exit_code = output.status.code(), stdout = %stdout, stderr = %stderr);
+                    if output.status.success() {
+                        tracing::trace!(exit_code = output.status.code(), stdout = %stdout, stderr = %stderr);
+                    } else {
+                        tracing::error!(exit_code = output.status.code(), stdout = %stdout, stderr = %stderr);
+                    }
 
                     if !output.status.success() {
-                        anyhow::bail!("Failed to download profiles.");
+                        anyhow::bail!("Failed to download profile '{}'.", id);
                     }
 
                     if is_signing {
