@@ -193,14 +193,18 @@ impl BuildStep for FastlaneProvisioning {
         tracing::trace!(env = ?env, "fastlane env");
 
         let mut futures = vec![];
+        let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(12));
 
         bundle.all_pkg_ids().into_iter().for_each(|id| {
             // let team_id = team_id.to_string();
             let app_store_key_json_path = app_store_key_json_path.to_string();
             let deps_path = deps_path.clone();
             let env = fastlane_env(&target);
+            let sem = sem.clone();
 
             futures.push(tokio::spawn(async move {
+                let _permit = sem.acquire_owned().await.unwrap();
+
                 tokio::process::Command::new("fastlane")
                     .current_dir(&deps_path)
                     .envs(&env)
@@ -218,8 +222,11 @@ impl BuildStep for FastlaneProvisioning {
             let app_store_key_json_path = app_store_key_json_path.to_string();
             let deps_path = deps_path.clone();
             let env = fastlane_env(&target);
+            let sem = sem.clone();
 
             futures.push(tokio::spawn(async move {
+                let _permit = sem.acquire_owned().await.unwrap();
+
                 tokio::process::Command::new("fastlane")
                     .current_dir(&deps_path)
                     .envs(&env)
