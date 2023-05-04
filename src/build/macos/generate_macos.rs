@@ -577,6 +577,10 @@ fn write_key_transition_map(
             };
         }
 
+        // Remove actions tag if empty. Otherwise MacOS does not load the layout
+        if actions.child_nodes(document).is_empty() {
+            document.root().remove_child(document, actions.as_node())
+        }
         for (key_code, output) in MACOS_HARDCODED.iter() {
             let key = KeyOutput {
                 code: *key_code,
