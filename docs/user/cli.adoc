@@ -5,7 +5,7 @@ among the various linguistic targets: Windows, MacOS, .svg, etc.
 
 Example usage:
 
-`cargo run -- target ~/Projects/keyboard-sme/sme.kbdgen ~/KbdgenBuilds/SME windows`
+`cargo run -- target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac macos generate`
 
 The first argument is the location of the given .kbdgen bundle (see below for 
 information on bundles) that the keyboard should be built from.
