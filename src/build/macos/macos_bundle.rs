@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf};
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
-use xmlem::Document;
+use xmlem::{Document, display::Config, display::EntityMode};
 
 const TOP_FOLDER: &str = "Contents";
 const RESOURCES_FOLDER: &str = "Resources";
@@ -113,9 +113,12 @@ impl MacOsBundle {
                 });
         }
 
+        let mut config: Config = Config::default_pretty();
+        config.entity_mode = EntityMode::Hex;
+
         self.macos_layouts.insert(
             language_tag,
-            (name.to_string(), kbd_layout_doc.to_string_pretty()),
+            (name.to_string(), kbd_layout_doc.to_string_pretty_with_config(&config)),
         );
     }
 

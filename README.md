@@ -22,7 +22,7 @@ We think it's pretty cool.
 1. get [Rust](https://www.rust-lang.org/learn/get-started)
 1. clone this repo: `git clone https://github.com/divvun/kbdgen.git`
 2. `cd kbdgen`
-1. `cargo install --path .`
+1. `cargo install --path .` (this installs `kbdgen` to the path)
 
 **Alternatively** - download a precompiled binary from nightly builds:
 
@@ -31,6 +31,10 @@ We think it's pretty cool.
 * [Windows](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=windows) (i686)
 
 Extract the archive, and move the binary to somewhere on your `$PATH`.
+
+## Example Usage
+
+`cargo run -- target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac macos generate`
 
 ## License
 
