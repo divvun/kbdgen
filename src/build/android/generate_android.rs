@@ -389,13 +389,6 @@ impl BuildStep for GenerateAndroid {
                     .output()
                     .expect("failed to build android project")
             } else {
-                // Command::new("sh")
-                //     .current_dir(output_path)
-                //     .arg("-c")
-                //     .arg(format!(
-                //         "{} assembleRelease -Dorg.gradle.jvmargs=-Xmx4096M --info --stacktrace",
-                //         gradle_executable_path.display()
-                //     ))
                 Command::new(gradle_executable_path)
                     .current_dir(output_path)
                     .arg("assembleRelease")
