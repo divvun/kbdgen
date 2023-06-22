@@ -1,7 +1,7 @@
 use std::collections::HashSet;
+use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::{fs::File, path::Path};
-use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -372,7 +372,8 @@ impl BuildStep for GenerateAndroid {
         if let Some(target) = bundle.targets.android.as_ref() {
             generate_gradle_local(target, &output_path.join("app"));
 
-            let path = std::fs::canonicalize(&output_path.join("gradlew")).expect("valid output path");
+            let gradle_executable_path = std::fs::canonicalize(&output_path.join("gradlew"))
+                .expect("valid gradle executable path");
 
             let gradle_assemble = if cfg!(target_os = "windows") {
                 Command::new("cmd")
@@ -388,10 +389,15 @@ impl BuildStep for GenerateAndroid {
                     .output()
                     .expect("failed to build android project")
             } else {
-                Command::new("sh")
-                    .current_dir(output_path)   
-                    .arg("-c")
-                    .arg("gradlew")
+                // Command::new("sh")
+                //     .current_dir(output_path)
+                //     .arg("-c")
+                //     .arg(format!(
+                //         "{} assembleRelease -Dorg.gradle.jvmargs=-Xmx4096M --info --stacktrace",
+                //         gradle_executable_path.display()
+                //     ))
+                Command::new(gradle_executable_path)
+                    .current_dir(output_path)
                     .arg("assembleRelease")
                     .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
                     .arg("--info")
@@ -407,7 +413,6 @@ impl BuildStep for GenerateAndroid {
 
             println!("out {}", stdout);
             println!("err {}", stderr);
-
         } else {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
