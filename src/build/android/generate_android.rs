@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::{fs::File, path::Path};
+use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -370,6 +371,15 @@ impl BuildStep for GenerateAndroid {
         generate_icons(bundle, &resources_path);
         if let Some(target) = bundle.targets.android.as_ref() {
             generate_gradle_local(target, &output_path.join("app"));
+
+            let path = std::fs::canonicalize(&output_path.join("gradlew")).expect("valid output path");
+
+            let gradle_assemble = Command::new(path)
+                .arg("assembleRelease")
+                .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
+                .arg("--info")
+                .arg("--stacktrace")
+                .output().expect("gradlew build failed!");
         } else {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
