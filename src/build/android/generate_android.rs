@@ -374,12 +374,40 @@ impl BuildStep for GenerateAndroid {
 
             let path = std::fs::canonicalize(&output_path.join("gradlew")).expect("valid output path");
 
-            let gradle_assemble = Command::new(path)
-                .arg("assembleRelease")
-                .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
-                .arg("--info")
-                .arg("--stacktrace")
-                .output().expect("gradlew build failed!");
+            let gradle_assemble = if cfg!(target_os = "windows") {
+                Command::new("cmd")
+                    .current_dir(output_path)
+                    .arg("/C")
+                    .arg("gradlew")
+                    .arg("assembleRelease")
+                    .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
+                    .arg("--info")
+                    .arg("--stacktrace")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .expect("failed to build android project")
+            } else {
+                Command::new("sh")
+                    .current_dir(output_path)   
+                    .arg("-c")
+                    .arg("gradlew")
+                    .arg("assembleRelease")
+                    .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
+                    .arg("--info")
+                    .arg("--stacktrace")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .expect("failed to build android project")
+            };
+
+            let stdout = String::from_utf8(gradle_assemble.stdout).unwrap();
+            let stderr = String::from_utf8(gradle_assemble.stderr).unwrap();
+
+            println!("out {}", stdout);
+            println!("err {}", stderr);
+
         } else {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
