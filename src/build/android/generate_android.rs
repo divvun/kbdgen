@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::{fs::File, path::Path};
 
@@ -370,6 +371,41 @@ impl BuildStep for GenerateAndroid {
         generate_icons(bundle, &resources_path);
         if let Some(target) = bundle.targets.android.as_ref() {
             generate_gradle_local(target, &output_path.join("app"));
+
+            let gradle_executable_path = std::fs::canonicalize(&output_path.join("gradlew"))
+                .expect("valid gradle executable path");
+
+            let gradle_assemble = if cfg!(target_os = "windows") {
+                Command::new("cmd")
+                    .current_dir(output_path)
+                    .arg("/C")
+                    .arg("gradlew")
+                    .arg("assembleRelease")
+                    .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
+                    .arg("--info")
+                    .arg("--stacktrace")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .expect("failed to build android project")
+            } else {
+                Command::new(gradle_executable_path)
+                    .current_dir(output_path)
+                    .arg("assembleRelease")
+                    .arg("-Dorg.gradle.jvmargs=-Xmx4096M")
+                    .arg("--info")
+                    .arg("--stacktrace")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .expect("failed to build android project")
+            };
+
+            let stdout = String::from_utf8(gradle_assemble.stdout).unwrap();
+            let stderr = String::from_utf8(gradle_assemble.stderr).unwrap();
+
+            println!("out {}", stdout);
+            println!("err {}", stderr);
         } else {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
