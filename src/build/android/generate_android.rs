@@ -401,11 +401,11 @@ impl BuildStep for GenerateAndroid {
                     .expect("failed to build android project")
             };
 
-            let stdout = String::from_utf8(gradle_assemble.stdout).unwrap();
-            let stderr = String::from_utf8(gradle_assemble.stderr).unwrap();
-
-            println!("out {}", stdout);
-            println!("err {}", stderr);
+            // let stdout = String::from_utf8(gradle_assemble.stdout).unwrap();
+            // let stderr = String::from_utf8(gradle_assemble.stderr).unwrap();
+            //
+            // println!("out {}", stdout);
+            // println!("err {}", stderr);
         } else {
             tracing::warn!("No target configuration found; no package identifier set.");
         }
