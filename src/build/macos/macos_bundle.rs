@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf};
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
-use xmlem::{Document, display::Config, display::EntityMode};
+use xmlem::{display::Config, display::EntityMode, Document};
 
 const TOP_FOLDER: &str = "Contents";
 const RESOURCES_FOLDER: &str = "Resources";
@@ -118,7 +118,10 @@ impl MacOsBundle {
 
         self.macos_layouts.insert(
             language_tag,
-            (name.to_string(), kbd_layout_doc.to_string_pretty_with_config(&config)),
+            (
+                name.to_string(),
+                kbd_layout_doc.to_string_pretty_with_config(&config),
+            ),
         );
     }
 
