@@ -151,46 +151,48 @@ pub async fn init(bundle: KbdgenBundle, path: &Path) -> anyhow::Result<()> {
         .await?;
 
     let ids = bundle.all_pkg_ids();
-    let futs = ids.into_iter().map(|id| {
-        let path = path.to_path_buf();
-        let base_id = base_id.to_string();
-        let target = target.clone();
-        let app_name = app_name.clone();
+    let futs = ids
+        .into_iter()
+        .map(|id| {
+            let path = path.to_path_buf();
+            let base_id = base_id.to_string();
+            let target = target.clone();
+            let app_name = app_name.clone();
 
-        tokio::spawn(async move {
-            if id != base_id {
-                tracing::debug!(id = id, "registering id");
+            tokio::spawn(async move {
+                if id != base_id {
+                    tracing::debug!(id = id, "registering id");
+                    let _output = tokio::process::Command::new("fastlane")
+                        .current_dir(&path)
+                        .envs(fastlane_env(&target))
+                        .args(["produce", "-a", &id, "--app_name"])
+                        .arg(format!("{app_name}: {}", id.rsplit(".").next().unwrap()))
+                        .arg("--skip_itc")
+                        .output()
+                        .await?;
+                }
+
+                tracing::debug!(id = id, "enabling app group");
                 let _output = tokio::process::Command::new("fastlane")
                     .current_dir(&path)
                     .envs(fastlane_env(&target))
-                    .args(["produce", "-a", &id, "--app_name"])
-                    .arg(format!("{app_name}: {}", id.rsplit(".").next().unwrap()))
-                    .arg("--skip_itc")
+                    .args(["produce", "enable_services", "-a", &id, "--app-group"])
                     .output()
                     .await?;
-            }
 
-            tracing::debug!(id = id, "enabling app group");
-            let _output = tokio::process::Command::new("fastlane")
-                .current_dir(&path)
-                .envs(fastlane_env(&target))
-                .args(["produce", "enable_services", "-a", &id, "--app-group"])
-                .output()
-                .await?;
+                tracing::debug!(id = id, "associating group");
+                let _output = tokio::process::Command::new("fastlane")
+                    .current_dir(&path)
+                    .envs(fastlane_env(&target))
+                    .args(["produce", "associate_group", "-a", &id])
+                    .arg(format!("group.{base_id}"))
+                    .output()
+                    .await?;
 
-            
-            tracing::debug!(id = id, "associating group");
-            let _output = tokio::process::Command::new("fastlane")
-                .current_dir(&path)
-                .envs(fastlane_env(&target))
-                .args(["produce", "associate_group", "-a", &id])
-                .arg(format!("group.{base_id}"))
-                .output()
-                .await?;
-
-            Ok::<_, std::io::Error>(())
-        })}
-    ).collect::<Vec<_>>();
+                Ok::<_, std::io::Error>(())
+            })
+        })
+        .collect::<Vec<_>>();
 
     for fut in futs.into_iter() {
         let _mm = fut.await?;

@@ -559,15 +559,26 @@ fn escape_quotes(input: Option<&str>) -> Option<String> {
 }
 
 fn generate_gradle_local(target: &target::Android, app_path: &Path) {
-    let store_file = target
-        .key_store
-        .as_ref()
-        .and_then(|x| {
-            std::fs::canonicalize(x)
-                .ok()
-                .map(|x| x.to_str().unwrap().to_string().replace("\\", "\\\\"))
-        })
-        .unwrap_or_else(|| "".to_string());
+    let store_file = if let Some(key_store_path) = target.key_store.as_ref() {
+        match std::fs::canonicalize(key_store_path) {
+            Ok(path) => path
+                .to_str()
+                .expect("canonicalized path failed to convert to string")
+                .to_string()
+                .replace("\\", "\\\\"),
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to canonicalize android keystore path: {}, error: {}",
+                    key_store_path,
+                    err
+                );
+                "".to_string()
+            }
+        }
+    } else {
+        "".to_string()
+    };
+
     let key_alias = escape_quotes(target.key_alias.as_deref()).unwrap_or_else(|| "".to_string());
     let store_pw =
         escape_quotes(target.store_password.as_deref()).unwrap_or_else(|| "".to_string());
