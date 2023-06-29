@@ -609,7 +609,7 @@ fn generate_gradle_local(target: &target::Android, app_path: &Path) {
     )
     .replace("$", "\\$");
 
-    std::fs::write(app_path.join("gradle.local"), text).expect("Failed to write gradle.local file");
+    std::fs::write(app_path.join("local.gradle"), text).expect("Failed to write local.gradle file");
 }
 
 fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
