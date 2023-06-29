@@ -401,6 +401,9 @@ impl BuildStep for GenerateAndroid {
                     .expect("failed to build android project")
             };
 
+            // NOTE: the below can be helpful when debugging but may break CI due to insane amounts
+            // of output
+
             // let stdout = String::from_utf8(gradle_assemble.stdout).unwrap();
             // let stderr = String::from_utf8(gradle_assemble.stderr).unwrap();
             //
