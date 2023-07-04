@@ -195,7 +195,10 @@ impl BuildStep for FastlaneProvisioning {
         let mut futures = vec![];
         let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(12));
 
-        tracing::info!("bundle ids: {:?}", bundle.all_pkg_ids());
+        tracing::info!("bundle ids:");
+        bundle.all_pkg_ids().into_iter().for_each(|id| {
+            tracing::info!("  {:?}", id);
+        });
 
         bundle.all_pkg_ids().into_iter().for_each(|id| {
             // let team_id = team_id.to_string();
