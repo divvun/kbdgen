@@ -207,10 +207,10 @@ impl BuildStep for FastlaneProvisioning {
             futures.push(tokio::spawn(async move {
                 let _permit = sem.acquire_owned().await.unwrap();
 
-                tokio::process::Command::new("bundle")
+                tokio::process::Command::new("fastlane")
                     .current_dir(&deps_path)
                     .envs(&env)
-                    .args(["exec", "fastlane", "match", "appstore"])
+                    .args(["bundle", "exec", "match", "appstore"])
                     .arg(format!("--app_identifier={}", &id))
                     .arg(format!("--api_key_path={}", app_store_key_json_path))
                     .output()
