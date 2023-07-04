@@ -210,7 +210,7 @@ impl BuildStep for FastlaneProvisioning {
                 tokio::process::Command::new("fastlane")
                     .current_dir(&deps_path)
                     .envs(&env)
-                    .args(["bundle", "exec", "match", "appstore"])
+                    .args(["match", "appstore"])
                     .arg(format!("--app_identifier={}", &id))
                     .arg(format!("--api_key_path={}", app_store_key_json_path))
                     .output()
