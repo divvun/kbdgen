@@ -369,7 +369,9 @@ impl BuildStep for GenerateAndroid {
             .expect("failed to copy libdivvunspell from Pahkat repo");
 
         generate_icons(bundle, &resources_path);
+        tracing::info!("FINISHED generating icons");
         if let Some(target) = bundle.targets.android.as_ref() {
+            tracing::info!("GRADLE BLOCK: if");
             generate_gradle_local(target, &output_path.join("app"));
 
             let gradle_executable_path = std::fs::canonicalize(&output_path.join("gradlew"))
@@ -410,8 +412,10 @@ impl BuildStep for GenerateAndroid {
             // println!("out {}", stdout);
             // println!("err {}", stderr);
         } else {
+            tracing::info!("GRADLE BLOCK: else");
             tracing::warn!("No target configuration found; no package identifier set.");
         }
+        tracing::info!("PAST gradle block stuff");
 
         Ok(())
     }
