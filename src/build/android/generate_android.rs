@@ -80,7 +80,7 @@ impl BuildStep for GenerateAndroid {
 
         if !android_targets {
             tracing::warn!("No Android targets found in the supplied kbdgen bundle!");
-            return Ok(());
+            // return Ok(());
         }
 
         let output_path = output_path.join(Path::new(REPOSITORY_FOLDER));
