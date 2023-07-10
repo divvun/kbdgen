@@ -10,6 +10,7 @@ use futures::stream::Select;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use qname::qname;
+use regex::Regex;
 use serde::Serialize;
 use url::Url;
 use xmlem::{Document, NewElement, Node, Selector};
@@ -200,13 +201,20 @@ impl BuildStep for GenerateAndroid {
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
-                let snake_case_display_name = default_display_name
+                let mut snake_case_display_name = default_display_name
                     .to_lowercase()
                     .replace(" ", "_")
                     .replace("-", "_")
                     .replace("(", "")
-                    .replace(")", "")
-                    .replace("ã", "a");
+                    .replace(")", "");
+
+                // only characters a-z, 0-9, and _ are allowed. Replace any other special
+                // characters such as 'ä' that break the build.
+                let regex = Regex::new("[^a-z0-9]").unwrap();
+                snake_case_display_name = regex
+                    .replace_all(snake_case_display_name.as_ref(), "x")
+                    .as_ref()
+                    .to_string();
 
                 let primary_layers = &android_target.primary.layers;
                 let tablet_600_layers = &android_target.tablet_600.layers;
