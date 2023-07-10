@@ -203,8 +203,10 @@ impl BuildStep for GenerateAndroid {
                 let snake_case_display_name = default_display_name
                     .to_lowercase()
                     .replace(" ", "_")
+                    .replace("-", "_")
                     .replace("(", "")
-                    .replace(")", "");
+                    .replace(")", "")
+                    .replace("ã", "a");
 
                 let primary_layers = &android_target.primary.layers;
                 let tablet_600_layers = &android_target.tablet_600.layers;
