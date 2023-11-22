@@ -36,6 +36,15 @@ Extract the archive, and move the binary to somewhere on your `$PATH`.
 
 `cargo run -- target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac macos generate`
 
+**Alternatively** - if you downloaded a precompiled binary from nightly builds
+
+
+For Android run two commands:
+
+`kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac android clone`
+
+`kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac android generate`
+
 ## License
 
 This project is licensed under either of
