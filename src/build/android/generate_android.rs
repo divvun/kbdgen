@@ -60,7 +60,7 @@ pub struct AndroidLayout {
 #[derive(Serialize)]
 pub struct AndroidSpeller {
     pub path: String,
-    pub package_url: Url,
+    pub package_url: Option<Url>,
 }
 
 pub struct GenerateAndroid;
@@ -174,14 +174,14 @@ impl BuildStep for GenerateAndroid {
                                 .as_ref()
                                 .expect("no speller path supplid for android!")
                                 .to_string(),
-                            package_url: Url::parse(
-                                &config
-                                    .speller_package_key
-                                    .as_ref()
-                                    .expect("no speller package key provided for android!")
-                                    .to_string(),
-                            )
-                            .expect("the speller package url to be parseable"),
+                            package_url: if let Some(package_url) = &config.speller_package_key {
+                                Some(
+                                    Url::parse(package_url)
+                                        .expect("the speller package url to be parseable"),
+                                )
+                            } else {
+                                None
+                            }
                         }),
                     }
                 } else {
