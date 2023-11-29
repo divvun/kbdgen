@@ -163,6 +163,7 @@ impl BuildStep for GenerateAndroid {
         // x files for lines (should be 3)
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
+            tracing::info!("Building Android layouts for lang {}", language_tag);
             if let Some(android_target) = &layout.android {
                 let assets_layout = if let Some(config) = android_target.config.as_ref() {
                     AndroidLayout {
@@ -644,8 +645,10 @@ fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
         }
     };
 
+    tracing::info!("Generating icons from {} to {}", icon.display(), resources_path.display());
+
     for (suffix, dimension) in ICON_SIZES {
-        tracing::debug!("Generating {} - {}x{}", suffix, dimension, dimension);
+        tracing::info!("Generating {} - {}x{}", suffix, dimension, dimension);
 
         let mipmap_path = format!("drawable-{suffix}");
 
