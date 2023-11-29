@@ -36,14 +36,46 @@ Extract the archive, and move the binary to somewhere on your `$PATH`.
 
 `cargo run -- target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac macos generate`
 
-**Alternatively** - if you downloaded a precompiled binary from nightly builds
+
+Let's build an android app. There's two. [divvun-dev-keyboard](https://github.com/divvun/divvun-dev-keyboard) and [divvun-keyboard](https://github.com/divvun/divvun-keyboard). The former is the unstable one where we do all the testing. The latter one gets pushed to production. Both are deployed as separate apps in google playstore. 
+
+Alas, I digress. 
+
+We want to build divvun-dev-keyboard. Clone divvun-dev-keyboard. 
+
+```bash
+cd source/divvun
+git clone git@github.com:divvun/divvun-dev-keyboard.git 
+cd ../kbdgen
+cargo run -- fetch -b /Users/srdkvr/source/divvun/divvun-dev-keyboard/divvun-dev.kbdgen #fetches deps
+cargo run -- target --bundle-path /Users/srdkvr/source/divvun/divvun-dev-keyboard/divvun-dev.kbdgen --output-path ~/source/divvun/android_keyboard android build
+```
+
+Note - you will need imagemagick to run converting of images - so 
+
+```
+$ brew install imagemagick@6
+$ echo 'export PATH="/opt/homebrew/opt/imagemagick@6/bin:$PATH"' >> ~/.zshrc
+```
+
+Your typical commands are
+
+- ... `android clone` # Clones the base android repository
+- ... `android generate` # Generates all the layouts and speller configs, but doesn't clone stuff
+- ... `android build` # Both of the above. 
+
+
+### TL;DR Android
+
+Your 
 
 
 For Android run two commands:
 
-`kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_android android clone`
-
-`kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_android android generate`
+```
+kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_android android clone
+kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_android android generate
+```
 
 ## License
 
