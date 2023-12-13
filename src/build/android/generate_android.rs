@@ -457,9 +457,9 @@ fn create_and_write_rows_keys_for_layer(
         .unwrap();
 
     let key_width = if tablet_600 {
-        100.0f64 / longest_row_count as f64
-    } else {
         90.0f64 / longest_row_count as f64
+    } else {
+        100.0f64 / longest_row_count as f64
     };
 
     for (layer_key, layer) in layers {
