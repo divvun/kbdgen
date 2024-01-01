@@ -9,6 +9,8 @@ use fs_extra::dir::CopyOptions;
 use futures::stream::Select;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
+use pahkat_client::transaction;
+use pahkat_client::types::repo::Index;
 use qname::qname;
 use regex::Regex;
 use serde::Serialize;
@@ -16,12 +18,14 @@ use url::Url;
 use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::build::pahkat;
+use crate::bundle::layout::Transform;
 use crate::bundle::project::{self, LocaleProjectDescription};
 use crate::bundle::target;
 use crate::{
     build::BuildStep,
     bundle::{layout::android::AndroidKbdLayer, KbdgenBundle},
     util::split_keys,
+    util::TRANSFORM_ESCAPE
 };
 
 use super::REPOSITORY_FOLDER;
@@ -53,7 +57,7 @@ const PRETTY_CONFIG: xmlem::display::Config = xmlem::display::Config {
 
 #[derive(Default, Serialize)]
 pub struct AndroidLayout {
-    pub transforms: IndexMap<String, String>,
+    pub transforms: IndexMap<String, IndexMap<String, String>>,
     pub speller: Option<AndroidSpeller>,
 }
 
@@ -163,11 +167,46 @@ impl BuildStep for GenerateAndroid {
         // x files for lines (should be 3)
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
+
+            let mut transforms_by_dead_key: IndexMap<String, IndexMap<String, String>> = IndexMap::new();   
+            if let Some(transforms) = layout.transforms.as_ref() {
+                transforms.into_iter()
+                .for_each(|item| {
+                    let (dead_key, transform) = item;
+                    let mut transforms_by_char: IndexMap<String, String> = IndexMap::new();
+
+                    match transform {
+                        Transform::End(character) => {
+                            tracing::error!("Transform ended too soon for dead key {} - character {}", dead_key, character);
+                        }
+                        Transform::More(map) => {
+                            for (next_char, transform) in map {
+                                if next_char == TRANSFORM_ESCAPE {
+                                    continue;
+                                }
+
+                                match transform {
+                                    Transform::End(end_char) => {
+                                        transforms_by_char.insert(next_char.clone(), end_char.clone());
+                                    }
+                                    Transform::More(_transform) => {
+                                        todo!("Recursion required ahead");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    transforms_by_dead_key.insert(dead_key.clone(), transforms_by_char);
+                });
+            }
+
+
             tracing::info!("Building Android layouts for lang {}", language_tag);
             if let Some(android_target) = &layout.android {
                 let assets_layout = if let Some(config) = android_target.config.as_ref() {
                     AndroidLayout {
-                        transforms: IndexMap::new(), // should this be more? can mobile keys have transforms?
+                        transforms: transforms_by_dead_key,
                         speller: Some(AndroidSpeller {
                             path: config
                                 .speller_path
