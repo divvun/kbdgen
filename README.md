@@ -15,7 +15,7 @@ A tool to build keyboard packages for a multitude of platforms using a single, s
 - [CLDR keyboard definitions](https://cldr.unicode.org/index/keyboard-workgroup) is presently missing, but is in the pipeline
 
 We think it's pretty cool.
-[Documentation](https://divvun.github.io/kbdgen/) (under construction).
+[Documentation](https://divvun.github.io/kbdgen/) (under construction -- [how to update](DEV.md#asciidoc)).
 
 ## Installation
 
