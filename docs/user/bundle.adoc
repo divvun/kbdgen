@@ -36,6 +36,32 @@ other key. For `deadKeys`, there must be a corresponding `transforms` entry for 
 
 There's also the `space` category.
 
+=== Deadkeys
+
+`deadKeys` can be nested:
+
+```
+'a':
+  'b': ['c']
+
+'a':
+  'b':
+    'c': ['d']
+```
+
+Or with a more authentic example:
+
+```
+transforms:
+  '-':
+    ' ': '-'
+    a: ā
+    e: ē
+    '´':
+      a: ā́
+      e: ḗ
+```
+
 === Layers
 
 Layers are expected to be whitespace separated strings listing the keymap of 
