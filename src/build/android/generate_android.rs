@@ -168,13 +168,15 @@ impl BuildStep for GenerateAndroid {
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
 
-            let mut transforms_by_dead_key: IndexMap<String, IndexMap<String, String>> = IndexMap::new();   
+            let mut transforms_by_dead_key: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
+            let mut dead_keys: Vec<&String> = Vec::new();   
             if let Some(transforms) = layout.transforms.as_ref() {
                 transforms.into_iter()
                 .for_each(|item| {
                     let (dead_key, transform) = item;
                     let mut transforms_by_char: IndexMap<String, String> = IndexMap::new();
 
+                    dead_keys.push(dead_key);
                     match transform {
                         Transform::End(character) => {
                             tracing::error!("Transform ended too soon for dead key {} - character {}", dead_key, character);
@@ -200,7 +202,6 @@ impl BuildStep for GenerateAndroid {
                     transforms_by_dead_key.insert(dead_key.clone(), transforms_by_char);
                 });
             }
-
 
             tracing::info!("Building Android layouts for lang {}", language_tag);
             if let Some(android_target) = &layout.android {
@@ -266,6 +267,7 @@ impl BuildStep for GenerateAndroid {
                     &default_display_name,
                     &snake_case_display_name,
                     &main_xml_path,
+                    &dead_keys
                 );
                 create_and_write_rows_keys_for_layer(
                     true,
@@ -274,6 +276,7 @@ impl BuildStep for GenerateAndroid {
                     &default_display_name,
                     &snake_case_display_name,
                     &tablet_600_xml_path,
+                    &dead_keys
                 );
 
                 create_and_write_kbd(&main_xml_path, &snake_case_display_name);
@@ -474,6 +477,7 @@ fn create_and_write_rows_keys_for_layer(
     default_display_name: &str,
     snake_case_display_name: &str,
     xml_path: &Path,
+    dead_keys: &Vec<&String>,
 ) {
     let mut rows_document = Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
 
@@ -551,6 +555,7 @@ fn create_and_write_rows_keys_for_layer(
                         key_width,
                         current_keys_count,
                         special_keys_count,
+                        dead_keys.contains(&key)
                     );
                 }
 
@@ -960,6 +965,7 @@ fn create_key_xml_element(
     key_width: f64,
     keys_count: usize,
     special_keys_count: usize,
+    dead_key: bool
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -988,6 +994,9 @@ fn create_key_xml_element(
         }
 
         attrs.insert(qname!("latin:keySpec"), key.to_owned());
+        if dead_key {
+            attrs.insert(qname!("latin:deadKey"), "True".to_owned());
+        }
     }
 
     NewElement {
