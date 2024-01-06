@@ -182,7 +182,7 @@ impl BuildStep for GenerateAndroid {
                         Transform::More(map) => {
                             for (next_char, transform) in map {
                                 if next_char == TRANSFORM_ESCAPE {
-                                    continue;
+                                    transforms_by_char.insert(next_char.clone(), dead_key.clone());
                                 }
 
                                 match transform {
