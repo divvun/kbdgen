@@ -547,6 +547,7 @@ fn create_and_write_rows_keys_for_layer(
                         &key,
                         compute_key_hint_label_index(key_index),
                         longpress,
+                        dead_keys.contains(&key)
                     );
                 } else {
                     new_elem = create_key_xml_element(
@@ -925,6 +926,7 @@ fn create_numbered_key_xml_element(
     key: &str,
     key_hint_label_index: Option<usize>,
     longpress: Option<&Vec<String>>,
+    dead_key: bool
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -951,6 +953,10 @@ fn create_numbered_key_xml_element(
 
             attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
         }
+    }
+
+    if dead_key {
+        attrs.insert(qname!("latin:deadKey"), "True".to_owned());
     }
 
     NewElement {
@@ -994,11 +1000,12 @@ fn create_key_xml_element(
         }
 
         attrs.insert(qname!("latin:keySpec"), key.to_owned());
-        if dead_key {
-            attrs.insert(qname!("latin:deadKey"), "True".to_owned());
-        }
     }
 
+    if dead_key {
+        attrs.insert(qname!("latin:deadKey"), "True".to_owned());
+    }
+    
     NewElement {
         name: qname!("Key"),
         attrs,
