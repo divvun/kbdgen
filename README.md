@@ -17,6 +17,13 @@ A tool to build keyboard packages for a multitude of platforms using a single, s
 We think it's pretty cool.
 [Documentation](https://divvun.github.io/kbdgen/) (under construction -- [how to update](DEV.md#asciidoc)).
 
+## Runtime dependency
+
+kbdgen uses `convert` which is part of `imagemagick`
+
+For Mac: `brew install imagemagick`
+For Linux: `<pkg-manager> install imagemagick`
+
 ## Installation
 
 1. get [Rust](https://www.rust-lang.org/learn/get-started)
