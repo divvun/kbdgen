@@ -88,11 +88,11 @@ pub struct IosPlatform {
 
 #[derive(Serialize, Deserialize)]
 pub struct IosDeadKeys {
-    iphone: IndexMap<String, String>,
+    iphone: IndexMap<IOsKbdLayer, Vec<String>>,
     #[serde(rename = "ipad-9in")]
-    i_pad_9in: IndexMap<String, String>,
+    i_pad_9in: IndexMap<IOsKbdLayer, Vec<String>>,
     #[serde(rename = "ipad-12in")]
-    i_pad_12in: IndexMap<String, String>,
+    i_pad_12in: IndexMap<IOsKbdLayer, Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -150,6 +150,14 @@ pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<Ios
     layers
 }
 
+pub fn generate_deadkeys(deadkeys: &IndexMap<IOsKbdLayer, Vec<String>>) -> IndexMap<String, String> {
+    let mut dead_keys: IndexMap<String, String> = IndexMap::new();
+    for (layer, deadkey) in deadkeys {
+        dead_keys.insert(ios_layer_name(layer), deadkey.join(""));
+    }
+    dead_keys
+}
+
 pub struct GenerateIos;
 
 #[async_trait(?Send)]
@@ -167,6 +175,7 @@ impl BuildStep for GenerateIos {
             let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
+            let mut deadkeys: IndexMap<IOsKbdLayer, Vec<String>> = IndexMap::new();
 
             if let Some(ios_target) = &layout.i_os {
                 tracing::debug!("Generating json for {}", &language_tag);
@@ -186,6 +195,9 @@ impl BuildStep for GenerateIos {
                 if let Some(i_pad_12in_platform) = &ios_target.i_pad_12in {
                     i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
                 }
+                if let Some(found_deadkeys) = &ios_target.dead_keys {
+                    deadkeys = found_deadkeys.clone();
+                }
 
                 if let Some(key_names) = &layout.key_names {
                     all_layouts.push(IosKeyboardDefinitions {
@@ -197,9 +209,9 @@ impl BuildStep for GenerateIos {
                         },
                         longpress: longpress,
                         dead_keys: IosDeadKeys {
-                            iphone: IndexMap::new(),
-                            i_pad_9in: IndexMap::new(),
-                            i_pad_12in: IndexMap::new(),
+                            iphone: deadkeys.clone(),
+                            i_pad_9in: deadkeys.clone(),
+                            i_pad_12in: deadkeys.clone(),
                         },
                         transforms: serde_json::value::Value::Null,
                         iphone: IosPlatform {
