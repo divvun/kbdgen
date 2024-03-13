@@ -19,7 +19,7 @@ use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::build::pahkat;
 use crate::bundle::layout::Transform;
-use crate::bundle::project::{LocaleProjectDescription};
+use crate::bundle::project::LocaleProjectDescription;
 use crate::bundle::target;
 use crate::{
     build::BuildStep,
@@ -120,8 +120,6 @@ impl BuildStep for GenerateAndroid {
             .filter(|x| x.starts_with("values-"))
             .map(|x| x.replace("values-", ""))
             .collect::<HashSet<_>>();
-
-        let _subtype_selector = Selector::new("subtype").expect("subtype selector");
 
         // Method
 
