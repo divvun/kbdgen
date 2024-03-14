@@ -90,13 +90,13 @@ impl Pbxproj {
                 s.push_str("settings = {");
                 for (key, values) in settings {
                     let mut settings_string: String = String::new();
-                    for value_list in values.as_array() {
+                    values.as_array().into_iter().for_each(|value_list| {
                         settings_string.push_str("(");
                         for value in value_list {
                             settings_string.push_str(&format!("{}, ", value.as_str().unwrap()));
                         }
                         settings_string.push_str(")");
-                    }
+                    });
                     s.push_str(&format!("{} = {};", key, settings_string));
                 }
                 s.push_str("};");
