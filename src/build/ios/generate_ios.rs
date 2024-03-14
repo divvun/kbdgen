@@ -200,7 +200,7 @@ impl BuildStep for GenerateIos {
             let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-            let mut deadkeys: IndexMap<IOsKbdLayer, Vec<String>> = IndexMap::new();
+            let mut dead_keys: IndexMap<IOsKbdLayer, Vec<String>> = IndexMap::new();
             let mut transforms: IndexMap<String, Transform> = IndexMap::new();
 
             if let Some(ios_target) = &layout.i_os {
@@ -222,7 +222,7 @@ impl BuildStep for GenerateIos {
                     i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
                 }
                 if let Some(found_deadkeys) = &ios_target.dead_keys {
-                    deadkeys = found_deadkeys.clone();
+                    dead_keys = found_deadkeys.clone();
                 }
                 if let Some(found_transforms) = &layout.transforms {
                     transforms = found_transforms.clone();
@@ -238,9 +238,9 @@ impl BuildStep for GenerateIos {
                         },
                         longpress: longpress,
                         dead_keys: IosDeadKeys {
-                            iphone: deadkeys.clone(),
-                            i_pad_9in: deadkeys.clone(),
-                            i_pad_12in: deadkeys.clone(),
+                            iphone: dead_keys.clone(),
+                            i_pad_9in: dead_keys.clone(),
+                            i_pad_12in: dead_keys.clone(),
                         },
                         transforms: process_transforms(&transforms),
                         iphone: IosPlatform {
