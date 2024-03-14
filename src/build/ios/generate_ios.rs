@@ -196,15 +196,15 @@ impl BuildStep for GenerateIos {
 
         let mut all_layouts: Vec<IosKeyboardDefinitions> = Vec::new();
         for (language_tag, layout) in &bundle.layouts {
+            let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
+            let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
+            let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
+            let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
+            let mut deadkeys: IndexMap<IOsKbdLayer, Vec<String>> = IndexMap::new();
+            let mut transforms: IndexMap<String, Transform> = IndexMap::new();
+
             if let Some(ios_target) = &layout.i_os {
                 tracing::debug!("Generating json for {}", &language_tag);
-
-                let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
-                let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-                let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-                let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-                let mut deadkeys: IndexMap<IOsKbdLayer, Vec<String>> = IndexMap::new();
-                let mut transforms: IndexMap<String, Transform> = IndexMap::new();
 
                 if let Some(layout_longpress) = &layout.longpress {
                     for (key, value) in layout_longpress {
