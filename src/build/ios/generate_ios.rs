@@ -131,7 +131,7 @@ pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<Ios
         let key_map_rows: Vec<&str> = layer_key_map
             .trim()
             .split("\n")
-            .map(|x| x.clone())
+            .map(|x| x)
             .collect();
         let mut layer_rows: Vec<Vec<IosKeyMapType>> = Vec::new();
         for key_map in key_map_rows {

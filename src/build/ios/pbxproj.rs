@@ -730,7 +730,7 @@ impl Pbxproj {
     }
 
     pub fn remove_target(&mut self, target_name: &str) {
-        let mut target = self.native_target_by_name_mut(target_name).unwrap();
+        let target = self.native_target_by_name_mut(target_name).unwrap();
 
         let product_reference = &target.product_reference.clone();
         target.product_reference = None;
