@@ -277,7 +277,7 @@ impl BuildStep for GenerateXcode {
                     let layout_folder_name = pkg_id.split(".").last().unwrap();
 
                     let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
-                    let current_layout_path = keyboard_path.join(layout_folder_name);
+                    let current_layout_path = keyboard_path.join(layout_folder_name.clone());
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
 

@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use language_tags::LanguageTag;
 use once_cell::sync::Lazy;
 
-use crate::bundle::{layout::Layout, KbdgenBundle};
+use crate::bundle::{layout::Layout, project::Project, KbdgenBundle};
 
 use self::{
     clone_giellakbd::CloneGiellaKbd,

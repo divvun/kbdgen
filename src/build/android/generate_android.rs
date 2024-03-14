@@ -5,12 +5,12 @@ use std::{fs::File, path::Path};
 
 use anyhow::Result;
 use async_trait::async_trait;
-
-
+use fs_extra::dir::CopyOptions;
+use futures::stream::Select;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-
-
+use pahkat_client::transaction;
+use pahkat_client::types::repo::Index;
 use qname::qname;
 use regex::Regex;
 use serde::Serialize;
@@ -19,7 +19,7 @@ use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::build::pahkat;
 use crate::bundle::layout::Transform;
-use crate::bundle::project::{LocaleProjectDescription};
+use crate::bundle::project::{self, LocaleProjectDescription};
 use crate::bundle::target;
 use crate::{
     build::BuildStep,
@@ -76,8 +76,8 @@ impl BuildStep for GenerateAndroid {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let mut android_targets = false;
 
-        for (_language_tag, layout) in &bundle.layouts {
-            if let Some(_android_target) = &layout.android {
+        for (language_tag, layout) in &bundle.layouts {
+            if let Some(android_target) = &layout.android {
                 android_targets = true;
                 break;
             }
@@ -121,7 +121,7 @@ impl BuildStep for GenerateAndroid {
             .map(|x| x.replace("values-", ""))
             .collect::<HashSet<_>>();
 
-        let _subtype_selector = Selector::new("subtype").expect("subtype selector");
+        let subtype_selector = Selector::new("subtype").expect("subtype selector");
 
         // Method
 
@@ -474,7 +474,7 @@ fn create_and_write_rows_keys_for_layer(
     tablet_600: bool,
     layers: &IndexMap<AndroidKbdLayer, String>,
     longpress: Option<&IndexMap<String, Vec<String>>>,
-    _default_display_name: &str,
+    default_display_name: &str,
     snake_case_display_name: &str,
     xml_path: &Path,
     dead_keys: &Vec<&String>,
@@ -880,13 +880,13 @@ fn create_and_write_values_strings(
 }
 
 fn update_method_file(
-    _main_xml_path: &Path,
+    main_xml_path: &Path,
     method_doc: &mut Document,
     language_tag: &LanguageTag,
     snake_case_display_name: &str,
     subtype_language_tag: &str,
 ) {
-    let subtype = method_doc.root().append_new_element(
+    let mut subtype = method_doc.root().append_new_element(
         method_doc,
         NewElement {
             name: qname!("subtype"),
