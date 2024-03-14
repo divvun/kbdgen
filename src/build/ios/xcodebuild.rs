@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    io,
-    path::{Path, PathBuf},
-    process::{Child, ExitStatus},
-};
+use std::{collections::HashMap, io, path::Path, process::ExitStatus};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;

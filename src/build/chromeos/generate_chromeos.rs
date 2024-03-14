@@ -120,7 +120,7 @@ pub fn create_background(
     output_folder_path: &Path,
 ) -> bool {
     if descriptor.len() > 0 {
-        let template = KEYBOARD_TEMPLATE.clone();
+        let template = KEYBOARD_TEMPLATE;
         let background = ChromeOsBackground {
             template: template.to_string(),
             descriptor,

@@ -26,8 +26,7 @@ pub trait BuildSteps {
 
     async fn build_full(&self) -> Result<()> {
         for step in self.steps() {
-            step.build(self.bundle().clone(), self.output_path())
-                .await?;
+            step.build(self.bundle(), self.output_path()).await?;
         }
 
         Ok(())
