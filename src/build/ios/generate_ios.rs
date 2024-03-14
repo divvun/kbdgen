@@ -10,10 +10,10 @@ use serde_json;
 use crate::{
     build::BuildStep,
     bundle::{
-        layout::{ios::IOsKbdLayer, IOsPlatform},
+        layout::{ios::IOsKbdLayer, IOsPlatform, Transform},
         KbdgenBundle,
     },
-    util::split_keys,
+    util::{split_keys, TRANSFORM_ESCAPE},
 };
 
 const REPOSITORY: &str = "repo";
@@ -103,7 +103,8 @@ pub struct IosKeyboardDefinitions {
     longpress: IndexMap<String, Vec<String>>,
     #[serde(rename = "deadKeys")]
     dead_keys: IosDeadKeys,
-    transforms: serde_json::value::Value,
+    // transforms: IndexMap<String, Transform>,
+    transforms: IndexMap<String, IndexMap<String, String>>,
     iphone: IosPlatform,
     #[serde(rename = "ipad-9in")]
     i_pad_9in: IosPlatform,
@@ -150,12 +151,36 @@ pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<Ios
     layers
 }
 
-pub fn generate_deadkeys(deadkeys: &IndexMap<IOsKbdLayer, Vec<String>>) -> IndexMap<String, String> {
-    let mut dead_keys: IndexMap<String, String> = IndexMap::new();
-    for (layer, deadkey) in deadkeys {
-        dead_keys.insert(ios_layer_name(layer), deadkey.join(""));
+fn process_transforms(transforms: &IndexMap<String, Transform>) -> IndexMap<String, IndexMap<String, String>> {
+    let mut output_map: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
+
+    for (dead_key, transform) in transforms {
+        let mut transforms_by_char: IndexMap<String, String> = IndexMap::new();
+        match transform {
+            Transform::End(character) => {
+                tracing::error!("Transform ended too soon for dead key {} - character {}", dead_key, character);
+            }
+            Transform::More(transforms) => {
+                for (next_char, transform) in transforms {
+                    if next_char == TRANSFORM_ESCAPE {
+                        transforms_by_char.insert(next_char.clone(), dead_key.clone());
+                    }
+                    match transform {
+                        Transform::End(end_char) => {
+                            transforms_by_char.insert(next_char.clone(), end_char.clone());
+                        }
+                        Transform::More(_transform) => {
+                            todo!("Recursion required ahead");
+                        }
+                    }
+                }
+            }
+        }
+
+        output_map.insert(dead_key.clone(), transforms_by_char);
     }
-    dead_keys
+
+    output_map
 }
 
 pub struct GenerateIos;
@@ -176,6 +201,7 @@ impl BuildStep for GenerateIos {
             let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
             let mut deadkeys: IndexMap<IOsKbdLayer, Vec<String>> = IndexMap::new();
+            let mut transforms: IndexMap<String, Transform> = IndexMap::new();
 
             if let Some(ios_target) = &layout.i_os {
                 tracing::debug!("Generating json for {}", &language_tag);
@@ -198,6 +224,9 @@ impl BuildStep for GenerateIos {
                 if let Some(found_deadkeys) = &ios_target.dead_keys {
                     deadkeys = found_deadkeys.clone();
                 }
+                if let Some(found_transforms) = &layout.transforms {
+                    transforms = found_transforms.clone();
+                }
 
                 if let Some(key_names) = &layout.key_names {
                     all_layouts.push(IosKeyboardDefinitions {
@@ -213,7 +242,7 @@ impl BuildStep for GenerateIos {
                             i_pad_9in: deadkeys.clone(),
                             i_pad_12in: deadkeys.clone(),
                         },
-                        transforms: serde_json::value::Value::Null,
+                        transforms: process_transforms(&transforms),
                         iphone: IosPlatform {
                             layer: iphone_layers,
                         },

@@ -17,7 +17,7 @@ pub mod ios;
 pub mod macos;
 pub mod windows;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Transform {
     End(String),
     More(IndexMap<String, Transform>),
