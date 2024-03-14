@@ -103,7 +103,6 @@ pub struct IosKeyboardDefinitions {
     longpress: IndexMap<String, Vec<String>>,
     #[serde(rename = "deadKeys")]
     dead_keys: IosDeadKeys,
-    // transforms: IndexMap<String, Transform>,
     transforms: IndexMap<String, IndexMap<String, String>>,
     iphone: IosPlatform,
     #[serde(rename = "ipad-9in")]
