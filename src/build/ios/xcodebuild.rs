@@ -1,8 +1,8 @@
 use std::{
     collections::HashMap,
     io,
-    path::{Path},
-    process::{ExitStatus},
+    path::{Path, PathBuf},
+    process::{Child, ExitStatus},
 };
 
 use async_trait::async_trait;
