@@ -116,6 +116,7 @@ pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
     match layer {
         IOsKbdLayer::Default => "normal",
         IOsKbdLayer::Shift => "shifted",
+        IOsKbdLayer::Caps => "caps",
         IOsKbdLayer::Alt => "alt",
         IOsKbdLayer::AltAndShift => "alt+shift",
         IOsKbdLayer::Symbols1 => "symbols-1",

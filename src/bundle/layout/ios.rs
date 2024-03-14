@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum IOsKbdLayer {
     Default,
     Shift,
+    Caps,
     Alt,
     #[serde(rename = "alt+shift")]
     AltAndShift,
