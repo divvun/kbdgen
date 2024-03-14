@@ -6,10 +6,8 @@ use std::{fs::File, path::Path};
 use anyhow::Result;
 use async_trait::async_trait;
 
-
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-
 
 use qname::qname;
 use regex::Regex;
@@ -25,7 +23,7 @@ use crate::{
     build::BuildStep,
     bundle::{layout::android::AndroidKbdLayer, KbdgenBundle},
     util::split_keys,
-    util::TRANSFORM_ESCAPE
+    util::TRANSFORM_ESCAPE,
 };
 
 use super::REPOSITORY_FOLDER;
@@ -167,19 +165,22 @@ impl BuildStep for GenerateAndroid {
         // x files for lines (should be 3)
         // (pretending we're following the primary approach for start)
         for (language_tag, layout) in &bundle.layouts {
-
-            let mut transforms_by_dead_key: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
-            let mut dead_keys: Vec<&String> = Vec::new();   
+            let mut transforms_by_dead_key: IndexMap<String, IndexMap<String, String>> =
+                IndexMap::new();
+            let mut dead_keys: Vec<&String> = Vec::new();
             if let Some(transforms) = layout.transforms.as_ref() {
-                transforms.into_iter()
-                .for_each(|item| {
+                transforms.into_iter().for_each(|item| {
                     let (dead_key, transform) = item;
                     let mut transforms_by_char: IndexMap<String, String> = IndexMap::new();
 
                     dead_keys.push(dead_key);
                     match transform {
                         Transform::End(character) => {
-                            tracing::error!("Transform ended too soon for dead key {} - character {}", dead_key, character);
+                            tracing::error!(
+                                "Transform ended too soon for dead key {} - character {}",
+                                dead_key,
+                                character
+                            );
                         }
                         Transform::More(map) => {
                             for (next_char, transform) in map {
@@ -189,7 +190,8 @@ impl BuildStep for GenerateAndroid {
 
                                 match transform {
                                     Transform::End(end_char) => {
-                                        transforms_by_char.insert(next_char.clone(), end_char.clone());
+                                        transforms_by_char
+                                            .insert(next_char.clone(), end_char.clone());
                                     }
                                     Transform::More(_transform) => {
                                         todo!("Recursion required ahead");
@@ -221,7 +223,7 @@ impl BuildStep for GenerateAndroid {
                                 )
                             } else {
                                 None
-                            }
+                            },
                         }),
                     }
                 } else {
@@ -267,7 +269,7 @@ impl BuildStep for GenerateAndroid {
                     &default_display_name,
                     &snake_case_display_name,
                     &main_xml_path,
-                    &dead_keys
+                    &dead_keys,
                 );
                 create_and_write_rows_keys_for_layer(
                     true,
@@ -276,7 +278,7 @@ impl BuildStep for GenerateAndroid {
                     &default_display_name,
                     &snake_case_display_name,
                     &tablet_600_xml_path,
-                    &dead_keys
+                    &dead_keys,
                 );
 
                 create_and_write_kbd(&main_xml_path, &snake_case_display_name);
@@ -547,7 +549,7 @@ fn create_and_write_rows_keys_for_layer(
                         &key,
                         compute_key_hint_label_index(key_index),
                         longpress,
-                        dead_keys.contains(&key)
+                        dead_keys.contains(&key),
                     );
                 } else {
                     new_elem = create_key_xml_element(
@@ -556,7 +558,7 @@ fn create_and_write_rows_keys_for_layer(
                         key_width,
                         current_keys_count,
                         special_keys_count,
-                        dead_keys.contains(&key)
+                        dead_keys.contains(&key),
                     );
                 }
 
@@ -690,7 +692,11 @@ fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
         }
     };
 
-    tracing::info!("Generating icons from {} to {}", icon.display(), resources_path.display());
+    tracing::info!(
+        "Generating icons from {} to {}",
+        icon.display(),
+        resources_path.display()
+    );
 
     for (suffix, dimension) in ICON_SIZES {
         tracing::info!("Generating {} - {}x{}", suffix, dimension, dimension);
@@ -926,7 +932,7 @@ fn create_numbered_key_xml_element(
     key: &str,
     key_hint_label_index: Option<usize>,
     longpress: Option<&Vec<String>>,
-    dead_key: bool
+    dead_key: bool,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -971,7 +977,7 @@ fn create_key_xml_element(
     key_width: f64,
     keys_count: usize,
     special_keys_count: usize,
-    dead_key: bool
+    dead_key: bool,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -1005,7 +1011,7 @@ fn create_key_xml_element(
     if dead_key {
         attrs.insert(qname!("latin:deadKey"), "True".to_owned());
     }
-    
+
     NewElement {
         name: qname!("Key"),
         attrs,

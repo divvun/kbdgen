@@ -39,8 +39,7 @@ impl BuildStep for GenerateKlc {
             trace!("Checking if we need a klc file for {}", language_tag);
             if let Some(windows_target) = &layout.windows {
                 debug!("Generating klc for {}", language_tag);
-                let metadata =
-                    generate_metadata(bundle, language_tag, layout, windows_target);
+                let metadata = generate_metadata(bundle, language_tag, layout, windows_target);
 
                 let layers = &windows_target.primary.layers;
 

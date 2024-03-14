@@ -128,11 +128,7 @@ pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<Ios
     let mut layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
     for (layer_name, layer_key_map) in &platform.layers {
         let layer_name = ios_layer_name(layer_name);
-        let key_map_rows: Vec<&str> = layer_key_map
-            .trim()
-            .split("\n")
-            .map(|x| x)
-            .collect();
+        let key_map_rows: Vec<&str> = layer_key_map.trim().split("\n").map(|x| x).collect();
         let mut layer_rows: Vec<Vec<IosKeyMapType>> = Vec::new();
         for key_map in key_map_rows {
             let key_map = split_keys(key_map);
@@ -151,14 +147,20 @@ pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<Ios
     layers
 }
 
-fn process_transforms(transforms: &IndexMap<String, Transform>) -> IndexMap<String, IndexMap<String, String>> {
+fn process_transforms(
+    transforms: &IndexMap<String, Transform>,
+) -> IndexMap<String, IndexMap<String, String>> {
     let mut output_map: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
 
     for (dead_key, transform) in transforms {
         let mut transforms_by_char: IndexMap<String, String> = IndexMap::new();
         match transform {
             Transform::End(character) => {
-                tracing::error!("Transform ended too soon for dead key {} - character {}", dead_key, character);
+                tracing::error!(
+                    "Transform ended too soon for dead key {} - character {}",
+                    dead_key,
+                    character
+                );
             }
             Transform::More(transforms) => {
                 for (next_char, transform) in transforms {
@@ -201,8 +203,10 @@ impl BuildStep for GenerateIos {
 
                 let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
                 let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-                let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-                let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
+                let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> =
+                    IndexMap::new();
+                let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> =
+                    IndexMap::new();
                 let dead_keys = ios_target.dead_keys.clone().unwrap_or_default();
                 let transforms = layout.transforms.clone().unwrap_or_default();
 
