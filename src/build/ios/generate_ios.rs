@@ -227,6 +227,9 @@ impl BuildStep for GenerateIos {
                 if let Some(found_transforms) = &layout.transforms {
                     transforms = found_transforms.clone();
                 }
+                if let Some(found_transforms) = &layout.transforms {
+                    transforms = found_transforms.clone();
+                }
 
                 if let Some(key_names) = &layout.key_names {
                     all_layouts.push(IosKeyboardDefinitions {
