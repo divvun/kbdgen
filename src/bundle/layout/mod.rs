@@ -17,7 +17,7 @@ pub mod ios;
 pub mod macos;
 pub mod windows;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Transform {
     End(String),
     More(IndexMap<String, Transform>),
@@ -112,6 +112,8 @@ pub struct IOsTarget {
     pub i_pad_9in: Option<IOsPlatform>,
     #[serde(rename = "iPad-12in")]
     pub i_pad_12in: Option<IOsPlatform>,
+    #[serde(rename = "deadKeys")]
+    pub dead_keys: Option<IndexMap<IOsKbdLayer, Vec<String>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
