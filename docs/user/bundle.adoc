@@ -1,7 +1,7 @@
 = Bundle
 
 \.kbdgen bundles are folders with the .kbdgen extension which describe keyboards for a 
-language or language family. They're expected to contain 3 pieces:
+language or language family. They're expected to contain 4 pieces:
 
 *project.yaml
 *layouts folder
@@ -70,7 +70,7 @@ characters in correspondence with appropriate format for the expected
 `platform`-`layer` combination.
 
 Newlines are permitted for readability, but the keys must be in the correct order,
-and having more keys than expected will result in an error.
+and having more or fewer keys than expected will result in an error.
 
 Special keys are supported, and must be contained within `\s{}`.
 Unrepresentable unicode characters must be contained within `u{}`.
