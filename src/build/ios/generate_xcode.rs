@@ -13,12 +13,10 @@ use rayon::prelude::*;
 
 use crate::{
     build::{
-        ios::xcode_structures::*,
-        ios::{pbxproj::Pbxproj, IosProjectExt},
+        ios::{pbxproj::Pbxproj, xcode_structures::*, IosProjectExt},
         BuildStep,
     },
-    bundle::layout::IOsTarget,
-    bundle::KbdgenBundle,
+    bundle::{layout::IOsTarget, project::Project, KbdgenBundle},
 };
 
 const REPOSITORY: &str = "repo";
@@ -52,6 +50,7 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
 pub fn generate_keyboard_plist(
     template_path: &Path,
     target: &IOsTarget,
+    project: &Project,
     value: &IosKeyboardSettings,
     display_name: &str,
     keyboard_index: usize,
@@ -73,6 +72,9 @@ pub fn generate_keyboard_plist(
         keyboard_plist.divvun_speller_package_key = None;
         keyboard_plist.divvun_speller_path = None;
     }
+
+    keyboard_plist.divvun_contact_email = project.email.clone();
+    tracing::debug!("Email: {}", project.email.clone());
 
     // keyboard_plist
     keyboard_plist.cf_bundle_display_name = display_name.to_string();
@@ -135,6 +137,8 @@ pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
 }
 
 pub fn generate_icons(bundle: &KbdgenBundle, path: &Path) {
+    let key = LanguageTag::from_str("png").unwrap();
+    print!("{}", key);
     let icon = bundle
         .resources
         .ios
@@ -286,6 +290,7 @@ impl BuildStep for GenerateXcode {
                     generate_keyboard_plist(
                         &keyboard_plist_template,
                         layout.i_os.as_ref().unwrap(),
+                        &bundle.project,
                         &ios_keyboard_settings,
                         &default_display_name,
                         layout_index,
