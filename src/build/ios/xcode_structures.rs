@@ -49,6 +49,8 @@ pub struct KeyboardInfoPlist {
     pub divvun_speller_path: Option<String>,
     #[serde(rename = "DivvunSpellerPackageKey")]
     pub divvun_speller_package_key: Option<String>,
+    #[serde(rename = "DivvunContactEmail")]
+    pub divvun_contact_email: String,
     #[serde(rename = "CFBundleDevelopmentRegion")]
     pub cf_bundle_development_region: String,
     #[serde(rename = "CFBundleDisplayName")]
