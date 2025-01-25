@@ -136,8 +136,6 @@ pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
 }
 
 pub fn generate_icons(bundle: &KbdgenBundle, path: &Path) {
-    let key = LanguageTag::from_str("png").unwrap();
-    print!("{}", key);
     let icon = bundle
         .resources
         .ios
