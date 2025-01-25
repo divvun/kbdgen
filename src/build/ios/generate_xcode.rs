@@ -282,12 +282,15 @@ impl BuildStep for GenerateXcode {
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
 
+                    let layout_project_path = bundle.path.join("projects").join(&format!("{}.yaml", layout_folder_name));
+                    let current_layout_project = serde_yaml::from_str::<Project>(&std::fs::read_to_string(&layout_project_path).unwrap()).unwrap();
+
                     // KEYBOARD PLIST
                     let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
                     generate_keyboard_plist(
                         &keyboard_plist_template,
                         layout.i_os.as_ref().unwrap(),
-                        &bundle.project.email,
+                        &current_layout_project.email,
                         &ios_keyboard_settings,
                         &default_display_name,
                         layout_index,

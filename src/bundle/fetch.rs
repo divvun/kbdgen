@@ -6,6 +6,9 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
     tracing::debug!("Create layouts dir");
     std::fs::create_dir_all(target.join("layouts"))?;
 
+    tracing::debug!("Create projects dir");
+    std::fs::create_dir_all(target.join("projects"))?;
+
     for (id, bundle) in project.dependencies.iter() {
         tracing::debug!("id: {}, bundle: {:?}", &id, &bundle);
         let branch = bundle.branch.as_deref().unwrap_or_else(|| "main".into());
@@ -39,6 +42,11 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
                 to_path.display()
             );
             std::fs::copy(from_path, to_path)?;
+
+            let project_from_path = kbdgen_path.join("project.yaml");
+            let project_to_path = target.join("projects").join(format!("{}.yaml", layout));
+            tracing::info!("Copying {} to {}...", project_from_path.display(), project_to_path.display());
+            std::fs::copy(project_from_path, project_to_path)?;
         }
     }
 
