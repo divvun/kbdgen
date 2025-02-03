@@ -50,7 +50,7 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
 pub fn generate_keyboard_plist(
     template_path: &Path,
     target: &IOsTarget,
-    contact_email: &str,
+    contact_email: Option<String>,
     value: &IosKeyboardSettings,
     display_name: &str,
     keyboard_index: usize,
@@ -73,7 +73,9 @@ pub fn generate_keyboard_plist(
         keyboard_plist.divvun_speller_path = None;
     }
 
-    keyboard_plist.divvun_contact_email = contact_email.to_string();
+    if let Some(email) = contact_email {
+        keyboard_plist.divvun_contact_email = email.to_string();
+    }
 
     // keyboard_plist
     keyboard_plist.cf_bundle_display_name = display_name.to_string();
@@ -282,15 +284,23 @@ impl BuildStep for GenerateXcode {
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
 
-                    let layout_project_path = bundle.path.join("projects").join(&format!("{}.yaml", layout_folder_name));
-                    let current_layout_project = serde_yaml::from_str::<Project>(&std::fs::read_to_string(&layout_project_path).unwrap()).unwrap();
+                    let layout_project_path = bundle.path.join("projects").join(&format!("{}.yaml", language_tag));
+
+                    // Fetch email from the layout's project.yaml file. 
+                    // It may not exist if it's a layout that was inside the .kbdgen/layouts folder, as opposed to
+                    // one that was fetched from a keyboard-xxx repo in the `fetch` step.
+                    let current_layout_project = std::fs::read_to_string(&layout_project_path)
+                        .ok()
+                        .and_then(|content| serde_yaml::from_str::<Project>(&content).ok());
+                    let email = current_layout_project
+                        .map(|project| project.email);
 
                     // KEYBOARD PLIST
                     let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
                     generate_keyboard_plist(
                         &keyboard_plist_template,
                         layout.i_os.as_ref().unwrap(),
-                        &current_layout_project.email,
+                        email,
                         &ios_keyboard_settings,
                         &default_display_name,
                         layout_index,
