@@ -318,15 +318,15 @@ impl BuildStep for GenerateAndroid {
 
                     // Check if a string element with the same name attribute already exists
                     let root = strings_doc.root();
-                    let duplicate_exists = root.children(&strings_doc)
-                        .into_iter().filter(|child| {
-                            // First, check if it's a string element
-                                if child.name(&strings_doc) == "string" {
-                                    // Then check if it has the same name attribute value
-                                    if let Some(attr_value) = child.attribute(&strings_doc, "name") {
-                                        return attr_value == current_language_tag_subtype;
-                                    }
+                    let duplicate_exists = root
+                        .children(&strings_doc)
+                        .into_iter()
+                        .filter(|child| {
+                            if child.name(&strings_doc) == "string" {
+                                if let Some(attr_value) = child.attribute(&strings_doc, "name") {
+                                    return attr_value == current_language_tag_subtype;
                                 }
+                            }
                             false
                         })
                         .next()
@@ -337,7 +337,8 @@ impl BuildStep for GenerateAndroid {
                             &mut strings_doc,
                             NewElement {
                                 name: qname!("string"),
-                                attrs: [(qname!("name"), current_language_tag_subtype.clone())].into(),
+                                attrs: [(qname!("name"), current_language_tag_subtype.clone())]
+                                    .into(),
                             },
                         );
 
