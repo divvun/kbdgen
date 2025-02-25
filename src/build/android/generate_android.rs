@@ -299,16 +299,6 @@ impl BuildStep for GenerateAndroid {
                         tracing::trace!("Skipping name strings for {}", language_tag);
                         continue;
                     }
-
-                    if language_tag == &default_language_tag {
-                        // Default language strings are stored in values/strings.xml.
-                        // values-en/strings.xml is symlinked to values/strings.xml so that 
-                        // Mozilla Pontoon is aware that English localizations do exist.
-                        // Skip writing the default language strings to values-en/strings.xml 
-                        // since it will result in duplicate elements because of the symlink.
-                        continue;
-                    }
-
                     let folder = resources_path
                         .join(Path::new(&format!("values-{}", language_tag)).to_owned());
                     let strings_path = folder.join(Path::new("strings.xml"));
