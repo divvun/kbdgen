@@ -316,15 +316,34 @@ impl BuildStep for GenerateAndroid {
                         std::fs::create_dir_all(&folder).unwrap();
                     }
 
-                    let subtype = strings_doc.root().append_new_element(
-                        &mut strings_doc,
-                        NewElement {
-                            name: qname!("string"),
-                            attrs: [(qname!("name"), current_language_tag_subtype.clone())].into(),
-                        },
-                    );
+                    // Check if a string element with the same name attribute already exists
+                    let root = strings_doc.root();
+                    let duplicate_exists = root
+                        .children(&strings_doc)
+                        .into_iter()
+                        .filter(|child| {
+                            if child.name(&strings_doc) == "string" {
+                                if let Some(attr_value) = child.attribute(&strings_doc, "name") {
+                                    return attr_value == current_language_tag_subtype;
+                                }
+                            }
+                            false
+                        })
+                        .next()
+                        .is_some();
 
-                    subtype.set_text(&mut strings_doc, &display_name);
+                    if !duplicate_exists {
+                        let subtype = strings_doc.root().append_new_element(
+                            &mut strings_doc,
+                            NewElement {
+                                name: qname!("string"),
+                                attrs: [(qname!("name"), current_language_tag_subtype.clone())]
+                                    .into(),
+                            },
+                        );
+
+                        subtype.set_text(&mut strings_doc, &display_name);
+                    }
 
                     std::fs::write(
                         strings_path,
