@@ -15,8 +15,8 @@ impl Display for KlcKey {
         match self {
             KlcKey::Character(character) => display_klc_character(*character, f),
             KlcKey::DeadKey(character) => {
-                f.write_char('@')?;
-                display_klc_character(*character, f)
+                display_klc_character(*character, f)?;
+                f.write_char('@')
             }
             KlcKey::Ligature => f.write_str("%%"),
             KlcKey::None => f.write_str("-1"),
