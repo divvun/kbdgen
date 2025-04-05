@@ -214,7 +214,7 @@ impl BuildStep for GenerateAndroid {
                             path: config
                                 .speller_path
                                 .as_ref()
-                                .expect("no speller path supplid for android!")
+                                .expect("no speller path supplied for android!")
                                 .to_string(),
                             package_url: if let Some(package_url) = &config.speller_package_key {
                                 Some(
