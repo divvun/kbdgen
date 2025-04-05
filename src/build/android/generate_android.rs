@@ -1024,7 +1024,7 @@ fn create_key_xml_element(
             attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
         }
 
-        attrs.insert(qname!("latin:keySpec"), key.to_owned());
+        attrs.insert(qname!("latin:keySpec"), escape_key_spec(key));
     }
 
     if dead_key {
@@ -1034,6 +1034,13 @@ fn create_key_xml_element(
     NewElement {
         name: qname!("Key"),
         attrs,
+    }
+}
+
+fn escape_key_spec(key: &str) -> String {
+    match key {
+        "\\" => "\\\\".to_owned(),
+        _ => key.to_owned(),
     }
 }
 
