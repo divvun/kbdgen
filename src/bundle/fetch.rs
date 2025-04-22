@@ -45,7 +45,11 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
 
             let project_from_path = kbdgen_path.join("project.yaml");
             let project_to_path = target.join("projects").join(format!("{}.yaml", layout));
-            tracing::info!("Copying {} to {}...", project_from_path.display(), project_to_path.display());
+            tracing::info!(
+                "Copying {} to {}...",
+                project_from_path.display(),
+                project_to_path.display()
+            );
             std::fs::copy(project_from_path, project_to_path)?;
         }
     }
