@@ -1,10 +1,11 @@
+use std::ffi::OsStr;
 use std::{path::Path, sync::Arc};
 
 use anyhow::Result;
 use async_trait::async_trait;
+use msvc_env::{CommandExt as _, MsvcArch};
 
 use crate::build::pahkat::{install_msklc, prefix_dir};
-
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
 pub struct BuildKlc {}
@@ -25,59 +26,97 @@ async fn ms_klc(output_path: &Path) {
         let path = entry.path();
         if let Some(extension) = path.extension() {
             if extension == "klc" {
-                build_dll(&path, KlcBuildTarget::Amd64, &output_path);
-                build_dll(&path, KlcBuildTarget::I386, &output_path);
-                build_dll(&path, KlcBuildTarget::Wow64, &output_path);
+                build_dll(&path, MsvcArch::X64, &output_path);
+                build_dll(&path, MsvcArch::X86, &output_path);
+                build_dll(&path, MsvcArch::Arm64, &output_path);
             }
         }
     }
 }
 
-fn build_dll(klc_path: &Path, target: KlcBuildTarget, output_path: &Path) {
+fn build_dll(klc_path: &Path, target: MsvcArch, output_path: &Path) {
     let kbdutool = prefix_dir("windows")
         .join("pkg")
         .join("msklc")
         .join("bin")
         .join("i386")
         .join("kbdutool.exe");
-    let current_dir = output_path.join(target.arch());
+    let current_dir = output_path
+        .join(target.to_string().replace("\"", ""))
+        .join("build");
+    println!("current_dir: {:?}", &current_dir);
     std::fs::create_dir_all(&current_dir).unwrap();
+    let current_dir = dunce::canonicalize(&current_dir).unwrap();
     let mut proc = std::process::Command::new(kbdutool)
         .arg("-n")
-        .arg(target.flag())
+        .arg("-s")
         .arg("-u")
         .arg(dunce::canonicalize(klc_path).unwrap())
-        .current_dir(dunce::canonicalize(current_dir).unwrap())
+        .current_dir(current_dir.to_str().unwrap())
         .spawn()
         .unwrap();
     proc.wait().unwrap();
-}
+    println!("{:?}", output_path);
+    // List files in current_dir and filter by ends with .C, then collcet the names without the .C extension
+    let prefixes = std::fs::read_dir(&output_path)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            if entry.path().extension() == Some(OsStr::new("klc")) {
+                Some(
+                    entry
+                        .path()
+                        .file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace(".klc", ""),
+                )
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<String>>();
 
-enum KlcBuildTarget {
-    Wow64,
-    I386,
-    Amd64,
-}
+    println!("prefixes: {:?}", prefixes);
 
-impl KlcBuildTarget {
-    fn flag(&self) -> &str {
-        match self {
-            KlcBuildTarget::Wow64 => "-o",
-            KlcBuildTarget::I386 => "-x",
-            KlcBuildTarget::Amd64 => "-m",
-        }
+    for prefix in prefixes {
+        let mut cmd = cl_command(current_dir.to_str().unwrap(), &prefix);
+        cmd.msvc_env(target)
+            .unwrap()
+            .current_dir(&current_dir)
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        let mut cmd = rc_command(current_dir.to_str().unwrap(), &prefix);
+        cmd.msvc_env(target)
+            .unwrap()
+            .current_dir(&current_dir)
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        let mut cmd = link_command(current_dir.to_str().unwrap(), &prefix);
+        cmd.msvc_env(target)
+            .unwrap()
+            .current_dir(&current_dir)
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        std::fs::rename(
+            current_dir.join(format!("{}.dll", prefix)),
+            current_dir
+                .parent()
+                .unwrap()
+                .join(format!("{}.dll", prefix)),
+        )
+        .unwrap();
     }
-
-    fn arch(&self) -> &str {
-        match self {
-            KlcBuildTarget::Wow64 => "wow64",
-            KlcBuildTarget::I386 => "i386",
-            KlcBuildTarget::Amd64 => "amd64",
-        }
-    }
 }
 
-fn cl_command(include_path: &str, source_path: &str) -> std::process::Command {
+fn cl_command(include_path: &str, name: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("cl.exe");
     cmd.arg("-nologo")
         .arg(format!("-I{}", include_path))
@@ -138,12 +177,12 @@ fn cl_command(include_path: &str, source_path: &str) -> std::process::Command {
         .arg("/GF")
         .arg("-Z7")
         .arg("/Oxs")
-        .arg(source_path)
-        .arg(format!("{}.c", source_path));
+        // .arg(name)
+        .arg(format!("{}.C", name));
     cmd
 }
 
-fn rc_command(include_path: &str, resource_path: &str) -> std::process::Command {
+fn rc_command(include_path: &str, name: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("rc.exe");
     cmd.arg("-r")
         .arg(format!("-I{}", include_path))
@@ -163,37 +202,32 @@ fn rc_command(include_path: &str, resource_path: &str) -> std::process::Command 
         .arg("-DNDEBUG")
         .arg("-l")
         .arg("409")
-        .arg(format!("{}.rc", resource_path));
+        .arg(format!("{}.RC", name));
     cmd
 }
 
-fn link_command(
-    obj_path: &str,
-    lib_path: &str,
-    def_path: &str,
-    res_path: &str,
-) -> std::process::Command {
+fn link_command(current_dir: &str, name: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("link.exe");
     cmd.arg("-nologo")
-        .arg(obj_path)
-        .arg(lib_path)
+        // .arg(name)
+        // .arg(name)
         .arg("-SECTION:INIT,D")
         .arg("-OPT:REF")
         .arg("-OPT:ICF")
         .arg("-IGNORE:4039,4078")
         .arg("-noentry")
         .arg("-dll")
-        .arg(format!("-libpath:{}", lib_path))
+        // .arg(format!("-libpath:{}", lib_path))
         .arg("-subsystem:native,5.0")
-        .arg("-merge:.rdata,.text")
-        .arg("-PDBPATH:NONE")
+        .arg("-merge:.rdata=.text")
+        // .arg("-PDBPATH:NONE")
         .arg("-STACK:0x40000,0x1000")
-        .arg("/opt:nowin98")
+        // .arg("/opt:nowin98")
         .arg("-osversion:4.0")
         .arg("-version:4.0")
         .arg("/release")
-        .arg(format!("-def:{}.def", def_path))
-        .arg(format!("{}.res", res_path))
-        .arg(format!("{}.obj", obj_path));
+        .arg(format!("-def:{}.def", name))
+        .arg(format!("{}.res", name))
+        .arg(format!("{}.obj", name));
     cmd
 }
