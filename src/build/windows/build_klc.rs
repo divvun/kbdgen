@@ -8,11 +8,19 @@ use msvc_env::{CommandExt as _, MsvcArch};
 use crate::build::pahkat::{install_msklc, prefix_dir};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
+const ENVS: &[MsvcArch] = &[MsvcArch::X64, MsvcArch::X86, MsvcArch::Arm64];
+
 pub struct BuildKlc {}
 
 #[async_trait(?Send)]
 impl BuildStep for BuildKlc {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
+        for target in ENVS {
+            if !target.is_valid_environment() {
+                eprintln!("{} is not a valid environment", target);
+                std::process::exit(1);
+            }
+        }
         ms_klc(output_path).await;
         Ok(())
     }
@@ -26,9 +34,9 @@ async fn ms_klc(output_path: &Path) {
         let path = entry.path();
         if let Some(extension) = path.extension() {
             if extension == "klc" {
-                build_dll(&path, MsvcArch::X64, &output_path);
-                build_dll(&path, MsvcArch::X86, &output_path);
-                build_dll(&path, MsvcArch::Arm64, &output_path);
+                for target in ENVS {
+                    build_dll(&path, *target, &output_path);
+                }
             }
         }
     }
