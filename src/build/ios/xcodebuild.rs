@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io, path::Path, process::ExitStatus};
+use std::{collections::HashMap, io, path::Path, process::{Command, ExitStatus, Stdio}};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -20,7 +20,7 @@ fn xcodebuild_archive(
     code_sign_id: &str,
     team_id: &str,
 ) -> io::Result<ExitStatus> {
-    std::process::Command::new("xcodebuild")
+    let xcodebuild = Command::new("xcodebuild")
         .current_dir(deps_path)
         .args(["archive", "-archivePath"])
         .arg(archive_path)
@@ -31,13 +31,23 @@ fn xcodebuild_archive(
             "Release",
             "-scheme",
             "HostingApp",
+            "-destination",
+            "generic/platform=iOS",
         ])
         .arg("-jobs")
         .arg(num_cpus::get().to_string())
-        // .env("CODE_SIGN_IDENTITY", code_sign_id)
         .arg(format!("CODE_SIGN_IDENTITY={}", code_sign_id))
         .arg(format!("DEVELOPMENT_TEAM={}", team_id))
-        .status()
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn xcodebuild");
+
+    let mut xcbeautify = Command::new("xcbeautify")
+        .stdin(xcodebuild.stdout.unwrap())
+        .spawn()
+        .expect("Failed to spawn xcbeautify");
+
+    xcbeautify.wait()
 }
 
 fn xcodebuild_export_ipa(
