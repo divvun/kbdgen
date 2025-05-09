@@ -38,5 +38,5 @@ reqwest = { version = "0.12.15", features = ["gzip"], default-features = false }
 zip = "0.6.3"
 num_cpus = "1.14.0"
 futures-util = "0.3.25"
-rustls = { version = "0.23.27", features = ["aws-lc-rs"] }
+rustls = { version = "0.23.27", default-features = false, features = ["ring"] }
 qname = "0.2.0"
