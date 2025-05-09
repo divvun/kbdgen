@@ -7,14 +7,14 @@ use async_trait::async_trait;
 use language_tags::LanguageTag;
 use once_cell::sync::Lazy;
 
-use crate::bundle::{layout::Layout, KbdgenBundle};
+use crate::bundle::{KbdgenBundle, layout::Layout};
 
 use self::{
     clone_giellakbd::CloneGiellaKbd,
     generate_ios::GenerateIos,
     generate_xcode::GenerateXcode,
     pod_install::PodInstall,
-    xcodebuild::{fastlane_env, BuildXcarchive, FastlaneProvisioning},
+    xcodebuild::{BuildXcarchive, FastlaneProvisioning, fastlane_env},
 };
 
 use super::{BuildStep, BuildSteps};

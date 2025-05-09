@@ -6,14 +6,13 @@ use anyhow::Result;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use qname::qname;
-use xmlem::{Document, Element, NewElement, Selector};
+use xmlem::{Document, Element, Selector};
 
 use crate::build::macos::keymap::{MACOS_HARDCODED, MACOS_KEYS};
 use crate::build::macos::layers::layer_attributes;
-use crate::bundle::layout::macos::MacOsKbdLayer;
 use crate::bundle::layout::Transform;
-use crate::util::{decode_unicode_escapes, split_keys, TRANSFORM_ESCAPE};
+use crate::bundle::layout::macos::MacOsKbdLayer;
+use crate::util::{TRANSFORM_ESCAPE, decode_unicode_escapes, split_keys};
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
 use super::macos_bundle::MacOsBundle;
@@ -232,27 +231,13 @@ fn add_layer_tags(
     for (layer_index, (layer, _)) in layers.iter().enumerate() {
         let key_map_select = modifier_map.append_new_element(
             document,
-            NewElement {
-                name: qname!("keyMapSelect"),
-                attrs: [(qname!("mapIndex"), layer_index.to_string())].into(),
-            },
+            ("keyMapSelect", [("mapIndex", layer_index.to_string())]),
         );
 
-        key_map_select.append_new_element(
-            document,
-            NewElement {
-                name: qname!("modifier"),
-                attrs: [(qname!("keys"), layer_attributes(layer))].into(),
-            },
-        );
+        key_map_select
+            .append_new_element(document, ("modifier", [("keys", layer_attributes(layer))]));
 
-        key_map_set.append_new_element(
-            document,
-            NewElement {
-                name: qname!("keyMap"),
-                attrs: [(qname!("index"), layer_index.to_string())].into(),
-            },
-        );
+        key_map_set.append_new_element(document, ("keyMap", [("index", layer_index.to_string())]));
     }
 }
 
@@ -357,7 +342,9 @@ fn process_transforms(
                                     }
                                 }
                                 Transform::More(_transform) => {
-                                    panic!("The escape transform should be a string, not another transform");
+                                    panic!(
+                                        "The escape transform should be a string, not another transform"
+                                    );
                                 }
                             };
 
@@ -428,7 +415,7 @@ fn update_key_transition_map_with_transform(
 
                 key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
             }
-            KeyTransition::Action(ref mut action) => {
+            KeyTransition::Action(action) => {
                 action.states.push(transform.clone());
             }
             KeyTransition::Next(_) => {
@@ -527,22 +514,18 @@ fn write_key_transition_map(
                 KeyTransition::Action(dead_key_action) => {
                     xml_key_map.append_new_element(
                         document,
-                        NewElement {
-                            name: qname!("key"),
-                            attrs: [
-                                (qname!("code"), dead_key_action.code.to_string()),
-                                (qname!("action"), dead_key_action.id.clone()),
-                            ]
-                            .into(),
-                        },
+                        (
+                            "key",
+                            [
+                                ("code", dead_key_action.code.to_string()),
+                                ("action", dead_key_action.id.clone()),
+                            ],
+                        ),
                     );
 
                     let action = actions.append_new_element(
                         document,
-                        NewElement {
-                            name: qname!("action"),
-                            attrs: [(qname!("id"), dead_key_action.id.clone())].into(),
-                        },
+                        ("action", [("id", dead_key_action.id.clone())]),
                     );
 
                     for state in &dead_key_action.states {
@@ -552,23 +535,17 @@ fn write_key_transition_map(
                 KeyTransition::Next(next_action) => {
                     xml_key_map.append_new_element(
                         document,
-                        NewElement {
-                            name: qname!("key"),
-                            attrs: [
-                                (qname!("code"), next_action.code.to_string()),
-                                (qname!("action"), next_action.id.clone()),
-                            ]
-                            .into(),
-                        },
+                        (
+                            "key",
+                            [
+                                ("code", next_action.code.to_string()),
+                                ("action", next_action.id.clone()),
+                            ],
+                        ),
                     );
 
-                    let action = actions.append_new_element(
-                        document,
-                        NewElement {
-                            name: qname!("action"),
-                            attrs: [(qname!("id"), next_action.id.clone())].into(),
-                        },
-                    );
+                    let action = actions
+                        .append_new_element(document, ("action", [("id", next_action.id.clone())]));
 
                     for state in &next_action.states {
                         append_dead_key_next_element(&action, document, &state);
@@ -610,13 +587,7 @@ fn write_key_transition_map(
 
 fn write_terminators(document: &mut Document, dead_keys: &IndexMap<String, DeadKeyOutput>) {
     if dead_keys.len() > 0 {
-        let terminators = document.root().append_new_element(
-            document,
-            NewElement {
-                name: qname!("terminators"),
-                attrs: [].into(),
-            },
-        );
+        let terminators = document.root().append_new_element(document, "terminators");
 
         for (_key, dead_key) in dead_keys {
             append_dead_key_output_element(&terminators, document, &dead_key);
@@ -627,41 +598,35 @@ fn write_terminators(document: &mut Document, dead_keys: &IndexMap<String, DeadK
 fn append_dead_key_output_element(element: &Element, document: &mut Document, key: &DeadKeyOutput) {
     element.append_new_element(
         document,
-        NewElement {
-            name: qname!("when"),
-            attrs: [
-                (qname!("state"), key.id.clone()),
-                (qname!("output"), decode_unicode_escapes(&key.output)),
-            ]
-            .into(),
-        },
+        (
+            "when",
+            [
+                ("state", key.id.clone()),
+                ("output", decode_unicode_escapes(&key.output)),
+            ],
+        ),
     );
 }
 
 fn append_dead_key_next_element(element: &Element, document: &mut Document, key: &DeadKeyNext) {
     element.append_new_element(
         document,
-        NewElement {
-            name: qname!("when"),
-            attrs: [
-                (qname!("state"), "none".to_string()),
-                (qname!("next"), key.next.clone()),
-            ]
-            .into(),
-        },
+        (
+            "when",
+            [("state", "none".to_string()), ("next", key.next.clone())],
+        ),
     );
 }
 
 fn append_key_output_element(element: &Element, document: &mut Document, key: &KeyOutput) {
     element.append_new_element(
         document,
-        NewElement {
-            name: qname!("key"),
-            attrs: [
-                (qname!("code"), key.code.to_string()),
-                (qname!("output"), decode_unicode_escapes(&key.output)),
-            ]
-            .into(),
-        },
+        (
+            "key",
+            [
+                ("code", key.code.to_string()),
+                ("output", decode_unicode_escapes(&key.output)),
+            ],
+        ),
     );
 }

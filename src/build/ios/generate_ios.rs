@@ -10,10 +10,10 @@ use serde_json;
 use crate::{
     build::BuildStep,
     bundle::{
-        layout::{ios::IOsKbdLayer, IOsPlatform, Transform},
         KbdgenBundle,
+        layout::{IOsPlatform, Transform, ios::IOsKbdLayer},
     },
-    util::{split_keys, TRANSFORM_ESCAPE},
+    util::{TRANSFORM_ESCAPE, split_keys},
 };
 
 const REPOSITORY: &str = "repo";

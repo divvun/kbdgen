@@ -3,10 +3,10 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use futures::stream::StreamExt;
 
 use pahkat_client::transaction::{PackageAction, PackageTransaction};
-use pahkat_client::types::{repo::RepoUrl, PackageKey};
+use pahkat_client::types::{PackageKey, repo::RepoUrl};
 use pahkat_client::{
-    config::RepoRecord, package_store::prefix::PrefixPackageStore,
-    types::package_key::PackageKeyParams, InstallTarget, PackageStore,
+    InstallTarget, PackageStore, config::RepoRecord, package_store::prefix::PrefixPackageStore,
+    types::package_key::PackageKeyParams,
 };
 
 pub async fn install_msklc() {

@@ -1,19 +1,19 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
+use kbdgen::build::BuildStep;
 use kbdgen::build::android::clone_giellakbd::CloneGiellaKbd;
 use kbdgen::build::android::generate_android::GenerateAndroid;
 use kbdgen::build::macos::{GenerateInstaller, GenerateMacOs};
-use kbdgen::build::BuildStep;
 use kbdgen::bundle::KbdgenBundle;
 
+use kbdgen::build::BuildSteps;
 use kbdgen::build::android::AndroidBuild;
 use kbdgen::build::chromeos::ChromeOsBuild;
 use kbdgen::build::ios::{self, IosBuild, IosProjectExt};
 use kbdgen::build::macos::MacOsBuild;
 use kbdgen::build::svg::SvgBuild;
 use kbdgen::build::windows::WindowsBuild;
-use kbdgen::build::BuildSteps;
 use kbdgen::bundle::read_kbdgen_bundle;
 
 async fn android_target(
@@ -138,7 +138,7 @@ enum Command {
 
 #[derive(Args)]
 struct FetchCommand {
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long)]
     /// Path to a .kbdgen bundle to process
     bundle_path: PathBuf,
 }
@@ -164,11 +164,11 @@ struct TargetCommandStruct {
     #[clap(subcommand)]
     target_command: TargetCommand,
 
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long)]
     /// Path to a .kbdgen bundle to process
     bundle_path: PathBuf,
 
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long)]
     /// The directory to place generated output
     output_path: PathBuf,
 }

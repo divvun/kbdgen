@@ -1,14 +1,13 @@
 [package]
 name = "kbdgen"
 version = "3.0.0-beta.5"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-clap = { version = "3.1.0", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
 pathos = "0.3.0"
 regex = "1.5.5"
-xmlem = "0.1.8"
-qname = "0.1.0"
+xmlem = "0.3.3"
 tracing = "0.1.32"
 tracing-subscriber = "0.3.9"
 tokio = { version = "1.17.0", features = ["full"] }
@@ -16,11 +15,11 @@ futures = { version = "0.3.21", default-features = false, features = ["alloc"] }
 once_cell = "1.10.0"
 async-trait = "0.1.52"
 serde = { version = "1.0.110", features = ["derive"] }
-serde_yaml = "0.8.23"
+serde_yaml = "0.9"
 serde_json = "1.0"
 plist = "1.3.1"
 url = "2.2.2"
-indexmap = { version = "1.8.0", features = ["serde"] }
+indexmap = { version = "2", features = ["serde"] }
 language-tags = { version = "0.3.2", features = ["serde"] }
 iso639 = "0.1.0"
 dunce = "1.0.2"
@@ -35,7 +34,9 @@ fs_extra = "1.2.0"
 dircpy = "0.3.9"
 rayon = "1.5.3"
 serde_path_to_error = "0.1.8"
-reqwest = { version = "0.12.15", features = ["rustls-tls", "gzip"], default-features = false }
+reqwest = { version = "0.12.15", features = ["gzip"], default-features = false }
 zip = "0.6.3"
 num_cpus = "1.14.0"
 futures-util = "0.3.25"
+rustls = { version = "0.23.27", features = ["aws-lc-rs"] }
+qname = "0.2.0"

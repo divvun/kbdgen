@@ -15,7 +15,7 @@ use crate::build::chromeos::manifest::{
 use crate::bundle::layout::{ChromeOsTarget, Layout};
 use crate::{
     build::BuildStep,
-    bundle::{layout::chrome::ChromeOsKbdLayer, KbdgenBundle},
+    bundle::{KbdgenBundle, layout::chrome::ChromeOsKbdLayer},
     util::split_keys,
 };
 

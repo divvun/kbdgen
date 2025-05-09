@@ -5,8 +5,7 @@ use std::{
 
 use anyhow::Result;
 use async_trait::async_trait;
-use qname::qname;
-use xmlem::{Document, NewElement};
+use xmlem::Document;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
@@ -26,87 +25,39 @@ fn generate_distribution_xml(
     let dist_path = work_dir.join("distribution.xml");
 
     let root = doc.root();
-    let title = root.append_new_element(
-        &mut doc,
-        NewElement {
-            name: qname!("title"),
-            attrs: [].into(),
-        },
-    );
+    let title = root.append_new_element(&mut doc, "title");
     title.append_text(&mut doc, bundle_name);
     let _options = root.append_new_element(
         &mut doc,
-        NewElement {
-            name: qname!("options"),
-            attrs: [
-                (qname!("customize"), "never".to_string()),
-                (qname!("rootVolumeOnly"), "true".to_string()),
-            ]
-            .into(),
-        },
+        (
+            "options",
+            [("customize", "never"), ("rootVolumeOnly", "true")],
+        ),
     );
-    let choices_outline = root.append_new_element(
-        &mut doc,
-        NewElement {
-            name: qname!("choices-outline"),
-            attrs: [].into(),
-        },
-    );
-    let line = choices_outline.append_new_element(
-        &mut doc,
-        NewElement {
-            name: qname!("line"),
-            attrs: [(qname!("choice"), "default".to_string())].into(),
-        },
-    );
-    line.append_new_element(
-        &mut doc,
-        NewElement {
-            name: qname!("line"),
-            attrs: [(qname!("choice"), bundle_id.to_string())].into(),
-        },
-    );
+    let choices_outline = root.append_new_element(&mut doc, "choices-outline");
+    let line = choices_outline.append_new_element(&mut doc, ("line", [("choice", "default")]));
+    line.append_new_element(&mut doc, ("line", [("choice", bundle_id.to_string())]));
 
-    root.append_new_element(
-        &mut doc,
-        NewElement {
-            name: qname!("choice"),
-            attrs: [(qname!("id"), "default".to_string())].into(),
-        },
-    );
+    root.append_new_element(&mut doc, ("choice", [("id", "default")]));
 
     let choice = root.append_new_element(
         &mut doc,
-        NewElement {
-            name: qname!("choice"),
-            attrs: [
-                (qname!("id"), bundle_id.to_string()),
-                (qname!("visible"), "false".to_string()),
-            ]
-            .into(),
-        },
+        ("choice", [("id", bundle_id), ("visible", "false")]),
     );
 
-    choice.append_new_element(
-        &mut doc,
-        NewElement {
-            name: qname!("pkg-ref"),
-            attrs: [(qname!("id"), bundle_id.to_string())].into(),
-        },
-    );
+    choice.append_new_element(&mut doc, ("pkg-ref", [("id", bundle_id)]));
 
     let pkg_ref = root.append_new_element(
         &mut doc,
-        NewElement {
-            name: qname!("pkg-ref"),
-            attrs: [
-                (qname!("id"), bundle_id.to_string()),
-                (qname!("version"), "0".into()),
-                (qname!("auth"), "root".into()),
-                (qname!("onConclusion"), "RequireRestart".into()),
-            ]
-            .into(),
-        },
+        (
+            "pkg-ref",
+            [
+                ("id", bundle_id),
+                ("version", "0"),
+                ("auth", "root"),
+                ("onConclusion", "RequireRestart"),
+            ],
+        ),
     );
 
     pkg_ref.append_text(&mut doc, "inner.pkg");

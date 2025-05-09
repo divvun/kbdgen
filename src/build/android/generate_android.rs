@@ -21,9 +21,9 @@ use crate::bundle::project::LocaleProjectDescription;
 use crate::bundle::target;
 use crate::{
     build::BuildStep,
-    bundle::{layout::android::AndroidKbdLayer, KbdgenBundle},
-    util::split_keys,
+    bundle::{KbdgenBundle, layout::android::AndroidKbdLayer},
     util::TRANSFORM_ESCAPE,
+    util::split_keys,
 };
 
 use super::REPOSITORY_FOLDER;
@@ -45,13 +45,13 @@ const SHIFT_ROWKEYS_TAG: &str = "case";
 
 const LONGPRESS_JOIN_CHARACTER: &str = ",";
 
-const PRETTY_CONFIG: xmlem::display::Config = xmlem::display::Config {
-    is_pretty: true,
-    indent: 4,
-    max_line_length: 120,
-    entity_mode: xmlem::display::EntityMode::Standard,
-    indent_text_nodes: false,
-};
+// const PRETTY_CONFIG: xmlem::display::Config = xmlem::display::Config {
+//     is_pretty: true,
+//     indent: 4,
+//     max_line_length: 120,
+//     entity_mode: xmlem::display::EntityMode::Standard,
+//     indent_text_nodes: false,
+// };
 
 #[derive(Default, Serialize)]
 pub struct AndroidLayout {
@@ -335,21 +335,13 @@ impl BuildStep for GenerateAndroid {
                     if !duplicate_exists {
                         let subtype = strings_doc.root().append_new_element(
                             &mut strings_doc,
-                            NewElement {
-                                name: qname!("string"),
-                                attrs: [(qname!("name"), current_language_tag_subtype.clone())]
-                                    .into(),
-                            },
+                            ("string", [("name", current_language_tag_subtype.clone())]),
                         );
 
                         subtype.set_text(&mut strings_doc, &display_name);
                     }
 
-                    std::fs::write(
-                        strings_path,
-                        strings_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-                    )
-                    .unwrap();
+                    std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
                 }
 
                 update_method_file(
@@ -363,17 +355,16 @@ impl BuildStep for GenerateAndroid {
                 // Spellchecker
                 let _subtype = spellchecker_doc.root().append_new_element(
                     &mut spellchecker_doc,
-                    NewElement {
-                        name: qname!("subtype"),
-                        attrs: [
+                    (
+                        "subtype",
+                        [
                             (
-                                qname!("android:label"),
+                                "android:label",
                                 format!("@string/{current_language_tag_subtype}"),
                             ),
-                            (qname!("android:subtypeLocale"), language_tag.to_string()),
-                        ]
-                        .into(),
-                    },
+                            ("android:subtypeLocale", language_tag.to_string()),
+                        ],
+                    ),
                 );
             }
         }
@@ -402,33 +393,17 @@ impl BuildStep for GenerateAndroid {
                 std::fs::create_dir_all(&folder).unwrap();
             }
 
-            let subtype = strings_doc.root().append_new_element(
-                &mut strings_doc,
-                NewElement {
-                    name: qname!("string"),
-                    attrs: [(qname!("name"), "english_ime_name".to_owned())].into(),
-                },
-            );
+            let subtype = strings_doc
+                .root()
+                .append_new_element(&mut strings_doc, ("string", [("name", "english_ime_name")]));
 
             subtype.set_text(&mut strings_doc, &name);
 
-            std::fs::write(
-                strings_appname_path,
-                strings_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-            )
-            .unwrap();
+            std::fs::write(strings_appname_path, strings_doc.to_string_pretty()).unwrap();
         }
 
-        std::fs::write(
-            method_path,
-            method_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-        )
-        .unwrap();
-        std::fs::write(
-            spellchecker_path,
-            spellchecker_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-        )
-        .unwrap();
+        std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
+        std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
 
         let pahkat_dir = pahkat::prefix_dir("android").join("pkg");
         let libpahkat_client_path = pahkat_dir.join("libpahkat_client").join("lib");
@@ -592,41 +567,27 @@ fn create_and_write_rows_keys_for_layer(
         let file_name_attr = format!("rowkeys_{}{}", snake_case_display_name, line_index + 1);
         let file_name = format!("{}.xml", file_name_attr);
 
-        row_append = row_append.append_new_element_after(
-            &mut rows_document,
-            NewElement {
-                name: qname!("Row"),
-                attrs: [].into(),
-            },
-        );
+        row_append = row_append.append_new_element_after(&mut rows_document, "Row");
 
         row_append.append_new_element(
             &mut rows_document,
-            NewElement {
-                name: qname!("include"),
-                attrs: [
-                    (
-                        qname!("latin:keyboardLayout"),
-                        format!("@xml/{}", &file_name_attr),
-                    ),
-                    (qname!("latin:keyWidth"), format!("{key_width}%p")),
-                ]
-                .into(),
-            },
+            (
+                "include",
+                [
+                    ("latin:keyboardLayout", format!("@xml/{}", &file_name_attr)),
+                    ("latin:keyWidth", format!("{key_width}%p")),
+                ],
+            ),
         );
 
-        std::fs::write(
-            xml_path.join(file_name),
-            rowkey_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-        )
-        .unwrap();
+        std::fs::write(xml_path.join(file_name), rowkey_doc.to_string_pretty()).unwrap();
     }
 
     let rows_file_name = format!("rows_{}.xml", snake_case_display_name);
 
     std::fs::write(
         xml_path.join(&rows_file_name),
-        rows_document.to_string_pretty_with_config(&PRETTY_CONFIG),
+        rows_document.to_string_pretty(),
     )
     .unwrap();
 }
@@ -748,14 +709,13 @@ fn create_and_write_kbd(main_xml_path: &Path, snake_case_display_name: &str) {
 
     kbd_root.append_new_element(
         &mut kbd_document,
-        NewElement {
-            name: qname!("include"),
-            attrs: [(
-                qname!("latin:keyboardLayout"),
+        (
+            "include",
+            [(
+                "latin:keyboardLayout",
                 format!("@xml/rows_{}", snake_case_display_name),
-            )]
-            .into(),
-        },
+            )],
+        ),
     );
 
     std::fs::write(
@@ -779,18 +739,14 @@ fn create_and_write_layout_set(main_xml_path: &Path, snake_case_display_name: &s
 
     layout_root.append_new_element(
         &mut layout_set_document,
-        NewElement {
-            name: qname!("Element"),
-            attrs: [
-                (qname!("latin:elementName"), "alphabet".to_owned()),
-                (qname!("latin:elementKeyboard"), keyboard_ref.clone()),
-                (
-                    qname!("latin:enableProximityCharsCorrection"),
-                    "true".to_owned(),
-                ),
-            ]
-            .into(),
-        },
+        (
+            "Element",
+            [
+                ("latin:elementName", "alphabet".to_owned()),
+                ("latin:elementKeyboard", keyboard_ref.clone()),
+                ("latin:enableProximityCharsCorrection", "true".to_owned()),
+            ],
+        ),
     );
 
     layout_root.append_new_element(
@@ -843,7 +799,7 @@ fn create_and_write_layout_set(main_xml_path: &Path, snake_case_display_name: &s
             "keyboard_layout_set_{}.xml",
             snake_case_display_name,
         )),
-        layout_set_document.to_string_pretty_with_config(&PRETTY_CONFIG),
+        layout_set_document.to_string_pretty(),
     )
     .unwrap();
 }
@@ -874,11 +830,7 @@ fn create_and_write_values_strings(
         &format!("{} Keyboard", default_display_name),
     );
 
-    std::fs::write(
-        strings_appname_path,
-        strings_appname_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-    )
-    .unwrap();
+    std::fs::write(strings_appname_path, strings_appname_doc.to_string_pretty()).unwrap();
 
     let strings_path = main_values_path.join(Path::new("strings.xml"));
     let file = File::open(strings_path.clone()).expect(&format!(
@@ -889,19 +841,15 @@ fn create_and_write_values_strings(
 
     let subtype = strings_doc.root().append_new_element(
         &mut strings_doc,
-        NewElement {
-            name: qname!("string"),
-            attrs: [(qname!("name"), current_language_tag_subtype.to_string())].into(),
-        },
+        (
+            "string",
+            [("name", current_language_tag_subtype.to_string())],
+        ),
     );
 
     subtype.set_text(&mut strings_doc, &default_display_name);
 
-    std::fs::write(
-        strings_path,
-        strings_doc.to_string_pretty_with_config(&PRETTY_CONFIG),
-    )
-    .unwrap();
+    std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
 }
 
 fn update_method_file(
@@ -913,17 +861,13 @@ fn update_method_file(
 ) {
     let subtype = method_doc.root().append_new_element(
         method_doc,
-        NewElement {
-            name: qname!("subtype"),
-            attrs: [
-                (
-                    qname!("android:icon"),
-                    "@drawable/ic_ime_switcher_dark".to_string(),
-                ),
-                (qname!("android:imeSubtypeMode"), "keyboard".to_string()),
-            ]
-            .into(),
-        },
+        (
+            "subtype",
+            [
+                ("android:icon", "@drawable/ic_ime_switcher_dark".to_string()),
+                ("android:imeSubtypeMode", "keyboard".to_string()),
+            ],
+        ),
     );
 
     subtype.set_attribute(
@@ -1059,12 +1003,12 @@ fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {
 }
 
 fn make_layout_set_element(element_name: &str, keyboard: &str) -> NewElement {
-    NewElement {
-        name: qname!("Element"),
-        attrs: [
-            (qname!("latin:elementName"), element_name.parse().unwrap()),
-            (qname!("latin:elementKeyboard"), keyboard.to_owned()),
-        ]
-        .into(),
-    }
+    (
+        "Element",
+        [
+            ("latin:elementName", element_name.parse().unwrap()),
+            ("latin:elementKeyboard", keyboard.to_owned()),
+        ],
+    )
+        .into()
 }

@@ -9,8 +9,8 @@ use tracing::{debug, trace};
 use crate::{
     build::BuildStep,
     bundle::{
+        DEFAULT_DECIMAL, KbdgenBundle,
         layout::{Layout, WindowsTarget},
-        KbdgenBundle, DEFAULT_DECIMAL,
     },
     util::split_keys,
 };
@@ -19,13 +19,13 @@ use super::{
     klc::{
         dead_key::KlcDeadKeys,
         file::KlcFileMetadata,
-        file::{KlcFile, KLC_EXT},
+        file::{KLC_EXT, KlcFile},
         key::KlcKey,
         keymap::MSKLC_KEYS,
         layout::{KlcLayer, KlcLayout, KlcLayoutRow},
         ligature::{KlcLigature, KlcLigatureRow},
     },
-    layer_set::{populate_layer_set, WindowsLayerSet, WindowsLayerSetKey, SG_CAP},
+    layer_set::{SG_CAP, WindowsLayerSet, WindowsLayerSetKey, populate_layer_set},
 };
 
 pub struct GenerateKlc {}

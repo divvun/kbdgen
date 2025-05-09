@@ -1,4 +1,9 @@
-use std::{collections::HashMap, io, path::Path, process::{Command, ExitStatus, Stdio}};
+use std::{
+    collections::HashMap,
+    io,
+    path::Path,
+    process::{Command, ExitStatus, Stdio},
+};
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
@@ -6,10 +11,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     build::{
-        ios::{pbxproj::Pbxproj, IosProjectExt},
         BuildStep,
+        ios::{IosProjectExt, pbxproj::Pbxproj},
     },
-    bundle::{target::iOS, KbdgenBundle},
+    bundle::{KbdgenBundle, target::iOS},
 };
 
 pub struct BuildXcarchive;

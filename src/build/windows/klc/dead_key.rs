@@ -52,7 +52,9 @@ impl Display for KlcDeadKeys<'_> {
                                     write_transform(TRANSFORM_ESCAPE, end_char, f)?;
                                 }
                                 Transform::More(_transform) => {
-                                    panic!("The escape transform should be a string, not another transform");
+                                    panic!(
+                                        "The escape transform should be a string, not another transform"
+                                    );
                                 }
                             };
                         }

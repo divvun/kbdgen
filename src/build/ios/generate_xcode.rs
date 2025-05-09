@@ -13,10 +13,10 @@ use rayon::prelude::*;
 
 use crate::{
     build::{
-        ios::{pbxproj::Pbxproj, xcode_structures::*, IosProjectExt},
         BuildStep,
+        ios::{IosProjectExt, pbxproj::Pbxproj, xcode_structures::*},
     },
-    bundle::{layout::IOsTarget, project::Project, KbdgenBundle},
+    bundle::{KbdgenBundle, layout::IOsTarget, project::Project},
 };
 
 const REPOSITORY: &str = "repo";
@@ -284,16 +284,18 @@ impl BuildStep for GenerateXcode {
 
                     std::fs::create_dir_all(&current_layout_path).unwrap();
 
-                    let layout_project_path = bundle.path.join("projects").join(&format!("{}.yaml", language_tag));
+                    let layout_project_path = bundle
+                        .path
+                        .join("projects")
+                        .join(&format!("{}.yaml", language_tag));
 
-                    // Fetch email from the layout's project.yaml file. 
+                    // Fetch email from the layout's project.yaml file.
                     // It may not exist if it's a layout that was inside the .kbdgen/layouts folder, as opposed to
                     // one that was fetched from a keyboard-xxx repo in the `fetch` step.
                     let current_layout_project = std::fs::read_to_string(&layout_project_path)
                         .ok()
                         .and_then(|content| serde_yaml::from_str::<Project>(&content).ok());
-                    let email = current_layout_project
-                        .map(|project| project.email);
+                    let email = current_layout_project.map(|project| project.email);
 
                     // KEYBOARD PLIST
                     let layout_info_plist_path = current_layout_path.join(INFO_PLIST);

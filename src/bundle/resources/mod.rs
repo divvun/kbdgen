@@ -73,6 +73,7 @@ impl IOS {
 
 #[derive(Debug, Default)]
 pub(crate) struct ChromeOS {
+    #[allow(dead_code)]
     pub(crate) icons: IndexMap<LanguageTag, PathBuf>,
 }
 
