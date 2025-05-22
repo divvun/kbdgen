@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 
-use qname::qname;
+use qname::{QName, qname};
 use regex::Regex;
 use serde::Serialize;
 use url::Url;
@@ -904,7 +904,7 @@ fn create_numbered_key_xml_element(
     } else if key == "\\s{backspace}" {
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
     } else {
-        attrs.insert(qname!("latin:keySpec"), key.to_owned());
+        add_common_key_attributes(&mut attrs, key);
 
         if let Some(key_hint_label_index) = key_hint_label_index {
             attrs.insert(
@@ -956,6 +956,8 @@ fn create_key_xml_element(
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
         attrs.insert(qname!("latin:keyWidth"), "fillRight".to_owned());
     } else {
+        add_common_key_attributes(&mut attrs, key);
+
         if let Some(longpress) = longpress {
             let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
 
@@ -967,8 +969,6 @@ fn create_key_xml_element(
 
             attrs.insert(qname!("latin:moreKeys"), joined_longpress.clone());
         }
-
-        attrs.insert(qname!("latin:keySpec"), escape_key_spec(key));
     }
 
     if dead_key {
@@ -979,6 +979,14 @@ fn create_key_xml_element(
         name: qname!("Key"),
         attrs,
     }
+}
+
+fn add_common_key_attributes(attrs: &mut IndexMap<QName, String>, key: &str) {
+    attrs.insert(qname!("latin:keySpec"), escape_key_spec(key));
+
+    // Prevent Android from automatically transforming shift-state keys to uppercase.
+    // Some keyboards such as keyboard-lut require lowercase letters in shift states.
+    attrs.insert(qname!("latin:keyLabelFlags"), "preserveCase".to_owned());
 }
 
 fn escape_key_spec(key: &str) -> String {
