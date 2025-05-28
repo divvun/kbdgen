@@ -262,6 +262,11 @@ impl BuildStep for GenerateAndroid {
                 let primary_layers = &android_target.primary.layers;
                 let tablet_600_layers = &android_target.tablet_600.layers;
 
+                // keyboard-lut requires keys that appear lowercase when in shift mode.
+                // If other keyboards require this in the future, it may be worth making
+                // this an attribute of the .kbdgen yaml file.
+                let preserve_case = language_tag.as_str() == "lut";
+
                 create_and_write_rows_keys_for_layer(
                     false,
                     primary_layers,
@@ -270,6 +275,7 @@ impl BuildStep for GenerateAndroid {
                     &snake_case_display_name,
                     &main_xml_path,
                     &dead_keys,
+                    preserve_case,
                 );
                 create_and_write_rows_keys_for_layer(
                     true,
@@ -279,6 +285,7 @@ impl BuildStep for GenerateAndroid {
                     &snake_case_display_name,
                     &tablet_600_xml_path,
                     &dead_keys,
+                    preserve_case,
                 );
 
                 create_and_write_kbd(&main_xml_path, &snake_case_display_name);
@@ -474,6 +481,7 @@ fn create_and_write_rows_keys_for_layer(
     snake_case_display_name: &str,
     xml_path: &Path,
     dead_keys: &Vec<&String>,
+    preserve_case: bool,
 ) {
     let mut rows_document = Document::from_str(ROWS_TEMPLATE).expect("invalid rows template");
 
@@ -544,6 +552,7 @@ fn create_and_write_rows_keys_for_layer(
                         compute_key_hint_label_index(key_index),
                         longpress,
                         dead_keys.contains(&key),
+                        preserve_case,
                     );
                 } else {
                     new_elem = create_key_xml_element(
@@ -553,6 +562,7 @@ fn create_and_write_rows_keys_for_layer(
                         current_keys_count,
                         special_keys_count,
                         dead_keys.contains(&key),
+                        preserve_case,
                     );
                 }
 
@@ -896,6 +906,7 @@ fn create_numbered_key_xml_element(
     key_hint_label_index: Option<usize>,
     longpress: Option<&Vec<String>>,
     dead_key: bool,
+    preserve_case: bool,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -904,7 +915,7 @@ fn create_numbered_key_xml_element(
     } else if key == "\\s{backspace}" {
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
     } else {
-        add_common_key_attributes(&mut attrs, key);
+        add_common_key_attributes(&mut attrs, key, preserve_case);
 
         if let Some(key_hint_label_index) = key_hint_label_index {
             attrs.insert(
@@ -941,6 +952,7 @@ fn create_key_xml_element(
     keys_count: usize,
     special_keys_count: usize,
     dead_key: bool,
+    preserve_case: bool,
 ) -> NewElement {
     let mut attrs = IndexMap::new();
 
@@ -956,7 +968,7 @@ fn create_key_xml_element(
         attrs.insert(qname!("latin:keyStyle"), "deleteKeyStyle".to_owned());
         attrs.insert(qname!("latin:keyWidth"), "fillRight".to_owned());
     } else {
-        add_common_key_attributes(&mut attrs, key);
+        add_common_key_attributes(&mut attrs, key, preserve_case);
 
         if let Some(longpress) = longpress {
             let joined_longpress = longpress.join(LONGPRESS_JOIN_CHARACTER);
@@ -981,12 +993,12 @@ fn create_key_xml_element(
     }
 }
 
-fn add_common_key_attributes(attrs: &mut IndexMap<QName, String>, key: &str) {
+fn add_common_key_attributes(attrs: &mut IndexMap<QName, String>, key: &str, preserve_case: bool) {
     attrs.insert(qname!("latin:keySpec"), escape_key_spec(key));
 
-    // Prevent Android from automatically transforming shift-state keys to uppercase.
-    // Some keyboards such as keyboard-lut require lowercase letters in shift states.
-    attrs.insert(qname!("latin:keyLabelFlags"), "preserveCase".to_owned());
+    if preserve_case {
+        attrs.insert(qname!("latin:keyLabelFlags"), "preserveCase".to_owned());
+    }
 }
 
 fn escape_key_spec(key: &str) -> String {
