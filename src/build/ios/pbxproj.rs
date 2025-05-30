@@ -792,7 +792,7 @@ impl Pbxproj {
 
         for build_phase_id in &target.build_phases {
             if let Some(build_phase) = self.copy_file_build_phase_by_id_mut(build_phase_id) {
-                if build_phase.name.as_ref().unwrap() == "Embed App Extensions" {
+                if build_phase.name.as_ref().unwrap() == "Embed App Extensions" || build_phase.name.as_ref().unwrap() == "Embed Foundation Extensions" {
                     let build_file_id = ObjectId::new_random();
                     // Insert new build file that references our new keyboard appex
                     build_phase.files.insert(build_file_id.clone());
@@ -844,7 +844,7 @@ impl Pbxproj {
         for build_phase_id in target.build_phases.clone() {
             match self.copy_file_build_phase_by_id_mut(&build_phase_id) {
                 Some(x) => {
-                    if x.name.as_ref().unwrap() == "Embed App Extensions" {
+                    if x.name.as_ref().unwrap() == "Embed App Extensions" || x.name.as_ref().unwrap() == "Embed Foundation Extensions" {
                         x.files.remove(&build_file_id_to_remove);
                         return;
                     }
