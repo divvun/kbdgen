@@ -41,6 +41,7 @@ pub struct iOS {
     pub(crate) provisioning_profile_id: Option<String>,
     pub(crate) package_id: String,
     pub(crate) bundle_name: String,
+    pub(crate) sentry_dsn: Option<String>,
     pub(crate) version: String,
     pub(crate) build: usize,
 

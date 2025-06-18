@@ -82,6 +82,7 @@ pub fn generate_keyboard_plist(
     keyboard_plist.cf_bundle_short_version_string = value.short_version.to_string();
     keyboard_plist.cf_bundle_version = value.build_version.to_string();
     keyboard_plist.ls_application_queries_schemes[0] = value.package_id.to_string();
+    keyboard_plist.sentry_dsn = value.sentry_dsn.clone();
     keyboard_plist
         .ns_extension
         .ns_extension_attributes
@@ -125,6 +126,7 @@ pub struct IosKeyboardSettings {
     short_version: String,
     build_version: String,
     package_id: String,
+    sentry_dsn: Option<String>,
 }
 
 pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
@@ -223,6 +225,7 @@ impl BuildStep for GenerateXcode {
                 short_version: target.version.clone(),
                 build_version: target.build.to_string(),
                 package_id: target.package_id.clone(),
+                sentry_dsn: target.sentry_dsn.clone(),
             };
 
             for (layout_index, (language_tag, layout)) in bundle

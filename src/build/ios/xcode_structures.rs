@@ -79,6 +79,8 @@ pub struct KeyboardInfoPlist {
     pub ls_application_queries_schemes: Vec<String>,
     #[serde(rename = "NSExtension")]
     pub ns_extension: KeyboardInfoPlistExtension,
+    #[serde(rename = "SentryDSN")]
+    pub sentry_dsn: Option<String>,
 }
 
 // LAYOUT PLIST END
