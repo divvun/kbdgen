@@ -108,6 +108,7 @@ pub fn generate_hosting_plist(
     hosting_app_plist.cf_bundle_version = value.build_version;
     hosting_app_plist.cf_bundle_url_types[0].cf_bundle_url_schemes[0] = value.package_id.clone();
     hosting_app_plist.ls_application_queries_schemes[0] = value.package_id;
+    hosting_app_plist.sentry_dsn = value.sentry_dsn;
 
     plist::to_file_xml(in_out_path, &hosting_app_plist).unwrap();
 }

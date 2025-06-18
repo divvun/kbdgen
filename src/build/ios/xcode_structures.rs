@@ -159,6 +159,8 @@ pub struct HostingPlist {
     pub ui_supported_interface_orientations: Vec<String>,
     #[serde(rename = "UIUserInterfaceStyle")]
     pub ui_user_interface_style: String,
+    #[serde(rename = "SentryDSN")]
+    pub sentry_dsn: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
