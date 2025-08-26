@@ -3,6 +3,7 @@ use std::fs;
 use std::fs::{canonicalize, read_dir};
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexMap;
 use language_tags::LanguageTag;
 
 use layout::Layout;
@@ -46,6 +47,24 @@ impl KbdgenBundle {
             .expect("No file stem?")
             .to_str()
             .expect("Must be valid utf-8")
+    }
+
+    #[cfg(test)]
+    pub fn new_test(name: String, layouts: IndexMap<LanguageTag, Layout>) -> Self {
+        KbdgenBundle {
+            path: PathBuf::from(format!("/test/{}", name)),
+            project: project::Project {
+                locales: IndexMap::new(),
+                organisation: "Test".to_string(),
+                author: "Test".to_string(),
+                email: "test@example.com".to_string(),
+                copyright: "Test".to_string(),
+                dependencies: IndexMap::new(),
+            },
+            layouts: layouts.into_iter().collect(),
+            targets: target::Targets::default(),
+            resources: resources::Resources::default(),
+        }
     }
 }
 
