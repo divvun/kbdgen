@@ -255,9 +255,9 @@ fn initialize_key_transition_map(
             .get_mut(layer)
             .expect("getting back the value that was just inserted");
 
-        for (_iso_key, key_code) in MACOS_KEYS.iter() {
-            let key_map: Vec<String> = split_keys(&key_map);
+        let key_map: Vec<String> = split_keys(&key_map);
 
+        for (_iso_key, key_code) in MACOS_KEYS.iter() {
             tracing::debug!(
                 "iso len: {}; keymap len: {}",
                 MACOS_KEYS.len(),
