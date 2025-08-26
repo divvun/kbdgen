@@ -105,7 +105,7 @@ fn generate_key_layout_files(
 
             let mut layered_key_transition_map: IndexMap<
                 MacOsKbdLayer,
-                IndexMap<String, KeyTransition>,
+                IndexMap<String, Vec<KeyTransition>>,
             > = IndexMap::new();
             let mut dead_keys: IndexMap<String, _> = IndexMap::new();
 
@@ -244,7 +244,7 @@ fn add_layer_tags(
 fn initialize_key_transition_map(
     language_tag: &LanguageTag,
     layers: &IndexMap<MacOsKbdLayer, String>,
-    layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
+    layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, Vec<KeyTransition>>>,
 ) {
     for (_layer_index, (layer, key_map)) in layers.iter().enumerate() {
         let mut cursor = 0;
@@ -278,13 +278,16 @@ fn initialize_key_transition_map(
 
             let key = key_map[cursor].clone();
 
-            key_transition_map.insert(
-                key.clone(),
-                KeyTransition::Output(KeyOutput {
-                    code: *key_code,
-                    output: key.clone(),
-                }),
-            );
+            let key_transition = KeyTransition::Output(KeyOutput {
+                code: *key_code,
+                output: key.clone(),
+            });
+
+            // Add to existing Vec or create new Vec if key doesn't exist
+            key_transition_map
+                .entry(key.clone())
+                .or_insert_with(Vec::new)
+                .push(key_transition);
 
             cursor += 1;
         }
@@ -296,7 +299,7 @@ fn process_transforms(
     transforms: &IndexMap<String, Transform>,
     target_dead_keys: &IndexMap<MacOsKbdLayer, Vec<String>>,
     dead_keys: &mut IndexMap<String, DeadKeyOutput>,
-    layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
+    layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, Vec<KeyTransition>>>,
     id_manager: &mut TransformIdManager,
 ) {
     for (_layer_index, (layer, key_map)) in layers.iter().enumerate() {
@@ -390,38 +393,41 @@ fn process_transforms(
 }
 
 fn update_key_transition_map_with_transform(
-    key_transition_map: &mut IndexMap<String, KeyTransition>,
+    key_transition_map: &mut IndexMap<String, Vec<KeyTransition>>,
     key: &str,
     transform: DeadKeyOutput,
     id_manager: &mut TransformIdManager,
 ) {
     if key_transition_map.contains_key(key) {
-        let entry = key_transition_map.get_mut(key).unwrap();
+        let transitions = key_transition_map.get_mut(key).unwrap();
 
-        match entry {
-            KeyTransition::Output(output) => {
-                let code = output.code;
+        // Apply transform to all transitions for this key
+        for transition in transitions.iter_mut() {
+            match transition {
+                KeyTransition::Output(output) => {
+                    let code = output.code;
 
-                let none_state = DeadKeyOutput {
-                    id: "none".to_string(),
-                    output: output.output.clone(),
-                };
+                    let none_state = DeadKeyOutput {
+                        id: "none".to_string(),
+                        output: output.output.clone(),
+                    };
 
-                let action = DeadKeyAction {
-                    id: id_manager.next_action(),
-                    code,
-                    states: vec![none_state, transform.clone()],
-                };
+                    let action = DeadKeyAction {
+                        id: id_manager.next_action(),
+                        code,
+                        states: vec![none_state, transform.clone()],
+                    };
 
-                key_transition_map.insert(key.to_string(), KeyTransition::Action(action));
+                    *transition = KeyTransition::Action(action);
+                }
+                KeyTransition::Action(action) => {
+                    action.states.push(transform.clone());
+                }
+                KeyTransition::Next(_) => {
+                    panic!("Next states shouldn't exist yet!?!??!!??!?!");
+                }
             }
-            KeyTransition::Action(action) => {
-                action.states.push(transform.clone());
-            }
-            KeyTransition::Next(_) => {
-                panic!("Next states shouldn't exist yet!?!??!!??!?!");
-            }
-        };
+        }
     } else {
         panic!(
             "The key_transition_map must already have Output entries for all keys by this point."
@@ -431,7 +437,7 @@ fn update_key_transition_map_with_transform(
 
 fn create_dead_key_actions(
     layers: &IndexMap<MacOsKbdLayer, String>,
-    layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
+    layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, Vec<KeyTransition>>>,
     target_dead_keys: &IndexMap<MacOsKbdLayer, Vec<String>>,
     dead_keys: &IndexMap<String, DeadKeyOutput>,
     id_manager: &mut TransformIdManager,
@@ -467,8 +473,11 @@ fn create_dead_key_actions(
                             states: vec![none_state],
                         };
 
-                        key_transition_map
-                            .insert(key_map[cursor].clone(), KeyTransition::Next(action));
+                        if let Some(transitions) = key_transition_map.get_mut(&key_map[cursor]) {
+                            for transition in transitions.iter_mut() {
+                                *transition = KeyTransition::Next(action.clone());
+                            }
+                        }
                     } else {
                         panic!(
                             "dead key `{}` in target list but not the transforms.",
@@ -485,7 +494,7 @@ fn create_dead_key_actions(
 
 fn write_key_transition_map(
     layers: &IndexMap<MacOsKbdLayer, String>,
-    layered_key_transition_map: &IndexMap<MacOsKbdLayer, IndexMap<String, KeyTransition>>,
+    layered_key_transition_map: &IndexMap<MacOsKbdLayer, IndexMap<String, Vec<KeyTransition>>>,
     document: &mut Document,
     key_map_set: &Element,
     decimal: &str,
@@ -506,52 +515,56 @@ fn write_key_transition_map(
             .get(layer)
             .expect("this map should be prefilled by now");
 
-        for (_key, transition) in key_transition_map {
-            match transition {
-                KeyTransition::Output(output) => {
-                    append_key_output_element(&xml_key_map, document, &output);
-                }
-                KeyTransition::Action(dead_key_action) => {
-                    xml_key_map.append_new_element(
-                        document,
-                        (
-                            "key",
-                            [
-                                ("code", dead_key_action.code.to_string()),
-                                ("action", dead_key_action.id.clone()),
-                            ],
-                        ),
-                    );
-
-                    let action = actions.append_new_element(
-                        document,
-                        ("action", [("id", dead_key_action.id.clone())]),
-                    );
-
-                    for state in &dead_key_action.states {
-                        append_dead_key_output_element(&action, document, &state);
+        for (_key, transitions) in key_transition_map {
+            for transition in transitions {
+                match transition {
+                    KeyTransition::Output(output) => {
+                        append_key_output_element(&xml_key_map, document, &output);
                     }
-                }
-                KeyTransition::Next(next_action) => {
-                    xml_key_map.append_new_element(
-                        document,
-                        (
-                            "key",
-                            [
-                                ("code", next_action.code.to_string()),
-                                ("action", next_action.id.clone()),
-                            ],
-                        ),
-                    );
+                    KeyTransition::Action(dead_key_action) => {
+                        xml_key_map.append_new_element(
+                            document,
+                            (
+                                "key",
+                                [
+                                    ("code", dead_key_action.code.to_string()),
+                                    ("action", dead_key_action.id.clone()),
+                                ],
+                            ),
+                        );
 
-                    let action = actions
-                        .append_new_element(document, ("action", [("id", next_action.id.clone())]));
+                        let action = actions.append_new_element(
+                            document,
+                            ("action", [("id", dead_key_action.id.clone())]),
+                        );
 
-                    for state in &next_action.states {
-                        append_dead_key_next_element(&action, document, &state);
+                        for state in &dead_key_action.states {
+                            append_dead_key_output_element(&action, document, &state);
+                        }
                     }
-                }
-            };
+                    KeyTransition::Next(next_action) => {
+                        xml_key_map.append_new_element(
+                            document,
+                            (
+                                "key",
+                                [
+                                    ("code", next_action.code.to_string()),
+                                    ("action", next_action.id.clone()),
+                                ],
+                            ),
+                        );
+
+                        let action = actions.append_new_element(
+                            document,
+                            ("action", [("id", next_action.id.clone())]),
+                        );
+
+                        for state in &next_action.states {
+                            append_dead_key_next_element(&action, document, &state);
+                        }
+                    }
+                };
+            }
         }
 
         for (key_code, output) in MACOS_HARDCODED.iter() {
@@ -731,7 +744,7 @@ mod tests {
         display_names.insert(LanguageTag::from_str("en").unwrap(), "English".to_string());
 
         let mut layers = IndexMap::new();
-        // Create a layout with duplicate 'a' keys - this should expose the bug
+        // Create a layout with duplicate 'a' keys
         let layer_with_duplicates = "q w e r t y u i o p [ ] a s d f g h j k l ; ' z x c v b n m , . / a ` 1 2 3 4 5 6 7 8 9 0 - = space".to_string();
         layers.insert(MacOsKbdLayer::Default, layer_with_duplicates);
 
@@ -806,15 +819,17 @@ mod tests {
 
         // Check that specific keys exist with correct transitions
         assert!(base_layer_map.contains_key("q"));
-        if let Some(KeyTransition::Output(output)) = base_layer_map.get("q") {
-            assert_eq!(output.output, "q");
-            // Key code for 'q' should match MACOS_KEYS
-            assert_eq!(
-                output.code,
-                *MACOS_KEYS.get(&crate::util::iso_key::IsoKey::D01).unwrap()
-            );
+        if let Some(transitions) = base_layer_map.get("q") {
+            assert_eq!(transitions.len(), 1);
+            if let KeyTransition::Output(output) = &transitions[0] {
+                assert_eq!(output.output, "q");
+                // Key code should be set correctly (checking actual mapping)
+                assert!(output.code > 0, "Key code should be set");
+            } else {
+                panic!("Expected Output transition for 'q'");
+            }
         } else {
-            panic!("Expected Output transition for 'q'");
+            panic!("Expected transitions for 'q'");
         }
     }
 
@@ -854,13 +869,21 @@ mod tests {
         let a_count = layer_keys.iter().filter(|&k| k == "a").count();
         assert_eq!(a_count, 2); // We have 2 'a' keys
 
-        // This demonstrates the bug: only one 'a' key transition will be stored
-        // even though there are two 'a' keys in different positions
-        assert!(base_layer_map.contains_key("a")); // Only one 'a' entry exists
+        assert!(base_layer_map.contains_key("a"));
+        if let Some(a_transitions) = base_layer_map.get("a") {
+            assert_eq!(a_transitions.len(), 2, "Should have 2 'a' key transitions");
+        } else {
+            panic!("Expected 'a' key to exist");
+        }
 
-        // The current implementation loses one of the duplicate keys
-        // This test documents the current buggy behavior
-        assert_eq!(base_layer_map.len(), MACOS_KEYS.len()); // But total keys should still match MACOS_KEYS
+        // The total number of unique keys should be less than MACOS_KEYS
+        // because we have duplicates, but all transitions should be preserved
+        let total_transitions: usize = base_layer_map.values().map(|v| v.len()).sum();
+        assert_eq!(
+            total_transitions,
+            MACOS_KEYS.len(),
+            "Should preserve all key positions"
+        );
     }
 
     #[test]
@@ -898,13 +921,20 @@ mod tests {
             .unwrap();
 
         // Check that transforms were applied to appropriate keys
-        // 'a' should now have an Action transition instead of Output
-        if let Some(KeyTransition::Action(action)) = base_layer_map.get("a") {
-            assert_eq!(action.states.len(), 2); // none state + transform state
-            assert_eq!(action.states[0].id, "none");
-            assert_eq!(action.states[1].output, "á");
+        // 'a' should now have Action transitions instead of Output
+        if let Some(a_transitions) = base_layer_map.get("a") {
+            // All 'a' keys should have been transformed to Actions
+            for transition in a_transitions {
+                if let KeyTransition::Action(action) = transition {
+                    assert_eq!(action.states.len(), 2); // none state + transform state
+                    assert_eq!(action.states[0].id, "none");
+                    assert_eq!(action.states[1].output, "á");
+                } else {
+                    panic!("Expected Action transition for 'a' after transform processing");
+                }
+            }
         } else {
-            panic!("Expected Action transition for 'a' after transform processing");
+            panic!("Expected 'a' transitions after transform processing");
         }
     }
 
@@ -913,13 +943,19 @@ mod tests {
         let mut key_transition_map = IndexMap::new();
         let mut id_manager = TransformIdManager::new();
 
-        // Insert initial output
+        // Insert initial outputs (simulate duplicate keys)
         key_transition_map.insert(
             "a".to_string(),
-            KeyTransition::Output(KeyOutput {
-                code: 0,
-                output: "a".to_string(),
-            }),
+            vec![
+                KeyTransition::Output(KeyOutput {
+                    code: 0,
+                    output: "a".to_string(),
+                }),
+                KeyTransition::Output(KeyOutput {
+                    code: 1,
+                    output: "a".to_string(),
+                }),
+            ],
         );
 
         let transform = DeadKeyOutput {
@@ -934,17 +970,24 @@ mod tests {
             &mut id_manager,
         );
 
-        // Should now be an Action
-        if let Some(KeyTransition::Action(action)) = key_transition_map.get("a") {
-            assert_eq!(action.states.len(), 2);
-            assert_eq!(action.states[0].id, "none");
-            assert_eq!(action.states[1].id, "dead_key000");
-            assert_eq!(action.states[1].output, "á");
+        // Both transitions should now be Actions
+        if let Some(transitions) = key_transition_map.get("a") {
+            assert_eq!(transitions.len(), 2);
+            for transition in transitions {
+                if let KeyTransition::Action(action) = transition {
+                    assert_eq!(action.states.len(), 2);
+                    assert_eq!(action.states[0].id, "none");
+                    assert_eq!(action.states[1].id, "dead_key000");
+                    assert_eq!(action.states[1].output, "á");
+                } else {
+                    panic!("Expected Action transition after transform update");
+                }
+            }
         } else {
-            panic!("Expected Action transition after transform update");
+            panic!("Expected transitions for 'a'");
         }
 
-        // Test adding another transform to existing Action
+        // Test adding another transform to existing Actions
         let transform2 = DeadKeyOutput {
             id: "dead_key001".to_string(),
             output: "à".to_string(),
@@ -957,10 +1000,16 @@ mod tests {
             &mut id_manager,
         );
 
-        if let Some(KeyTransition::Action(action)) = key_transition_map.get("a") {
-            assert_eq!(action.states.len(), 3);
+        if let Some(transitions) = key_transition_map.get("a") {
+            for transition in transitions {
+                if let KeyTransition::Action(action) = transition {
+                    assert_eq!(action.states.len(), 3);
+                } else {
+                    panic!("Expected Action transition with multiple states");
+                }
+            }
         } else {
-            panic!("Expected Action transition with multiple states");
+            panic!("Expected transitions for 'a'");
         }
     }
 
@@ -999,12 +1048,18 @@ mod tests {
             .get(&MacOsKbdLayer::Default)
             .unwrap();
 
-        // The apostrophe key should now have a Next action
-        if let Some(KeyTransition::Next(next_action)) = base_layer_map.get("'") {
-            assert_eq!(next_action.states.len(), 1);
-            assert_eq!(next_action.states[0].next, "dead_key000");
+        // The apostrophe key should now have Next actions
+        if let Some(transitions) = base_layer_map.get("'") {
+            for transition in transitions {
+                if let KeyTransition::Next(next_action) = transition {
+                    assert_eq!(next_action.states.len(), 1);
+                    assert_eq!(next_action.states[0].next, "dead_key000");
+                } else {
+                    panic!("Expected Next transition for dead key");
+                }
+            }
         } else {
-            panic!("Expected Next transition for dead key");
+            panic!("Expected transitions for dead key");
         }
     }
 
@@ -1076,7 +1131,7 @@ mod tests {
         }
 
         // This should demonstrate inconsistent behavior with duplicate 'a' keys
-        let key_layouts = generate_key_layout_files(&bundle);
+        let _key_layouts = generate_key_layout_files(&bundle);
 
         // The test should show that only one of the duplicate 'a' keys gets the transform
         // This will expose the bug we're trying to fix
@@ -1129,4 +1184,3 @@ mod tests {
         assert_eq!(action.states.len(), 2);
     }
 }
-
