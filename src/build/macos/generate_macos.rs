@@ -421,7 +421,14 @@ fn update_key_transition_map_with_transform(
                     *transition = KeyTransition::Action(action);
                 }
                 KeyTransition::Action(action) => {
-                    action.states.push(transform.clone());
+                    // Only add the transform if it doesn't already exist to prevent duplicates
+                    if !action
+                        .states
+                        .iter()
+                        .any(|state| state.id == transform.id && state.output == transform.output)
+                    {
+                        action.states.push(transform.clone());
+                    }
                 }
                 KeyTransition::Next(_) => {
                     panic!("Next states shouldn't exist yet!?!??!!??!?!");
@@ -650,6 +657,7 @@ mod tests {
     use crate::bundle::KbdgenBundle;
     use crate::bundle::layout::macos::MacOsKbdLayer;
     use crate::bundle::layout::{Layout, MacOsPrimaryPlatform, MacOsTarget};
+    use indexmap::IndexMap;
     use language_tags::LanguageTag;
     use std::str::FromStr;
 
@@ -1103,10 +1111,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "only one instance")]
-    fn test_duplicate_keys_with_transforms_consistency() {
-        // This test demonstrates that with the current implementation,
-        // transforms won't be consistent across duplicate keys
+    fn test_duplicate_keys_with_transforms_no_duplicate_when_statements() {
+        // This test specifically verifies that duplicate <when> statements are not generated within actions
         let mut bundle = create_test_bundle_with_duplicate_keys();
 
         // Add transforms to the bundle
@@ -1130,14 +1136,42 @@ mod tests {
             mac_os_target.dead_keys = Some(dead_keys);
         }
 
-        // This should demonstrate inconsistent behavior with duplicate 'a' keys
-        let _key_layouts = generate_key_layout_files(&bundle);
+        // Generate the key layout files
+        let key_layouts = generate_key_layout_files(&bundle);
+        let (document, _) = key_layouts.values().next().unwrap();
 
-        // The test should show that only one of the duplicate 'a' keys gets the transform
-        // This will expose the bug we're trying to fix
-        panic!(
-            "This test should demonstrate that duplicate keys don't get consistent transforms - only one instance"
-        );
+        // Convert the document to XML string
+        let xml_string = document.to_string();
+
+        // For each action, extract all the when statements and check for duplicates
+        let actions: Vec<&str> = xml_string.split(r#"<action id=""#).skip(1).collect();
+
+        for action_content in actions {
+            let action_end = action_content
+                .find("</action>")
+                .unwrap_or(action_content.len());
+            let action_xml = &action_content[..action_end];
+
+            // Extract all when statements from this action
+            let when_statements: Vec<&str> = action_xml
+                .split("<when ")
+                .skip(1) // Skip the part before the first when
+                .map(|s| {
+                    s.split("/>")
+                        .next()
+                        .unwrap_or(s.split(">").next().unwrap_or(""))
+                })
+                .collect();
+
+            // Check for duplicate when statements
+            let mut seen_whens = std::collections::HashSet::new();
+            for when_stmt in when_statements {
+                if seen_whens.contains(&when_stmt) {
+                    panic!("Found duplicate when statement in action: {}", when_stmt);
+                }
+                seen_whens.insert(when_stmt);
+            }
+        }
     }
 
     #[test]

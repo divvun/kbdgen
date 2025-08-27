@@ -3,6 +3,7 @@ use std::fs;
 use std::fs::{canonicalize, read_dir};
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 
