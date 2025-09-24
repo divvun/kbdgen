@@ -16,6 +16,49 @@ use url::Url;
 use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::build::pahkat;
+
+fn copy_so_files_flattened(src_dir: &std::path::Path, dst_dir: &std::path::Path) -> Result<()> {
+    if !src_dir.exists() {
+        return Ok(());
+    }
+
+    for entry in std::fs::read_dir(src_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            // This is an architecture directory (e.g., arm64-v8a)
+            let arch_name = path.file_name().unwrap();
+            let dst_arch_dir = dst_dir.join(arch_name);
+            std::fs::create_dir_all(&dst_arch_dir)?;
+
+            // Copy all .so files from this architecture directory
+            copy_so_files_from_dir(&path, &dst_arch_dir)?;
+        }
+    }
+    Ok(())
+}
+
+fn copy_so_files_from_dir(src_dir: &std::path::Path, dst_dir: &std::path::Path) -> Result<()> {
+    fn copy_so_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<()> {
+        for entry in std::fs::read_dir(src)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "so") {
+                let filename = path.file_name().unwrap();
+                let dst_file = dst.join(filename);
+                std::fs::copy(&path, dst_file)?;
+            } else if path.is_dir() {
+                // Recursively search subdirectories for .so files
+                copy_so_recursive(&path, dst)?;
+            }
+        }
+        Ok(())
+    }
+
+    copy_so_recursive(src_dir, dst_dir)
+}
 use crate::bundle::layout::Transform;
 use crate::bundle::project::LocaleProjectDescription;
 use crate::bundle::target;
@@ -412,17 +455,23 @@ impl BuildStep for GenerateAndroid {
         std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
         std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
 
-        let pahkat_dir = pahkat::prefix_dir("android").join("pkg");
-        let libpahkat_client_path = pahkat_dir.join("libpahkat_client").join("lib");
-        let libdivvunspell_path = pahkat_dir.join("libdivvunspell").join("lib");
-
+        let github_dir = crate::build::github::github_prefix_dir().join("pkg");
         let jni_libs_path = top_path.join("jniLibs");
         std::fs::create_dir_all(&jni_libs_path).expect("failed to make jniLibs directory");
 
-        dircpy::copy_dir(libpahkat_client_path, &jni_libs_path)
-            .expect("failed to copy libpahkat_client from Pahkat repo");
-        dircpy::copy_dir(libdivvunspell_path, &jni_libs_path)
-            .expect("failed to copy libdivvunspell from Pahkat repo");
+        // pahkat comes with jniLibs structure, copy directly
+        let pahkat_jnilibs = github_dir.join("pahkat").join("jniLibs");
+        if pahkat_jnilibs.exists() {
+            dircpy::copy_dir(&pahkat_jnilibs, &jni_libs_path)
+                .expect("failed to copy pahkat jniLibs");
+        }
+
+        // divvunspell has lib/{arch} structure, copy .so files directly to jniLibs/{arch}
+        let libdivvunspell_path = github_dir.join("divvunspell").join("lib");
+        if libdivvunspell_path.exists() {
+            copy_so_files_flattened(&libdivvunspell_path, &jni_libs_path)
+                .expect("failed to copy libdivvunspell from GitHub releases");
+        }
 
         generate_icons(bundle, &resources_path);
         if let Some(target) = bundle.targets.android.as_ref() {
