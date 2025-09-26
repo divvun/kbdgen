@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::Path;
 
 pub async fn install_android_deps(main_path: &Path) -> Result<()> {
-    println!("Installing Android dependencies from GitHub releases...");
+    tracing::info!("Installing Android dependencies from GitHub releases...");
     download_and_extract_jnilibs("divvun", "divvunspell", "android-jnilibs", main_path).await?;
     download_and_extract_jnilibs("divvun", "pahkat", "android", main_path).await?;
     Ok(())
@@ -33,7 +33,7 @@ async fn download_and_extract_jnilibs(
         panic!("Failed to extract {} with tar", asset_name);
     }
 
-    println!("Extracted {} to {}", asset_name, main_path.display());
+    tracing::debug!("Extracted {} to {}", asset_name, main_path.display());
     Ok(())
 }
 
@@ -76,7 +76,7 @@ async fn download_asset_to_file(
 
     let asset_name = asset["name"].as_str().expect("Valid asset name");
 
-    println!("Downloading {}", asset_name);
+    tracing::debug!("Downloading {}", asset_name);
 
     let response = client.get(download_url).send().await?;
 
