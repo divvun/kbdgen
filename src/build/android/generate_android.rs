@@ -411,8 +411,6 @@ impl BuildStep for GenerateAndroid {
         std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
         std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
 
-        // Dependencies are now downloaded directly to jniLibs during DownloadDependencies step
-
         generate_icons(bundle, &resources_path);
         if let Some(target) = bundle.targets.android.as_ref() {
             generate_gradle_local(target, &output_path.join("app"));
