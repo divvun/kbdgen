@@ -1,5 +1,7 @@
 use anyhow::Result;
+use futures_util::StreamExt;
 use serde_json::Value;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub async fn install_android_deps(jni_libs_path: &Path) -> Result<()> {
@@ -15,11 +17,8 @@ async fn download_and_extract_jnilibs(
     filter: &str,
     jni_libs_path: &Path,
 ) -> Result<()> {
-    let (asset_name, bytes) = download_asset(org, repo, filter).await?;
-
-    // Write to temp file and extract with system tar
     let temp_file = tempfile::NamedTempFile::new()?;
-    std::fs::write(temp_file.path(), &bytes)?;
+    let asset_name = download_asset_to_file(org, repo, filter, temp_file.path()).await?;
 
     let status = std::process::Command::new("tar")
         .args(&[
@@ -43,7 +42,12 @@ async fn download_and_extract_jnilibs(
     Ok(())
 }
 
-async fn download_asset(org: &str, repo: &str, target_filter: &str) -> Result<(String, Vec<u8>)> {
+async fn download_asset_to_file(
+    org: &str,
+    repo: &str,
+    target_filter: &str,
+    file_path: &Path,
+) -> Result<String> {
     let url = format!("https://api.github.com/repos/{org}/{repo}/releases/latest");
     let client = reqwest::Client::new();
     let json: Value = client
@@ -79,7 +83,15 @@ async fn download_asset(org: &str, repo: &str, target_filter: &str) -> Result<(S
     println!("Downloading {}", asset_name);
 
     let response = client.get(download_url).send().await?;
-    let bytes = response.bytes().await?.to_vec();
 
-    Ok((asset_name.to_string(), bytes))
+    let mut file = std::fs::File::create(file_path)?;
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        file.write_all(&chunk)?;
+    }
+    file.flush()?;
+
+    Ok(asset_name.to_string())
 }
