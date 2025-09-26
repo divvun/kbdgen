@@ -2,7 +2,7 @@ use anyhow::Result;
 use futures_util::StreamExt;
 use serde_json::Value;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub async fn install_android_deps(jni_libs_path: &Path) -> Result<()> {
     println!("Installing Android dependencies from GitHub releases...");
