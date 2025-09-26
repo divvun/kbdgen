@@ -4,10 +4,10 @@ use serde_json::Value;
 use std::io::Write;
 use std::path::Path;
 
-pub async fn install_android_deps(jni_libs_path: &Path) -> Result<()> {
+pub async fn install_android_deps(main_path: &Path) -> Result<()> {
     println!("Installing Android dependencies from GitHub releases...");
-    download_and_extract_jnilibs("divvun", "divvunspell", "android-jnilibs", jni_libs_path).await?;
-    download_and_extract_jnilibs("divvun", "pahkat", "android", jni_libs_path).await?;
+    download_and_extract_jnilibs("divvun", "divvunspell", "android-jnilibs", main_path).await?;
+    download_and_extract_jnilibs("divvun", "pahkat", "android", main_path).await?;
     Ok(())
 }
 
@@ -15,7 +15,7 @@ async fn download_and_extract_jnilibs(
     org: &str,
     repo: &str,
     filter: &str,
-    jni_libs_path: &Path,
+    main_path: &Path,
 ) -> Result<()> {
     let temp_file = tempfile::NamedTempFile::new()?;
     let asset_name = download_asset_to_file(org, repo, filter, temp_file.path()).await?;
@@ -28,9 +28,9 @@ async fn download_and_extract_jnilibs(
                 .to_str()
                 .ok_or_else(|| anyhow::anyhow!("Invalid temp file path"))?,
             "-C",
-            jni_libs_path
+            main_path
                 .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Invalid jniLibs path"))?,
+                .ok_or_else(|| anyhow::anyhow!("Invalid main path"))?,
         ])
         .status()?;
 
@@ -38,7 +38,7 @@ async fn download_and_extract_jnilibs(
         return Err(anyhow::anyhow!("Failed to extract {} with tar", asset_name));
     }
 
-    println!("Extracted {} to {}", asset_name, jni_libs_path.display());
+    println!("Extracted {} to {}", asset_name, main_path.display());
     Ok(())
 }
 

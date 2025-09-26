@@ -25,11 +25,8 @@ pub struct DownloadDependencies;
 #[async_trait(?Send)]
 impl BuildStep for DownloadDependencies {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        let jni_libs_path = output_path
-            .join(REPOSITORY_FOLDER)
-            .join("app/src/main/jniLibs");
-        std::fs::create_dir_all(&jni_libs_path)?;
-        github::install_android_deps(&jni_libs_path).await?;
+        let main_path = output_path.join(REPOSITORY_FOLDER).join("app/src/main");
+        github::install_android_deps(&main_path).await?;
         Ok(())
     }
 }
