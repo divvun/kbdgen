@@ -23,19 +23,14 @@ async fn download_and_extract_jnilibs(
     let status = std::process::Command::new("tar")
         .args(&[
             "-xzf",
-            temp_file
-                .path()
-                .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Invalid temp file path"))?,
+            temp_file.path().to_str().expect("Valid temp file path"),
             "-C",
-            main_path
-                .to_str()
-                .ok_or_else(|| anyhow::anyhow!("Invalid main path"))?,
+            main_path.to_str().expect("Valid main path"),
         ])
         .status()?;
 
     if !status.success() {
-        return Err(anyhow::anyhow!("Failed to extract {} with tar", asset_name));
+        panic!("Failed to extract {} with tar", asset_name);
     }
 
     println!("Extracted {} to {}", asset_name, main_path.display());
@@ -70,15 +65,16 @@ async fn download_asset_to_file(
                 }
             })
         })
-        .ok_or_else(|| anyhow::anyhow!("No {} asset found for {}/{}", target_filter, org, repo))?;
+        .expect(&format!(
+            "No {} asset found for {}/{}",
+            target_filter, org, repo
+        ));
 
     let download_url = asset["browser_download_url"]
         .as_str()
-        .ok_or_else(|| anyhow::anyhow!("No download URL found"))?;
+        .expect("Valid asset download URL");
 
-    let asset_name = asset["name"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("No asset name found"))?;
+    let asset_name = asset["name"].as_str().expect("Valid asset name");
 
     println!("Downloading {}", asset_name);
 
