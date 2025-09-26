@@ -17,48 +17,6 @@ use xmlem::{Document, NewElement, Node, Selector};
 
 use crate::build::pahkat;
 
-fn copy_cached_dependencies(jni_libs_path: &std::path::Path) -> Result<()> {
-    let cache_dir = crate::build::github::github_cache_dir();
-
-    // Copy divvunspell .so files with correct names
-    for (cached_file, arch, final_name) in [
-        ("libdivvunspell-arm64-v8a.so", "arm64-v8a", "libdivvunspell.so"),
-        ("libdivvunspell-armeabi-v7a.so", "armeabi-v7a", "libdivvunspell.so"),
-    ] {
-        let src_file = cache_dir.join(cached_file);
-        let dst_arch_dir = jni_libs_path.join(arch);
-        std::fs::create_dir_all(&dst_arch_dir)?;
-        let dst_file = dst_arch_dir.join(final_name);
-
-        if src_file.exists() {
-            std::fs::copy(&src_file, &dst_file)?;
-        }
-    }
-
-    // Copy pahkat jniLibs structure
-    let pahkat_jnilibs = cache_dir.join("pahkat-jniLibs").join("jniLibs");
-    if pahkat_jnilibs.exists() {
-        copy_dir_contents(&pahkat_jnilibs, jni_libs_path)?;
-    }
-
-    Ok(())
-}
-
-fn copy_dir_contents(src_dir: &std::path::Path, dst_dir: &std::path::Path) -> Result<()> {
-    for entry in std::fs::read_dir(src_dir)? {
-        let entry = entry?;
-        let src_path = entry.path();
-        let dst_path = dst_dir.join(entry.file_name());
-
-        if src_path.is_dir() {
-            std::fs::create_dir_all(&dst_path)?;
-            copy_dir_contents(&src_path, &dst_path)?;
-        } else {
-            std::fs::copy(&src_path, &dst_path)?;
-        }
-    }
-    Ok(())
-}
 use crate::bundle::layout::Transform;
 use crate::bundle::project::LocaleProjectDescription;
 use crate::bundle::target;
@@ -455,12 +413,7 @@ impl BuildStep for GenerateAndroid {
         std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
         std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
 
-        let jni_libs_path = top_path.join("jniLibs");
-        std::fs::create_dir_all(&jni_libs_path).expect("failed to make jniLibs directory");
-
-        // Copy dependencies from simplified cache
-        copy_cached_dependencies(&jni_libs_path)
-            .expect("failed to copy dependencies from GitHub cache");
+        // Dependencies are now downloaded directly to jniLibs during DownloadDependencies step
 
         generate_icons(bundle, &resources_path);
         if let Some(target) = bundle.targets.android.as_ref() {

@@ -1,31 +1,37 @@
 use anyhow::Result;
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-pub async fn install_android_deps() -> Result<()> {
+pub async fn install_android_deps(jni_libs_path: &Path) -> Result<()> {
     println!("Installing Android dependencies from GitHub releases...");
 
-    let cache_dir = github_cache_dir();
-    std::fs::create_dir_all(&cache_dir)?;
+    // Download divvunspell .so files directly to final destination
+    for (target_triple, arch) in get_divvunspell_architectures() {
+        let arch_dir = jni_libs_path.join(arch);
+        std::fs::create_dir_all(&arch_dir)?;
+        let so_path = arch_dir.join("libdivvunspell.so");
+        download_so_file("divvun", "divvunspell", target_triple, &so_path).await?;
+    }
 
-    // Download divvunspell .so files for both architectures
-    download_so_file("divvun", "divvunspell", "aarch64-linux-android",
-                     &cache_dir.join("libdivvunspell-arm64-v8a.so")).await?;
-    download_so_file("divvun", "divvunspell", "armv7-linux-androideabi",
-                     &cache_dir.join("libdivvunspell-armeabi-v7a.so")).await?;
-
-    // Download pahkat jniLibs structure
-    download_jnilibs("divvun", "pahkat", &cache_dir).await?;
+    // Download pahkat jniLibs structure directly to final destination
+    download_jnilibs_to_path("divvun", "pahkat", jni_libs_path).await?;
 
     Ok(())
 }
 
-pub fn github_cache_dir() -> PathBuf {
-    let kbdgen_data = pathos::user::app_data_dir("kbdgen").unwrap();
-    kbdgen_data.join("github-cache")
+pub fn get_divvunspell_architectures() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("aarch64-linux-android", "arm64-v8a"),
+        ("armv7-linux-androideabi", "armeabi-v7a"),
+    ]
 }
 
-async fn download_so_file(org: &str, repo: &str, target_triple: &str, output_path: &PathBuf) -> Result<()> {
+async fn download_so_file(
+    org: &str,
+    repo: &str,
+    target_triple: &str,
+    output_path: &PathBuf,
+) -> Result<()> {
     let (asset_name, bytes) = download_asset(org, repo, target_triple).await?;
 
     // Extract .so file directly to output path
@@ -35,16 +41,40 @@ async fn download_so_file(org: &str, repo: &str, target_triple: &str, output_pat
     Ok(())
 }
 
-async fn download_jnilibs(org: &str, repo: &str, cache_dir: &PathBuf) -> Result<()> {
+async fn download_jnilibs_to_path(org: &str, repo: &str, jni_libs_path: &Path) -> Result<()> {
     let (asset_name, bytes) = download_asset(org, repo, "android").await?;
 
-    let jnilibs_dir = cache_dir.join("pahkat-jniLibs");
-    std::fs::create_dir_all(&jnilibs_dir)?;
+    // Use temporary directory for extraction
+    let temp_dir = tempfile::tempdir()?;
+    extract_tar_gz(&bytes, temp_dir.path())?;
 
-    // Extract jniLibs structure
-    extract_tar_gz(&bytes, &jnilibs_dir)?;
+    // Copy jniLibs contents to final destination
+    let extracted_jnilibs = temp_dir.path().join("jniLibs");
+    if extracted_jnilibs.exists() {
+        copy_dir_contents(&extracted_jnilibs, jni_libs_path)?;
+    }
 
-    println!("Extracted {} to {}", asset_name, jnilibs_dir.display());
+    println!(
+        "Downloaded and installed {} to {}",
+        asset_name,
+        jni_libs_path.display()
+    );
+    Ok(())
+}
+
+fn copy_dir_contents(src_dir: &Path, dst_dir: &Path) -> Result<()> {
+    for entry in std::fs::read_dir(src_dir)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst_dir.join(entry.file_name());
+
+        if src_path.is_dir() {
+            std::fs::create_dir_all(&dst_path)?;
+            copy_dir_contents(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
     Ok(())
 }
 
@@ -95,7 +125,10 @@ fn extract_so_file(bytes: &[u8], asset_name: &str, output_path: &PathBuf) -> Res
     } else if asset_name.ends_with(".tar.gz") || asset_name.ends_with(".tgz") {
         extract_so_from_tar_gz(bytes, output_path)
     } else {
-        Err(anyhow::anyhow!("Unsupported archive format: {}", asset_name))
+        Err(anyhow::anyhow!(
+            "Unsupported archive format: {}",
+            asset_name
+        ))
     }
 }
 
@@ -152,7 +185,7 @@ fn extract_so_from_tar_gz(bytes: &[u8], output_path: &PathBuf) -> Result<()> {
     Err(anyhow::anyhow!("No .so file found in archive"))
 }
 
-fn extract_tar_gz(bytes: &[u8], extract_dir: &PathBuf) -> Result<()> {
+fn extract_tar_gz(bytes: &[u8], extract_dir: &Path) -> Result<()> {
     use flate2::read::GzDecoder;
     use std::io::Cursor;
     use tar::Archive;
