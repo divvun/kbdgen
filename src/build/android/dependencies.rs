@@ -91,4 +91,3 @@ async fn download_asset_to_file(
 
     Ok(asset_name.to_string())
 }
-
