@@ -3,13 +3,14 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::{build::github, bundle::KbdgenBundle};
+use crate::bundle::KbdgenBundle;
 
 use self::{clone_giellakbd::CloneGiellaKbd, generate_android::GenerateAndroid};
 
 use super::{BuildStep, BuildSteps};
 
 pub mod clone_giellakbd;
+pub mod dependencies;
 pub mod generate_android;
 
 const REPOSITORY_FOLDER: &str = "repo";
@@ -26,7 +27,7 @@ pub struct DownloadDependencies;
 impl BuildStep for DownloadDependencies {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let main_path = output_path.join(REPOSITORY_FOLDER).join("app/src/main");
-        github::install_android_deps(&main_path).await?;
+        dependencies::install_android_deps(&main_path).await?;
         Ok(())
     }
 }
