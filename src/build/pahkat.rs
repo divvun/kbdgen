@@ -58,69 +58,6 @@ pub async fn install_msklc() {
     }
 }
 
-pub async fn install_android_deps() {
-    tracing::info!("Updating 'libdivvunspell' and 'libpahkat_client'...");
-
-    let store = create_prefix("android").await;
-    tracing::debug!("Got a prefix");
-
-    let repo_url: RepoUrl = "https://pahkat.uit.no/devtools/".parse().unwrap();
-
-    let divvunspell_pkg_key = PackageKey::new_unchecked(
-        repo_url.clone(),
-        "libdivvunspell".to_string(),
-        Some(PackageKeyParams {
-            channel: Some("nightly".to_string()),
-            platform: Some("android".to_string()),
-            ..Default::default()
-        }),
-    );
-
-    let pahkat_client_pkg_key = PackageKey::new_unchecked(
-        repo_url.clone(),
-        "libpahkat_client".to_string(),
-        Some(PackageKeyParams {
-            channel: Some("nightly".to_string()),
-            platform: Some("android".to_string()),
-            ..Default::default()
-        }),
-    );
-
-    let actions = vec![
-        PackageAction::install(divvunspell_pkg_key, InstallTarget::System),
-        PackageAction::install(pahkat_client_pkg_key, InstallTarget::System),
-    ];
-
-    tracing::debug!("Creating package transaction");
-    let tx = PackageTransaction::new(Arc::clone(&store as _), actions).unwrap();
-
-    tracing::debug!("Beginning downloads");
-    for record in tx.actions().iter() {
-        let action = &record.action;
-        let mut download = store.download(&action.id);
-
-        use pahkat_client::package_store::DownloadEvent;
-
-        while let Some(event) = download.next().await {
-            match event {
-                DownloadEvent::Error(e) => {
-                    tracing::error!("{:?}", &e);
-                    std::process::exit(1);
-                }
-                event => {
-                    tracing::debug!("{:?}", &event);
-                }
-            };
-        }
-    }
-
-    let (_cancel, mut stream) = tx.process();
-
-    while let Some(value) = stream.next().await {
-        println!("{:?}", value);
-    }
-}
-
 pub fn prefix_dir(platform: &str) -> PathBuf {
     let kbdgen_data = pathos::user::app_data_dir("kbdgen").unwrap();
     kbdgen_data.join("prefix").join(platform)

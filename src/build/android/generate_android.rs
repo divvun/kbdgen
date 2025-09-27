@@ -15,7 +15,6 @@ use serde::Serialize;
 use url::Url;
 use xmlem::{Document, NewElement, Node, Selector};
 
-use crate::build::pahkat;
 use crate::bundle::layout::Transform;
 use crate::bundle::project::LocaleProjectDescription;
 use crate::bundle::target;
@@ -411,18 +410,6 @@ impl BuildStep for GenerateAndroid {
 
         std::fs::write(method_path, method_doc.to_string_pretty()).unwrap();
         std::fs::write(spellchecker_path, spellchecker_doc.to_string_pretty()).unwrap();
-
-        let pahkat_dir = pahkat::prefix_dir("android").join("pkg");
-        let libpahkat_client_path = pahkat_dir.join("libpahkat_client").join("lib");
-        let libdivvunspell_path = pahkat_dir.join("libdivvunspell").join("lib");
-
-        let jni_libs_path = top_path.join("jniLibs");
-        std::fs::create_dir_all(&jni_libs_path).expect("failed to make jniLibs directory");
-
-        dircpy::copy_dir(libpahkat_client_path, &jni_libs_path)
-            .expect("failed to copy libpahkat_client from Pahkat repo");
-        dircpy::copy_dir(libdivvunspell_path, &jni_libs_path)
-            .expect("failed to copy libdivvunspell from Pahkat repo");
 
         generate_icons(bundle, &resources_path);
         if let Some(target) = bundle.targets.android.as_ref() {
