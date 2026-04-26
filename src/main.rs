@@ -11,7 +11,6 @@ use kbdgen::build::BuildSteps;
 use kbdgen::build::android::AndroidBuild;
 use kbdgen::build::chromeos::ChromeOsBuild;
 use kbdgen::build::ios::{self, IosBuild, IosProjectExt};
-use kbdgen::build::macos::MacOsBuild;
 use kbdgen::build::svg::SvgBuild;
 use kbdgen::build::windows::WindowsBuild;
 use kbdgen::bundle::read_kbdgen_bundle;
@@ -38,10 +37,22 @@ async fn macos_target(
     output_path: PathBuf,
     target: &TargetMacOs,
 ) -> anyhow::Result<()> {
-    match target.command {
-        TargetMacOsCommand::Build(_) => {
-            let build = MacOsBuild::new(bundle, output_path);
-            build.build_full().await?
+    match &target.command {
+        TargetMacOsCommand::Build(opts) => {
+            // The default Build runs Generate + Installer (.pkg via pkgbuild
+            // + productbuild). With --no-installer we stop after Generate so
+            // the caller can wrap the produced .bundle with their own
+            // installer (e.g. outto).
+            GenerateMacOs.build(&bundle, &output_path).await?;
+            #[cfg(target_os = "macos")]
+            if !opts.no_installer {
+                GenerateInstaller.build(&bundle, &output_path).await?;
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = opts;
+                tracing::warn!("Skipping Installer step — pkgutil is only available on macOS");
+            }
         }
         TargetMacOsCommand::Generate(_) => GenerateMacOs.build(&bundle, &output_path).await?,
         TargetMacOsCommand::Installer(_) => GenerateInstaller.build(&bundle, &output_path).await?,
@@ -259,7 +270,12 @@ enum TargetMacOsCommand {
 }
 
 #[derive(Parser)]
-struct TargetMacOsBuildCommand {}
+struct TargetMacOsBuildCommand {
+    /// Skip the .pkg installer step. Generates the keyboard layout bundle
+    /// only — useful when wrapping with an external installer (e.g. outto).
+    #[clap(long)]
+    no_installer: bool,
+}
 
 #[derive(Parser)]
 struct TargetMacOsGenerateCommand {}
