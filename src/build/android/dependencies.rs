@@ -43,9 +43,13 @@ async fn download_asset_to_file(
     target_filter: &str,
     file_path: &Path,
 ) -> Result<String> {
-    let url = format!("https://api.github.com/repos/{org}/{repo}/releases/latest");
+    // Different release trains are cut for this repo (e.g. CLI-only vs library
+    // releases), so whichever one was published most recently may not carry the
+    // asset we need. Walk releases newest-first until we find one that does,
+    // rather than assuming GitHub's notion of "latest" has it.
+    let url = format!("https://api.github.com/repos/{org}/{repo}/releases?per_page=100");
     let client = reqwest::Client::new();
-    let json: Value = client
+    let releases: Value = client
         .get(&url)
         .header("User-Agent", "kbdgen-rust-client")
         .send()
@@ -53,22 +57,26 @@ async fn download_asset_to_file(
         .json()
         .await?;
 
-    let asset = json["assets"]
+    let target_filter_lower = target_filter.to_lowercase();
+
+    let asset = releases
         .as_array()
-        .and_then(|assets| {
-            assets.iter().find(|asset| {
-                if let Some(name) = asset["name"].as_str() {
-                    let name_lower = name.to_lowercase();
-                    name_lower.contains(&target_filter.to_lowercase())
-                } else {
-                    false
-                }
+        .expect("Valid releases array")
+        .iter()
+        .filter(|release| {
+            !release["draft"].as_bool().unwrap_or(false)
+                && !release["prerelease"].as_bool().unwrap_or(false)
+        })
+        .find_map(|release| {
+            release["assets"].as_array().and_then(|assets| {
+                assets.iter().find(|asset| {
+                    asset["name"]
+                        .as_str()
+                        .is_some_and(|name| name.to_lowercase().contains(&target_filter_lower))
+                })
             })
         })
-        .expect(&format!(
-            "No {} asset found for {}/{}",
-            target_filter, org, repo
-        ));
+        .unwrap_or_else(|| panic!("No {} asset found in any release for {}/{}", target_filter, org, repo));
 
     let download_url = asset["browser_download_url"]
         .as_str()
