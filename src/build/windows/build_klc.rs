@@ -1,7 +1,7 @@
-use std::ffi::OsStr;
-use std::{path::Path, sync::Arc};
+use std::path::Path;
+use std::process::Command;
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use msvc_env::{CommandExt as _, MsvcArch};
 
@@ -17,111 +17,89 @@ impl BuildStep for BuildKlc {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         for target in ENVS {
             if !target.is_valid_environment() {
-                eprintln!("{} is not a valid environment", target);
-                std::process::exit(1);
+                bail!("{} is not a valid environment", target);
             }
         }
-        ms_klc(output_path).await;
-        Ok(())
+        ms_klc(output_path).await
     }
 }
 
-#[cfg(target_os = "windows")]
-async fn ms_klc(output_path: &Path) {
+async fn ms_klc(output_path: &Path) -> Result<()> {
     install_msklc().await;
 
-    for entry in output_path.read_dir().unwrap().filter_map(Result::ok) {
-        let path = entry.path();
-        if let Some(extension) = path.extension() {
-            if extension == "klc" {
-                for target in ENVS {
-                    build_dll(&path, *target, &output_path);
-                }
-            }
+    let mut layouts = Vec::new();
+    for entry in output_path
+        .read_dir()
+        .context("read Windows build directory")?
+    {
+        let path = entry?.path();
+        if path.extension().and_then(|value| value.to_str()) == Some("klc") {
+            layouts.push(path);
         }
     }
+    layouts.sort();
+    for path in layouts {
+        for target in ENVS {
+            build_dll(&path, *target, output_path)
+                .with_context(|| format!("build {} for {}", path.display(), target))?;
+        }
+    }
+    Ok(())
 }
 
-fn build_dll(klc_path: &Path, target: MsvcArch, output_path: &Path) {
+fn build_dll(klc_path: &Path, target: MsvcArch, output_path: &Path) -> Result<()> {
+    let prefix = klc_path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .context("KLC path must have a Unicode file stem")?;
     let kbdutool = prefix_dir("windows")
         .join("pkg")
         .join("msklc")
         .join("bin")
         .join("i386")
         .join("kbdutool.exe");
-    let current_dir = output_path
-        .join(target.to_string().replace("\"", ""))
-        .join("build");
-    println!("current_dir: {:?}", &current_dir);
-    std::fs::create_dir_all(&current_dir).unwrap();
-    let current_dir = dunce::canonicalize(&current_dir).unwrap();
-    let mut proc = std::process::Command::new(kbdutool)
-        .arg("-n")
-        .arg("-s")
-        .arg("-u")
-        .arg(dunce::canonicalize(klc_path).unwrap())
-        .current_dir(current_dir.to_str().unwrap())
-        .spawn()
-        .unwrap();
-    proc.wait().unwrap();
-    println!("{:?}", output_path);
-    // List files in current_dir and filter by ends with .C, then collcet the names without the .C extension
-    let prefixes = std::fs::read_dir(&output_path)
-        .unwrap()
-        .filter_map(Result::ok)
-        .filter_map(|entry| {
-            if entry.path().extension() == Some(OsStr::new("klc")) {
-                Some(
-                    entry
-                        .path()
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .replace(".klc", ""),
-                )
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<String>>();
+    let architecture_dir = output_path.join(target.to_string().replace('"', ""));
+    // Keep intermediates for different layouts separate, including on rebuilds.
+    let current_dir = architecture_dir.join("build").join(prefix);
+    std::fs::create_dir_all(&current_dir).context("create layout build directory")?;
+    let current_dir = dunce::canonicalize(&current_dir)?;
+    let include_path = current_dir.to_str().context("build path must be Unicode")?;
+    run_command(
+        Command::new(kbdutool)
+            .args(["-n", "-s", "-u"])
+            .arg(dunce::canonicalize(klc_path)?)
+            .current_dir(&current_dir),
+        "generate KLC sources",
+    )?;
 
-    println!("prefixes: {:?}", prefixes);
-
-    for prefix in prefixes {
-        let mut cmd = cl_command(current_dir.to_str().unwrap(), &prefix);
-        cmd.msvc_env(target)
-            .unwrap()
-            .current_dir(&current_dir)
-            .spawn()
-            .unwrap()
-            .wait()
-            .unwrap();
-        let mut cmd = rc_command(current_dir.to_str().unwrap(), &prefix);
-        cmd.msvc_env(target)
-            .unwrap()
-            .current_dir(&current_dir)
-            .spawn()
-            .unwrap()
-            .wait()
-            .unwrap();
-        let mut cmd = link_command(current_dir.to_str().unwrap(), &prefix);
-        cmd.msvc_env(target)
-            .unwrap()
-            .current_dir(&current_dir)
-            .spawn()
-            .unwrap()
-            .wait()
-            .unwrap();
-        std::fs::rename(
-            current_dir.join(format!("{}.dll", prefix)),
-            current_dir
-                .parent()
-                .unwrap()
-                .join(format!("{}.dll", prefix)),
-        )
-        .unwrap();
+    // Only this KLC's sources have been generated. Never enumerate sibling KLCs here.
+    for (stage, mut command) in [
+        ("compile layout", cl_command(include_path, prefix)),
+        ("compile resources", rc_command(include_path, prefix)),
+        ("link layout", link_command(prefix)),
+    ] {
+        command
+            .msvc_env(target)
+            .context("configure MSVC environment")?;
+        run_command(command.current_dir(&current_dir), stage)?;
     }
+    std::fs::rename(
+        current_dir.join(format!("{}.dll", prefix)),
+        architecture_dir.join(format!("{}.dll", prefix)),
+    )
+    .context("move completed keyboard DLL")?;
+    Ok(())
+}
+
+fn run_command(command: &mut Command, stage: &str) -> Result<()> {
+    let program = command.get_program().to_owned();
+    let status = command
+        .status()
+        .with_context(|| format!("{}: start {:?}", stage, program))?;
+    if !status.success() {
+        bail!("{}: {:?} failed with {}", stage, program, status);
+    }
+    Ok(())
 }
 
 fn cl_command(include_path: &str, name: &str) -> std::process::Command {
@@ -214,7 +192,7 @@ fn rc_command(include_path: &str, name: &str) -> std::process::Command {
     cmd
 }
 
-fn link_command(current_dir: &str, name: &str) -> std::process::Command {
+fn link_command(name: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("link.exe");
     cmd.arg("-nologo")
         // .arg(name)
@@ -238,4 +216,29 @@ fn link_command(current_dir: &str, name: &str) -> std::process::Command {
         .arg(format!("{}.res", name))
         .arg(format!("{}.obj", name));
     cmd
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn failed_child_stops_the_build_with_stage_and_status() {
+        let mut command = Command::new("cmd.exe");
+        command.args(["/d", "/c", "exit", "7"]);
+        let error = run_command(&mut command, "compile resources")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("compile resources"));
+        assert!(error.contains("7"));
+    }
+
+    #[test]
+    fn missing_tool_is_an_error_and_success_is_accepted() {
+        let mut command = Command::new("kbdgen-nonexistent-test-compiler.exe");
+        assert!(run_command(&mut command, "compile layout").is_err());
+        let mut command = Command::new("cmd.exe");
+        command.args(["/d", "/c", "exit", "0"]);
+        run_command(&mut command, "compile layout").unwrap();
+    }
 }
