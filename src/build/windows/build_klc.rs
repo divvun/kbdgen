@@ -205,7 +205,14 @@ fn link_command(name: &str) -> std::process::Command {
         .arg("-dll")
         // .arg(format!("-libpath:{}", lib_path))
         .arg("-subsystem:native,5.0")
-        .arg("-merge:.rdata=.text")
+        // Match Microsoft's keyboard-layout samples: the layout loader expects
+        // the descriptor, code, and tables together in executable read-only data.
+        // https://github.com/microsoft/Windows-driver-samples/blob/main/input/layout/kbdus/kbdus.vcxproj
+        .arg("-merge:.edata=.data")
+        .arg("-merge:.rdata=.data")
+        .arg("-merge:.text=.data")
+        .arg("-merge:.bss=.data")
+        .arg("-section:.data,re")
         // .arg("-PDBPATH:NONE")
         .arg("-STACK:0x40000,0x1000")
         // .arg("/opt:nowin98")
