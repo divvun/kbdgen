@@ -1,0 +1,113 @@
+name: Build and release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+      - "!nightly"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: kbdgen-linux-x64.tar.gz
+          - platform: osx-arm64
+            os: macos-15
+            target: aarch64-apple-darwin
+            archive: kbdgen-osx-arm64.tar.gz
+          - platform: osx-x64
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+            archive: kbdgen-osx-x64.tar.gz
+          - platform: win-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: kbdgen-win-x64.zip
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Test
+        run: cargo run --locked --release --target ${{ matrix.target }} -- --version
+
+      - name: Package
+        if: runner.os != 'Windows'
+        run: tar -czf ${{ matrix.archive }} -C target/${{ matrix.target }}/release kbdgen
+
+      - name: Package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path target/${{ matrix.target }}/release/kbdgen.exe -DestinationPath ${{ matrix.archive }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.platform }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: github.ref_type == 'tag' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+        if: github.ref == 'refs/heads/main'
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Update nightly tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag --force nightly
+          git push --force origin nightly
+
+      - name: Publish nightly release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: nightly
+          name: Nightly
+          body: Automated build of `${{ github.sha }}` from `main`.
+          prerelease: true
+          make_latest: false
+          files: dist/*
+          fail_on_unmatched_files: true
+
+      - name: Publish versioned release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

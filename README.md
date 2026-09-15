@@ -33,9 +33,10 @@ For Linux: `<pkg-manager> install imagemagick`
 
 **Alternatively** - download a precompiled binary from nightly builds:
 
-- [Linux](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=linux) (x86_64)
-- [macOS](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=macos) (x86_64)
-- [Windows](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=windows) (i686)
+- [Linux x64](../../releases/download/nightly/kbdgen-linux-x64.tar.gz)
+- [macOS arm64](../../releases/download/nightly/kbdgen-osx-arm64.tar.gz)
+- [macOS x64](../../releases/download/nightly/kbdgen-osx-x64.tar.gz)
+- [Windows x64](../../releases/download/nightly/kbdgen-win-x64.zip)
 
 Extract the archive, and move the binary to somewhere on your `$PATH`.
 
