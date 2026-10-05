@@ -107,7 +107,7 @@ children (
                 id input.windows-layers
                 title "Bundle format for Windows extra modifiers/layers, shiftLock/lrmRlm flags, dead-key names and the 49th key (to be expressed in the LDML-aligned format)"
                 kind @feat
-                deps (targets.windows.dll-gen)
+                deps (ldml.yaml-v4 targets.windows.dll-gen)
                 log (
                     {
                         at 2026-10-05T16:33:05.908819Z
@@ -351,6 +351,14 @@ children (
                                 title "TIP architecture: Rust windows crate, substitute-HKL pairing with the layout DLL, x86/x64/arm64 (+ARM64X), registration"
                                 kind @docs
                                 deps (targets.windows.dll-spec)
+                                log (
+                                    {
+                                        at 2026-10-05T16:33:51.221592Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+                                )
                             }
 
                             {
@@ -686,6 +694,76 @@ children (
                         text "Panics on malformed bundles confirmed by input.test-bundle tests (documented in the spec, should become errors): empty or non-mapping layout file; ios.yaml/android.yaml that is not a mapping (unwrap); icon file with a malformed tag (icon.se_FI.png); non-string scalar inside transforms."
                     }
                 )
+            }
+        )
+    }
+
+    {
+        id ldml
+        title "CLDR LDML Keyboard 3.0 engine and format"
+        kind @feat
+        children (
+            {
+                id ldml.spec
+                title "Specify the ldml.* model, engine semantics (macOS rules), YAML v4 authoring format and crate layout"
+                kind @docs
+            }
+
+            {
+                id ldml.model
+                title "Normalized keyboard3 model crate"
+                kind @feat
+                deps (ldml.spec)
+            }
+
+            {
+                id ldml.parser
+                title "Lossless LDML keyboard3 XML import and export"
+                kind @feat
+                deps (ldml.model)
+            }
+
+            {
+                id ldml.engine
+                title "Deterministic engine: key events to edit operations (transforms, markers, reorder, backspace)"
+                kind @feat
+                deps (ldml.model)
+            }
+
+            {
+                id ldml.conformance
+                title "Conformance: CLDR keyboardTest3 vectors and kbdgen golden vectors"
+                kind @test
+                deps (ldml.engine ldml.parser)
+            }
+
+            {
+                id ldml.yaml-v4
+                title "LDML-shaped YAML v4 authoring format compiled to the model"
+                kind @feat
+                deps (ldml.model)
+            }
+
+            {
+                id ldml.migrate
+                title "Convert v3 bundles to v4, reporting data defects"
+                kind @feat
+                deps (ldml.yaml-v4)
+            }
+
+            {
+                id ldml.kbdl
+                title "Feed the Windows layout DLL generator (kbdl input) from the model"
+                kind @feat
+                deps (ldml.model targets.windows.dll-gen)
+            }
+        )
+        log (
+            {
+                at 2026-10-05T16:49:50.241482Z
+                author "brendan@necessary.nu"
+                kind @decision
+                text "Operator decisions 2026-10-05: build our own Rust implementation of CLDR LDML Keyboard 3.0 (UTS #35 Part 7, stable since CLDR 45) as the cross-platform keyboard engine; keyboard semantics follow macOS where targets disagree (unmatched dead key -> standalone output + key; Caps+Shift+letter uppercase; no output normalization; backspace with a pending dead key cancels only it); YAML evolves into an LDML-shaped v4 authoring format compiled to one normalized model with lossless LDML import/export (gap analysis option C+, scratchpad ldml-gap-analysis.md). WBS shape approved by the operator."
             }
         )
     }
