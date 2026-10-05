@@ -1,7 +1,7 @@
 specs ({
     name kbdgen,
     include (docs/spec/**/*.md),
-    impls ({name main, languages (@rust), include (src/**/*.rs examples/**/*.rs), exclude (target/**)}),
+    impls ({name main, languages (@rust), include (src/**/*.rs examples/**/*.rs tests/**/*.rs crates/**/*.rs), exclude (target/**)}),
     verify_required (
         {pattern "keylayout.document", facet "/test/golden"}
         {pattern "keylayout.document.name", facet "/test/golden"}

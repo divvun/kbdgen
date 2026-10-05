@@ -460,6 +460,14 @@ children (
                         id targets.windows.installer-dlls
                         title "divvun-actions: ship wow64 DLL to SysWOW64, ship arm64 DLLs, allow Arm64 installs, fix uninstall product-code brace"
                         kind @fix
+                        log (
+                            {
+                                at 2026-10-05T17:22:58.84196Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+                        )
                     }
                 )
             }
@@ -1032,6 +1040,14 @@ children (
                     )
                 }
                 deps (ldml.spec)
+                log (
+                    {
+                        at 2026-10-05T17:23:26.085142Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+                )
             }
 
             {

@@ -3,7 +3,15 @@ name = "kbdgen"
 version = "3.0.0-beta.5"
 edition = "2024"
 
+[workspace]
+members = ["crates/*"]
+default-members = [".", "crates/kbd-model", "crates/kbd-engine", "crates/kbd-ldml"]
+resolver = "3"
+
 [dependencies]
+kbd-model = { path = "crates/kbd-model" }
+kbd-engine = { path = "crates/kbd-engine" }
+kbd-ldml = { path = "crates/kbd-ldml" }
 clap = { version = "4", features = ["derive"] }
 regex = "1.5.5"
 xmlem = "0.3.3"

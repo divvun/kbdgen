@@ -1,0 +1,23 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+disallowed-types = [
+    { path = "core::sync::atomic::AtomicBool", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicI8", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicI16", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicI32", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicI64", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicIsize", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicU8", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicU16", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicU32", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicU64", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicUsize", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::sync::atomic::AtomicPtr", reason = "no global mutable state: all mutable state lives in the host-owned `State`" },
+    { path = "core::cell::Cell", reason = "public engine types must be `Send` and `Sync`" },
+    { path = "core::cell::RefCell", reason = "public engine types must be `Send` and `Sync`" },
+    { path = "core::cell::OnceCell", reason = "public engine types must be `Send` and `Sync`" },
+    { path = "alloc::rc::Rc", reason = "public engine types must be `Send` and `Sync`" },
+]

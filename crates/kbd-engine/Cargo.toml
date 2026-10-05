@@ -1,0 +1,24 @@
+[package]
+name = "kbd-engine"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+default = ["normalization"]
+normalization = ["dep:icu_normalizer"]
+
+[dependencies]
+kbd-model = { path = "../kbd-model" }
+icu_normalizer = { version = "2.0", default-features = false, features = ["compiled_data"], optional = true }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+panic = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+unreachable = "deny"
+disallowed_types = "deny"

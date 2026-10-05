@@ -1,0 +1,4 @@
+disallowed-types = [
+    { path = "f32", reason = "the model stores no floating point; widths are integer thousandths (ldml.model.deterministic)" },
+    { path = "f64", reason = "the model stores no floating point; widths are integer thousandths (ldml.model.deterministic)" },
+]

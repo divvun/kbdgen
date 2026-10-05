@@ -1,7 +1,7 @@
 platforms (
     {
         platform "rust"
-        files (src/**/*.rs examples/**/*.rs Cargo.toml Cargo.lock)
+        files (src/**/*.rs examples/**/*.rs tests/**/*.rs crates/**/*.rs crates/**/Cargo.toml crates/**/clippy.toml Cargo.toml Cargo.lock)
         checks {
             format {
                 cmd "cargo fmt --all -- --check"
