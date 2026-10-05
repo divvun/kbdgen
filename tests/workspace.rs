@@ -209,6 +209,36 @@ fn engine_depends_on_model_and_gated_icu_normalizer() {
     );
 }
 
+// [spec:kbdgen:req:ldml.crate.ldml/test]
+#[test]
+fn ldml_depends_on_model_icu_normalizer_and_xmlem() {
+    let workspace = Workspace::load();
+    let ldml = workspace.package("kbd-ldml");
+
+    assert_eq!(
+        dependency_names(ldml),
+        BTreeSet::from(["icu_normalizer", "kbd-model", "xmlem"])
+    );
+    assert!(dependency(ldml, "kbd-model")["path"].is_string());
+    assert_eq!(
+        dependency(ldml, "xmlem")["req"],
+        "^0.3.3",
+        "the workspace's xmlem"
+    );
+    let kbdgen = workspace.package("kbdgen");
+    assert_eq!(
+        dependency(kbdgen, "xmlem")["req"],
+        dependency(ldml, "xmlem")["req"]
+    );
+    assert!(
+        dependency(ldml, "icu_normalizer")["req"]
+            .as_str()
+            .expect("req")
+            .starts_with("^2"),
+        "icu_normalizer is 2.x"
+    );
+}
+
 // [spec:kbdgen:req:ldml.crate.kbdgen/test]
 #[test]
 fn kbdgen_depends_on_crates_by_path() {

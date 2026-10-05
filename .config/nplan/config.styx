@@ -24,3 +24,18 @@ commit {
 adoption {
     scope "maintenance"
 }
+
+stub-scan {
+    exempt-paths (crates/kbd-ldml/data/** crates/kbd-ldml/testdata/**)
+}
+
+comment-smells {
+    exempt-paths (crates/kbd-ldml/data/** crates/kbd-ldml/testdata/**)
+}
+
+quality {
+    exempt-paths (crates/kbd-ldml/data/** crates/kbd-ldml/testdata/**)
+    test-footprint {
+        scope crate
+    }
+}

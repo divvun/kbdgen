@@ -905,6 +905,21 @@ children (
                     )
                 }
                 deps (ldml.model)
+                log (
+                    {
+                        at 2026-10-05T18:27:20.960721Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T19:08:00.203781Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Interpretations for ldml.spec-errata: (1) export conformsTo = max(45/47 rule, model's own); (2) non-NFD listed reorder-class values warn and are removed (CLDR bn.xml lists U+09CB), class/uset listed non-NFD values error, ranges merely containing non-NFD values warn and are stripped; (3) ${s} substituted textually then parsed as pattern syntax (fr-t-k0-test caret becomes ^); (4) captures contain no alternation/groups; (5) \\m{.} in a positive class becomes (?:\\m{.}|[rest]), dropped in a negated class; (6) marker interning order: displays, key outputs, transforms, extensions; (7) implied keys follow CLDR file order; conformsTo 49 uses newest embedded CLDR data; (8) display keyId naming no key warns and is dropped; display starting with a combining mark warns (bn); (9) foreign touch sets get bottomRow authored; (10) hardware layers stored LDML first then kbdgen:layer; (11) replace_extensions keeps flush/deadKeyName/windows and the file's impliedLayers; (12) space-label display is added by lowering, never by export; (13) preBase/tertiaryBase accept 1/0; (14) set items split on whitespace outside \\u{...}; (15) quantified non-NFD char becomes a group of its decomposition. XML treats a bare \\u without { as literal (CLDR fr.xml); v4 YAML must error. For yaml-v4: plug lowering into src/ldml/layouts::host_documents (returns LoweringUnavailable today), add the v4 writer where import returns LayoutWriterUnavailable, own+annotate format:4 detection in layouts::layout_files."
+                    }
+                )
             }
 
             {
@@ -1027,7 +1042,15 @@ children (
                         [spec:kbdgen:thm:ldml.yaml.roundtrip]
                     )
                 }
-                deps (ldml.model)
+                deps (ldml.model ldml.parser ldml.engine)
+                log (
+                    {
+                        at 2026-10-05T18:26:54.088763Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+                )
             }
 
             {

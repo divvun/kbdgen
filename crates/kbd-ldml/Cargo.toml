@@ -3,3 +3,22 @@ name = "kbd-ldml"
 version = "0.1.0"
 edition = "2024"
 publish = false
+
+[dependencies]
+kbd-model = { path = "../kbd-model" }
+icu_normalizer = { version = "2.0", default-features = false, features = ["compiled_data"] }
+xmlem = "0.3.3"
+
+[dev-dependencies]
+kbd-engine = { path = "../kbd-engine" }
+tempfile = "3.3.0"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+panic = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+unreachable = "deny"

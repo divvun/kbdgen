@@ -1097,6 +1097,13 @@ dependencies = [
 [[package]]
 name = "kbd-ldml"
 version = "0.1.0"
+dependencies = [
+ "icu_normalizer",
+ "kbd-engine",
+ "kbd-model",
+ "tempfile",
+ "xmlem",
+]
 
 [[package]]
 name = "kbd-model"

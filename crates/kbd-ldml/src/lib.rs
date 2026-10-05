@@ -4,5 +4,36 @@
 //!
 //! This is the std half of the split: XML and LDML's syntaxes are handled
 //! once, at build time, so devices carry only `kbd-model` and `kbd-engine`.
+//! Every XML byte goes through `xmlem` (`ldml.crate.ldml`): [`read`] gives
+//! a [`SourceDocument`], [`resolve()`] turns one into a model, [`export()`]
+//! builds one from a model, and [`write()`] serializes one.
 
 // [spec:kbdgen:def:ldml.crate.layout]
+// [spec:kbdgen:req:ldml.crate.ldml]
+
+pub mod cldr;
+mod diag;
+pub mod escape;
+mod export;
+mod gencat;
+mod nfd;
+pub mod read;
+mod resolve;
+mod special;
+pub mod syntax;
+mod tree;
+mod write;
+
+pub use diag::{Diagnostic, Error, Result};
+pub use export::{LayoutData, export, replace_extensions, set_host};
+pub use nfd::IcuNfd;
+pub use read::{SourceDocument, read_document, read_import, read_keyboard, read_keyboard_file};
+pub use resolve::{Resolved, resolve};
+pub use resolve::{encode_modifiers, parse_modifiers};
+pub use special::{
+    Compose, ComposeValue, DeadKey, Extensions, Generated, KBDGEN_NS, KBDGEN_PREFIX, Target,
+};
+pub use write::write;
+
+#[cfg(test)]
+mod tests;

@@ -14,6 +14,7 @@ use kbdgen::build::ios::{self, IosBuild, IosProjectExt};
 use kbdgen::build::svg::SvgBuild;
 use kbdgen::build::windows::WindowsBuild;
 use kbdgen::bundle::read_kbdgen_bundle;
+use kbdgen::ldml::cli::LdmlCommand;
 
 async fn android_target(
     bundle: KbdgenBundle,
@@ -78,6 +79,8 @@ async fn main() -> anyhow::Result<()> {
 
             kbdgen::bundle::fetch(&bundle.path, &bundle.project).await?;
         }
+        // [spec:kbdgen:def:ldml.cli.commands]
+        Command::Ldml { command } => kbdgen::ldml::cli::run(command)?,
         // [spec:kbdgen:def:cli.commands]
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
@@ -149,6 +152,12 @@ enum Command {
 
     #[clap(about = "Fetch dependencies for provided project")]
     Fetch(FetchCommand),
+
+    #[clap(about = "LDML keyboard3 export, import and engine model compilation")]
+    Ldml {
+        #[clap(subcommand)]
+        command: LdmlCommand,
+    },
 }
 
 #[derive(Args)]
