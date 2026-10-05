@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-pathos = "0.3.0"
 regex = "1.5.5"
 xmlem = "0.3.3"
 tracing = "0.1.32"
@@ -24,7 +23,6 @@ language-tags = { version = "0.3.2", features = ["serde"] }
 iso639 = "0.1.0"
 dunce = "1.0.2"
 thiserror = "1.0.30"
-pahkat-client = { git = "https://github.com/divvun/pahkat", features = ["prefix"] }
 anyhow = "1.0.57"
 tempfile = "3.3.0"
 nova = "0.5.3"
@@ -39,4 +37,3 @@ num_cpus = "1.14.0"
 futures-util = "0.3.25"
 rustls = { version = "0.23.27", default-features = false, features = ["ring"] }
 qname = "0.2.0"
-msvc-env = { git = "https://github.com/divvun/msvc-env", version = "0.1.0" }

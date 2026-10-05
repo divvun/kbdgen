@@ -7,14 +7,14 @@ version and string resources as a binary `.res` itself, and links with `cargo`
 and `rust-lld` for x86, x64, arm64 and the WOW64 variant installed to
 `SysWOW64`. Building needs only a Rust toolchain with the three
 `*-pc-windows-msvc` targets installed, on any host: no MSVC, Windows SDK,
-MSKLC, `kbdutool` or `rc.exe`. These rules replace the MSKLC path (KLC
-generation and `windows.dll*` in [windows.md](windows.md)) and the earlier
-generated-C design; the user-visible layout semantics of KLC generation are
-restated here in table terms (`kbdl.vk-chars.values`, `kbdl.caps`,
-`kbdl.dead-keys`, `kbdl.ligatures`, `kbdl.metadata`), its known defects are
-corrected, and the generator gains chained
-dead keys, the 49th ISO key, extra modifier layers, locale flags, dead-key
-names and localised key names. Text processing beyond what these tables can
+MSKLC, `kbdutool` or `rc.exe`. These rules replace the earlier MSKLC path
+(KLC generation, then `kbdutool`, `cl`, `rc` and `link`; the DLL build is now
+`kbdl.build`) and the earlier generated-C design; the user-visible layout
+semantics of KLC generation are restated here in table terms
+(`kbdl.vk-chars.values`, `kbdl.caps`, `kbdl.dead-keys`, `kbdl.ligatures`,
+`kbdl.metadata`), its known defects are corrected, and the generator gains
+chained dead keys, the 49th ISO key, extra modifier layers, locale flags,
+dead-key names and localised key names. Text processing beyond what these tables can
 express (multi-unit dead-key output, ligatures over 16 units) belongs to a
 text service and is out of scope here.
 
@@ -546,14 +546,18 @@ Sources:
 
 ## Build
 
-> [spec:kbdgen:req:kbdl.build.toolchain]
+> [spec:kbdgen:req:kbdl.build.toolchain+1]
 > Before building, kbdgen MUST check that `cargo` and `rustc` start and that,
 > for each of `i686-pc-windows-msvc`, `x86_64-pc-windows-msvc` and
 > `aarch64-pc-windows-msvc`, the directory printed by
 > `rustc --print target-libdir --target <triple>` exists; otherwise building
 > is fatal with a message naming what is missing and the fix
 > (`rustup target add <triple>`). The toolchain must support edition 2024
-> (Rust 1.85 or later). `rust-lld` ships with the toolchain; MSVC, the
+> (Rust 1.85 or later), and `rust-lld` must exist under
+> `<sysroot>/lib/rustlib/<host>/bin`; it ships with the toolchain, and these
+> probes run in `<out>/build` with the scrubbed environment of
+> `kbdl.build.environment` so they see the same toolchain override as the
+> builds. MSVC, the
 > Windows SDK and C tools are not used, and the host may run any operating
 > system (verified on macOS arm64 and on Windows x64 without MSVC on `PATH`).
 

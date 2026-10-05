@@ -163,6 +163,20 @@ fn dead_key_node(transform: &Transform) -> DeadKeyNode {
     }
 }
 
+/// `kbd` followed by `windows.config.id`, or else by the first five scalar
+/// values of the language tag.
+// [spec:kbdgen:req:kbdl.metadata.bundle]
+pub fn keyboard_name(language_tag: &LanguageTag, target: &WindowsTarget) -> String {
+    format!(
+        "kbd{}",
+        target
+            .config
+            .as_ref()
+            .and_then(|config| config.id.clone())
+            .unwrap_or_else(|| language_tag.as_str().chars().take(5).collect())
+    )
+}
+
 // [spec:kbdgen:req:kbdl.metadata.bundle]
 fn metadata(
     bundle: &KbdgenBundle,
@@ -170,14 +184,7 @@ fn metadata(
     layout: &Layout,
     target: &WindowsTarget,
 ) -> Result<Metadata> {
-    let name = format!(
-        "kbd{}",
-        target
-            .config
-            .as_ref()
-            .and_then(|config| config.id.clone())
-            .unwrap_or_else(|| language_tag.as_str().chars().take(5).collect())
-    );
+    let name = keyboard_name(language_tag, target);
 
     let primary = language_tag.primary_language();
     let Some(display_name) = layout

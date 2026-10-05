@@ -6,9 +6,6 @@ use crate::bundle::KbdgenBundle;
 
 use super::{BuildStep, BuildSteps};
 
-#[cfg(target_os = "windows")]
-#[allow(dead_code)]
-mod build_klc;
 pub mod kbdl;
 
 pub struct WindowsBuild {
@@ -20,7 +17,8 @@ pub struct WindowsBuild {
 #[async_trait(?Send)]
 impl BuildSteps for WindowsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let steps: Vec<Box<dyn BuildStep>> = vec![Box::new(kbdl::GenerateKbdl)];
+        let steps: Vec<Box<dyn BuildStep>> =
+            vec![Box::new(kbdl::GenerateKbdl), Box::new(kbdl::BuildKbdl)];
 
         Self {
             bundle,

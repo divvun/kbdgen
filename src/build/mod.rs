@@ -9,7 +9,6 @@ pub mod android;
 pub mod chromeos;
 pub mod ios;
 pub mod macos;
-pub mod pahkat;
 #[allow(dead_code)]
 pub mod svg;
 pub mod windows;

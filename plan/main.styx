@@ -91,16 +91,6 @@ children (
                 kind @feat
                 children (
                     {
-                        id targets.windows.dll
-                        title "KLC to DLL build (kbdutool/cl/rc/link, MSKLC via pahkat)"
-                        kind @feat
-                        implements {
-                            main ([spec:kbdgen:req:windows.dll] [spec:kbdgen:req:windows.dll.link])
-                        }
-                        deps (input.bundle)
-                    }
-
-                    {
                         id targets.windows.test-golden
                         title "Golden tests for generated KBDTABLES C output"
                         kind @test
@@ -271,6 +261,13 @@ children (
                                 author "brendan@necessary.nu"
                                 kind @note
                                 text "PoC on jaheira-win11 (2026-10-05): SysWOW64 must hold the 64-bit-table WOW64 variant; a plain i686 build there fails LoadKeyboardLayout, and a missing copy fails with error 126. divvun-actions currently copies the x86 build into wow64/ (actions/keyboard/build/mod.ts createArchitectureDirectories), which must change to ship kbdgen's wow64 output. Also: every installed layout needs a distinct 'Layout Id', or their HKLs collide (kbdi/installer concern). Known-good build command and env scrubbing are in docs/spec/kbdl.md (kbdl.build*)."
+                            }
+
+                            {
+                                at 2026-10-05T15:01:38.795916Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
                             }
                         )
                     }
@@ -590,7 +587,7 @@ children (
                     input.bundle
                     input.cli
                     targets.windows.dll-gen
-                    targets.windows.dll
+                    targets.windows.dll-build
                     targets.macos.package
                     targets.ios.keyboard-json
                     targets.ios.xcode

@@ -8,8 +8,10 @@ use async_trait::async_trait;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
+pub mod build;
 pub mod bundle;
 pub mod diag;
+pub mod image;
 pub mod input;
 pub mod resources;
 pub mod source;
@@ -144,6 +146,20 @@ pub fn write(output_path: &Path, layouts: &[GeneratedLayout]) -> Result<()> {
     Ok(())
 }
 
+/// The keyboard names of the bundle's Windows layouts, in the order
+/// [`generate_bundle`] produces them.
+pub fn layout_names(bundle: &KbdgenBundle) -> Vec<String> {
+    let mut layouts: Vec<_> = bundle.layouts.iter().collect();
+    layouts.sort_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
+    layouts
+        .into_iter()
+        .filter_map(|(language_tag, layout)| {
+            let target = layout.windows.as_ref()?;
+            Some(bundle::keyboard_name(language_tag, target))
+        })
+        .collect()
+}
+
 /// The build step that generates every layout crate of the bundle.
 pub struct GenerateKbdl;
 
@@ -152,6 +168,27 @@ impl BuildStep for GenerateKbdl {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let layouts = generate_bundle(bundle)?;
         write(output_path, &layouts)
+    }
+}
+
+/// The build step that builds every crate [`GenerateKbdl`] wrote into
+/// verified DLLs at `<out>/<variant>/<name>.dll`.
+pub struct BuildKbdl;
+
+#[async_trait(?Send)]
+impl BuildStep for BuildKbdl {
+    // [spec:kbdgen:req:kbdl.build]
+    // [spec:kbdgen:req:kbdl.build.toolchain+1]
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
+        let names = layout_names(bundle);
+        if names.is_empty() {
+            return Ok(());
+        }
+        build::check_toolchain(&output_path.join(CRATES_DIR))?;
+        for name in names {
+            build::build_layout(output_path, &name)?;
+        }
+        Ok(())
     }
 }
 
@@ -217,10 +254,19 @@ mod tests {
 
     // [spec:kbdgen:syn:kbdl.source/test]
     // [spec:kbdgen:def:kbdl.crate/test]
+    // [spec:kbdgen:req:kbdl.build/test]
     #[test]
     fn generation_is_deterministic_and_written_as_a_crate() {
         let bundle = bundle(vec![layout("se-NO", None), layout("se-FI", None)]);
         let first = generate_bundle(&bundle).unwrap();
+        assert_eq!(
+            layout_names(&bundle),
+            first
+                .iter()
+                .map(|layout| layout.name.clone())
+                .collect::<Vec<_>>(),
+            "the build step builds exactly the generated crates"
+        );
         let second = generate_bundle(&bundle).unwrap();
         let names: Vec<&str> = first.iter().map(|layout| layout.name.as_str()).collect();
         assert_eq!(names, vec!["kbdse-FI", "kbdse-NO"]);
