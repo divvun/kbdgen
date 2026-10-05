@@ -91,6 +91,7 @@ fn import_rederives_sugar_from_metadata() {
 }
 
 // [spec:kbdgen:thm:ldml.yaml.roundtrip/test]
+// [spec:kbdgen:req:ldml.test.roundtrip/test]
 #[test]
 fn cldr_keyboards_survive_import_where_expressible() {
     let expected: [(&str, &[&str]); 9] = [

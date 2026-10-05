@@ -1,0 +1,28 @@
+# The ksha backspace rule, and LDML's codePoint default
+# (ldml.engine.backspace.default) when no rule matches.
+keyboard: keyboards/backspace.xml
+options: {backspace: codePoint}
+tests:
+  - name: one backspace deletes a ksha
+    context: aक्श
+    steps:
+      - backspace
+      - expect: {text: a, pass: false}
+  - name: without a rule backspace deletes a scalar
+    context: aक्
+    steps:
+      - backspace
+      - expect: {text: aक, pass: false}
+      - backspace
+      - backspace
+      - expect: {text: '', pass: false}
+  - name: a pending marker goes with the last scalar
+    context: ab
+    steps:
+      - id: pending
+      - backspace
+      - expect: {text: a, pass: false}
+  - name: an empty document passes
+    steps:
+      - backspace
+      - expect: {text: '', pass: true}

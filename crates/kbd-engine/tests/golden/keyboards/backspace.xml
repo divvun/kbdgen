@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The backspace example of UTS #35 Part 7, Backspace Transforms:
+     deleting a Devanagari ksha with one press. -->
+<keyboard3 locale="hi" conformsTo="45" xmlns="https://schemas.unicode.org/cldr/45/keyboard3">
+  <info name="Backspace" />
+  <keys>
+    <key id="pending" output="\m{pending}" />
+  </keys>
+  <layers formId="iso">
+    <layer modifiers="none">
+      <row keys="pending" />
+    </layer>
+  </layers>
+  <transforms type="backspace">
+    <transformGroup>
+      <transform from="\u{0915}\u{094D}\u{0936}" />
+    </transformGroup>
+  </transforms>
+</keyboard3>

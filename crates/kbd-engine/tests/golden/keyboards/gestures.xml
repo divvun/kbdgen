@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every touch gesture and layer switch: long press with and without a
+     default, multi-tap, flicks, a layer key, and a key that types and then
+     switches. -->
+<keyboard3 locale="und" conformsTo="45" xmlns="https://schemas.unicode.org/cldr/45/keyboard3"
+    xmlns:kbdgen="https://divvun.no/ns/kbdgen-ldml/1">
+  <info name="Gestures" />
+  <settings normalization="disabled" />
+  <keys>
+    <key id="ka" output="a" longPressKeyIds="a-acute a-grave" longPressDefaultKeyId="a-grave"
+        multiTapKeyIds="kb kc" />
+    <key id="a-acute" output="á" />
+    <key id="a-grave" output="à" />
+    <key id="kb" output="b" />
+    <key id="kc" output="c" />
+    <key id="ke" output="e" flickId="e-flicks" />
+    <key id="e-circumflex" output="ê" />
+    <key id="e-acute" output="é" />
+    <key id="cap-a" output="A" />
+    <key id="to-shift" layerId="shift" />
+    <key id="to-base" layerId="base" />
+    <key id="period-base" output="." layerId="base" />
+    <key id="spacer" gap="true" />
+  </keys>
+  <flicks>
+    <flick id="e-flicks">
+      <flickSegment directions="n" keyId="e-circumflex" />
+      <flickSegment directions="s e" keyId="e-acute" />
+    </flick>
+  </flicks>
+  <layers formId="touch">
+    <layer id="base">
+      <row keys="ka ke spacer to-shift" />
+    </layer>
+    <layer id="shift">
+      <row keys="cap-a period-base to-base" />
+    </layer>
+    <special>
+      <kbdgen:touchSet name="phone" bottomRow="authored" />
+    </special>
+  </layers>
+</keyboard3>

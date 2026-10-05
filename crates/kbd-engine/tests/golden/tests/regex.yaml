@@ -1,0 +1,85 @@
+# Each regex feature of the transform syntax: classes, captures, $0,
+# mapped sets, ^ with and without at_start, \m{.}, set alternation order
+# and the earliest match start.
+keyboard: keyboards/regex.xml
+tests:
+  - name: classes match members and non-members
+    context: zi
+    steps:
+      - emit: '1'
+      - expect: {text: zV}
+      - emit: x
+      - emit: '2'
+      - expect: {text: zVC}
+  - name: a negated class never matches a vowel
+    context: a
+    steps:
+      - emit: '2'
+      - expect: {text: a2}
+  - name: captures are replaced in order
+    context: k
+    steps:
+      - emit: h
+      - emit: '3'
+      - expect: {text: hk}
+  - name: dollar zero is the whole match
+    context: axyx
+    steps:
+      - emit: '4'
+      - expect: {text: a(xyx4)}
+  - name: mapped sets map by index
+    steps:
+      - emit: B
+      - emit: '5'
+      - emit: C
+      - emit: '5'
+      - expect: {text: bc}
+  - name: caret matches at the start of text
+    steps:
+      - emit: q
+      - expect: {text: Q}
+  - name: caret needs the document start
+    context: a
+    steps:
+      - emit: q
+      - expect: {text: aq}
+  - name: caret fails when the host cannot tell
+    atStart: false
+    steps:
+      - emit: q
+      - expect: {text: q}
+  - name: caret fails on a cut context
+    context: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    steps:
+      - emit: q
+      - expect: {text: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaq}
+  - name: any marker matches each marker
+    context: s
+    steps:
+      - id: mark
+      - emit: y
+      - id: other-mark
+      - emit: y
+      - expect: {text: sYY, preedit: ''}
+  - name: a captured marker is replaced with its text
+    steps:
+      - id: mark
+      - emit: w
+      - expect: {text: '[w]'}
+  - name: set items are tried in order
+    steps:
+      - emit: a
+      - emit: b
+      - emit: c
+      - emit: '6'
+      - expect: {text: ab|c}
+  - name: the earliest match start wins
+    context: zooo
+    steps:
+      - emit: p
+      - expect: {text: z<ooo>}
+  - name: a group that did not participate is empty
+    steps:
+      - emit: g
+      - emit: '7'
+      - expect: {text: ∅}

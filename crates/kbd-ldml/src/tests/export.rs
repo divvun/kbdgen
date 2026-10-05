@@ -1,6 +1,7 @@
 //! Export, kbdgen's extension elements, the LDML-only view, layout data in
 //! referenced documents, and engine behaviour of a dead-key keyboard.
 
+use kbd_engine::harness::Harness;
 use kbd_engine::{Gesture, Key as EKey, KeyEvent, ModifierState};
 use kbd_model::{
     BottomRow, Component, EmojiKey, ExtraModifierKey, Host, ModifierSet, Modifiers, Role, Text,
@@ -379,34 +380,43 @@ fn layout_data_replaces_only_layout_elements() {
 
 const MINIMAL_BARE: &str = r#"<keyboard3 locale="sme" conformsTo="45" xmlns:kbdgen="urn:other"><info name="T"/><layers formId="iso"/></keyboard3>"#;
 
-fn scan(session: &mut Session, code: u8, modifiers: ModifierState) -> bool {
-    session.send(KeyEvent::with(EKey::Scan(code), modifiers))
+fn scan(h: &mut Harness, code: u8, modifiers: ModifierState) -> bool {
+    h.send(&KeyEvent::with(EKey::Scan(code), modifiers));
+    h.passed()
+}
+
+fn id(h: &mut Harness, id: &str, gesture: Gesture) -> bool {
+    h.send(&KeyEvent::new(EKey::Id {
+        id: id.to_string(),
+        gesture,
+    }));
+    h.passed()
 }
 
 // [spec:kbdgen:sem:ldml.xml.resolve/test]
 #[test]
 fn dead_keys_compose_fall_back_and_cancel() {
-    let kb = resolved(DEAD_KEYS).keyboard;
-    let mut s = Session::new(kb.clone());
+    let m = engine(resolved(DEAD_KEYS).keyboard);
+    let mut s = Harness::new(&m);
     scan(&mut s, 0x29, ModifierState::default());
     assert_eq!(
-        (s.text.as_str(), s.preedit.as_str()),
+        (s.document(), s.preedit()),
         ("", "´"),
         "a pending dead key shows its flush"
     );
     scan(&mut s, 0x1E, ModifierState::default());
-    assert_eq!(s.text, "á");
+    assert_eq!(s.document(), "á");
     scan(&mut s, 0x29, ModifierState::default());
     scan(&mut s, 0x1F, ModifierState::default());
-    assert_eq!(s.text, "á´s", "unmatched: standalone, then the key");
+    assert_eq!(s.document(), "á´s", "unmatched: standalone, then the key");
     scan(&mut s, 0x29, ModifierState::shift());
-    s.send(KeyEvent::new(EKey::Backspace));
+    s.send(&KeyEvent::new(EKey::Backspace));
     assert_eq!(
-        (s.text.as_str(), s.preedit.as_str()),
+        (s.document(), s.preedit()),
         ("á´s", ""),
         "backspace cancels only the dead key"
     );
-    let mut s = Session::new(kb);
+    let mut s = Harness::new(&m);
     assert!(scan(
         &mut s,
         0x10,
@@ -420,28 +430,33 @@ fn dead_keys_compose_fall_back_and_cancel() {
 // [spec:kbdgen:sem:ldml.xml.resolve/test]
 #[test]
 fn touch_roles_and_long_press_drive_engine() {
-    let mut s = Session::new(resolved(DEAD_KEYS).keyboard);
-    let touch = |s: &mut Session, layer: usize, row: usize, col: usize, gesture: Gesture| {
-        s.send(KeyEvent::new(EKey::Touch {
+    let m = engine(resolved(DEAD_KEYS).keyboard);
+    let mut s = Harness::new(&m);
+    let touch = |s: &mut Harness, layer: usize, row: usize, col: usize, gesture: Gesture| {
+        s.send(&KeyEvent::new(EKey::Touch {
             set: 0,
             layer,
             row,
             col,
             gesture,
-        }))
+        }));
+        s.passed()
     };
     assert!(
         touch(&mut s, 0, 1, 0, Gesture::Tap),
         "role keys are the host's own"
     );
     assert!(!touch(&mut s, 0, 1, 1, Gesture::LongPress(1)));
-    assert_eq!(s.text, "á");
-    assert!(s.tap("shift"), "the host switches layers for a role key");
-    assert!(!s.tap("to-shift"));
-    assert_eq!(s.layer.as_deref(), Some("shift"));
-    s.id("a", Gesture::LongPress(1));
-    assert_eq!(s.text, "áá");
-    assert!(s.tap("bksp"), "a gap key passes");
+    assert_eq!(s.document(), "á");
+    assert!(
+        id(&mut s, "shift", Gesture::Tap),
+        "the host switches layers for a role key"
+    );
+    assert!(!id(&mut s, "to-shift", Gesture::Tap));
+    assert_eq!(s.layer(), Some("shift"));
+    id(&mut s, "a", Gesture::LongPress(1));
+    assert_eq!(s.document(), "áá");
+    assert!(id(&mut s, "bksp", Gesture::Tap), "a gap key passes");
 }
 
 #[test]

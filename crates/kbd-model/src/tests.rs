@@ -810,6 +810,22 @@ fn reorder_rules_are_padded_and_sorted() {
 
 // [spec:kbdgen:req:ldml.model.context-len/test]
 #[test]
+fn reorder_rules_count_toward_context_len() {
+    let mut k = fixture();
+    assert_eq!(k.computed_context_len(), Ok(4));
+    k.simple.push(TransformGroup::Reorder(vec![ReorderRule {
+        before: vec![ReorderClass::Char('a'); 3],
+        from: vec![ReorderClass::Char('b'); 4],
+        order: vec![1; 4],
+        tertiary: vec![0; 4],
+        tertiary_base: vec![false; 4],
+        pre_base: vec![false; 4],
+    }]));
+    assert_eq!(k.computed_context_len(), Ok(8), "before and from together");
+}
+
+// [spec:kbdgen:req:ldml.model.context-len/test]
+#[test]
 fn context_len_is_longest_match_plus_one() {
     assert_eq!(violation(|k| k.context_len = 3), Invariant::ContextLen);
     assert_eq!(violation(|k| k.context_len = 5), Invariant::ContextLen);

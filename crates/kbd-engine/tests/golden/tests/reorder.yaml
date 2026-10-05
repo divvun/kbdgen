@@ -1,0 +1,33 @@
+# The Tai Tham example of UTS #35 Part 7, Element: reorder: each typing
+# order of kha, o, t2, sakot and wa ends as ᨡ᩠ᩅᩫ᩶ (1A21 1A60 1A45 1A6B 1A76).
+keyboard: keyboards/reorder.xml
+tests:
+  - name: the ideal order stays
+    steps:
+      - emit: "\\u{1A21}"
+      - emit: "\\u{1A60}"
+      - emit: "\\u{1A45}"
+      - emit: "\\u{1A6B}"
+      - emit: "\\u{1A76}"
+      - expect: {text: "\\u{1A21}\\u{1A60}\\u{1A45}\\u{1A6B}\\u{1A76}"}
+  - name: vowel and tone typed first
+    steps:
+      - emit: "\\u{1A21}"
+      - emit: "\\u{1A6B}"
+      - emit: "\\u{1A76}"
+      - emit: "\\u{1A60}"
+      - emit: "\\u{1A45}"
+      - expect: {text: "\\u{1A21}\\u{1A60}\\u{1A45}\\u{1A6B}\\u{1A76}"}
+  - name: tone typed after the lower part
+    steps:
+      - emit: "\\u{1A21}"
+      - emit: "\\u{1A6B}"
+      - emit: "\\u{1A60}"
+      - emit: "\\u{1A45}"
+      - emit: "\\u{1A76}"
+      - expect: {text: "\\u{1A21}\\u{1A60}\\u{1A45}\\u{1A6B}\\u{1A76}"}
+  - name: the NFC order of the typed value
+    context: "\\u{1A21}\\u{1A6B}\\u{1A60}\\u{1A76}"
+    steps:
+      - emit: "\\u{1A45}"
+      - expect: {text: "\\u{1A21}\\u{1A60}\\u{1A45}\\u{1A6B}\\u{1A76}"}

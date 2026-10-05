@@ -1000,6 +1000,21 @@ children (
                     )
                 }
                 deps (ldml.engine ldml.parser)
+                log (
+                    {
+                        at 2026-10-05T20:14:45.194713Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T20:43:10.402836Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Golden vectors found an engine bug: computed_context_len ignored reorder groups (reorder-only keyboards got context_len 1; UTS #35 Tai Tham example failed 3/4 orders). Fixed in crates/kbd-model/src/validate.rs: a reorder rule counts before.len + from.len. ldml.model.context-len text must be updated (ldml.spec-errata). Interpretations: CLDR vectors run from kbdgen tests (kbd-ldml cannot depend on kbd-engine); vector steps add `context: <text>`, `decimal {mods}`, bare `backspace`; host required for layout vectors, optional for keyboard vectors; touch row/col 0-based; gestures tap/{longPress n}/{multiTap n}/{flick \"ne s\"}; mods space-separated; expect layer null = no switch; vector texts decode \\u{...}; atStart defaults true; each test starts from reset state; paths relative to bundle root. Deferred: repertoire (noted), Keyman Core oracle, v3 layouts in vectors (needs ldml.migrate). kmc check is tests/ldml_kmc.rs (ignored; needs `--run-ignored all` in CI; passed locally with kmc 18.0.253 on 18 keyboards). Golden root: crates/kbd-engine/tests/golden (vro.yaml moved there)."
+                    }
+                )
             }
 
             {

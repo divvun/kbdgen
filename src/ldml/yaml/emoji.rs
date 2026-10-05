@@ -73,14 +73,19 @@ pub fn position_name(scan_code: u8) -> Option<&'static str> {
         .map(|(n, _)| *n)
 }
 
+/// The scan code of an ISO position name of `keys.iso-order`.
+pub fn position_scan_code(name: &str) -> Option<u8> {
+    ISO_POSITIONS
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, c)| *c)
+}
+
 fn key(value: &Value, at: &At) -> Result<EmojiKey> {
     let mut f = Fields::new(value, at)?;
     let (p, pa) = f.require("position")?;
     let position = string(p, &pa)?;
-    let scan_code = ISO_POSITIONS
-        .iter()
-        .find(|(n, _)| *n == position)
-        .map(|(_, c)| *c)
+    let scan_code = position_scan_code(position)
         .ok_or_else(|| pa.error(format!("{position} is not an ISO position E00…B11")))?;
     let (m, ma) = f.require("modifiers")?;
     let text = string(m, &ma)?;

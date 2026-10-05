@@ -4,6 +4,7 @@
 
 pub mod cli;
 pub mod compile;
+pub mod conformance;
 pub mod export;
 pub mod import;
 pub mod layouts;
@@ -53,6 +54,10 @@ pub enum LdmlError {
     Exists { path: PathBuf },
     #[error(transparent)]
     Compile(#[from] compile::CompileError),
+    #[error("{}: {message}", path.display())]
+    Vectors { path: PathBuf, message: String },
+    #[error("{failed} conformance steps failed")]
+    TestsFailed { failed: usize },
 }
 
 #[cfg(test)]

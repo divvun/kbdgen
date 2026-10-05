@@ -1,0 +1,42 @@
+# The Võro layout on Windows: AltGr through its altR layer, the shortcut
+# rule for Left Alt and Ctrl, and its dead keys and caps.
+layout: layouts/vro.yaml
+host: windows
+tests:
+  - name: altgr reaches the altR layer
+    steps:
+      - press: {key: E02, mods: altgr}
+      - press: {key: D02, mods: altR}
+      - expect: {text: '@š'}
+  - name: altgr dead key composes
+    steps:
+      - press: {key: E12, mods: altgr}
+      - expect: {preedit: ´}
+      - press: {key: C01, mods: shift}
+      - expect: {text: Á}
+  - name: left alt and ctrl pass on windows
+    context: x
+    steps:
+      - press: {key: D03, mods: alt}
+      - expect: {text: x, pass: true}
+      - press: {key: D03, mods: ctrl}
+      - expect: {text: x, pass: true}
+      - press: {key: D03, mods: ctrlR shift}
+      - expect: {pass: true}
+  - name: ctrl with altgr reaches no ctrl alt layer
+    context: x
+    steps:
+      - press: {key: E02, mods: ctrl altgr}
+      - expect: {text: x, pass: true}
+  - name: windows has no macOS alt layer
+    steps:
+      - press: {key: D09, mods: altgr shift}
+      - expect: {pass: true}
+  - name: dead keys and caps on windows
+    steps:
+      - press: {key: E00}
+      - press: {key: B03, mods: caps shift}
+      - expect: {text: Č}
+      - press: {key: E12}
+      - press: {key: B05}
+      - expect: {text: "Čb\\u{301}"}

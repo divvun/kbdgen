@@ -1,0 +1,61 @@
+# Every gesture through touch keys and key ids, and every way a key
+# switches layers (ldml.engine.touch.gestures, ldml.engine.test-keys).
+keyboard: keyboards/gestures.xml
+tests:
+  - name: tap types the key
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 0}
+      - touch: {size: phone, layer: base, row: 0, col: 1, gesture: tap}
+      - expect: {text: ae, layer: null}
+  - name: long press picks by index or default
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 0, gesture: {longPress: 1}}
+      - touch: {size: phone, layer: base, row: 0, col: 0, gesture: {longPress: 2}}
+      - touch: {size: phone, layer: base, row: 0, col: 0, gesture: {longPress: 0}}
+      - expect: {text: áàà}
+  - name: long press past the list types nothing
+    steps:
+      - id: ka
+        gesture: {longPress: 3}
+      - expect: {text: '', pass: false}
+  - name: multi tap cycles through the key
+    steps:
+      - id: ka
+        gesture: {multiTap: 2}
+      - id: ka
+        gesture: {multiTap: 3}
+      - id: ka
+        gesture: {multiTap: 4}
+      - id: ka
+        gesture: {multiTap: 1}
+      - expect: {text: bcaa}
+  - name: flicks follow their direction sequence
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 1, gesture: {flick: n}}
+      - id: ke
+        gesture: {flick: s e}
+      - id: ke
+        gesture: {flick: s}
+      - expect: {text: êé, pass: false}
+  - name: a layer key switches without text
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 3}
+      - expect: {text: '', layer: shift, pass: false}
+      - touch: {size: phone, layer: shift, row: 0, col: 0}
+      - expect: {text: A, layer: null}
+  - name: output comes before the layer switch
+    steps:
+      - touch: {size: phone, layer: shift, row: 0, col: 1}
+      - expect: {text: ., layer: base}
+      - id: to-shift
+      - expect: {layer: shift}
+  - name: gaps and empty positions pass
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 2}
+      - expect: {pass: true}
+      - touch: {size: phone, layer: base, row: 0, col: 9}
+      - expect: {pass: true}
+  - name: unknown key ids are consumed
+    steps:
+      - id: no-such-key
+      - expect: {text: '', pass: false}

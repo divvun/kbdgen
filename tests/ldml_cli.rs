@@ -31,7 +31,7 @@ fn errors_exit_non_zero_and_write_nothing() {
     }
 }
 
-const VRO: &str = include_str!("../src/ldml/yaml/tests/vro.yaml");
+const VRO: &str = include_str!("../crates/kbd-engine/tests/golden/layouts/vro.yaml");
 
 fn kbdgen(args: &[&std::ffi::OsStr]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_kbdgen"))
@@ -182,4 +182,130 @@ fn target_generators_fail_on_v4_layouts() {
         assert!(stderr.contains(expected), "{target}: {stderr}");
         assert!(!out.exists(), "{target} wrote output");
     }
+}
+
+/// Standard output without the log lines `tracing` writes there.
+fn report(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|l| !l.contains(" INFO"))
+        .map(|l| format!("{l}\n"))
+        .collect()
+}
+
+/// A bundle holding the Võro layout and `tests/vro.yaml` with `steps`.
+fn vro_test_bundle(dir: &std::path::Path, steps: &str) -> std::path::PathBuf {
+    let bundle = dir.join("vro.kbdgen");
+    std::fs::create_dir_all(bundle.join("layouts")).unwrap();
+    std::fs::create_dir_all(bundle.join("tests")).unwrap();
+    std::fs::write(bundle.join("layouts/vro.yaml"), VRO).unwrap();
+    std::fs::write(
+        bundle.join("tests/vro.yaml"),
+        format!(
+            "layout: layouts/vro.yaml\nhost: macOS\ntests:\n  - name: acute\n    steps:\n{steps}"
+        ),
+    )
+    .unwrap();
+    bundle
+}
+
+// [spec:kbdgen:req:ldml.cli.test/test]
+// [spec:kbdgen:req:ldml.test.bundle/test]
+#[test]
+fn ldml_test_passes_on_matching_vectors() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundle = vro_test_bundle(
+        dir.path(),
+        "      - press: {key: E12}\n      - press: {key: C01}\n      - expect: {text: á}\n",
+    );
+    let output = kbdgen(&[
+        "ldml".as_ref(),
+        "test".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+    ]);
+    let stdout = report(&output);
+    assert!(
+        output.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(stdout, "files: 1, tests: 1, checks: 1, failing steps: 0\n");
+}
+
+// [spec:kbdgen:req:ldml.cli.test/test]
+#[test]
+fn ldml_test_fails_with_a_diff() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundle = vro_test_bundle(
+        dir.path(),
+        "      - press: {key: E12}\n      - expect: {text: ´, preedit: ´}\n      - press: {key: C07}\n      - expect: {text: j}\n",
+    );
+    let output = kbdgen(&[
+        "ldml".as_ref(),
+        "test".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+    ]);
+    assert!(!output.status.success());
+    let stdout = report(&output);
+    assert_eq!(
+        stdout,
+        "FAIL tests/vro.yaml: acute: step 2: expect\n  \
+         expected text     \"´\"\n  \
+         expected preedit  \"´\"\n  \
+         actual   text     \"\"\n  \
+         actual   preedit  \"´\"\n  \
+         actual   layer    none\n  \
+         actual   action   edit: delete 0, insert \"\", preedit \"´\", layer none\n\
+         FAIL tests/vro.yaml: acute: step 4: expect\n  \
+         expected text     \"j\"\n  \
+         actual   text     \"´j\"\n  \
+         actual   preedit  \"\"\n  \
+         actual   layer    none\n  \
+         actual   action   edit: delete 0, insert \"´j\", preedit \"\", layer none\n\
+         files: 1, tests: 1, checks: 2, failing steps: 2\n"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("2 conformance steps failed"), "{stderr}");
+}
+
+// [spec:kbdgen:req:ldml.cli.test/test]
+// [spec:kbdgen:req:ldml.test.golden/test]
+#[test]
+fn ldml_test_runs_golden_and_cldr_vectors() {
+    let golden =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("crates/kbd-engine/tests/golden");
+    let output = kbdgen(&[
+        "ldml".as_ref(),
+        "test".as_ref(),
+        "-b".as_ref(),
+        golden.as_os_str(),
+        "--cldr".as_ref(),
+    ]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        stdout.contains("note: cldr/48/keyboards/test/pcm-test.xml: repertoire"),
+        "{stdout}"
+    );
+    assert!(stdout.ends_with(", failing steps: 0\n"), "{stdout}");
+    let broken = tempfile::tempdir().unwrap();
+    let bundle = vro_test_bundle(broken.path(), "      - shout\n");
+    let output = kbdgen(&[
+        "ldml".as_ref(),
+        "test".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+    ]);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("tests/vro.yaml: tests[1].steps[1]: shout is not a step"),
+        "{stderr}"
+    );
 }

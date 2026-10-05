@@ -1,0 +1,12 @@
+# The NFD output form (ldml.engine.output.form) on the markers keyboard.
+keyboard: keyboards/markers.xml
+options: {outputForm: nfd}
+tests:
+  - name: inserted text takes the NFD output form
+    steps:
+      - emit: è
+      - emit: "\\u{320}"
+      - emit: o
+      - expect: {text: "X\\u{6F}"}
+      - emit: "\\u{301}"
+      - expect: {text: "Xo\\u{301}"}

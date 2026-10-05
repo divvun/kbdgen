@@ -53,67 +53,11 @@ fn keyboard(attrs: &str, body: &str) -> String {
     )
 }
 
-/// Drives the engine over a document, as `ldml.test.harness` describes:
-/// the last `context_len` scalar values are the context, and each edit
-/// deletes and appends scalar values.
-struct Session {
-    model: kbd_engine::Model,
-    state: kbd_engine::State,
-    text: String,
-    preedit: String,
-    layer: Option<String>,
-}
-
-impl Session {
-    fn new(keyboard: kbd_model::Keyboard) -> Session {
-        let model = kbd_engine::Model::from_keyboard(keyboard, kbd_engine::Options::default())
-            .unwrap_or_else(|e| panic!("{e:?}"));
-        Session {
-            model,
-            state: kbd_engine::State::default(),
-            text: String::new(),
-            preedit: String::new(),
-            layer: None,
-        }
-    }
-
-    /// Sends `event`; returns whether it passed.
-    fn send(&mut self, event: kbd_engine::KeyEvent) -> bool {
-        let chars: Vec<char> = self.text.chars().collect();
-        let skip = chars.len().saturating_sub(self.model.context_len());
-        let context = kbd_engine::Context {
-            text: chars[skip..].iter().collect(),
-            authoritative: true,
-            at_start: skip == 0,
-        };
-        let (action, state) = self.model.key(&self.state, &context, &event);
-        self.state = state;
-        match action {
-            kbd_engine::Action::Pass => true,
-            kbd_engine::Action::Edit {
-                delete,
-                insert,
-                preedit,
-                layer,
-            } => {
-                let keep = self.text.chars().count().saturating_sub(delete);
-                self.text = self.text.chars().take(keep).collect();
-                self.text.push_str(&insert);
-                self.preedit = preedit;
-                self.layer = layer;
-                false
-            }
-        }
-    }
-
-    fn id(&mut self, id: &str, gesture: kbd_engine::Gesture) -> bool {
-        self.send(kbd_engine::KeyEvent::new(kbd_engine::Key::Id {
-            id: id.to_string(),
-            gesture,
-        }))
-    }
-
-    fn tap(&mut self, id: &str) -> bool {
-        self.id(id, kbd_engine::Gesture::Tap)
+/// The engine over `keyboard`, with default options; a keyboard the
+/// engine refuses fails the test with the engine's reason.
+fn engine(keyboard: kbd_model::Keyboard) -> kbd_engine::Model {
+    match kbd_engine::Model::from_keyboard(keyboard, kbd_engine::Options::default()) {
+        Ok(model) => model,
+        Err(e) => panic!("the engine refuses the keyboard: {e:?}"),
     }
 }

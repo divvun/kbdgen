@@ -19,6 +19,7 @@ use crate::*;
 
 mod backspace;
 mod dead_keys;
+mod harness;
 mod limits;
 mod modifiers;
 mod normalization;

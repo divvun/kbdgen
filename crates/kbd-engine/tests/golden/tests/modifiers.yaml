@@ -1,0 +1,57 @@
+# Extra modifiers bound to Right Ctrl, Caps Lock and B00; AltGr through
+# `ctrl alt`; the `other` layer; native-only and shortcut passes; LRM/RLM.
+layout: layouts/und-x-mods.yaml
+host: windows
+tests:
+  - name: plain and shift layers
+    steps:
+      - press: {key: C01}
+      - press: {key: C01, mods: shiftR}
+      - expect: {text: aA}
+  - name: right ctrl binds extra1
+    steps:
+      - press: {key: C01, mods: ctrlR}
+      - expect: {text: '1', pass: false}
+  - name: caps lock binds extra2 and loses caps
+    steps:
+      - press: {key: C01, mods: caps extra2}
+      - press: {key: C01, mods: caps}
+      - expect: {text: 2a}
+  - name: B00 binds extra3 and is consumed
+    context: x
+    steps:
+      - press: {key: B00}
+      - expect: {text: x, pass: false}
+      - press: {key: C01, mods: extra3}
+      - expect: {text: x3}
+  - name: altgr falls back to the ctrl alt layer
+    steps:
+      - press: {key: C01, mods: altgr}
+      - press: {key: C01, mods: ctrl altgr}
+      - press: {key: C01, mods: ctrlL altR}
+      - expect: {text: ççç}
+  - name: left alt passes on windows
+    steps:
+      - press: {key: C01, mods: ctrl alt}
+      - expect: {text: '', pass: true}
+  - name: unmatched modifiers select the other layer
+    steps:
+      - press: {key: C01, mods: shift altR}
+      - press: {key: C01, mods: cmd}
+      - expect: {text: o, pass: true}
+  - name: native ctrl layer is never selected
+    steps:
+      - press: {key: C01, mods: ctrl}
+      - expect: {text: '', pass: true}
+  - name: shift backspace inserts LRM or RLM
+    context: ab
+    steps:
+      - backspace: {mods: shiftL}
+      - backspace: {mods: shiftR}
+      - expect: {text: "ab\\u{200E}\\u{200F}", pass: false}
+      - backspace
+      - expect: {text: "ab\\u{200E}\\u{200F}", pass: true}
+  - name: no decimal passes
+    steps:
+      - decimal
+      - expect: {pass: true}

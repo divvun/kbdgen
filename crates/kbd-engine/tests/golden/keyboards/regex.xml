@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- One rule per regex feature of ldml.engine.match and ldml.engine.replace,
+     each triggered by its own final character so that rules never
+     compete. -->
+<keyboard3 locale="und" conformsTo="45" xmlns="https://schemas.unicode.org/cldr/45/keyboard3">
+  <info name="Regex" />
+  <settings normalization="disabled" />
+  <keys>
+    <key id="mark" output="\m{m}" />
+    <key id="other-mark" output="\m{n}" />
+  </keys>
+  <layers formId="iso">
+    <layer modifiers="none">
+      <row keys="mark other-mark" />
+    </layer>
+  </layers>
+  <variables>
+    <set id="upper" value="A B C" />
+    <set id="lower" value="a b c" />
+    <set id="first" value="ab a" />
+    <set id="second" value="bc c" />
+  </variables>
+  <transforms type="simple">
+    <transformGroup>
+      <!-- a class -->
+      <transform from="[aeiou]1" to="V" />
+      <!-- a negated class -->
+      <transform from="[^aeiou]2" to="C" />
+      <!-- two captures, swapped -->
+      <transform from="(k)(h)3" to="$2$1" />
+      <!-- the whole match -->
+      <transform from="[xy]{1,3}4" to="($0)" />
+      <!-- a mapped set -->
+      <transform from="($[upper])5" to="$[1:lower]" />
+      <!-- start of text only -->
+      <transform from="^q" to="Q" />
+      <!-- any marker -->
+      <transform from="\m{.}y" to="Y" />
+      <!-- a marker by name, captured with the text -->
+      <transform from="(\m{m}w)" to="[$1]" />
+      <!-- set items are tried in order -->
+      <transform from="($[first])($[second])6" to="$1|$2" />
+      <!-- the earliest start wins -->
+      <transform from="(o{1,5})p" to="&lt;$1&gt;" />
+      <!-- an optional capture that does not participate -->
+      <transform from="g(j)?7" to="[$1]" />
+    </transformGroup>
+    <transformGroup>
+      <!-- groups run in order on the previous group's result -->
+      <transform from="\[\]" to="∅" />
+    </transformGroup>
+  </transforms>
+</keyboard3>

@@ -1,0 +1,37 @@
+# The Võro layout on iOS: touch taps, long press, flicks and role keys.
+layout: layouts/vro.yaml
+host: iOS
+tests:
+  - name: taps type the key
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 0}
+      - touch: {size: phone, layer: shift, row: 1, col: 9}
+      - touch: {size: phone, layer: base, row: 2, col: 9}
+      - expect: {text: qÖđ, layer: null}
+  - name: long press picks a candidate
+    steps:
+      - touch: {size: phone, layer: base, row: 1, col: 0, gesture: {longPress: 2}}
+      - touch: {size: phone, layer: base, row: 0, col: 8, gesture: {longPress: 5}}
+      - expect: {text: "ä\\u{F5}\\u{32D}"}
+  - name: a long press without a candidate types nothing
+    steps:
+      - touch: {size: phone, layer: base, row: 0, col: 0, gesture: {longPress: 1}}
+      - expect: {text: '', pass: false}
+  - name: flicks type their target
+    steps:
+      - touch: {size: tablet, layer: base, row: 0, col: 0, gesture: {flick: s}}
+      - touch: {size: tablet, layer: base, row: 1, col: 1, gesture: {flick: s}}
+      - touch: {size: tablet, layer: base, row: 1, col: 1, gesture: {flick: n}}
+      - expect: {text: 1%, pass: false}
+  - name: role keys and gaps are the host's own
+    steps:
+      - touch: {size: phone, layer: base, row: 2, col: 0}
+      - expect: {pass: true}
+      - touch: {size: phone, layer: base, row: 2, col: 1}
+      - expect: {pass: true}
+      - touch: {size: tablet, layer: base, row: 0, col: 12}
+      - expect: {pass: true, text: ''}
+  - name: hardware keys pass without a hardware set
+    steps:
+      - press: {key: C01}
+      - expect: {pass: true}

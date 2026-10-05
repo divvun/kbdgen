@@ -1,0 +1,22 @@
+# The ksha backspace rule, and the default cancelOrPass policy
+# (ldml.engine.backspace.default) when no rule matches.
+keyboard: keyboards/backspace.xml
+tests:
+  - name: one backspace deletes a ksha
+    context: aक्श
+    steps:
+      - backspace
+      - expect: {text: a, pass: false}
+  - name: without a rule backspace passes
+    context: aक्
+    steps:
+      - backspace
+      - expect: {text: aक्, pass: true}
+  - name: a pending marker is cancelled alone
+    context: ab
+    steps:
+      - id: pending
+      - backspace
+      - expect: {text: ab, preedit: '', pass: false}
+      - backspace
+      - expect: {text: ab, pass: true}

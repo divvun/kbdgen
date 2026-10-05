@@ -30,6 +30,7 @@
 extern crate alloc;
 
 mod api;
+pub mod harness;
 mod matcher;
 mod model;
 mod modifiers;

@@ -1,0 +1,73 @@
+# The examples of UTS #35 Part 7, Normalization and Markers (1b, 2 and 3),
+# the è plus U+0320 examples, NFC and NFD output, and markers dropped when
+# the context changes (ldml.engine.context).
+keyboard: keyboards/markers.xml
+tests:
+  - name: example 1a reorders the marks
+    steps:
+      - emit: e
+      - emit: "\\u{300}"
+      - emit: "\\u{320}"
+      - expect: {text: X}
+  - name: example 1b glues the marker to the next mark
+    steps:
+      - emit: e
+      - emit: "\\u{300}"
+      - id: marker
+      - emit: "\\u{320}"
+      - expect: {text: 1b}
+  - name: example 2 keeps a trailing marker last
+    steps:
+      - emit: e
+      - id: marker0
+      - emit: "\\u{300}"
+      - id: marker1
+      - emit: "\\u{320}"
+      - id: marker2
+      - expect: {text: '2'}
+  - name: example 3 normalizes each segment alone
+    steps:
+      - emit: e
+      - emit: "\\u{300}"
+      - id: marker1
+      - emit: "\\u{320}"
+      - emit: a
+      - emit: "\\u{300}"
+      - id: marker2
+      - emit: "\\u{320}"
+      - expect: {text: '3'}
+  - name: e grave context then U+0320 key
+    context: è
+    steps:
+      - id: macron-below
+      - expect: {text: X}
+  - name: a transform output is normalized before the next group
+    context: è
+    steps:
+      - emit: x
+      - expect: {text: X}
+  - name: inserted text takes the NFC output form
+    steps:
+      - emit: e
+      - emit: "\\u{300}"
+      - expect: {text: è}
+  - name: markers survive while the context matches
+    context: a
+    steps:
+      - id: marker
+      - emit: z
+      - expect: {text: aZ}
+  - name: a context change drops the markers
+    context: a
+    steps:
+      - id: marker
+      - context: b
+      - emit: z
+      - expect: {text: bz}
+  - name: a reset drops the markers
+    context: a
+    steps:
+      - id: marker
+      - reset
+      - emit: z
+      - expect: {text: az}

@@ -292,8 +292,10 @@ fn check_ranges(ranges: &[ClassRange], site: Site) -> Check {
 impl Keyboard {
     // [spec:kbdgen:req:ldml.model.context-len]
     /// One more than the largest number of text elements that any pattern
-    /// of `simple` or `backspace` can match. Every pattern is bounded, so
-    /// this is finite; it saturates rather than overflows.
+    /// of `simple` or `backspace` can match. A reorder rule's pattern is
+    /// its `before` followed by its `from`, so a reorder group sees the
+    /// cluster those name. Every pattern is bounded, so this is finite; it
+    /// saturates rather than overflows.
     pub fn computed_context_len(&self) -> Result<usize, InvariantError> {
         let mut longest: usize = 0;
         for (list, groups) in [
@@ -301,8 +303,15 @@ impl Keyboard {
             (TransformList::Backspace, &self.backspace),
         ] {
             for (g, group) in groups.iter().enumerate() {
-                let TransformGroup::Rules(rules) = group else {
-                    continue;
+                let rules = match group {
+                    TransformGroup::Rules(rules) => rules,
+                    TransformGroup::Reorder(rules) => {
+                        for rule in rules {
+                            longest =
+                                longest.max(rule.before.len().saturating_add(rule.from.len()));
+                        }
+                        continue;
+                    }
                 };
                 for (r, rule) in rules.iter().enumerate() {
                     let info = rule

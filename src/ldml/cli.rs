@@ -7,6 +7,7 @@ use kbd_model::Host;
 
 use super::LdmlError;
 use super::compile::{Selection, compile};
+use super::conformance::bundle::run_bundle;
 use super::export::export;
 use super::import::{destinations, group, report, write};
 use super::layouts::{compiled_layouts, host_documents, layout_files};
@@ -21,6 +22,8 @@ pub enum LdmlCommand {
     Import(ImportArgs),
     /// Write <OUT>/<tag>.<host>.dvkb engine models for each v4 layout and host
     Compile(OutputArgs),
+    /// Run the bundle's tests/*.yaml vectors, and with --cldr CLDR's
+    Test(TestArgs),
 }
 
 /// The arguments of `export` and `compile`.
@@ -51,6 +54,16 @@ pub struct ImportArgs {
     /// keyboard3 XML files
     #[arg(value_name = "XML", required = true)]
     pub files: Vec<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+pub struct TestArgs {
+    /// Path to a .kbdgen bundle
+    #[arg(short = 'b', long = "bundle-path", value_name = "BUNDLE")]
+    pub bundle: PathBuf,
+    /// Also run the vendored CLDR keyboardTest3 vectors
+    #[arg(long)]
+    pub cldr: bool,
 }
 
 /// A `--host` value; the error lists the host names of `ldml.yaml.hosts`.
@@ -100,6 +113,22 @@ pub fn run(command: &LdmlCommand) -> Result<(), LdmlError> {
             }
             for path in paths {
                 println!("{}", path.display());
+            }
+        }
+        // [spec:kbdgen:req:ldml.cli.test]
+        LdmlCommand::Test(args) => {
+            let report = run_bundle(&args.bundle, args.cldr)?;
+            for failure in &report.failures {
+                println!("{failure}");
+            }
+            for note in &report.notes {
+                println!("note: {note}");
+            }
+            println!("{}", report.summary());
+            if !report.failures.is_empty() {
+                return Err(LdmlError::TestsFailed {
+                    failed: report.failures.len(),
+                });
             }
         }
     }

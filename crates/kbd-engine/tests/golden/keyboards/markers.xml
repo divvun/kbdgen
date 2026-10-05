@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Normalization and markers, UTS #35 Part 7: the three examples of
+     Normalization and Markers, the è plus U+0320 examples of
+     Normalization, and markers dropped on a context change. Each example
+     ends in a rule that matches only the normalized form. -->
+<keyboard3 locale="und" conformsTo="45" xmlns="https://schemas.unicode.org/cldr/45/keyboard3">
+  <info name="Markers" />
+  <displays>
+    <display output="\u{0320}" display="\u{25CC}\u{0320}" />
+  </displays>
+  <keys>
+    <key id="marker" output="\m{marker}" />
+    <key id="marker0" output="\m{marker0}" />
+    <key id="marker1" output="\m{marker1}" />
+    <key id="marker2" output="\m{marker2}" />
+    <key id="macron-below" output="\u{0320}" />
+  </keys>
+  <layers formId="iso">
+    <layer modifiers="none">
+      <row keys="marker marker0 marker1 marker2 macron-below" />
+    </layer>
+  </layers>
+  <transforms type="simple">
+    <transformGroup>
+      <transform from="x" to="\u{0320}" />
+    </transformGroup>
+    <transformGroup>
+      <transform from="e\m{marker}\u{0320}\u{0300}" to="1b" />
+      <transform from="e\m{marker1}\u{0320}\m{marker0}\u{0300}\m{marker2}" to="2" />
+      <transform from="e\m{marker1}\u{0320}\u{0300}a\m{marker2}\u{0320}\u{0300}" to="3" />
+      <transform from="e\u{0320}\u{0300}" to="X" />
+      <transform from="\m{marker}z" to="Z" />
+    </transformGroup>
+  </transforms>
+</keyboard3>

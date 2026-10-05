@@ -1,0 +1,130 @@
+# The Võro layout on macOS: its dead keys and caps, and the macOS rules of
+# ldml.scope.macos-rules that v4 lowering realises.
+layout: layouts/vro.yaml
+host: macOS
+tests:
+  - name: dead key composes with the next key
+    steps:
+      - press: {key: E12}
+      - expect: {text: '', preedit: ´}
+      - press: {key: C01}
+      - expect: {text: á, preedit: ''}
+      - press: {key: E12}
+      - press: {key: C01, mods: shift}
+      - expect: {text: áÁ}
+  - name: dead key then space gives its standalone
+    steps:
+      - press: {key: E12}
+      - press: {key: space}
+      - expect: {text: ´, preedit: ''}
+  - name: unmatched dead key emits standalone then the key
+    steps:
+      - press: {key: E12}
+      - press: {key: C07}
+      - expect: {text: ´j, preedit: ''}
+  - name: a second dead key stays pending
+    steps:
+      - press: {key: E12}
+      - press: {key: E00}
+      - expect: {text: ´, preedit: ˇ}
+      - press: {key: B03}
+      - expect: {text: ´č, preedit: ''}
+  - name: chained caron composes
+    steps:
+      - press: {key: E00}
+      - press: {key: B03, mods: shift}
+      - expect: {text: Č}
+  - name: tilde dead key without standalone uses its identity
+    steps:
+      - press: {key: E00, mods: shift}
+      - expect: {preedit: '~'}
+      - press: {key: D09}
+      - expect: {text: õ}
+      - press: {key: E00, mods: shift}
+      - press: {key: space}
+      - expect: {text: õ~}
+  - name: backspace cancels only the pending dead key
+    steps:
+      - press: {key: C07}
+      - press: {key: E12}
+      - backspace
+      - expect: {text: j, preedit: '', pass: false}
+      - press: {key: C01}
+      - expect: {text: ja}
+  - name: backspace without a dead key passes
+    context: ab
+    steps:
+      - backspace
+      - expect: {text: ab, pass: true}
+  - name: commit flushes the pending dead key
+    steps:
+      - press: {key: E12}
+      - commit
+      - expect: {text: ´, preedit: ''}
+      - press: {key: C01}
+      - expect: {text: ´a}
+  - name: reset drops the pending dead key
+    steps:
+      - press: {key: E12}
+      - reset
+      - press: {key: C01}
+      - expect: {text: a}
+  - name: caps and caps shift give uppercase
+    steps:
+      - press: {key: C01, mods: caps}
+      - press: {key: C01, mods: caps shift}
+      - press: {key: D11, mods: caps shift}
+      - expect: {text: AAÜ}
+  - name: caps layer has its own dead key
+    steps:
+      - press: {key: E12, mods: caps}
+      - expect: {preedit: ę}
+      - press: {key: C01}
+      - expect: {text: á}
+  - name: caps alt is implied from alt shift
+    steps:
+      - press: {key: D09, mods: alt caps}
+      - press: {key: D09, mods: alt}
+      - expect: {text: Øø}
+  - name: caps space is no-break space
+    steps:
+      - press: {key: space, mods: caps}
+      - press: {key: space, mods: alt}
+      - press: {key: space}
+      - expect: {text: "\\u{A0}\\u{A0} "}
+  - name: output is not normalized
+    steps:
+      - press: {key: C01}
+      - press: {key: E12, mods: shift}
+      - expect: {text: "a\\u{301}"}
+  - name: command shortcuts pass and native layers stay unused
+    context: x
+    steps:
+      - press: {key: C01, mods: cmd}
+      - expect: {text: x, pass: true}
+      - press: {key: D01, mods: cmd shift}
+      - expect: {text: x, pass: true}
+      - press: {key: C01, mods: ctrl}
+      - expect: {pass: true}
+  - name: left alt types on macOS
+    steps:
+      - press: {key: D03, mods: alt}
+      - press: {key: D03, mods: alt shift}
+      - expect: {text: éÉ, pass: false}
+  - name: decimal key types the layout decimal
+    steps:
+      - decimal
+      - expect: {text: ','}
+      - decimal: {mods: cmd}
+      - expect: {text: ',', pass: true}
+  - name: long press on a hardware key id
+    steps:
+      - id: u-0061
+        gesture: {longPress: 1}
+      - id: u-0061
+        gesture: {longPress: 3}
+      - expect: {text: áæ}
+  - name: keys outside the form pass
+    steps:
+      - press: {key: '0x01'}
+      - expect: {pass: true}

@@ -19,7 +19,7 @@ pub mod import;
 mod keys;
 mod layers;
 mod lower;
-mod node;
+pub(crate) mod node;
 mod schema;
 mod text;
 mod tokens;
@@ -29,6 +29,7 @@ use std::path::Path;
 
 use serde_yaml::Value;
 
+pub use emoji::position_scan_code;
 pub use error::{At, YamlError, YamlProblem};
 pub use lower::{HOSTS, lower};
 pub use schema::Layout4;
