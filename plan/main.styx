@@ -948,6 +948,21 @@ children (
                     )
                 }
                 deps (ldml.model)
+                log (
+                    {
+                        at 2026-10-05T17:58:10.548114Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T18:22:09.884253Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Interpretations to fold into the spec (ldml.spec-errata): (1) normalization re-attaches markers by position, not glue-character value; (2) \\s includes U+0020, . matches newlines; (3) reorder: a matched rule's span is skipped, an orphan tertiary keeps order 0, pre-base characters before the first base form their own run; (4) output.segment falls back to i = 0; (5) tail keeps leading markers when C' fits context_len; (6) over-long Context.text is truncated and at_start treated false; (7) Commit uses the general edit computation and preedit takes the output form when Enabled; (8) backspace 'any rule matched' counts rule groups only; (9) MultiTap(1) is the key, MultiTap(0) no target, Id on gap/role passes; (10) Options.host added for host-less shared keyboards, keyboard host wins; (11) LRM/RLM precedes the shortcut check. tsf.* conflicts (ldml.engine wins): key takes &KeyEvent; Enabled keyboards normalize; Ctrl+AltGr reaches ctrl+alt layers; undefined keys inside the form are consumed. ldml.cli.compile: write path done in src/ldml/compile.rs; the `kbdgen ldml compile` subcommand is wired when ldml.yaml-v4 / ldml.parser can load layouts."
+                    }
+                )
             }
 
             {

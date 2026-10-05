@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T17:38:35.079565Z
+last_sync_at 2026-10-05T17:57:43.280011Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -283,6 +283,7 @@ derived_priorities (
     {id ldml.port.ios, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.port.macos, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.spec, priority 0, derived_at 2026-10-05T16:49:50.96484Z}
+    {id ldml.spec-errata, priority 3, derived_at 2026-10-05T17:57:43.280011Z}
     {id ldml.workspace, priority 1, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.yaml-v4, priority 2, derived_at 2026-10-05T16:49:50.96484Z}
     {id quality.clippy, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
@@ -402,6 +403,70 @@ impl_evidence (
         {id layout.schema.targets, version 0}
         {id layout.transforms, version 0}
         {id layout.transforms.dead-key-entries, version 0}
+    )}
+    {id ldml.model, covered_rules (
+        ldml.model.context-len
+        ldml.model.decode
+        ldml.model.deterministic
+        ldml.model.displays
+        ldml.model.emoji
+        ldml.model.encoding
+        ldml.model.flush
+        ldml.model.hardware
+        ldml.model.invariants
+        ldml.model.keyboard
+        ldml.model.keys
+        ldml.model.layout
+        ldml.model.modifiers
+        ldml.model.native
+        ldml.model.nfd
+        ldml.model.pattern
+        ldml.model.text
+        ldml.model.touch
+        ldml.model.transforms
+        ldml.model.windows
+    ), covered_claims (
+        {impl_name main, rule ldml.model.context-len}
+        {impl_name main, rule ldml.model.decode}
+        {impl_name main, rule ldml.model.deterministic}
+        {impl_name main, rule ldml.model.displays}
+        {impl_name main, rule ldml.model.emoji}
+        {impl_name main, rule ldml.model.encoding}
+        {impl_name main, rule ldml.model.flush}
+        {impl_name main, rule ldml.model.hardware}
+        {impl_name main, rule ldml.model.invariants}
+        {impl_name main, rule ldml.model.keyboard}
+        {impl_name main, rule ldml.model.keys}
+        {impl_name main, rule ldml.model.layout}
+        {impl_name main, rule ldml.model.modifiers}
+        {impl_name main, rule ldml.model.native}
+        {impl_name main, rule ldml.model.nfd}
+        {impl_name main, rule ldml.model.pattern}
+        {impl_name main, rule ldml.model.text}
+        {impl_name main, rule ldml.model.touch}
+        {impl_name main, rule ldml.model.transforms}
+        {impl_name main, rule ldml.model.windows}
+    ), rule_versions_seen (
+        {id ldml.model.context-len, version 0}
+        {id ldml.model.decode, version 0}
+        {id ldml.model.deterministic, version 0}
+        {id ldml.model.displays, version 0}
+        {id ldml.model.emoji, version 0}
+        {id ldml.model.encoding, version 0}
+        {id ldml.model.flush, version 0}
+        {id ldml.model.hardware, version 0}
+        {id ldml.model.invariants, version 0}
+        {id ldml.model.keyboard, version 0}
+        {id ldml.model.keys, version 0}
+        {id ldml.model.layout, version 0}
+        {id ldml.model.modifiers, version 0}
+        {id ldml.model.native, version 0}
+        {id ldml.model.nfd, version 0}
+        {id ldml.model.pattern, version 0}
+        {id ldml.model.text, version 0}
+        {id ldml.model.touch, version 0}
+        {id ldml.model.transforms, version 0}
+        {id ldml.model.windows, version 0}
     )}
     {id ldml.parser}
     {id ldml.workspace, covered_rules (
@@ -698,48 +763,72 @@ impl_evidence (
         {id kbdl.vk-chars.fixed, version 0}
         {id kbdl.vk-chars.values, version 0}
     )}
-    {id ldml.model, covered_rules (
-        ldml.model.context-len
-        ldml.model.decode
-        ldml.model.deterministic
-        ldml.model.displays
-        ldml.model.emoji
-        ldml.model.encoding
-        ldml.model.flush
-        ldml.model.hardware
-        ldml.model.invariants
-        ldml.model.keyboard
-        ldml.model.keys
-        ldml.model.layout
-        ldml.model.modifiers
-        ldml.model.native
-        ldml.model.nfd
-        ldml.model.pattern
-        ldml.model.text
-        ldml.model.touch
-        ldml.model.transforms
-        ldml.model.windows
+    {id ldml.engine, covered_rules (
+        ldml.cli.compile
+        ldml.engine.action
+        ldml.engine.altgr
+        ldml.engine.api
+        ldml.engine.backspace
+        ldml.engine.backspace.default
+        ldml.engine.commit
+        ldml.engine.context
+        ldml.engine.contract
+        ldml.engine.decimal
+        ldml.engine.event
+        ldml.engine.extra
+        ldml.engine.hardware
+        ldml.engine.insert
+        ldml.engine.match
+        ldml.engine.modifiers
+        ldml.engine.no-markers-out
+        ldml.engine.normalization
+        ldml.engine.output.form
+        ldml.engine.output.segment
+        ldml.engine.preedit
+        ldml.engine.reorder
+        ldml.engine.replace
+        ldml.engine.shortcuts
+        ldml.engine.state
+        ldml.engine.test-keys
+        ldml.engine.touch
+        ldml.engine.touch.gestures
+        ldml.engine.transforms
+        ldml.engine.tsf
+        ldml.scope.deferred
+        ldml.scope.v1
     ), covered_claims (
-        {impl_name main, rule ldml.model.context-len}
-        {impl_name main, rule ldml.model.decode}
-        {impl_name main, rule ldml.model.deterministic}
-        {impl_name main, rule ldml.model.displays}
-        {impl_name main, rule ldml.model.emoji}
-        {impl_name main, rule ldml.model.encoding}
-        {impl_name main, rule ldml.model.flush}
-        {impl_name main, rule ldml.model.hardware}
-        {impl_name main, rule ldml.model.invariants}
-        {impl_name main, rule ldml.model.keyboard}
-        {impl_name main, rule ldml.model.keys}
-        {impl_name main, rule ldml.model.layout}
-        {impl_name main, rule ldml.model.modifiers}
-        {impl_name main, rule ldml.model.native}
-        {impl_name main, rule ldml.model.nfd}
-        {impl_name main, rule ldml.model.pattern}
-        {impl_name main, rule ldml.model.text}
-        {impl_name main, rule ldml.model.touch}
-        {impl_name main, rule ldml.model.transforms}
-        {impl_name main, rule ldml.model.windows}
+        {impl_name main, rule ldml.cli.compile}
+        {impl_name main, rule ldml.engine.action}
+        {impl_name main, rule ldml.engine.altgr}
+        {impl_name main, rule ldml.engine.api}
+        {impl_name main, rule ldml.engine.backspace}
+        {impl_name main, rule ldml.engine.backspace.default}
+        {impl_name main, rule ldml.engine.commit}
+        {impl_name main, rule ldml.engine.context}
+        {impl_name main, rule ldml.engine.contract}
+        {impl_name main, rule ldml.engine.decimal}
+        {impl_name main, rule ldml.engine.event}
+        {impl_name main, rule ldml.engine.extra}
+        {impl_name main, rule ldml.engine.hardware}
+        {impl_name main, rule ldml.engine.insert}
+        {impl_name main, rule ldml.engine.match}
+        {impl_name main, rule ldml.engine.modifiers}
+        {impl_name main, rule ldml.engine.no-markers-out}
+        {impl_name main, rule ldml.engine.normalization}
+        {impl_name main, rule ldml.engine.output.form}
+        {impl_name main, rule ldml.engine.output.segment}
+        {impl_name main, rule ldml.engine.preedit}
+        {impl_name main, rule ldml.engine.reorder}
+        {impl_name main, rule ldml.engine.replace}
+        {impl_name main, rule ldml.engine.shortcuts}
+        {impl_name main, rule ldml.engine.state}
+        {impl_name main, rule ldml.engine.test-keys}
+        {impl_name main, rule ldml.engine.touch}
+        {impl_name main, rule ldml.engine.touch.gestures}
+        {impl_name main, rule ldml.engine.transforms}
+        {impl_name main, rule ldml.engine.tsf}
+        {impl_name main, rule ldml.scope.deferred}
+        {impl_name main, rule ldml.scope.v1}
     )}
 )
 

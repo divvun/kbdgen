@@ -10,4 +10,5 @@
 // [spec:kbdgen:req:ldml.crate.kbdgen]
 pub mod build;
 pub mod bundle;
+pub mod ldml;
 pub mod util;

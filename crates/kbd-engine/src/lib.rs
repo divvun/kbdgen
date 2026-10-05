@@ -1,6 +1,13 @@
 //! The keyboard engine: turns key events into edit operations against a
 //! [`kbd_model`] keyboard, deterministically, on every host.
 //!
+//! [`Model::key`] is a pure function from a model, a host-owned [`State`],
+//! the text before the caret ([`Context`]) and a [`KeyEvent`] to an
+//! [`Action`] and the next state. Hosts own all mutable state; the API
+//! uses only plain data (integers, `bool`, strings, `Vec`s and enums), with
+//! no callbacks or trait objects, and reports every failure as an
+//! [`Error`].
+//!
 //! The crate is `no_std` with `alloc`, and depends only on `kbd-model` and,
 //! behind the default `normalization` feature, on `icu_normalizer` with its
 //! compiled data. So it builds for every host triple, wasm included, and
@@ -21,3 +28,20 @@
 #![no_std]
 
 extern crate alloc;
+
+mod api;
+mod matcher;
+mod model;
+mod modifiers;
+mod normalize;
+mod reorder;
+mod transforms;
+
+#[cfg(test)]
+mod tests;
+
+pub use api::{
+    Action, BackspacePolicy, Context, Error, Gesture, Key, KeyEvent, ModifierState, Options,
+    OutputForm, State,
+};
+pub use model::Model;
