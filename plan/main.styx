@@ -180,6 +180,22 @@ children (
                         title "Specify the Windows layout DLL as a no_std Rust crate (kbdl.*): .res writer, chained dead keys, 49th key, extra modifiers/layers, locale flags, names; VM proof of concept"
                         kind @docs
                         deps (input.layout)
+                        sealed true
+                        log (
+                            {
+                                at 2026-10-05T13:57:42.406176Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-05T14:29:43.623005Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Doing → Done (nplan complete)"
+                            }
+                        )
                     }
 
                     {
@@ -188,35 +204,45 @@ children (
                         kind @feat
                         implements {
                             main (
-                                [spec:kbdgen:def:kbdc.source]
-                                [spec:kbdgen:syn:kbdc.escaping]
-                                [spec:kbdgen:def:kbdc.structs]
-                                [spec:kbdgen:req:kbdc.structs.pointers]
-                                [spec:kbdgen:thm:kbdc.structs.layout]
-                                [spec:kbdgen:def:kbdc.tables]
-                                [spec:kbdgen:req:kbdc.export]
-                                [spec:kbdgen:thm:kbdc.tables.invariants]
-                                [spec:kbdgen:req:kbdc.modifiers]
-                                [spec:kbdgen:def:kbdc.layers]
-                                [spec:kbdgen:sem:kbdc.vk-chars.tokens]
-                                [spec:kbdgen:req:kbdc.vk-chars]
-                                [spec:kbdgen:def:kbdc.vk-chars.fixed]
-                                [spec:kbdgen:req:kbdc.vk-chars.decimal]
-                                [spec:kbdgen:sem:kbdc.caps]
-                                [spec:kbdgen:req:kbdc.caps.sgcaps]
-                                [spec:kbdgen:req:kbdc.dead-keys]
-                                [spec:kbdgen:req:kbdc.dead-keys.table]
-                                [spec:kbdgen:req:kbdc.dead-keys.diagnostics]
-                                [spec:kbdgen:req:kbdc.ligatures]
-                                [spec:kbdgen:def:kbdc.scancodes]
-                                [spec:kbdgen:def:kbdc.scancodes.extended]
-                                [spec:kbdgen:req:kbdc.scancodes.iso]
-                                [spec:kbdgen:req:kbdc.key-names]
-                                [spec:kbdgen:req:kbdc.locale]
-                                [spec:kbdgen:req:kbdc.metadata]
-                                [spec:kbdgen:req:kbdc.metadata.locale]
-                                [spec:kbdgen:req:kbdc.resources]
-                                [spec:kbdgen:syn:kbdc.resources.strings]
+                                [spec:kbdgen:def:kbdl.input]
+                                [spec:kbdgen:req:kbdl.input.bundle]
+                                [spec:kbdgen:def:kbdl.crate]
+                                [spec:kbdgen:syn:kbdl.source]
+                                [spec:kbdgen:syn:kbdl.escaping]
+                                [spec:kbdgen:def:kbdl.structs]
+                                [spec:kbdgen:req:kbdl.structs.pointers]
+                                [spec:kbdgen:thm:kbdl.structs.layout]
+                                [spec:kbdgen:req:kbdl.export]
+                                [spec:kbdgen:def:kbdl.tables]
+                                [spec:kbdgen:thm:kbdl.tables.invariants]
+                                [spec:kbdgen:def:kbdl.layers]
+                                [spec:kbdgen:req:kbdl.modifiers]
+                                [spec:kbdgen:req:kbdl.scancodes.extra-modifiers]
+                                [spec:kbdgen:sem:kbdl.vk-chars.values]
+                                [spec:kbdgen:req:kbdl.vk-chars]
+                                [spec:kbdgen:def:kbdl.vk-chars.fixed]
+                                [spec:kbdgen:req:kbdl.vk-chars.decimal]
+                                [spec:kbdgen:sem:kbdl.caps]
+                                [spec:kbdgen:req:kbdl.caps.sgcaps]
+                                [spec:kbdgen:req:kbdl.dead-keys]
+                                [spec:kbdgen:req:kbdl.dead-keys.table]
+                                [spec:kbdgen:req:kbdl.dead-keys.chains]
+                                [spec:kbdgen:req:kbdl.dead-keys.diagnostics]
+                                [spec:kbdgen:req:kbdl.dead-keys.names]
+                                [spec:kbdgen:req:kbdl.ligatures]
+                                [spec:kbdgen:thm:kbdl.ligatures.limit]
+                                [spec:kbdgen:def:kbdl.scancodes]
+                                [spec:kbdgen:def:kbdl.scancodes.extended]
+                                [spec:kbdgen:req:kbdl.scancodes.iso]
+                                [spec:kbdgen:req:kbdl.key-names]
+                                [spec:kbdgen:req:kbdl.locale]
+                                [spec:kbdgen:req:kbdl.metadata]
+                                [spec:kbdgen:req:kbdl.metadata.bundle]
+                                [spec:kbdgen:req:kbdl.metadata.locale]
+                                [spec:kbdgen:req:kbdl.resources]
+                                [spec:kbdgen:syn:kbdl.resources.format]
+                                [spec:kbdgen:syn:kbdl.resources.version]
+                                [spec:kbdgen:def:kbdl.resources.fields]
                             )
                         }
                         deps (
@@ -240,9 +266,23 @@ children (
                         title "Build layout DLLs with cargo + rust-lld for x86, x64, arm64 and WOW64; verify the image; drop kbdutool and MSKLC/pahkat"
                         kind @feat
                         implements {
-                            main ([spec:kbdgen:req:kbdc.build] [spec:kbdgen:req:kbdc.image])
+                            main (
+                                [spec:kbdgen:req:kbdl.build.toolchain]
+                                [spec:kbdgen:req:kbdl.build]
+                                [spec:kbdgen:req:kbdl.build.environment]
+                                [spec:kbdgen:req:kbdl.image]
+                                [spec:kbdgen:req:kbdl.image.verify]
+                            )
                         }
                         deps (targets.windows.dll-gen)
+                        log (
+                            {
+                                at 2026-10-05T14:29:43.589097Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "PoC on jaheira-win11 (2026-10-05): SysWOW64 must hold the 64-bit-table WOW64 variant; a plain i686 build there fails LoadKeyboardLayout, and a missing copy fails with error 126. divvun-actions currently copies the x86 build into wow64/ (actions/keyboard/build/mod.ts createArchitectureDirectories), which must change to ship kbdgen's wow64 output. Also: every installed layout needs a distinct 'Layout Id', or their HKLs collide (kbdi/installer concern). Known-good build command and env scrubbing are in docs/spec/kbdl.md (kbdl.build*)."
+                            }
+                        )
                     }
 
                     {

@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T13:56:44.342691Z
+last_sync_at 2026-10-05T13:57:42.379715Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -160,6 +160,7 @@ derived_priorities (
 
 assertions (
     {id targets.windows.kbd-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-05T13:31:07.076183Z}
+    {id targets.windows.dll-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-05T14:29:43.623005Z}
 )
 
 impl_evidence (
@@ -365,6 +366,8 @@ impl_evidence (
         {id windows.dll, version 0}
         {id windows.dll.link, version 0}
     )}
+    {id targets.windows.dll-build}
+    {id targets.windows.dll-gen}
     {id targets.windows.klc, rule_versions_seen (
         {id klc.caps, version 0}
         {id klc.deadkeys, version 0}
