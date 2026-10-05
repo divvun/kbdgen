@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T12:48:15.670259Z
+last_sync_at 2026-10-05T12:49:34.284743Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -118,6 +118,224 @@ derived_priorities (
     {id targets.windows.klc, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.windows.line-endings, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.windows.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+)
+
+impl_evidence (
+    {id input.bundle, covered_rules (
+        bundle.fetch
+        bundle.layouts
+        bundle.layouts.autonym
+        bundle.project
+        bundle.resources
+        bundle.structure
+        bundle.structure.targets
+        bundle.structure.targets.env
+    ), covered_claims (
+        {impl_name main, rule bundle.fetch}
+        {impl_name main, rule bundle.layouts}
+        {impl_name main, rule bundle.layouts.autonym}
+        {impl_name main, rule bundle.project}
+        {impl_name main, rule bundle.resources}
+        {impl_name main, rule bundle.structure}
+        {impl_name main, rule bundle.structure.targets}
+        {impl_name main, rule bundle.structure.targets.env}
+    ), rule_versions_seen (
+        {id bundle.fetch, version 0}
+        {id bundle.layouts, version 0}
+        {id bundle.layouts.autonym, version 0}
+        {id bundle.project, version 0}
+        {id bundle.resources, version 0}
+        {id bundle.structure, version 0}
+        {id bundle.structure.targets, version 0}
+        {id bundle.structure.targets.env, version 0}
+    )}
+    {id input.cli, covered_rules (
+        cli.commands
+        pipeline.steps
+    ), covered_claims (
+        {impl_name main, rule cli.commands}
+        {impl_name main, rule pipeline.steps}
+    ), rule_versions_seen (
+        {id cli.commands, version 0}
+        {id pipeline.steps, version 0}
+    )}
+    {id input.layout, covered_rules (
+        keys.escape
+        keys.iso-order
+        keys.iso-order.desktop-layers
+        layout.schema
+        layout.schema.targets
+        layout.transforms
+        layout.transforms.dead-key-entries
+    ), covered_claims (
+        {impl_name main, rule keys.escape}
+        {impl_name main, rule keys.iso-order}
+        {impl_name main, rule keys.iso-order.desktop-layers}
+        {impl_name main, rule layout.schema}
+        {impl_name main, rule layout.schema.targets}
+        {impl_name main, rule layout.transforms}
+        {impl_name main, rule layout.transforms.dead-key-entries}
+    ), rule_versions_seen (
+        {id keys.escape, version 0}
+        {id keys.iso-order, version 0}
+        {id keys.iso-order.desktop-layers, version 0}
+        {id layout.schema, version 0}
+        {id layout.schema.targets, version 0}
+        {id layout.transforms, version 0}
+        {id layout.transforms.dead-key-entries, version 0}
+    )}
+    {id targets.android.layout, rule_versions_seen (
+        {id android.gradle, version 0}
+        {id android.keys, version 0}
+        {id android.keys.number-row, version 0}
+        {id android.layout-xml, version 0}
+        {id android.layout-xml.name, version 0}
+        {id android.layout-xml.rows, version 0}
+        {id android.metadata, version 0}
+        {id android.metadata.icons, version 0}
+        {id android.metadata.strings, version 0}
+        {id android.transforms, version 0}
+    )}
+    {id targets.android.toolchain, covered_rules (
+        android.dependencies
+        android.dependencies.jnilibs
+    ), covered_claims (
+        {impl_name main, rule android.dependencies}
+        {impl_name main, rule android.dependencies.jnilibs}
+    ), rule_versions_seen (
+        {id android.dependencies, version 0}
+        {id android.dependencies.jnilibs, version 0}
+    )}
+    {id targets.chromeos.ime, covered_rules (
+        chromeos.descriptor
+        chromeos.descriptor.runtime
+        chromeos.keymap
+        chromeos.manifest
+    ), covered_claims (
+        {impl_name main, rule chromeos.descriptor}
+        {impl_name main, rule chromeos.descriptor.runtime}
+        {impl_name main, rule chromeos.keymap}
+        {impl_name main, rule chromeos.manifest}
+    ), rule_versions_seen (
+        {id chromeos.descriptor, version 0}
+        {id chromeos.descriptor.runtime, version 0}
+        {id chromeos.keymap, version 0}
+        {id chromeos.manifest, version 0}
+    )}
+    {id targets.ios.keyboard-json, covered_rules (
+        ios.keyboard-json
+        ios.rows
+        ios.transforms
+    ), covered_claims (
+        {impl_name main, rule ios.keyboard-json}
+        {impl_name main, rule ios.rows}
+        {impl_name main, rule ios.transforms}
+    ), rule_versions_seen (
+        {id ios.keyboard-json, version 0}
+        {id ios.rows, version 0}
+        {id ios.transforms, version 0}
+    )}
+    {id targets.ios.pbxproj, covered_rules (
+        pbxproj.ids
+    ), covered_claims (
+        {impl_name main, rule pbxproj.ids}
+    ), rule_versions_seen (
+        {id pbxproj.ids, version 0}
+        {id pbxproj.model, version 0}
+        {id pbxproj.model.ordering, version 0}
+        {id pbxproj.model.read, version 0}
+        {id pbxproj.quoting, version 0}
+        {id pbxproj.serialize, version 0}
+        {id pbxproj.serialize.attributes, version 0}
+        {id pbxproj.serialize.build-settings, version 0}
+        {id pbxproj.serialize.fields, version 0}
+    )}
+    {id targets.ios.toolchain, covered_rules (
+        ios.build-chain
+        ios.build-chain.init
+        ios.pkg-ids
+        ios.pkg-ids.all
+    ), covered_claims (
+        {impl_name main, rule ios.build-chain}
+        {impl_name main, rule ios.build-chain.init}
+        {impl_name main, rule ios.pkg-ids}
+        {impl_name main, rule ios.pkg-ids.all}
+    ), rule_versions_seen (
+        {id ios.build-chain, version 0}
+        {id ios.build-chain.init, version 0}
+        {id ios.pkg-ids, version 0}
+        {id ios.pkg-ids.all, version 0}
+    )}
+    {id targets.ios.xcode, covered_rules (
+        xcode.localization
+        xcode.targets
+        xcode.targets.hosting-app
+        xcode.targets.keyboard-plist
+    ), covered_claims (
+        {impl_name main, rule xcode.localization}
+        {impl_name main, rule xcode.targets}
+        {impl_name main, rule xcode.targets.hosting-app}
+        {impl_name main, rule xcode.targets.keyboard-plist}
+    ), rule_versions_seen (
+        {id xcode.localization, version 0}
+        {id xcode.targets, version 0}
+        {id xcode.targets.hosting-app, version 0}
+        {id xcode.targets.keyboard-plist, version 0}
+    )}
+    {id targets.macos.keylayout, covered_rules (
+        keylayout.document.id-range
+    ), covered_claims (
+        {impl_name main, rule keylayout.document.id-range}
+    ), rule_versions_seen (
+        {id keylayout.actions, version 0}
+        {id keylayout.actions.dead-key-next, version 0}
+        {id keylayout.document, version 0}
+        {id keylayout.document.id-range, version 0}
+        {id keylayout.document.name, version 0}
+        {id keylayout.keymaps, version 0}
+        {id keylayout.keymaps.iso-codes, version 0}
+        {id keylayout.keymaps.tokens, version 0}
+        {id keylayout.transforms, version 0}
+    )}
+    {id targets.macos.package, covered_rules (
+        macbundle.installer
+        macbundle.plist
+        macbundle.plist.bundle-resources
+        macbundle.plist.strings
+    ), covered_claims (
+        {impl_name main, rule macbundle.installer}
+        {impl_name main, rule macbundle.plist}
+        {impl_name main, rule macbundle.plist.bundle-resources}
+        {impl_name main, rule macbundle.plist.strings}
+    ), rule_versions_seen (
+        {id macbundle.installer, version 0}
+        {id macbundle.plist, version 0}
+        {id macbundle.plist.bundle-resources, version 0}
+        {id macbundle.plist.strings, version 0}
+    )}
+    {id targets.windows.dll, covered_rules (
+        windows.dll
+        windows.dll.link
+    ), covered_claims (
+        {impl_name main, rule windows.dll}
+        {impl_name main, rule windows.dll.link}
+    ), rule_versions_seen (
+        {id windows.dll, version 0}
+        {id windows.dll.link, version 0}
+    )}
+    {id targets.windows.klc, rule_versions_seen (
+        {id klc.caps, version 0}
+        {id klc.deadkeys, version 0}
+        {id klc.file, version 0}
+        {id klc.file.encoding, version 0}
+        {id klc.layout, version 0}
+        {id klc.layout.key-codes, version 0}
+        {id klc.layout.key-rendering, version 0}
+        {id klc.layout.tokens, version 0}
+        {id klc.ligatures, version 0}
+        {id klc.metadata, version 0}
+        {id klc.metadata.locale, version 0}
+    )}
 )
 
 onboarding {kind @adopt, phase 6}
