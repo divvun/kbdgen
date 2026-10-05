@@ -12,6 +12,7 @@ const ENVS: &[MsvcArch] = &[MsvcArch::X64, MsvcArch::X86, MsvcArch::Arm64];
 
 pub struct BuildKlc {}
 
+// [spec:kbdgen:req:windows.dll]
 #[async_trait(?Send)]
 impl BuildStep for BuildKlc {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
@@ -24,6 +25,7 @@ impl BuildStep for BuildKlc {
     }
 }
 
+// [spec:kbdgen:req:windows.dll]
 async fn ms_klc(output_path: &Path) -> Result<()> {
     install_msklc().await;
 
@@ -47,6 +49,7 @@ async fn ms_klc(output_path: &Path) -> Result<()> {
     Ok(())
 }
 
+// [spec:kbdgen:req:windows.dll]
 fn build_dll(klc_path: &Path, target: MsvcArch, output_path: &Path) -> Result<()> {
     let prefix = klc_path
         .file_stem()
@@ -91,6 +94,7 @@ fn build_dll(klc_path: &Path, target: MsvcArch, output_path: &Path) -> Result<()
     Ok(())
 }
 
+// [spec:kbdgen:req:windows.dll]
 fn run_command(command: &mut Command, stage: &str) -> Result<()> {
     let program = command.get_program().to_owned();
     let status = command
@@ -102,6 +106,7 @@ fn run_command(command: &mut Command, stage: &str) -> Result<()> {
     Ok(())
 }
 
+// [spec:kbdgen:req:windows.dll.link]
 fn cl_command(include_path: &str, name: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("cl.exe");
     cmd.arg("-nologo")
@@ -192,6 +197,7 @@ fn rc_command(include_path: &str, name: &str) -> std::process::Command {
     cmd
 }
 
+// [spec:kbdgen:req:windows.dll.link]
 fn link_command(name: &str) -> std::process::Command {
     let mut cmd = std::process::Command::new("link.exe");
     cmd.arg("-nologo")
@@ -229,6 +235,7 @@ fn link_command(name: &str) -> std::process::Command {
 mod tests {
     use super::*;
 
+    // [spec:kbdgen:req:windows.dll/test]
     #[test]
     fn failed_child_stops_the_build_with_stage_and_status() {
         let mut command = Command::new("cmd.exe");
@@ -240,6 +247,7 @@ mod tests {
         assert!(error.contains("7"));
     }
 
+    // [spec:kbdgen:req:windows.dll/test]
     #[test]
     fn missing_tool_is_an_error_and_success_is_accepted() {
         let mut command = Command::new("kbdgen-nonexistent-test-compiler.exe");

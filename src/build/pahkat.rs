@@ -9,6 +9,7 @@ use pahkat_client::{
     types::package_key::PackageKeyParams,
 };
 
+// [spec:kbdgen:req:windows.dll]
 pub async fn install_msklc() {
     tracing::info!("Updating 'msklc'...");
 
@@ -58,6 +59,7 @@ pub async fn install_msklc() {
     }
 }
 
+// [spec:kbdgen:req:windows.dll]
 pub fn prefix_dir(platform: &str) -> PathBuf {
     let kbdgen_data = pathos::user::app_data_dir("kbdgen").unwrap();
     kbdgen_data.join("prefix").join(platform)

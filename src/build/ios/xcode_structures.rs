@@ -10,6 +10,7 @@ pub struct XcodeHostingInfoStrings {
     pub cf_bundle_display_name: String,
 }
 
+// [spec:kbdgen:req:xcode.localization]
 impl fmt::Display for XcodeHostingInfoStrings {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(&format!(
@@ -43,6 +44,7 @@ pub struct KeyboardInfoPlistExtension {
     pub ns_extension_principal_class: String,
 }
 
+// [spec:kbdgen:req:xcode.targets.keyboard-plist]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct KeyboardInfoPlist {
     #[serde(rename = "DivvunSpellerPath")]
@@ -85,6 +87,7 @@ pub struct KeyboardInfoPlist {
 
 // LAYOUT PLIST END
 
+// [spec:kbdgen:req:xcode.targets.hosting-app]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EntitlementsDict {
     #[serde(rename = "com.apple.security.application-groups")]
@@ -103,6 +106,7 @@ pub struct PreferenceSpecifier {
     pub default_value: bool,
 }
 
+// [spec:kbdgen:req:xcode.targets.hosting-app]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SettingsRootDict {
     #[serde(rename = "StringsTable")]
@@ -119,6 +123,7 @@ pub struct BundleSchemes {
     pub cf_bundle_url_schemes: Vec<String>,
 }
 
+// [spec:kbdgen:req:xcode.targets.hosting-app]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct HostingPlist {
     #[serde(rename = "CFBundleDevelopmentRegion")]

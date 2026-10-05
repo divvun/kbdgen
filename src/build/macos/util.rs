@@ -23,6 +23,7 @@ const CRCTAB_HQX: [u16; 256] = [
     0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
 ];
 
+// [spec:kbdgen:def:keylayout.document.name]
 pub fn crc_hqx(input: &[u8]) -> u16 {
     let mut crc: u16 = 0;
 

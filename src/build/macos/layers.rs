@@ -1,5 +1,6 @@
 use crate::bundle::layout::macos::MacOsKbdLayer;
 
+// [spec:kbdgen:req:keylayout.keymaps]
 pub fn layer_attributes(layer: &MacOsKbdLayer) -> String {
     match layer {
         MacOsKbdLayer::Default => "command?",

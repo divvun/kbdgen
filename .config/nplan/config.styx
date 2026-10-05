@@ -1,0 +1,26 @@
+platforms (
+    {
+        platform "rust"
+        files (src/**/*.rs examples/**/*.rs Cargo.toml Cargo.lock)
+        checks {
+            format {
+                cmd "cargo fmt --all -- --check"
+                fix "cargo fmt --all"
+            }
+            lint {
+                cmd "cargo clippy --workspace --all-targets"
+            }
+            test {
+                cmd "cargo nextest run --workspace"
+            }
+        }
+    }
+)
+
+commit {
+    type-prefix "required"
+}
+
+adoption {
+    scope "maintenance"
+}

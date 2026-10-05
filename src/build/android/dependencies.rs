@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::io::Write;
 use std::path::Path;
 
+// [spec:kbdgen:req:android.dependencies.jnilibs]
 pub async fn install_android_deps(main_path: &Path) -> Result<()> {
     tracing::info!("Installing Android dependencies from GitHub releases...");
     download_and_extract_jnilibs("divvun", "divvunspell", "android-jnilibs", main_path).await?;
@@ -11,6 +12,7 @@ pub async fn install_android_deps(main_path: &Path) -> Result<()> {
     Ok(())
 }
 
+// [spec:kbdgen:req:android.dependencies.jnilibs]
 async fn download_and_extract_jnilibs(
     org: &str,
     repo: &str,
@@ -37,6 +39,7 @@ async fn download_and_extract_jnilibs(
     Ok(())
 }
 
+// [spec:kbdgen:req:android.dependencies.jnilibs]
 async fn download_asset_to_file(
     org: &str,
     repo: &str,
@@ -76,7 +79,12 @@ async fn download_asset_to_file(
                 })
             })
         })
-        .unwrap_or_else(|| panic!("No {} asset found in any release for {}/{}", target_filter, org, repo));
+        .unwrap_or_else(|| {
+            panic!(
+                "No {} asset found in any release for {}/{}",
+                target_filter, org, repo
+            )
+        });
 
     let download_url = asset["browser_download_url"]
         .as_str()

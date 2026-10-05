@@ -20,6 +20,7 @@ pub struct WindowsBuild {
     pub steps: Vec<Box<dyn BuildStep>>,
 }
 
+// [spec:kbdgen:req:windows.dll]
 #[async_trait(?Send)]
 impl BuildSteps for WindowsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {

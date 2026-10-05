@@ -21,12 +21,16 @@ use crate::{
 
 const BACKGROUND_FILE_NAME: &str = "background.js";
 const MANIFEST_FILE_NAME: &str = "manifest.json";
+// [spec:kbdgen:req:chromeos.descriptor]
+// [spec:kbdgen:sem:chromeos.descriptor.runtime]
 const KEYBOARD_TEMPLATE: &str = include_str!("../../../resources/template-chromeos-keyboard.js");
 const DEFAULT_LOCALE: &str = "en";
 
+// [spec:kbdgen:req:chromeos.manifest]
 const DEFAULT_LONG_LOCALE: &str = "en-US";
 const DEFAULT_XKB_LAYOUT: &str = "us";
 
+// [spec:kbdgen:req:chromeos.manifest]
 const KEYBOARD_NAMES: Lazy<IndexMap<String, String>> = Lazy::new(|| {
     let mut map = IndexMap::new();
 
@@ -72,6 +76,8 @@ pub struct ChromeOsBackground {
     descriptor: IndexMap<LanguageTag, ChromeOsDescriptor>,
 }
 
+// [spec:kbdgen:req:chromeos.descriptor]
+// [spec:kbdgen:sem:chromeos.descriptor.runtime]
 impl fmt::Display for ChromeOsBackground {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}\n", self.template)?;
@@ -87,6 +93,7 @@ impl fmt::Display for ChromeOsBackground {
     }
 }
 
+// [spec:kbdgen:req:chromeos.descriptor]
 #[derive(Serialize, Deserialize)]
 pub struct ChromeOsDescriptor {
     pub dead_keys: IndexMap<ChromeOsKbdLayer, Vec<String>>,
@@ -115,6 +122,7 @@ fn to_chrome_locale(locale: String) -> String {
     locale.replace("-", "_")
 }
 
+// [spec:kbdgen:req:chromeos.descriptor]
 pub fn create_background(
     descriptor: IndexMap<LanguageTag, ChromeOsDescriptor>,
     output_folder_path: &Path,
@@ -138,6 +146,7 @@ pub fn create_background(
 }
 
 /// Creates a `manifest.json` file and populates it
+// [spec:kbdgen:req:chromeos.manifest]
 pub fn create_manifest(
     bundle: &KbdgenBundle,
     input_components: Vec<ManifestInputComponent>,
@@ -179,6 +188,7 @@ pub fn create_manifest(
 }
 
 /// Creates a `_locales` folder with subfolders for each locale that is then populated with a `messages.json` file, which in turn contains metadata
+// [spec:kbdgen:req:chromeos.manifest]
 pub fn create_locales(
     bundle: &KbdgenBundle,
     display_names: IndexMap<LanguageTag, String>,
@@ -261,6 +271,7 @@ pub fn create_locales(
     return true;
 }
 
+// [spec:kbdgen:req:chromeos.descriptor]
 fn generate_dead_keys(chromeos_target: &ChromeOsTarget) -> IndexMap<ChromeOsKbdLayer, Vec<String>> {
     let mut json_dead_keys = IndexMap::new();
     if let Some(dead_keys) = &chromeos_target.dead_keys {
@@ -271,6 +282,7 @@ fn generate_dead_keys(chromeos_target: &ChromeOsTarget) -> IndexMap<ChromeOsKbdL
     json_dead_keys
 }
 
+// [spec:kbdgen:req:chromeos.descriptor]
 fn generate_transforms(
     bundle: &KbdgenBundle,
     layout: &Layout,
@@ -292,6 +304,7 @@ fn generate_transforms(
     }
 }
 
+// [spec:kbdgen:req:chromeos.descriptor]
 fn generate_layers(
     chromeos_target: &ChromeOsTarget,
     language_tag: LanguageTag,
@@ -307,6 +320,7 @@ fn generate_layers(
             CHROMEOS_KEYS.len(),
             key_map.len()
         );
+        // [spec:kbdgen:req:keys.iso-order.desktop-layers]
         if CHROMEOS_KEYS.len() > key_map.len() {
             panic!(
                 r#"Provided layer does not have enough keys, expected {} keys but got {}, in {}:{}:{}:{:?}: \n{:?}"#,

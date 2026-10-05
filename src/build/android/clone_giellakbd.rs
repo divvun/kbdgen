@@ -9,6 +9,7 @@ use super::REPOSITORY_FOLDER;
 
 pub struct CloneGiellaKbd;
 
+// [spec:kbdgen:req:android.dependencies]
 #[async_trait(?Send)]
 impl BuildStep for CloneGiellaKbd {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {

@@ -21,6 +21,9 @@ pub struct KlcFileMetadata {
     pub locale_name: String,
 }
 
+// [spec:kbdgen:def:klc.file]
+// [spec:kbdgen:req:klc.metadata]
+// [spec:kbdgen:req:klc.metadata.locale]
 impl Display for KlcFile<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
@@ -72,6 +75,7 @@ impl Display for KlcFile<'_> {
     }
 }
 
+// [spec:kbdgen:def:klc.file]
 const FOOTER_CONTENT: &str = r#"
 KEYNAME
 

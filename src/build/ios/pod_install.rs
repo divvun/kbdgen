@@ -6,6 +6,7 @@ use async_trait::async_trait;
 
 pub struct PodInstall;
 
+// [spec:kbdgen:req:ios.build-chain]
 #[async_trait(?Send)]
 impl BuildStep for PodInstall {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {

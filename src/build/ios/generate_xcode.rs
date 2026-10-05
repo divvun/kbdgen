@@ -47,6 +47,7 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
         .collect::<String>()
 }
 
+// [spec:kbdgen:req:xcode.targets.keyboard-plist]
 pub fn generate_keyboard_plist(
     template_path: &Path,
     target: &IOsTarget,
@@ -93,6 +94,7 @@ pub fn generate_keyboard_plist(
     plist::to_file_xml(output_path, &keyboard_plist).unwrap();
 }
 
+// [spec:kbdgen:req:xcode.targets.hosting-app]
 pub fn generate_hosting_plist(
     in_out_path: PathBuf,
     display_name: String,
@@ -113,6 +115,7 @@ pub fn generate_hosting_plist(
     plist::to_file_xml(in_out_path, &hosting_app_plist).unwrap();
 }
 
+// [spec:kbdgen:req:xcode.targets.hosting-app]
 pub fn update_entitlements(entitlements_path: PathBuf, new_entitlements: Vec<String>) {
     tracing::debug!("Updating entitlements in {:?}", &entitlements_path);
 
@@ -140,6 +143,7 @@ pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
     reversed_components.into_iter().collect()
 }
 
+// [spec:kbdgen:req:xcode.targets.hosting-app]
 pub fn generate_icons(bundle: &KbdgenBundle, path: &Path) {
     let icon = bundle
         .resources
@@ -239,6 +243,7 @@ impl BuildStep for GenerateXcode {
                     // GENERATE LOCALES
                     // TODO: Check if About.txt exists for locale before creating file reference
 
+                    // [spec:kbdgen:req:xcode.localization]
                     for (locale_name, locale_info) in &bundle.project.locales {
                         let locale_name = if locale_name == "en" {
                             "Base"
@@ -315,6 +320,7 @@ impl BuildStep for GenerateXcode {
                     );
 
                     // GENERATE .pbxproj
+                    // [spec:kbdgen:req:xcode.targets]
                     let temp = pbxproj.create_plist_file(&Path::new(INFO_PLIST));
                     let hmm = path_to_relative(&current_layout_path, REPOSITORY);
                     tracing::debug!("Relpath: {}", hmm.display());
@@ -375,6 +381,7 @@ impl BuildStep for GenerateXcode {
             plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
 
             // UPDATE PBXPROJ
+            // [spec:kbdgen:req:xcode.targets]
             pbxproj.set_target_build_configuration(
                 HOSTING_APP,
                 "PRODUCT_BUNDLE_IDENTIFIER",
@@ -387,6 +394,7 @@ impl BuildStep for GenerateXcode {
             );
             pbxproj.remove_target(KEYBOARD);
             pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
+            // [spec:kbdgen:req:xcode.localization]
             pbxproj.update(HOSTING_APP, all_locales);
         }
 

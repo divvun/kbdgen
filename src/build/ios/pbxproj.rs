@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 pub type ObjectId = String;
 
 impl ObjectId {
+    // [spec:kbdgen:req:pbxproj.ids]
     pub fn new_random() -> Self {
         use rand::Rng;
         const CHARSET: &[u8] = b"0123456789ABCDEF";
@@ -85,6 +86,7 @@ pub struct VariantGroup {
     pub path: Option<String>,
 }
 
+// [spec:kbdgen:sem:pbxproj.model.ordering]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
@@ -220,6 +222,8 @@ pub struct BuildFile {
     pub file_ref: ObjectId,
 }
 
+// [spec:kbdgen:def:pbxproj.model]
+// [spec:kbdgen:sem:pbxproj.model.ordering]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
@@ -634,6 +638,7 @@ impl Pbxproj {
         variant.children.insert(object_id);
     }
 
+    // [spec:kbdgen:req:xcode.targets]
     pub fn duplicate_target(
         &mut self,
         source_name: &str,
@@ -729,6 +734,7 @@ impl Pbxproj {
         self.add_target(&new_native_target_id);
     }
 
+    // [spec:kbdgen:req:xcode.targets]
     pub fn remove_target(&mut self, target_name: &str) {
         let target = self.native_target_by_name_mut(target_name).unwrap();
 
@@ -782,6 +788,7 @@ impl Pbxproj {
         }
     }
 
+    // [spec:kbdgen:req:xcode.targets]
     pub fn add_appex_to_target_embedded_binaries(&mut self, target_path: &str, appex_path: &str) {
         let appex_id = self
             .file_reference_id_by_path(&format!("{}.appex", appex_path))
@@ -858,6 +865,7 @@ impl Pbxproj {
         }
     }
 
+    // [spec:kbdgen:req:xcode.localization]
     pub fn update(&mut self, target_name: &str, locale_list: BTreeSet<String>) {
         tracing::debug!("Updating target {} with new locales", &target_name);
 
@@ -922,6 +930,7 @@ pub struct PBXCopyFilesBuildPhase {
     run_only_for_deployment_postprocessing: String,
 }
 
+// [spec:kbdgen:def:pbxproj.model]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "isa")]
 pub enum Object {
@@ -974,6 +983,7 @@ pub enum Object {
     ContainerItemProxy(ContainerItemProxy),
 }
 
+// [spec:kbdgen:req:pbxproj.model.read]
 pub fn convert_pbxproj_to_json(path: &Path) -> Pbxproj {
     tracing::debug!("Getting .pbxproj as json");
 

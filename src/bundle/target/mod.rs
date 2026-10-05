@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+// [spec:kbdgen:req:bundle.structure.targets]
 #[derive(Debug, Default)]
 pub struct Targets {
     pub windows: Option<Windows>,

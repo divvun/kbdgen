@@ -17,12 +17,14 @@ pub mod ios;
 pub mod macos;
 pub mod windows;
 
+// [spec:kbdgen:def:layout.transforms]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Transform {
     End(String),
     More(IndexMap<String, Transform>),
 }
 
+// [spec:kbdgen:def:layout.schema]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Layout {
@@ -60,6 +62,7 @@ impl Layout {
     }
 }
 
+// [spec:kbdgen:req:layout.schema.targets]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowsTarget {
@@ -74,6 +77,7 @@ pub struct WindowsPrimaryPlatform {
     pub layers: IndexMap<WindowsKbdLayer, String>,
 }
 
+// [spec:kbdgen:req:layout.schema.targets]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChromeOsTarget {
@@ -88,6 +92,7 @@ pub struct ChromeOsPrimaryPlatform {
     pub layers: IndexMap<ChromeOsKbdLayer, String>,
 }
 
+// [spec:kbdgen:req:layout.schema.targets]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MacOsTarget {
@@ -103,6 +108,7 @@ pub struct MacOsPrimaryPlatform {
     pub layers: IndexMap<MacOsKbdLayer, String>,
 }
 
+// [spec:kbdgen:req:layout.schema.targets]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IOsTarget {
     #[serde(default)]
@@ -121,6 +127,7 @@ pub struct IOsPlatform {
     pub layers: IndexMap<IOsKbdLayer, String>,
 }
 
+// [spec:kbdgen:req:layout.schema.targets]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AndroidTarget {
     pub config: Option<AndroidConfig>,
@@ -134,6 +141,7 @@ pub struct AndroidPlatform {
     pub layers: IndexMap<AndroidKbdLayer, String>,
 }
 
+// [spec:kbdgen:def:layout.schema]
 fn from_mapped_sequence<'de, D>(
     deserializer: D,
 ) -> Result<Option<IndexMap<String, Vec<String>>>, D::Error>
@@ -168,6 +176,7 @@ where
     Ok(Some(output_map))
 }
 
+// [spec:kbdgen:def:layout.transforms]
 fn process_transform(value: Value) -> Transform {
     match value {
         Value::String(character) => Transform::End(character),

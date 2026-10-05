@@ -3,15 +3,19 @@ use regex::Regex;
 
 pub mod iso_key;
 
+// [spec:kbdgen:syn:keys.escape]
 pub static UNICODE_ESCAPES: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\\u\{([0-9A-Fa-f]{1,6})\}").expect("valid regex"));
 
+// [spec:kbdgen:req:layout.transforms.dead-key-entries]
 pub const TRANSFORM_ESCAPE: &str = " ";
 
+// [spec:kbdgen:req:keys.iso-order.desktop-layers]
 pub fn split_keys(layer: &str) -> Vec<String> {
     layer.split_whitespace().map(|v| v.to_string()).collect()
 }
 
+// [spec:kbdgen:syn:keys.escape]
 pub fn decode_unicode_escapes(input: &str) -> String {
     let new = UNICODE_ESCAPES.replace_all(input, |hex: &regex::Captures| {
         let number = u32::from_str_radix(hex.get(1).unwrap().as_str(), 16).unwrap_or(0xfeff);

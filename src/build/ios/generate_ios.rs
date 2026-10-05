@@ -38,6 +38,7 @@ pub fn remove_all_occurrences(input: String, character: char) -> String {
         .collect::<String>()
 }
 
+// [spec:kbdgen:syn:ios.rows]
 pub fn keyboard_component_from_string(input: String) -> Option<IosButton> {
     let regex = Regex::new(r"^\\s\{([^}:]+)(?::(\d+(?:\.\d+)?))?\}$").expect("valid regex");
     let captures = regex.captures(input.as_str());
@@ -86,6 +87,7 @@ pub struct IosPlatform {
     layer: IndexMap<String, Vec<Vec<IosKeyMapType>>>,
 }
 
+// [spec:kbdgen:def:ios.keyboard-json]
 #[derive(Serialize, Deserialize)]
 pub struct IosDeadKeys {
     iphone: IndexMap<IOsKbdLayer, Vec<String>>,
@@ -95,6 +97,7 @@ pub struct IosDeadKeys {
     i_pad_12in: IndexMap<IOsKbdLayer, Vec<String>>,
 }
 
+// [spec:kbdgen:def:ios.keyboard-json]
 #[derive(Serialize, Deserialize)]
 pub struct IosKeyboardDefinitions {
     #[serde(flatten)]
@@ -111,6 +114,7 @@ pub struct IosKeyboardDefinitions {
     i_pad_12in: IosPlatform,
 }
 
+// [spec:kbdgen:syn:ios.rows]
 pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
     match layer {
         IOsKbdLayer::Default => "normal",
@@ -124,6 +128,7 @@ pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
     .to_string()
 }
 
+// [spec:kbdgen:syn:ios.rows]
 pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<IosKeyMapType>>> {
     let mut layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
     for (layer_name, layer_key_map) in &platform.layers {
@@ -147,6 +152,7 @@ pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<Ios
     layers
 }
 
+// [spec:kbdgen:req:ios.transforms]
 fn process_transforms(
     transforms: &IndexMap<String, Transform>,
 ) -> IndexMap<String, IndexMap<String, String>> {
@@ -163,6 +169,7 @@ fn process_transforms(
                 );
             }
             Transform::More(transforms) => {
+                // [spec:kbdgen:req:layout.transforms.dead-key-entries]
                 for (next_char, transform) in transforms {
                     if next_char == TRANSFORM_ESCAPE {
                         transforms_by_char.insert(next_char.clone(), dead_key.clone());
@@ -226,6 +233,7 @@ impl BuildStep for GenerateIos {
                     i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
                 }
 
+                // [spec:kbdgen:def:ios.keyboard-json]
                 if let Some(key_names) = &layout.key_names {
                     all_layouts.push(IosKeyboardDefinitions {
                         info: IosInfo {
@@ -254,6 +262,7 @@ impl BuildStep for GenerateIos {
                 }
             }
         }
+        // [spec:kbdgen:def:ios.keyboard-json]
         std::fs::write(
             &keyboard_definitions_file_path,
             serde_json::to_string_pretty(&all_layouts).unwrap(),

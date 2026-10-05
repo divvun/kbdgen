@@ -11,6 +11,7 @@ const KEY_LAYOUT_EXT: &str = "keylayout";
 const LPROJ_EXT: &str = "lproj";
 
 #[derive(Serialize, Deserialize)]
+// [spec:kbdgen:req:macbundle.plist]
 pub struct InfoPlist {
     #[serde(rename = "CFBundleIdentifier")]
     pub cf_bundle_identifier: String,
@@ -42,6 +43,7 @@ pub struct MacOsBundle {
 }
 
 impl MacOsBundle {
+    // [spec:kbdgen:req:macbundle.plist]
     pub fn new(
         path: PathBuf,
         name: &str,
@@ -80,6 +82,9 @@ impl MacOsBundle {
         })
     }
 
+    // [spec:kbdgen:req:macbundle.plist]
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
+    // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn add_key_layout(
         &mut self,
         language_tag: LanguageTag,
@@ -124,12 +129,14 @@ impl MacOsBundle {
         );
     }
 
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
     #[cfg(not(target_os = "macos"))]
     pub fn write_icons(&self, language_tag: LanguageTag, name: &str) -> Result<(), std::io::Error> {
         tracing::warn!("No icon generation due to not running on macOS!");
         Ok(())
     }
 
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
     #[cfg(target_os = "macos")]
     pub fn write_icons(
         &self,
@@ -181,6 +188,9 @@ impl MacOsBundle {
         Ok(())
     }
 
+    // [spec:kbdgen:req:macbundle.plist]
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
+    // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn write_all(self) -> Result<(), std::io::Error> {
         plist::to_file_xml(
             self.path.join(TOP_FOLDER).join("Info.plist"),

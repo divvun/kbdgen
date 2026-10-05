@@ -1,0 +1,3 @@
+# Semantic merge for nplan plan / state / lock files at any depth under plan/.
+plan/**/*.styx merge=nplan
+plan/architecture.styx merge=text

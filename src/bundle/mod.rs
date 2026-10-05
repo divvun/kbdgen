@@ -42,6 +42,7 @@ pub struct KbdgenBundle {
 }
 
 impl KbdgenBundle {
+    // [spec:kbdgen:def:bundle.structure]
     pub fn name(&self) -> &str {
         self.path
             .file_stem()
@@ -69,6 +70,7 @@ impl KbdgenBundle {
     }
 }
 
+// [spec:kbdgen:def:bundle.structure]
 pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     let canonical_bundle_path: PathBuf =
         canonicalize(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
@@ -98,6 +100,7 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     })
 }
 
+// [spec:kbdgen:req:bundle.layouts]
 fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
     tracing::debug!("Reading layouts");
     read_dir(path)
@@ -135,6 +138,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
             let mut layout: Layout = serde_path_to_error::deserialize(yaml)
                 .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
+            // [spec:kbdgen:req:bundle.layouts.autonym]
             let _autonym = match layout
                 .display_names
                 .get(&tag.primary_language().parse::<LanguageTag>().unwrap())
@@ -147,6 +151,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                 }
             };
 
+            // [spec:kbdgen:req:bundle.layouts]
             if let Some(decimal) = layout.decimal.as_ref() {
                 if decimal != COMMA_DECIMAL && decimal != DEFAULT_DECIMAL {
                     tracing::error!(
@@ -178,6 +183,7 @@ where
     serde_path_to_error::deserialize(deserializer).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
+// [spec:kbdgen:req:bundle.structure.targets.env]
 fn load_yaml_with_env<T>(path: &Path, env_vars: HashMap<&str, &str>) -> Result<T, Error>
 where
     T: for<'de> serde::Deserialize<'de>,
@@ -215,6 +221,7 @@ where
     }
 }
 
+// [spec:kbdgen:def:bundle.resources]
 fn read_resources(path: &Path) -> Result<Resources, Error> {
     tracing::debug!("Reading resources");
     let mut resources = Resources::default();
@@ -250,6 +257,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
     Ok(resources)
 }
 
+// [spec:kbdgen:req:bundle.structure.targets]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets");
     let mut targets = Targets::default();

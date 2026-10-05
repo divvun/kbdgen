@@ -1,0 +1,123 @@
+schema_version 7
+
+last_sync_at 2026-10-05T12:48:15.670259Z
+
+rule_versions (
+    {id android.dependencies, version 0}
+    {id android.dependencies.jnilibs, version 0}
+    {id android.gradle, version 0}
+    {id android.keys, version 0}
+    {id android.keys.number-row, version 0}
+    {id android.layout-xml, version 0}
+    {id android.layout-xml.name, version 0}
+    {id android.layout-xml.rows, version 0}
+    {id android.metadata, version 0}
+    {id android.metadata.icons, version 0}
+    {id android.metadata.strings, version 0}
+    {id android.transforms, version 0}
+    {id bundle.fetch, version 0}
+    {id bundle.layouts, version 0}
+    {id bundle.layouts.autonym, version 0}
+    {id bundle.project, version 0}
+    {id bundle.resources, version 0}
+    {id bundle.structure, version 0}
+    {id bundle.structure.targets, version 0}
+    {id bundle.structure.targets.env, version 0}
+    {id chromeos.descriptor, version 0}
+    {id chromeos.descriptor.runtime, version 0}
+    {id chromeos.keymap, version 0}
+    {id chromeos.manifest, version 0}
+    {id cli.commands, version 0}
+    {id ios.build-chain, version 0}
+    {id ios.build-chain.init, version 0}
+    {id ios.keyboard-json, version 0}
+    {id ios.pkg-ids, version 0}
+    {id ios.pkg-ids.all, version 0}
+    {id ios.rows, version 0}
+    {id ios.transforms, version 0}
+    {id keylayout.actions, version 0}
+    {id keylayout.actions.dead-key-next, version 0}
+    {id keylayout.document, version 0}
+    {id keylayout.document.id-range, version 0}
+    {id keylayout.document.name, version 0}
+    {id keylayout.keymaps, version 0}
+    {id keylayout.keymaps.iso-codes, version 0}
+    {id keylayout.keymaps.tokens, version 0}
+    {id keylayout.transforms, version 0}
+    {id keys.escape, version 0}
+    {id keys.iso-order, version 0}
+    {id keys.iso-order.desktop-layers, version 0}
+    {id klc.caps, version 0}
+    {id klc.deadkeys, version 0}
+    {id klc.file, version 0}
+    {id klc.file.encoding, version 0}
+    {id klc.layout, version 0}
+    {id klc.layout.key-codes, version 0}
+    {id klc.layout.key-rendering, version 0}
+    {id klc.layout.tokens, version 0}
+    {id klc.ligatures, version 0}
+    {id klc.metadata, version 0}
+    {id klc.metadata.locale, version 0}
+    {id layout.schema, version 0}
+    {id layout.schema.targets, version 0}
+    {id layout.transforms, version 0}
+    {id layout.transforms.dead-key-entries, version 0}
+    {id macbundle.installer, version 0}
+    {id macbundle.plist, version 0}
+    {id macbundle.plist.bundle-resources, version 0}
+    {id macbundle.plist.strings, version 0}
+    {id pbxproj.ids, version 0}
+    {id pbxproj.model, version 0}
+    {id pbxproj.model.ordering, version 0}
+    {id pbxproj.model.read, version 0}
+    {id pbxproj.quoting, version 0}
+    {id pbxproj.serialize, version 0}
+    {id pbxproj.serialize.attributes, version 0}
+    {id pbxproj.serialize.build-settings, version 0}
+    {id pbxproj.serialize.fields, version 0}
+    {id pipeline.steps, version 0}
+    {id windows.dll, version 0}
+    {id windows.dll.link, version 0}
+    {id xcode.localization, version 0}
+    {id xcode.targets, version 0}
+    {id xcode.targets.hosting-app, version 0}
+    {id xcode.targets.keyboard-plist, version 0}
+)
+
+derived_priorities (
+    {id input.bundle, priority 1, derived_at 2026-10-05T12:48:15.670259Z}
+    {id input.cli, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id input.layout, priority 0, derived_at 2026-10-05T12:48:15.670259Z}
+    {id input.layout-order, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id input.test-bundle, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id quality.clippy, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id quality.deny-warnings, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id quality.robustness, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.android.icon-resize, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.android.layout, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.android.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.android.toolchain, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.chromeos.descriptor-fields, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.chromeos.ime, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.chromeos.panic-message, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.about-path, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.development-team, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.keyboard-json, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.pbxproj, priority 0, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.pbxproj-gaps, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.toolchain, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.xcode, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.macos.keylayout, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.macos.package, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.macos.repeated-dead-key, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.macos.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.nested-transforms, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.svg, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.windows.dll, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.windows.klc, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.windows.line-endings, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.windows.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
+)
+
+onboarding {kind @adopt, phase 6}

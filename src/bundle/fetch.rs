@@ -2,6 +2,7 @@ use std::path::Path;
 
 use super::project::Project;
 
+// [spec:kbdgen:req:bundle.fetch]
 pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
     tracing::debug!("Create layouts dir");
     std::fs::create_dir_all(target.join("layouts"))?;

@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 
 use crate::util::iso_key::IsoKey;
 
+// [spec:kbdgen:def:chromeos.keymap]
 pub static CHROMEOS_KEYS: Lazy<IndexMap<IsoKey, String>> = Lazy::new(|| {
     let mut map = IndexMap::new();
 

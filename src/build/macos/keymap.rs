@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 
 use crate::util::iso_key::IsoKey;
 
+// [spec:kbdgen:def:keylayout.keymaps.iso-codes]
 pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, usize>> = Lazy::new(|| {
     let mut map = IndexMap::new();
 
@@ -66,6 +67,7 @@ pub static MACOS_KEYS: Lazy<IndexMap<IsoKey, usize>> = Lazy::new(|| {
     map
 });
 
+// [spec:kbdgen:req:keylayout.keymaps]
 pub const MACOS_HARDCODED: &[(usize, &str)] = &[
     (36, r"\u{D}"),
     (48, r"\u{9}"),

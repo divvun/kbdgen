@@ -4,6 +4,7 @@ pub struct KlcLigature {
     pub rows: Vec<KlcLigatureRow>,
 }
 
+// [spec:kbdgen:req:klc.ligatures]
 impl Display for KlcLigature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.rows.is_empty() {

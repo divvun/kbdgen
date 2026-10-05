@@ -1,0 +1,21 @@
+specs ({
+    name kbdgen,
+    include (docs/spec/**/*.md),
+    impls ({name main, languages (@rust), include (src/**/*.rs examples/**/*.rs), exclude (target/**)}),
+    verify_required (
+        {pattern "klc.*", facet "/test/golden"}
+        {pattern "keylayout.document", facet "/test/golden"}
+        {pattern "keylayout.document.name", facet "/test/golden"}
+        {pattern "keylayout.keymaps*", facet "/test/golden"}
+        {pattern "keylayout.actions*", facet "/test/golden"}
+        {pattern "keylayout.transforms*", facet "/test/golden"}
+        {pattern "pbxproj.model*", facet "/test/golden"}
+        {pattern "pbxproj.serialize*", facet "/test/golden"}
+        {pattern "pbxproj.quoting*", facet "/test/golden"}
+        {pattern "android.layout-xml*", facet "/test/golden"}
+        {pattern "android.keys*", facet "/test/golden"}
+        {pattern "android.transforms*", facet "/test/golden"}
+        {pattern "android.metadata*", facet "/test/golden"}
+        {pattern "android.gradle*", facet "/test/golden"}
+    )
+})

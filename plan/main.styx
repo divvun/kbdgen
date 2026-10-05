@@ -1,0 +1,440 @@
+name kbdgen
+
+source {
+    url "git@github.com:divvun/kbdgen.git"
+    ref main
+}
+
+children (
+    {
+        id input
+        title "Input model and CLI"
+        kind @feat
+        children (
+            {
+                id input.layout
+                title "Layout YAML model and key notation"
+                kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:layout.schema]
+                        [spec:kbdgen:def:layout.transforms]
+                        [spec:kbdgen:syn:keys.escape]
+                        [spec:kbdgen:def:keys.iso-order]
+                        [spec:kbdgen:req:layout.schema.targets]
+                        [spec:kbdgen:req:layout.transforms.dead-key-entries]
+                        [spec:kbdgen:req:keys.iso-order.desktop-layers]
+                    )
+                }
+            }
+
+            {
+                id input.bundle
+                title ".kbdgen bundle loading, project/target/resources, fetch"
+                kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:bundle.structure]
+                        [spec:kbdgen:def:bundle.project]
+                        [spec:kbdgen:req:bundle.layouts]
+                        [spec:kbdgen:def:bundle.resources]
+                        [spec:kbdgen:req:bundle.fetch]
+                        [spec:kbdgen:req:bundle.layouts.autonym]
+                        [spec:kbdgen:req:bundle.structure.targets]
+                        [spec:kbdgen:req:bundle.structure.targets.env]
+                    )
+                }
+                deps (input.layout)
+            }
+
+            {
+                id input.cli
+                title "CLI commands and sequential BuildStep pipeline"
+                kind @feat
+                implements {
+                    main ([spec:kbdgen:def:cli.commands] [spec:kbdgen:sem:pipeline.steps])
+                }
+                deps (input.bundle)
+            }
+
+            {
+                id input.test-bundle
+                title "Fixture-bundle tests for loading, autonym/decimal/BCP47 errors, target stems, icon tags"
+                kind @test
+                deps (input.bundle input.layout)
+            }
+
+            {
+                id input.layout-order
+                title "Deterministic layout ordering (HashMap) across method.xml, descriptor, Info.plist, KeyboardDefinitions.json"
+                kind @fix
+                deps (input.bundle)
+            }
+        )
+    }
+
+    {
+        id targets
+        title "Target generators"
+        kind @feat
+        children (
+            {
+                id targets.windows
+                title Windows
+                kind @feat
+                children (
+                    {
+                        id targets.windows.klc
+                        title "KLC generation"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:klc.file]
+                                [spec:kbdgen:req:klc.layout]
+                                [spec:kbdgen:sem:klc.caps]
+                                [spec:kbdgen:req:klc.deadkeys]
+                                [spec:kbdgen:req:klc.ligatures]
+                                [spec:kbdgen:req:klc.metadata]
+                                [spec:kbdgen:req:klc.file.encoding]
+                                [spec:kbdgen:req:klc.metadata.locale]
+                                [spec:kbdgen:def:klc.layout.key-codes]
+                                [spec:kbdgen:sem:klc.layout.tokens]
+                                [spec:kbdgen:syn:klc.layout.key-rendering]
+                            )
+                        }
+                        deps (input.bundle input.layout)
+                    }
+
+                    {
+                        id targets.windows.dll
+                        title "KLC to DLL build (kbdutool/cl/rc/link, MSKLC via pahkat)"
+                        kind @feat
+                        implements {
+                            main ([spec:kbdgen:req:windows.dll] [spec:kbdgen:req:windows.dll.link])
+                        }
+                        deps (targets.windows.klc)
+                    }
+
+                    {
+                        id targets.windows.test-golden
+                        title "Golden tests for KLC output (shift states, key rendering, SGCap, DEADKEY, metadata, UTF-16LE+BOM)"
+                        kind @test
+                        deps (input.layout-order)
+                    }
+
+                    {
+                        id targets.windows.line-endings
+                        title "Decide CRLF vs LF for .klc output; align code, docs, and klc.file rule"
+                        kind @fix
+                        deps (targets.windows.test-golden targets.windows.dll)
+                    }
+                )
+            }
+
+            {
+                id targets.macos
+                title macOS
+                kind @feat
+                children (
+                    {
+                        id targets.macos.keylayout
+                        title ".keylayout XML generation"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:keylayout.document]
+                                [spec:kbdgen:req:keylayout.keymaps]
+                                [spec:kbdgen:sem:keylayout.actions]
+                                [spec:kbdgen:req:keylayout.transforms]
+                                [spec:kbdgen:def:keylayout.document.name]
+                                [spec:kbdgen:thm:keylayout.document.id-range]
+                                [spec:kbdgen:def:keylayout.keymaps.iso-codes]
+                                [spec:kbdgen:req:keylayout.keymaps.tokens]
+                                [spec:kbdgen:req:keylayout.actions.dead-key-next]
+                            )
+                        }
+                        deps (input.bundle input.layout)
+                    }
+
+                    {
+                        id targets.macos.package
+                        title ".bundle, Info.plist, InfoPlist.strings and pkgbuild/productbuild installer"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:req:macbundle.plist]
+                                [spec:kbdgen:req:macbundle.installer]
+                                [spec:kbdgen:req:macbundle.plist.strings]
+                                [spec:kbdgen:req:macbundle.plist.bundle-resources]
+                            )
+                        }
+                        deps (targets.macos.keylayout)
+                    }
+
+                    {
+                        id targets.macos.test-golden
+                        title "Golden-file tests for .keylayout output"
+                        kind @test
+                        deps (input.layout-order)
+                    }
+
+                    {
+                        id targets.macos.repeated-dead-key
+                        title "Repeated dead key in one layer overwrites earlier positions' transitions"
+                        kind @fix
+                        deps (targets.macos.keylayout)
+                    }
+                )
+            }
+
+            {
+                id targets.ios
+                title iOS
+                kind @feat
+                children (
+                    {
+                        id targets.ios.keyboard-json
+                        title "KeyboardDefinitions.json generation"
+                        kind @feat
+                        implements {
+                            main ([spec:kbdgen:def:ios.keyboard-json] [spec:kbdgen:syn:ios.rows] [spec:kbdgen:req:ios.transforms])
+                        }
+                        deps (input.bundle input.layout)
+                    }
+
+                    {
+                        id targets.ios.pbxproj
+                        title "pbxproj model, plutil read, serializer"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:pbxproj.model]
+                                [spec:kbdgen:req:pbxproj.ids]
+                                [spec:kbdgen:syn:pbxproj.serialize]
+                                [spec:kbdgen:req:pbxproj.quoting]
+                                [spec:kbdgen:req:pbxproj.model.read]
+                                [spec:kbdgen:sem:pbxproj.model.ordering]
+                                [spec:kbdgen:def:pbxproj.serialize.fields]
+                                [spec:kbdgen:req:pbxproj.serialize.build-settings]
+                                [spec:kbdgen:req:pbxproj.serialize.attributes]
+                            )
+                        }
+                    }
+
+                    {
+                        id targets.ios.xcode
+                        title "Xcode project generation (per-layout targets, localization, entitlements)"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:req:xcode.targets]
+                                [spec:kbdgen:req:xcode.localization]
+                                [spec:kbdgen:req:xcode.targets.keyboard-plist]
+                                [spec:kbdgen:req:xcode.targets.hosting-app]
+                            )
+                        }
+                        deps (targets.ios.pbxproj input.bundle input.layout)
+                    }
+
+                    {
+                        id targets.ios.toolchain
+                        title "Package ids and build chain (clone, fastlane, pod install, xcarchive)"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:req:ios.pkg-ids]
+                                [spec:kbdgen:req:ios.build-chain]
+                                [spec:kbdgen:def:ios.pkg-ids.all]
+                                [spec:kbdgen:req:ios.build-chain.init]
+                            )
+                        }
+                        deps (targets.ios.keyboard-json targets.ios.xcode)
+                    }
+
+                    {
+                        id targets.ios.test-golden
+                        title "Tests for iOS row grammar, transforms, pkg ids, and golden pbxproj round-trip"
+                        kind @test
+                        deps (targets.ios.keyboard-json input.layout-order)
+                    }
+
+                    {
+                        id targets.ios.pbxproj-gaps
+                        title "Fix FileReference name quoting, implement todo!() attribute arms, replace placeholder comments"
+                        kind @fix
+                        deps (targets.ios.test-golden)
+                    }
+
+                    {
+                        id targets.ios.about-path
+                        title "Resolve About.txt existence check against output_path instead of CWD"
+                        kind @fix
+                        deps (targets.ios.xcode)
+                    }
+
+                    {
+                        id targets.ios.development-team
+                        title "Set DEVELOPMENT_TEAM from teamId instead of codeSignId"
+                        kind @fix
+                        deps (targets.ios.xcode)
+                    }
+                )
+            }
+
+            {
+                id targets.android
+                title Android
+                kind @feat
+                children (
+                    {
+                        id targets.android.layout
+                        title "Keyboard XML/rowkeys, assets, method/spellchecker/strings, gradle glue"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:android.layout-xml]
+                                [spec:kbdgen:req:android.keys]
+                                [spec:kbdgen:req:android.transforms]
+                                [spec:kbdgen:req:android.metadata]
+                                [spec:kbdgen:req:android.gradle]
+                                [spec:kbdgen:def:android.layout-xml.name]
+                                [spec:kbdgen:req:android.layout-xml.rows]
+                                [spec:kbdgen:req:android.keys.number-row]
+                                [spec:kbdgen:req:android.metadata.icons]
+                                [spec:kbdgen:req:android.metadata.strings]
+                            )
+                        }
+                        deps (input.bundle input.layout)
+                    }
+
+                    {
+                        id targets.android.toolchain
+                        title "giellakbd clone and android-jnilibs download"
+                        kind @feat
+                        implements {
+                            main ([spec:kbdgen:req:android.dependencies] [spec:kbdgen:req:android.dependencies.jnilibs])
+                        }
+                        deps (input.bundle)
+                    }
+
+                    {
+                        id targets.android.test-golden
+                        title "Golden tests for Android key widths, escaping, moreKeys/hints, names, deadKey roots, asset JSON"
+                        kind @test
+                        deps (input.layout-order)
+                    }
+
+                    {
+                        id targets.android.icon-resize
+                        title "Fix ImageMagick invocation passing 'convert' as an input file; check exit status"
+                        kind @fix
+                        deps (targets.android.layout)
+                    }
+                )
+            }
+
+            {
+                id targets.chromeos
+                title ChromeOS
+                kind @feat
+                children (
+                    {
+                        id targets.chromeos.ime
+                        title "ChromeOS IME extension (key table, descriptor + JS template, manifest v2, _locales)"
+                        kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:chromeos.keymap]
+                                [spec:kbdgen:req:chromeos.descriptor]
+                                [spec:kbdgen:req:chromeos.manifest]
+                                [spec:kbdgen:sem:chromeos.descriptor.runtime]
+                            )
+                        }
+                        deps (input.bundle input.layout)
+                    }
+
+                    {
+                        id targets.chromeos.panic-message
+                        title "Fix too-few-keys panic wording (hard-codes Windows/Primary); prefer returning an error"
+                        kind @fix
+                        deps (targets.chromeos.ime)
+                    }
+
+                    {
+                        id targets.chromeos.descriptor-fields
+                        title "Align descriptor field names with the JS runtime (deadKeys/space vs dead_keys); IME likely broken"
+                        kind @fix
+                        deps (targets.chromeos.ime)
+                    }
+                )
+            }
+
+            {
+                id targets.svg
+                title "Implement SVG output from template-iso-keyboard.svg, or drop SVG from README and CLI"
+                kind @feat
+                deps (input.bundle input.layout input.cli)
+            }
+
+            {
+                id targets.nested-transforms
+                title "Recursive transform trees (replace todo! sites in KLC, keylayout, iOS, Android)"
+                kind @feat
+                deps (
+                    input.layout
+                    targets.windows.klc
+                    targets.macos.keylayout
+                    targets.ios.keyboard-json
+                    targets.android.layout
+                    targets.windows.test-golden
+                    targets.ios.test-golden
+                    targets.android.test-golden
+                    targets.macos.test-golden
+                )
+            }
+        )
+    }
+
+    {
+        id quality
+        title "Code quality"
+        kind @refactor
+        children (
+            {
+                id quality.clippy
+                title "Clear clippy warnings and remove dead code (MacOsBuild, unused target fields)"
+                kind @refactor
+                deps (
+                    input.layout
+                    input.bundle
+                    input.cli
+                    targets.windows.klc
+                    targets.windows.dll
+                    targets.macos.keylayout
+                    targets.macos.package
+                    targets.ios.keyboard-json
+                    targets.ios.pbxproj
+                    targets.ios.xcode
+                    targets.ios.toolchain
+                    targets.android.layout
+                    targets.android.toolchain
+                    targets.chromeos.ime
+                )
+            }
+
+            {
+                id quality.deny-warnings
+                title "Re-enable -D warnings on the clippy commit gate"
+                kind @chore
+                deps (quality.clippy)
+            }
+
+            {
+                id quality.robustness
+                title "Robustness: KLC name collisions on 5-char tag prefix, unchecked subprocess exit codes, Android name sanitiser turning _ into x"
+                kind @fix
+                deps (targets.windows.klc targets.android.layout)
+            }
+        )
+    }
+)

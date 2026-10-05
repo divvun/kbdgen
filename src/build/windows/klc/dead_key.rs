@@ -11,6 +11,7 @@ pub struct KlcDeadKeys<'a> {
     pub transforms: &'a Option<IndexMap<String, Transform>>,
 }
 
+// [spec:kbdgen:req:klc.deadkeys]
 impl Display for KlcDeadKeys<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.characters.is_empty() {
@@ -21,6 +22,7 @@ impl Display for KlcDeadKeys<'_> {
             for dead_key in &self.characters {
                 f.write_fmt(format_args!("DEADKEY {:04x}\n\n", *dead_key as u32))?;
 
+                // [spec:kbdgen:req:layout.transforms.dead-key-entries]
                 if let Some(transform) = transforms.get(&dead_key.to_string()) {
                     match transform {
                         Transform::End(_character) => {
@@ -75,6 +77,7 @@ impl Display for KlcDeadKeys<'_> {
     }
 }
 
+// [spec:kbdgen:req:klc.deadkeys]
 fn write_transform(from: &str, to: &str, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     validate_for_klc(from);
     validate_for_klc(to);

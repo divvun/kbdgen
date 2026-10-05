@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 
+// [spec:kbdgen:def:bundle.resources]
 #[derive(Debug, Default)]
 pub struct Resources {
     pub(crate) macos: Option<MacOS>,

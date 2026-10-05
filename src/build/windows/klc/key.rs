@@ -10,6 +10,7 @@ pub enum KlcKey {
     Skip,
 }
 
+// [spec:kbdgen:syn:klc.layout.key-rendering]
 impl Display for KlcKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -27,6 +28,7 @@ impl Display for KlcKey {
 
 // ASCII characters can be represented as is
 // Unicode characters must be converted to their UTF-16 representation
+// [spec:kbdgen:syn:klc.layout.key-rendering]
 pub fn display_klc_character(character: char, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     if character.is_ascii_graphic() {
         f.write_char(character)
@@ -35,6 +37,8 @@ pub fn display_klc_character(character: char, f: &mut std::fmt::Formatter<'_>) -
     }
 }
 
+// [spec:kbdgen:sem:klc.layout.tokens]
+// [spec:kbdgen:req:klc.deadkeys]
 pub fn validate_for_klc(key: &str) {
     key.chars().for_each(|character| {
         if character > EXCEEDS_BMP {

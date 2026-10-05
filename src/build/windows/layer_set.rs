@@ -25,6 +25,7 @@ pub struct WindowsLayerSet {
 }
 
 impl WindowsLayerSet {
+    // [spec:kbdgen:sem:klc.caps]
     pub fn caps_mode(&self) -> String {
         // Shift correspondence increases caps mode by 1
         // Alt correspondence increases caps mode by 4
@@ -91,6 +92,7 @@ pub fn populate_layer_set(
     };
 }
 
+// [spec:kbdgen:sem:klc.layout.tokens]
 fn process_key(
     layer_key: &WindowsKbdLayer,
     key: &str,
@@ -115,6 +117,7 @@ fn process_key(
 
     let mut dead_key: bool = false;
 
+    // [spec:kbdgen:req:klc.deadkeys]
     if let Some(dead_keys) = dead_keys {
         if let Some(layer_dead_keys) = dead_keys.get(layer_key) {
             if layer_dead_keys.contains(&key.to_string()) {

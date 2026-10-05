@@ -18,6 +18,7 @@ use crate::{build::BuildStep, bundle::KbdgenBundle};
 use super::macos_bundle::MacOsBundle;
 use super::util::crc_hqx;
 
+// [spec:kbdgen:def:keylayout.document]
 const LAYOUT_TEMPLATE: &str = include_str!("../../../resources/template-macos-layout.xml");
 
 #[derive(Debug)]
@@ -66,6 +67,7 @@ struct TransformIdManager {
     action_counter: usize,
 }
 
+// [spec:kbdgen:sem:keylayout.actions]
 impl TransformIdManager {
     fn new() -> Self {
         TransformIdManager {
@@ -93,6 +95,7 @@ impl TransformIdManager {
 
 pub struct GenerateMacOs;
 
+// [spec:kbdgen:def:keylayout.document]
 fn generate_key_layout_files(
     bundle: &KbdgenBundle,
 ) -> IndexMap<LanguageTag, (Document, &IndexMap<LanguageTag, String>)> {
@@ -205,6 +208,8 @@ impl BuildStep for GenerateMacOs {
     }
 }
 
+// [spec:kbdgen:def:keylayout.document.name]
+// [spec:kbdgen:thm:keylayout.document.id-range]
 fn compute_keyboard_id(language_name: &str) -> String {
     let crc = crc_hqx(language_name.as_bytes()) / 2;
     let crc = cmp::max(1, crc);
@@ -212,10 +217,12 @@ fn compute_keyboard_id(language_name: &str) -> String {
     format!("-{}", crc)
 }
 
+// [spec:kbdgen:def:keylayout.document.name]
 fn compute_language_name(tag: &LanguageTag) -> String {
     tag.to_string().replace("-", "").replace("_", "")
 }
 
+// [spec:kbdgen:req:keylayout.keymaps]
 fn add_layer_tags(
     layers: &IndexMap<MacOsKbdLayer, String>,
     document: &mut Document,
@@ -241,6 +248,7 @@ fn add_layer_tags(
     }
 }
 
+// [spec:kbdgen:req:keylayout.keymaps.tokens]
 fn initialize_key_transition_map(
     language_tag: &LanguageTag,
     layers: &IndexMap<MacOsKbdLayer, String>,
@@ -263,6 +271,7 @@ fn initialize_key_transition_map(
                 MACOS_KEYS.len(),
                 key_map.len()
             );
+            // [spec:kbdgen:req:keys.iso-order.desktop-layers]
             if MACOS_KEYS.len() > key_map.len() {
                 panic!(
                     r#"Provided layer does not have enough keys, expected {} keys but`` got {}, in {}:{}:{}:{:?}: \n{:?}"#,
@@ -294,6 +303,7 @@ fn initialize_key_transition_map(
     }
 }
 
+// [spec:kbdgen:req:keylayout.transforms]
 fn process_transforms(
     layers: &IndexMap<MacOsKbdLayer, String>,
     transforms: &IndexMap<String, Transform>,
@@ -320,6 +330,7 @@ fn process_transforms(
                     //    continue;
                     //}
 
+                    // [spec:kbdgen:req:layout.transforms.dead-key-entries]
                     match value {
                         Transform::End(_character) => {
                             tracing::error!("Transform ended too soon for dead key {}", dead_key);
@@ -392,6 +403,7 @@ fn process_transforms(
     }
 }
 
+// [spec:kbdgen:sem:keylayout.actions]
 fn update_key_transition_map_with_transform(
     key_transition_map: &mut IndexMap<String, Vec<KeyTransition>>,
     key: &str,
@@ -442,6 +454,7 @@ fn update_key_transition_map_with_transform(
     }
 }
 
+// [spec:kbdgen:req:keylayout.actions.dead-key-next]
 fn create_dead_key_actions(
     layers: &IndexMap<MacOsKbdLayer, String>,
     layered_key_transition_map: &mut IndexMap<MacOsKbdLayer, IndexMap<String, Vec<KeyTransition>>>,
@@ -499,6 +512,8 @@ fn create_dead_key_actions(
     }
 }
 
+// [spec:kbdgen:req:keylayout.keymaps.tokens]
+// [spec:kbdgen:sem:keylayout.actions]
 fn write_key_transition_map(
     layers: &IndexMap<MacOsKbdLayer, String>,
     layered_key_transition_map: &IndexMap<MacOsKbdLayer, IndexMap<String, Vec<KeyTransition>>>,
@@ -574,6 +589,7 @@ fn write_key_transition_map(
             }
         }
 
+        // [spec:kbdgen:req:keylayout.keymaps]
         for (key_code, output) in MACOS_HARDCODED.iter() {
             let key = KeyOutput {
                 code: *key_code,
@@ -600,11 +616,13 @@ fn write_key_transition_map(
         append_key_output_element(&xml_key_map, document, &key);
     }
     // Remove actions tag if empty. Otherwise MacOS does not load the layout
+    // [spec:kbdgen:sem:keylayout.actions]
     if actions.child_nodes(document).is_empty() {
         document.root().remove_child(document, actions.as_node())
     }
 }
 
+// [spec:kbdgen:req:keylayout.transforms]
 fn write_terminators(document: &mut Document, dead_keys: &IndexMap<String, DeadKeyOutput>) {
     if dead_keys.len() > 0 {
         let terminators = document.root().append_new_element(document, "terminators");
@@ -615,6 +633,7 @@ fn write_terminators(document: &mut Document, dead_keys: &IndexMap<String, DeadK
     }
 }
 
+// [spec:kbdgen:req:keylayout.keymaps.tokens]
 fn append_dead_key_output_element(element: &Element, document: &mut Document, key: &DeadKeyOutput) {
     element.append_new_element(
         document,
@@ -638,6 +657,7 @@ fn append_dead_key_next_element(element: &Element, document: &mut Document, key:
     );
 }
 
+// [spec:kbdgen:req:keylayout.keymaps.tokens]
 fn append_key_output_element(element: &Element, document: &mut Document, key: &KeyOutput) {
     element.append_new_element(
         document,
@@ -799,6 +819,7 @@ mod tests {
         assert!(id[1..].parse::<i32>().is_ok());
     }
 
+    // [spec:kbdgen:def:keylayout.document.name/test]
     #[test]
     fn test_compute_language_name() {
         let tag = LanguageTag::from_str("en-US").unwrap();
@@ -806,6 +827,7 @@ mod tests {
         assert_eq!(name, "enUS");
     }
 
+    // [spec:kbdgen:req:keylayout.keymaps.tokens/test]
     #[test]
     fn test_initialize_key_transition_map_basic() {
         let bundle = create_test_bundle();
@@ -841,6 +863,7 @@ mod tests {
         }
     }
 
+    // [spec:kbdgen:req:keylayout.keymaps.tokens/test]
     #[test]
     fn test_initialize_key_transition_map_with_transforms() {
         let bundle = create_test_bundle_with_transforms();
@@ -858,6 +881,7 @@ mod tests {
         assert_eq!(base_layer_map.len(), MACOS_KEYS.len());
     }
 
+    // [spec:kbdgen:req:keylayout.keymaps.tokens/test]
     #[test]
     fn test_duplicate_keys_issue() {
         let bundle = create_test_bundle_with_duplicate_keys();
@@ -894,6 +918,8 @@ mod tests {
         );
     }
 
+    // [spec:kbdgen:req:keylayout.transforms/test]
+    // [spec:kbdgen:sem:keylayout.actions/test]
     #[test]
     fn test_process_transforms_with_dead_keys() {
         let bundle = create_test_bundle_with_transforms();
@@ -946,6 +972,7 @@ mod tests {
         }
     }
 
+    // [spec:kbdgen:sem:keylayout.actions/test]
     #[test]
     fn test_update_key_transition_map_with_transform() {
         let mut key_transition_map = IndexMap::new();
@@ -1021,6 +1048,7 @@ mod tests {
         }
     }
 
+    // [spec:kbdgen:req:keylayout.actions.dead-key-next/test]
     #[test]
     fn test_create_dead_key_actions() {
         let bundle = create_test_bundle_with_transforms();
@@ -1110,6 +1138,7 @@ mod tests {
         assert!(terminators.is_some());
     }
 
+    // [spec:kbdgen:sem:keylayout.actions/test]
     #[test]
     fn test_duplicate_keys_with_transforms_no_duplicate_when_statements() {
         // This test specifically verifies that duplicate <when> statements are not generated within actions

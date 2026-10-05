@@ -17,6 +17,7 @@ pub struct ManifestInputComponent {
     pub layouts: Vec<String>,
 }
 
+// [spec:kbdgen:req:chromeos.manifest]
 impl ManifestInputComponent {
     pub fn from_config(language_tag: String, locale: LanguageTag, xkb_layout: String) -> Self {
         let underscore_name = format!("__MSG_{}__", language_tag.replace("-", "_"));
@@ -41,6 +42,7 @@ pub struct ManifestIcons {
     pub icon_128: String,
 }
 
+// [spec:kbdgen:req:chromeos.manifest]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChromeOsManifest {
     pub name: String,

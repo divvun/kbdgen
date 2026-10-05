@@ -6,6 +6,7 @@ pub struct KlcLayout {
     pub rows: Vec<KlcLayoutRow>,
 }
 
+// [spec:kbdgen:req:klc.layout]
 impl Display for KlcLayout {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Hardcoded columns. .klc can support a different number
@@ -54,6 +55,7 @@ pub struct KlcLayoutRow {
     pub alt_and_shift_key: KlcKey,
 }
 
+// [spec:kbdgen:req:klc.layout]
 impl Display for KlcLayoutRow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(

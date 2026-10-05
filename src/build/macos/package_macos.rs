@@ -9,6 +9,7 @@ use xmlem::Document;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
+// [spec:kbdgen:req:macbundle.installer]
 fn generate_distribution_xml(
     work_dir: &Path,
     bundle_name: &str,
@@ -69,6 +70,7 @@ fn generate_distribution_xml(
     Ok(dist_path)
 }
 
+// [spec:kbdgen:req:macbundle.installer]
 fn create_component_pkg(working_path: &Path, bundle_path: &Path, version: &str) -> PathBuf {
     let pkg_path = working_path.join(format!("inner.pkg"));
     std::process::Command::new("pkgbuild")
@@ -99,6 +101,7 @@ impl BuildStep for GenerateInstaller {
     }
 }
 
+// [spec:kbdgen:req:macbundle.installer]
 fn run_productbuild(
     working_path: &Path,
     output_path: &Path,
@@ -118,6 +121,7 @@ fn run_productbuild(
     tracing::debug!("{:?}", output);
 }
 
+// [spec:kbdgen:req:macbundle.installer]
 fn create_installer(bundle: &KbdgenBundle, output_path: &Path) {
     tracing::info!("Creating installer at {:?}...", output_path);
 

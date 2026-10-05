@@ -52,6 +52,7 @@ const LONGPRESS_JOIN_CHARACTER: &str = ",";
 //     indent_text_nodes: false,
 // };
 
+// [spec:kbdgen:req:android.transforms]
 #[derive(Default, Serialize)]
 pub struct AndroidLayout {
     pub transforms: IndexMap<String, IndexMap<String, String>>,
@@ -137,6 +138,7 @@ impl BuildStep for GenerateAndroid {
             .query_selector(&mut method_doc, &subtype_selector)
             .expect("there should be a subtype");
 
+        // [spec:kbdgen:req:android.metadata]
         method_doc
             .root()
             .remove_child(&mut method_doc, Node::Element(method_subtype));
@@ -156,6 +158,7 @@ impl BuildStep for GenerateAndroid {
             .query_selector(&mut spellchecker_doc, &subtype_selector)
             .expect("there should be a subtype");
 
+        // [spec:kbdgen:req:android.metadata]
         spellchecker_doc
             .root()
             .remove_child(&mut spellchecker_doc, Node::Element(spellchecker_subtype));
@@ -167,6 +170,8 @@ impl BuildStep for GenerateAndroid {
             let mut transforms_by_dead_key: IndexMap<String, IndexMap<String, String>> =
                 IndexMap::new();
             let mut dead_keys: Vec<&String> = Vec::new();
+            // [spec:kbdgen:req:android.transforms]
+            // [spec:kbdgen:req:layout.transforms.dead-key-entries]
             if let Some(transforms) = layout.transforms.as_ref() {
                 transforms.into_iter().for_each(|item| {
                     let (dead_key, transform) = item;
@@ -206,6 +211,7 @@ impl BuildStep for GenerateAndroid {
 
             tracing::info!("Building Android layouts for lang {}", language_tag);
             if let Some(android_target) = &layout.android {
+                // [spec:kbdgen:req:android.transforms]
                 let assets_layout = if let Some(config) = android_target.config.as_ref() {
                     AndroidLayout {
                         transforms: transforms_by_dead_key,
@@ -243,6 +249,7 @@ impl BuildStep for GenerateAndroid {
                     .get(&default_language_tag)
                     .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
 
+                // [spec:kbdgen:def:android.layout-xml.name]
                 let mut snake_case_display_name = default_display_name
                     .to_lowercase()
                     .replace(" ", "_")
@@ -264,8 +271,10 @@ impl BuildStep for GenerateAndroid {
                 // keyboard-lut requires keys that appear lowercase when in shift mode.
                 // If other keyboards require this in the future, it may be worth making
                 // this an attribute of the .kbdgen yaml file.
+                // [spec:kbdgen:req:android.keys]
                 let preserve_case = language_tag.as_str() == "lut";
 
+                // [spec:kbdgen:def:android.layout-xml]
                 create_and_write_rows_keys_for_layer(
                     false,
                     primary_layers,
@@ -324,6 +333,7 @@ impl BuildStep for GenerateAndroid {
 
                     // Check if a string element with the same name attribute already exists
                     let root = strings_doc.root();
+                    // [spec:kbdgen:req:android.metadata.strings]
                     let duplicate_exists = root
                         .children(&strings_doc)
                         .into_iter()
@@ -359,6 +369,7 @@ impl BuildStep for GenerateAndroid {
                 );
 
                 // Spellchecker
+                // [spec:kbdgen:req:android.metadata]
                 let _subtype = spellchecker_doc.root().append_new_element(
                     &mut spellchecker_doc,
                     (
@@ -375,6 +386,7 @@ impl BuildStep for GenerateAndroid {
             }
         }
 
+        // [spec:kbdgen:req:android.metadata.strings]
         for (locale, LocaleProjectDescription { name, .. }) in &bundle.project.locales {
             if !supported_values_locales.contains(&locale.to_string()) {
                 tracing::trace!("Skipping locales for {}", locale);
@@ -418,6 +430,7 @@ impl BuildStep for GenerateAndroid {
             let gradle_executable_path = std::fs::canonicalize(&output_path.join("gradlew"))
                 .expect("valid gradle executable path");
 
+            // [spec:kbdgen:req:android.gradle]
             let gradle_assemble = if cfg!(target_os = "windows") {
                 Command::new("cmd")
                     .current_dir(output_path)
@@ -460,6 +473,7 @@ impl BuildStep for GenerateAndroid {
     }
 }
 
+// [spec:kbdgen:req:android.layout-xml.rows]
 fn create_and_write_rows_keys_for_layer(
     tablet_600: bool,
     layers: &IndexMap<AndroidKbdLayer, String>,
@@ -596,6 +610,7 @@ fn escape_quotes(input: Option<&str>) -> Option<String> {
     }
 }
 
+// [spec:kbdgen:req:android.gradle]
 fn generate_gradle_local(target: &target::Android, app_path: &Path) {
     let store_file = if let Some(key_store_path) = target.key_store.as_ref() {
         match std::fs::canonicalize(key_store_path) {
@@ -647,6 +662,7 @@ fn generate_gradle_local(target: &target::Android, app_path: &Path) {
     std::fs::write(app_path.join("local.gradle"), text).expect("Failed to write local.gradle file");
 }
 
+// [spec:kbdgen:req:android.metadata.icons]
 fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
     const ICON_SIZES: &[(&str, usize)] = &[
         ("mdpi", 48),
@@ -694,6 +710,7 @@ fn generate_icons(bundle: &KbdgenBundle, resources_path: &Path) {
     }
 }
 
+// [spec:kbdgen:def:android.layout-xml]
 fn create_and_write_kbd(main_xml_path: &Path, snake_case_display_name: &str) {
     let mut kbd_document = Document::new("Keyboard");
     let kbd_root = kbd_document.root();
@@ -722,6 +739,7 @@ fn create_and_write_kbd(main_xml_path: &Path, snake_case_display_name: &str) {
     .unwrap();
 }
 
+// [spec:kbdgen:def:android.layout-xml]
 fn create_and_write_layout_set(main_xml_path: &Path, snake_case_display_name: &str) {
     let mut layout_set_document = Document::new("KeyboardLayoutSet");
     let layout_root = layout_set_document.root();
@@ -801,6 +819,7 @@ fn create_and_write_layout_set(main_xml_path: &Path, snake_case_display_name: &s
     .unwrap();
 }
 
+// [spec:kbdgen:req:android.metadata.strings]
 fn create_and_write_values_strings(
     main_values_path: &Path,
     default_display_name: &str,
@@ -849,6 +868,7 @@ fn create_and_write_values_strings(
     std::fs::write(strings_path, strings_doc.to_string_pretty()).unwrap();
 }
 
+// [spec:kbdgen:req:android.metadata]
 fn update_method_file(
     _main_xml_path: &Path,
     method_doc: &mut Document,
@@ -888,6 +908,7 @@ fn update_method_file(
     subtype.set_attribute(method_doc, "android:isAsciiCapable", "true");
 }
 
+// [spec:kbdgen:req:android.keys.number-row]
 fn create_numbered_key_xml_element(
     key: &str,
     key_hint_label_index: Option<usize>,
@@ -932,6 +953,7 @@ fn create_numbered_key_xml_element(
     }
 }
 
+// [spec:kbdgen:req:android.keys]
 fn create_key_xml_element(
     key: &str,
     longpress: Option<&Vec<String>>,
@@ -980,6 +1002,7 @@ fn create_key_xml_element(
     }
 }
 
+// [spec:kbdgen:req:android.keys]
 fn add_common_key_attributes(attrs: &mut IndexMap<QName, String>, key: &str, preserve_case: bool) {
     attrs.insert(qname!("latin:keySpec"), escape_key_spec(key));
 
@@ -988,6 +1011,7 @@ fn add_common_key_attributes(attrs: &mut IndexMap<QName, String>, key: &str, pre
     }
 }
 
+// [spec:kbdgen:req:android.keys]
 fn escape_key_spec(key: &str) -> String {
     match key {
         "\\" => "\\\\".to_owned(),
@@ -995,6 +1019,7 @@ fn escape_key_spec(key: &str) -> String {
     }
 }
 
+// [spec:kbdgen:req:android.keys.number-row]
 fn compute_key_hint_label_index(key_index: usize) -> Option<usize> {
     let mut key_hint_label_index = key_index + 1;
 

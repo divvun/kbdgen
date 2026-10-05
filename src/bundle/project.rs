@@ -1,6 +1,7 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+// [spec:kbdgen:def:bundle.project]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Project {
     pub locales: IndexMap<String, LocaleProjectDescription>,

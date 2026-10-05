@@ -23,6 +23,7 @@ pub struct AndroidBuild {
 
 pub struct DownloadDependencies;
 
+// [spec:kbdgen:req:android.dependencies.jnilibs]
 #[async_trait(?Send)]
 impl BuildStep for DownloadDependencies {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
@@ -32,6 +33,7 @@ impl BuildStep for DownloadDependencies {
     }
 }
 
+// [spec:kbdgen:req:android.dependencies]
 #[async_trait(?Send)]
 impl BuildSteps for AndroidBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {

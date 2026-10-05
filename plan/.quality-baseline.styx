@@ -1,0 +1,71 @@
+generated_at 2026-10-05T11:35:45.042313Z
+
+seal 41f47dcd66c3a15f
+
+files (
+    {path Cargo.toml, code_loc 42, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path DEV.md, code_loc 0, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path README.md, code_loc 0, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/android.adoc, code_loc 1, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/build-system.adoc, code_loc 21, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/chromeos.adoc, code_loc 1, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/ios.adoc, code_loc 1, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/kbdgen.adoc, code_loc 7, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/kbdgen.html, code_loc 577, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/macos.adoc, code_loc 2, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/targets.adoc, code_loc 6, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/dev/windows.adoc, code_loc 366, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/index.adoc, code_loc 4, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/index.html, code_loc 42, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/android.adoc, code_loc 60, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/bundle.adoc, code_loc 71, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/chromeos.adoc, code_loc 65, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/cli.adoc, code_loc 9, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/ios.adoc, code_loc 115, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/kbdgen.adoc, code_loc 8, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/kbdgen.html, code_loc 921, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/macos.adoc, code_loc 81, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/targets.adoc, code_loc 6, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path docs/user/windows.adoc, code_loc 72, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path examples/pbxproj-roundtrip.rs, code_loc 7, function_count 1, max_cyclomatic 1, duplicate_memberships 0, trivial_function_count 0}
+    {path index.html, code_loc 26, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path plan/main.styx, code_loc 6, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/scripts/kbdgen2to3.js, code_loc 177, function_count 1, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/template-android-rowkeys.xml, code_loc 8, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/template-android-rows.xml, code_loc 4, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/template-chromeos-keyboard.js, code_loc 178, function_count 10, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/template-iso-keyboard.svg, code_loc 337, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/template-macos-layout-limited-sample.xml, code_loc 34, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path resources/template-macos-layout.xml, code_loc 13, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path shell.nix, code_loc 11, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/fetch.rs, code_loc 47, function_count 1, max_cyclomatic 3, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/layout/android.rs, code_loc 7, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/layout/chrome.rs, code_loc 14, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/layout/ios.rs, code_loc 15, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/layout/macos.rs, code_loc 23, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/layout/mod.rs, code_loc 186, function_count 4, max_cyclomatic 7, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/layout/windows.rs, code_loc 16, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/mod.rs, code_loc 294, function_count 8, max_cyclomatic 10, duplicate_memberships 13, trivial_function_count 0}
+    {path src/bundle/project.rs, code_loc 24, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/bundle/resources/mod.rs, code_loc 107, function_count 4, max_cyclomatic 2, duplicate_memberships 3, trivial_function_count 0}
+    {path src/lib.rs, code_loc 3, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/main.rs, code_loc 209, function_count 3, max_cyclomatic 13, duplicate_memberships 0, trivial_function_count 0}
+    {path src/util/iso_key.rs, code_loc 53, function_count 0, max_cyclomatic 0, duplicate_memberships 0, trivial_function_count 0}
+    {path src/util/mod.rs, code_loc 16, function_count 2, max_cyclomatic 1, duplicate_memberships 0, trivial_function_count 0}
+)
+
+directories (
+    {path "", test_ratio_milli 0}
+    {path docs, test_ratio_milli 0}
+    {path docs/dev, test_ratio_milli 0}
+    {path docs/user, test_ratio_milli 0}
+    {path examples, test_ratio_milli 0}
+    {path plan, test_ratio_milli 0}
+    {path resources, test_ratio_milli 0}
+    {path resources/scripts, test_ratio_milli 0}
+    {path src, test_ratio_milli 0}
+    {path src/bundle, test_ratio_milli 49}
+    {path src/bundle/layout, test_ratio_milli 0}
+    {path src/bundle/resources, test_ratio_milli 0}
+    {path src/util, test_ratio_milli 0}
+)

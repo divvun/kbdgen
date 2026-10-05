@@ -12,6 +12,7 @@ macro_rules! iter_object {
     };
 }
 
+// [spec:kbdgen:req:pbxproj.serialize.attributes]
 fn print_pbxproj_object_children(
     s: &mut String,
     key: Option<&str>,
@@ -55,6 +56,7 @@ fn print_pbxproj_object_children(
     }
 }
 
+// [spec:kbdgen:syn:pbxproj.serialize]
 fn list_to_pbxproj_string<T: AsRef<str>>(item_iter: impl Iterator<Item = T>) -> String {
     let mut item_iter = item_iter.peekable();
     let mut item_string: String = String::new();
@@ -67,6 +69,8 @@ fn list_to_pbxproj_string<T: AsRef<str>>(item_iter: impl Iterator<Item = T>) -> 
 }
 
 impl Pbxproj {
+    // [spec:kbdgen:syn:pbxproj.serialize]
+    // [spec:kbdgen:def:pbxproj.serialize.fields]
     pub fn to_pbxproj_string(&self) -> String {
         tracing::debug!("Started serializing pbxproj from json back to original format");
 
@@ -175,6 +179,7 @@ impl Pbxproj {
             if let Some(x) = file_ref.last_known_file_type.as_ref() {
                 s.push_str(&format!("lastKnownFileType = {}; ", x));
             }
+            // [spec:kbdgen:req:pbxproj.quoting]
             if let Some(x) = file_ref.name.as_ref() {
                 if x.contains('-') || file_ref.path.contains('+') {
                     s.push_str(&format!("name = {:?}; ", x));
@@ -183,6 +188,7 @@ impl Pbxproj {
                 }
             }
 
+            // [spec:kbdgen:req:pbxproj.quoting]
             if file_ref.path.contains('-') || file_ref.path.contains('+') {
                 s.push_str(&format!("path = {:?}; ", file_ref.path));
             } else {
@@ -243,6 +249,7 @@ impl Pbxproj {
                 "\t\t\tchildren = ({}\n\t\t\t);\n",
                 list_to_pbxproj_string(group.children.clone().into_iter())
             ));
+            // [spec:kbdgen:req:pbxproj.quoting]
             if let Some(x) = group.path.as_ref() {
                 if x.contains(' ') {
                     s.push_str(&format!("\t\t\tpath = {:?};\n", x));
@@ -250,6 +257,7 @@ impl Pbxproj {
                     s.push_str(&format!("\t\t\tpath = {};\n", x));
                 }
             }
+            // [spec:kbdgen:req:pbxproj.quoting]
             if let Some(x) = group.name.as_ref() {
                 if x.contains(' ') {
                     s.push_str(&format!("\t\t\tname = {:?};\n", x));
@@ -548,6 +556,7 @@ impl Pbxproj {
         for (oid, build_configuration) in iter_object!(self, BuildConfiguration) {
             s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
             s.push_str("\t\t\tisa = XCBuildConfiguration;\n");
+            // [spec:kbdgen:req:pbxproj.serialize.build-settings]
             {
                 let mut item_string: String = String::new();
                 let mut item_iter = build_configuration

@@ -38,6 +38,7 @@ pub struct IosBuild {
 
 #[async_trait(?Send)]
 impl BuildSteps for IosBuild {
+    // [spec:kbdgen:req:ios.build-chain]
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
         let steps: Vec<Box<dyn BuildStep>> = vec![
             Box::new(CloneGiellaKbd),
@@ -74,6 +75,7 @@ pub trait IosProjectExt {
     fn supported_layouts(&self) -> HashMap<&LanguageTag, &Layout>;
 }
 
+// [spec:kbdgen:req:ios.pkg-ids]
 static LEGACY_DIVVUN_KBD_IDS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
         ("se", "northern-sami-keyboard"),
@@ -88,6 +90,7 @@ static LEGACY_DIVVUN_KBD_IDS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 });
 
 impl IosProjectExt for KbdgenBundle {
+    // [spec:kbdgen:req:ios.pkg-ids]
     fn pkg_id(&self, layout: &Layout) -> String {
         let target = self.targets.ios.as_ref().unwrap();
         let base_id = &target.package_id;
@@ -102,6 +105,7 @@ impl IosProjectExt for KbdgenBundle {
         format!("{base_id}.{ext}")
     }
 
+    // [spec:kbdgen:def:ios.pkg-ids.all]
     fn all_pkg_ids(&self) -> Vec<String> {
         let target = self.targets.ios.as_ref().unwrap();
         let base_id = &target.package_id;
@@ -124,6 +128,7 @@ impl IosProjectExt for KbdgenBundle {
     }
 }
 
+// [spec:kbdgen:req:ios.build-chain.init]
 pub async fn init(bundle: KbdgenBundle, path: &Path) -> anyhow::Result<()> {
     let target = bundle.targets.ios.as_ref().cloned().unwrap();
     let app_name = bundle.project.locales["en"].name.to_string();

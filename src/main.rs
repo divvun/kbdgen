@@ -32,6 +32,8 @@ async fn android_target(
     Ok(())
 }
 
+// [spec:kbdgen:sem:pipeline.steps]
+// [spec:kbdgen:req:macbundle.installer]
 async fn macos_target(
     bundle: KbdgenBundle,
     output_path: PathBuf,
@@ -76,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
 
             kbdgen::bundle::fetch(&bundle.path, &bundle.project).await?;
         }
+        // [spec:kbdgen:def:cli.commands]
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(&bundle_path)?;
@@ -138,6 +141,7 @@ struct Cli {
     command: Command,
 }
 
+// [spec:kbdgen:def:cli.commands]
 #[derive(Subcommand)]
 enum Command {
     #[clap(about = "Functionality relating to specific targets")]

@@ -30,6 +30,7 @@ use super::{
 
 pub struct GenerateKlc {}
 
+// [spec:kbdgen:def:klc.file]
 #[async_trait(?Send)]
 impl BuildStep for GenerateKlc {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
@@ -60,6 +61,7 @@ impl BuildStep for GenerateKlc {
                             MSKLC_KEYS.len(),
                             key_map.len()
                         );
+                        // [spec:kbdgen:req:keys.iso-order.desktop-layers]
                         if MSKLC_KEYS.len() > key_map.len() {
                             panic!(
                                 r#"Provided layer does not have enough keys, expected {} keys but got {}, in {}:{}:{}:{:?}: \n{:?}"#,
@@ -125,6 +127,7 @@ impl BuildStep for GenerateKlc {
                         ),
                     });
 
+                    // [spec:kbdgen:sem:klc.caps]
                     if caps_mode == SG_CAP {
                         let caps_key = convert_to_klc_key(
                             layer_set.caps,
@@ -174,6 +177,7 @@ impl BuildStep for GenerateKlc {
                     },
                 };
 
+                // [spec:kbdgen:req:klc.file.encoding]
                 let klc_bytes = klc_file.to_string().encode_utf16_le_bom();
                 let klc_path =
                     output_path.join(format!("{}.{}", klc_file.metadata.keyboard_name, KLC_EXT));
@@ -185,6 +189,7 @@ impl BuildStep for GenerateKlc {
     }
 }
 
+// [spec:kbdgen:req:klc.metadata]
 fn generate_metadata(
     bundle: &KbdgenBundle,
     language_tag: &LanguageTag,
@@ -210,6 +215,7 @@ fn generate_metadata(
 
     // Language Code Identifier
     // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-lcid/70feba9f-294e-491e-b6eb-56532684c37f
+    // [spec:kbdgen:req:klc.metadata.locale]
     let lcid_record = iso639::lcid::get(
         language_tag.primary_language(),
         language_tag.script(),
@@ -221,6 +227,7 @@ fn generate_metadata(
         None => 0x2000,
     };
 
+    // [spec:kbdgen:req:klc.metadata.locale]
     let locale_name = target
         .config
         .as_ref()
@@ -247,6 +254,9 @@ fn generate_metadata(
     }
 }
 
+// [spec:kbdgen:sem:klc.layout.tokens]
+// [spec:kbdgen:req:klc.ligatures]
+// [spec:kbdgen:req:klc.deadkeys]
 fn convert_to_klc_key(
     key: Option<WindowsLayerSetKey>,
     virtual_key: &str,
@@ -284,6 +294,7 @@ fn convert_to_klc_key(
     }
 }
 
+// [spec:kbdgen:req:klc.layout]
 fn space_layout_row() -> KlcLayoutRow {
     KlcLayoutRow {
         scancode: "39".to_owned(),
@@ -297,6 +308,7 @@ fn space_layout_row() -> KlcLayoutRow {
     }
 }
 
+// [spec:kbdgen:req:klc.layout]
 fn decimal_layout_row(layout_decimal: &Option<String>) -> KlcLayoutRow {
     let mut decimal = DEFAULT_DECIMAL.to_owned();
     if let Some(layout_decimal) = layout_decimal {
