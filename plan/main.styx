@@ -73,9 +73,9 @@ children (
 
             {
                 id input.windows-layers
-                title "Bundle format for Windows extra modifiers/layers, shiftLock/lrmRlm flags, dead-key names and the 49th key"
+                title "Bundle format for Windows extra modifiers/layers, shiftLock/lrmRlm flags, dead-key names and the 49th key (to be expressed in the LDML-aligned format)"
                 kind @feat
-                deps (targets.windows.dll-spec)
+                deps (targets.windows.dll-gen)
             }
         )
     }
@@ -201,6 +201,7 @@ children (
                     {
                         id targets.windows.dll-gen
                         title "Generate the no_std Rust layout crate, .res and .def; remove KLC generation, klc.* rules and targets.windows.klc"
+                        priority 0
                         kind @feat
                         implements {
                             main (
@@ -245,12 +246,7 @@ children (
                                 [spec:kbdgen:def:kbdl.resources.fields]
                             )
                         }
-                        deps (
-                            targets.windows.dll-spec
-                            input.windows-layers
-                            input.layout
-                            input.bundle
-                        )
+                        deps (targets.windows.dll-spec input.layout input.bundle)
                         log (
                             {
                                 at 2026-10-05T13:56:44.101262Z
@@ -264,6 +260,7 @@ children (
                     {
                         id targets.windows.dll-build
                         title "Build layout DLLs with cargo + rust-lld for x86, x64, arm64 and WOW64; verify the image; drop kbdutool and MSKLC/pahkat"
+                        priority 0
                         kind @feat
                         implements {
                             main (

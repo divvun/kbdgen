@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T13:57:42.379715Z
+last_sync_at 2026-10-05T14:32:32.594152Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -35,37 +35,51 @@ rule_versions (
     {id ios.pkg-ids.all, version 0}
     {id ios.rows, version 0}
     {id ios.transforms, version 0}
-    {id kbdc.build, version 0}
-    {id kbdc.caps, version 0}
-    {id kbdc.caps.sgcaps, version 0}
-    {id kbdc.dead-keys, version 0}
-    {id kbdc.dead-keys.diagnostics, version 0}
-    {id kbdc.dead-keys.table, version 0}
-    {id kbdc.escaping, version 0}
-    {id kbdc.export, version 0}
-    {id kbdc.image, version 0}
-    {id kbdc.key-names, version 0}
-    {id kbdc.layers, version 0}
-    {id kbdc.ligatures, version 0}
-    {id kbdc.locale, version 0}
-    {id kbdc.metadata, version 0}
-    {id kbdc.metadata.locale, version 0}
-    {id kbdc.modifiers, version 0}
-    {id kbdc.resources, version 0}
-    {id kbdc.resources.strings, version 0}
-    {id kbdc.scancodes, version 0}
-    {id kbdc.scancodes.extended, version 0}
-    {id kbdc.scancodes.iso, version 0}
-    {id kbdc.source, version 0}
-    {id kbdc.structs, version 0}
-    {id kbdc.structs.layout, version 0}
-    {id kbdc.structs.pointers, version 0}
-    {id kbdc.tables, version 0}
-    {id kbdc.tables.invariants, version 0}
-    {id kbdc.vk-chars, version 0}
-    {id kbdc.vk-chars.decimal, version 0}
-    {id kbdc.vk-chars.fixed, version 0}
-    {id kbdc.vk-chars.tokens, version 0}
+    {id kbdl.build, version 0}
+    {id kbdl.build.environment, version 0}
+    {id kbdl.build.toolchain, version 0}
+    {id kbdl.caps, version 0}
+    {id kbdl.caps.sgcaps, version 0}
+    {id kbdl.crate, version 0}
+    {id kbdl.dead-keys, version 0}
+    {id kbdl.dead-keys.chains, version 0}
+    {id kbdl.dead-keys.diagnostics, version 0}
+    {id kbdl.dead-keys.names, version 0}
+    {id kbdl.dead-keys.table, version 0}
+    {id kbdl.escaping, version 0}
+    {id kbdl.export, version 0}
+    {id kbdl.image, version 0}
+    {id kbdl.image.verify, version 0}
+    {id kbdl.input, version 0}
+    {id kbdl.input.bundle, version 0}
+    {id kbdl.key-names, version 0}
+    {id kbdl.layers, version 0}
+    {id kbdl.ligatures, version 0}
+    {id kbdl.ligatures.limit, version 0}
+    {id kbdl.locale, version 0}
+    {id kbdl.metadata, version 0}
+    {id kbdl.metadata.bundle, version 0}
+    {id kbdl.metadata.locale, version 0}
+    {id kbdl.modifiers, version 0}
+    {id kbdl.resources, version 0}
+    {id kbdl.resources.fields, version 0}
+    {id kbdl.resources.format, version 0}
+    {id kbdl.resources.version, version 0}
+    {id kbdl.scancodes, version 0}
+    {id kbdl.scancodes.extended, version 0}
+    {id kbdl.scancodes.extra-modifiers, version 0}
+    {id kbdl.scancodes.iso, version 0}
+    {id kbdl.source, version 0}
+    {id kbdl.structs, version 0}
+    {id kbdl.structs.layout, version 0}
+    {id kbdl.structs.pointers, version 0}
+    {id kbdl.tables, version 0}
+    {id kbdl.tables.invariants, version 0}
+    {id kbdl.vk-chars, version 0}
+    {id kbdl.vk-chars.decimal, version 0}
+    {id kbdl.vk-chars.fixed, version 0}
+    {id kbdl.vk-chars.values, version 0}
+    {id kbdl.wow64, version 0}
     {id keylayout.actions, version 0}
     {id keylayout.actions.dead-key-next, version 0}
     {id keylayout.document, version 0}
