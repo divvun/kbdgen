@@ -172,7 +172,8 @@ assertions (
     {id input.layout-order, kind @complete, author "brendan@necessary.nu", at 2026-10-05T16:26:01.211967Z}
     {id input.test-bundle, kind @complete, author "brendan@necessary.nu", at 2026-10-05T16:32:42.738624Z}
     {id input.windows-layers, kind @blocked, reason "Needs the LDML Keyboard 3.0-aligned bundle format (gap analysis option C+), which has no WBS node yet; its shape awaits operator sign-off. Implementing these inputs in the current YAML would be discarded. Generator support already exists in targets.windows.dll-gen against the kbdl.input model.", author "brendan@necessary.nu", at 2026-10-05T16:33:10.77617Z}
-    {id targets.windows.tsf.design, kind @doing, author "brendan@necessary.nu", at 2026-10-05T16:33:51.221592Z}
+    {id targets.windows.tsf.design, kind @complete, author "brendan@necessary.nu", at 2026-10-05T17:01:12.760122Z}
+    {id ldml.spec, kind @doing, author "brendan@necessary.nu", at 2026-10-05T16:50:27.035955Z}
 )
 
 impl_evidence (

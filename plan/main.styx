@@ -351,12 +351,20 @@ children (
                                 title "TIP architecture: Rust windows crate, substitute-HKL pairing with the layout DLL, x86/x64/arm64 (+ARM64X), registration"
                                 kind @docs
                                 deps (targets.windows.dll-spec)
+                                sealed true
                                 log (
                                     {
                                         at 2026-10-05T16:33:51.221592Z
                                         author "brendan@necessary.nu"
                                         kind @status
                                         text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-05T17:01:12.760122Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
                                     }
                                 )
                             }
@@ -707,6 +715,14 @@ children (
                 id ldml.spec
                 title "Specify the ldml.* model, engine semantics (macOS rules), YAML v4 authoring format and crate layout"
                 kind @docs
+                log (
+                    {
+                        at 2026-10-05T16:50:27.035955Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+                )
             }
 
             {
