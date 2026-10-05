@@ -107,6 +107,9 @@ children (
                 id input.windows-layers
                 title "Bundle format for Windows extra modifiers/layers, shiftLock/lrmRlm flags, dead-key names and the 49th key (to be expressed in the LDML-aligned format)"
                 kind @feat
+                implements {
+                    main ([spec:kbdgen:def:ldml.yaml.native] [spec:kbdgen:def:ldml.yaml.targets] [spec:kbdgen:req:ldml.kbdl.windows-inputs])
+                }
                 deps (ldml.yaml-v4 targets.windows.dll-gen)
                 log (
                     {
@@ -373,14 +376,66 @@ children (
                                 id targets.windows.tsf.compose
                                 title "Ligature and dead-key layering beyond what KBDTABLES can express"
                                 kind @feat
-                                deps (targets.windows.tsf.design targets.windows.dll-build)
+                                deps (targets.windows.tsf.host targets.windows.tsf.installer)
                             }
 
                             {
                                 id targets.windows.tsf.emoji
                                 title "Emoji keyboard"
                                 kind @feat
-                                deps (targets.windows.tsf.design)
+                                deps (targets.windows.tsf.host)
+                            }
+
+                            {
+                                id targets.windows.tsf.reconcile
+                                title "Revise tsf.md for the in-workspace TIP, one entry per keyboard and the shared engine (no interim engine)"
+                                kind @docs
+                                deps (targets.windows.tsf.design ldml.spec)
+                            }
+
+                            {
+                                id targets.windows.tsf.data
+                                title "Embed the serialized keyboard model in the layout DLL"
+                                kind @feat
+                                deps (targets.windows.tsf.reconcile ldml.model targets.windows.dll-build)
+                            }
+
+                            {
+                                id targets.windows.tsf.host
+                                title "Text service crate crates/kbd-tsf: COM component, keys, edits, security"
+                                kind @feat
+                                implements {
+                                    main ([spec:kbdgen:req:ldml.crate.tsf])
+                                }
+                                deps (targets.windows.tsf.reconcile ldml.engine targets.windows.tsf.data)
+                            }
+
+                            {
+                                id targets.windows.tsf.arch
+                                title "Text service builds for x86, x64, arm64 and the Arm64X forwarder; signing"
+                                kind @feat
+                                deps (targets.windows.tsf.host)
+                            }
+
+                            {
+                                id targets.windows.tsf.register
+                                title "Text service COM registration, upgrade in versioned directories, AppContainer access"
+                                kind @feat
+                                deps (targets.windows.tsf.arch)
+                            }
+
+                            {
+                                id targets.windows.tsf.kbdi
+                                title "kbdi: register, enable and uninstall TIP profiles (divvun/kbdi)"
+                                kind @feat
+                                deps (targets.windows.tsf.register)
+                            }
+
+                            {
+                                id targets.windows.tsf.installer
+                                title "Bundle the text service in keyboard installers (divvun-actions)"
+                                kind @feat
+                                deps (targets.windows.tsf.register targets.windows.tsf.kbdi)
                             }
                         )
                         log (
@@ -390,7 +445,21 @@ children (
                                 kind @decision
                                 text "Operator decision 2026-10-05: Windows keyboards are layered. The KBDTABLES layout DLL stays the universal base (works on the sign-in screen, secure desktop, elevated apps, consoles, games). A TSF text input processor, paired with the layout DLL as its substitute HKL, adds what tables cannot express: multi-unit dead-key/ligature layering and deep transforms, plus an emoji keyboard. Keyboard installers already bundle divvun-wind; check whether it is the right home for the TIP during tsf.design."
                             }
+
+                            {
+                                at 2026-10-05T17:08:34.486342Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Operator decisions 2026-10-05 after tsf.design: (1) the text service (one shared TIP COM DLL) lives in the kbdgen workspace, not a separate repo; (2) users see one entry per keyboard, the TIP, with the layout DLL only as fallback (sign-in screen, non-TSF contexts); (3) no interim engine: the TIP runs our own keyboard engine, a potential superset of LDML Keyboard 3.0 with kbdgen extensions (ldml.* tree). tsf.md must be revised accordingly once ldml.spec fixes the workspace layout and engine API: drop tsf.engine.interim, retarget the differential test to the real engine, and place the TIP crate per ldml.crate.*. Substitute-HKL pairing does not work for TIPs (verified); the Substitutes-registry workaround is not adopted."
+                                after_done true
+                            }
                         )
+                    }
+
+                    {
+                        id targets.windows.installer-dlls
+                        title "divvun-actions: ship wow64 DLL to SysWOW64, ship arm64 DLLs, allow Arm64 installs, fix uninstall product-code brace"
+                        kind @fix
                     }
                 )
             }
@@ -715,12 +784,20 @@ children (
                 id ldml.spec
                 title "Specify the ldml.* model, engine semantics (macOS rules), YAML v4 authoring format and crate layout"
                 kind @docs
+                sealed true
                 log (
                     {
                         at 2026-10-05T16:50:27.035955Z
                         author "brendan@necessary.nu"
                         kind @status
                         text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T17:22:01.13452Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
                     }
                 )
             }
@@ -729,13 +806,66 @@ children (
                 id ldml.model
                 title "Normalized keyboard3 model crate"
                 kind @feat
-                deps (ldml.spec)
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.model.displays]
+                        [spec:kbdgen:def:ldml.model.emoji]
+                        [spec:kbdgen:def:ldml.model.flush]
+                        [spec:kbdgen:def:ldml.model.hardware]
+                        [spec:kbdgen:def:ldml.model.keyboard]
+                        [spec:kbdgen:def:ldml.model.keys]
+                        [spec:kbdgen:def:ldml.model.layout]
+                        [spec:kbdgen:def:ldml.model.modifiers]
+                        [spec:kbdgen:def:ldml.model.native]
+                        [spec:kbdgen:def:ldml.model.pattern]
+                        [spec:kbdgen:def:ldml.model.text]
+                        [spec:kbdgen:def:ldml.model.touch]
+                        [spec:kbdgen:def:ldml.model.transforms]
+                        [spec:kbdgen:def:ldml.model.windows]
+                        [spec:kbdgen:req:ldml.model.context-len]
+                        [spec:kbdgen:req:ldml.model.decode]
+                        [spec:kbdgen:req:ldml.model.deterministic]
+                        [spec:kbdgen:req:ldml.model.invariants]
+                        [spec:kbdgen:req:ldml.model.nfd]
+                        [spec:kbdgen:syn:ldml.model.encoding]
+                    )
+                }
+                deps (ldml.spec ldml.workspace)
             }
 
             {
                 id ldml.parser
                 title "Lossless LDML keyboard3 XML import and export"
                 kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.cli.commands]
+                        [spec:kbdgen:def:ldml.xml.cldr-data]
+                        [spec:kbdgen:def:ldml.xml.document]
+                        [spec:kbdgen:def:ldml.xml.special]
+                        [spec:kbdgen:req:ldml.cli.export]
+                        [spec:kbdgen:req:ldml.cli.import]
+                        [spec:kbdgen:req:ldml.crate.ldml]
+                        [spec:kbdgen:req:ldml.xml.export.escape]
+                        [spec:kbdgen:req:ldml.xml.export]
+                        [spec:kbdgen:req:ldml.xml.ldml-ref]
+                        [spec:kbdgen:req:ldml.xml.lossy]
+                        [spec:kbdgen:req:ldml.xml.nfd-classes]
+                        [spec:kbdgen:req:ldml.xml.read]
+                        [spec:kbdgen:req:ldml.xml.validate]
+                        [spec:kbdgen:req:ldml.xml.write]
+                        [spec:kbdgen:sem:ldml.xml.implied]
+                        [spec:kbdgen:sem:ldml.xml.import]
+                        [spec:kbdgen:sem:ldml.xml.ldml-view]
+                        [spec:kbdgen:sem:ldml.xml.resolve]
+                        [spec:kbdgen:syn:ldml.xml.escape]
+                        [spec:kbdgen:syn:ldml.xml.from]
+                        [spec:kbdgen:syn:ldml.xml.sets]
+                        [spec:kbdgen:syn:ldml.xml.to]
+                        [spec:kbdgen:thm:ldml.xml.roundtrip]
+                        [spec:kbdgen:thm:ldml.xml.superset-roundtrip]
+                    )
+                }
                 deps (ldml.model)
             }
 
@@ -743,6 +873,42 @@ children (
                 id ldml.engine
                 title "Deterministic engine: key events to edit operations (transforms, markers, reorder, backspace)"
                 kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.engine.action]
+                        [spec:kbdgen:def:ldml.engine.api]
+                        [spec:kbdgen:def:ldml.engine.event]
+                        [spec:kbdgen:def:ldml.engine.output.form]
+                        [spec:kbdgen:def:ldml.engine.state]
+                        [spec:kbdgen:def:ldml.scope.v1]
+                        [spec:kbdgen:req:ldml.cli.compile]
+                        [spec:kbdgen:req:ldml.engine.contract]
+                        [spec:kbdgen:req:ldml.engine.shortcuts]
+                        [spec:kbdgen:req:ldml.engine.tsf]
+                        [spec:kbdgen:req:ldml.scope.deferred]
+                        [spec:kbdgen:sem:ldml.engine.altgr]
+                        [spec:kbdgen:sem:ldml.engine.backspace.default]
+                        [spec:kbdgen:sem:ldml.engine.backspace]
+                        [spec:kbdgen:sem:ldml.engine.commit]
+                        [spec:kbdgen:sem:ldml.engine.context]
+                        [spec:kbdgen:sem:ldml.engine.decimal]
+                        [spec:kbdgen:sem:ldml.engine.extra]
+                        [spec:kbdgen:sem:ldml.engine.hardware]
+                        [spec:kbdgen:sem:ldml.engine.insert]
+                        [spec:kbdgen:sem:ldml.engine.match]
+                        [spec:kbdgen:sem:ldml.engine.modifiers]
+                        [spec:kbdgen:sem:ldml.engine.normalization]
+                        [spec:kbdgen:sem:ldml.engine.output.segment]
+                        [spec:kbdgen:sem:ldml.engine.preedit]
+                        [spec:kbdgen:sem:ldml.engine.reorder]
+                        [spec:kbdgen:sem:ldml.engine.replace]
+                        [spec:kbdgen:sem:ldml.engine.test-keys]
+                        [spec:kbdgen:sem:ldml.engine.touch.gestures]
+                        [spec:kbdgen:sem:ldml.engine.touch]
+                        [spec:kbdgen:sem:ldml.engine.transforms]
+                        [spec:kbdgen:thm:ldml.engine.no-markers-out]
+                    )
+                }
                 deps (ldml.model)
             }
 
@@ -750,6 +916,21 @@ children (
                 id ldml.conformance
                 title "Conformance: CLDR keyboardTest3 vectors and kbdgen golden vectors"
                 kind @test
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.test.harness]
+                        [spec:kbdgen:def:ldml.test.vectors]
+                        [spec:kbdgen:req:ldml.cli.test]
+                        [spec:kbdgen:req:ldml.test.bundle]
+                        [spec:kbdgen:req:ldml.test.cldr]
+                        [spec:kbdgen:req:ldml.test.golden]
+                        [spec:kbdgen:req:ldml.test.kmc]
+                        [spec:kbdgen:req:ldml.test.oracle]
+                        [spec:kbdgen:req:ldml.test.repertoire]
+                        [spec:kbdgen:req:ldml.test.robust]
+                        [spec:kbdgen:req:ldml.test.roundtrip]
+                    )
+                }
                 deps (ldml.engine ldml.parser)
             }
 
@@ -757,6 +938,42 @@ children (
                 id ldml.yaml-v4
                 title "LDML-shaped YAML v4 authoring format compiled to the model"
                 kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.yaml.dead-keys]
+                        [spec:kbdgen:def:ldml.yaml.detect]
+                        [spec:kbdgen:def:ldml.yaml.emoji]
+                        [spec:kbdgen:def:ldml.yaml.hardware]
+                        [spec:kbdgen:def:ldml.yaml.key-ids]
+                        [spec:kbdgen:def:ldml.yaml.long-press]
+                        [spec:kbdgen:def:ldml.yaml.schema]
+                        [spec:kbdgen:def:ldml.yaml.touch]
+                        [spec:kbdgen:def:ldml.yaml.verbatim]
+                        [spec:kbdgen:req:ldml.yaml.coexistence]
+                        [spec:kbdgen:req:ldml.yaml.hardware.rows]
+                        [spec:kbdgen:req:ldml.yaml.ldml-ref]
+                        [spec:kbdgen:req:ldml.yaml.strict]
+                        [spec:kbdgen:sem:ldml.scope.macos-rules]
+                        [spec:kbdgen:sem:ldml.yaml.dead-keys.backspace]
+                        [spec:kbdgen:sem:ldml.yaml.dead-keys.compose]
+                        [spec:kbdgen:sem:ldml.yaml.dead-keys.fallback]
+                        [spec:kbdgen:sem:ldml.yaml.dead-keys.keys]
+                        [spec:kbdgen:sem:ldml.yaml.displays.auto]
+                        [spec:kbdgen:sem:ldml.yaml.hosts]
+                        [spec:kbdgen:sem:ldml.yaml.implied-layers]
+                        [spec:kbdgen:sem:ldml.yaml.import]
+                        [spec:kbdgen:sem:ldml.yaml.key-ids.collisions]
+                        [spec:kbdgen:sem:ldml.yaml.lowering]
+                        [spec:kbdgen:sem:ldml.yaml.normalization]
+                        [spec:kbdgen:sem:ldml.yaml.touch.flicks]
+                        [spec:kbdgen:sem:ldml.yaml.touch.roles]
+                        [spec:kbdgen:syn:ldml.yaml.escape]
+                        [spec:kbdgen:syn:ldml.yaml.modifier-names]
+                        [spec:kbdgen:syn:ldml.yaml.rows]
+                        [spec:kbdgen:syn:ldml.yaml.tokens]
+                        [spec:kbdgen:thm:ldml.yaml.roundtrip]
+                    )
+                }
                 deps (ldml.model)
             }
 
@@ -764,6 +981,19 @@ children (
                 id ldml.migrate
                 title "Convert v3 bundles to v4, reporting data defects"
                 kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.migrate.report]
+                        [spec:kbdgen:req:ldml.migrate.caps-diff]
+                        [spec:kbdgen:req:ldml.migrate.defects]
+                        [spec:kbdgen:req:ldml.migrate.equivalence]
+                        [spec:kbdgen:req:ldml.migrate.output]
+                        [spec:kbdgen:req:ldml.migrate.survey]
+                        [spec:kbdgen:sem:ldml.migrate.dead-keys]
+                        [spec:kbdgen:sem:ldml.migrate.fields]
+                        [spec:kbdgen:sem:ldml.migrate.platforms]
+                    )
+                }
                 deps (ldml.yaml-v4)
             }
 
@@ -771,7 +1001,79 @@ children (
                 id ldml.kbdl
                 title "Feed the Windows layout DLL generator (kbdl input) from the model"
                 kind @feat
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.kbdl.adapter]
+                        [spec:kbdgen:req:ldml.kbdl.classify]
+                        [spec:kbdgen:req:ldml.kbdl.metadata]
+                        [spec:kbdgen:req:ldml.kbdl.model-resource]
+                        [spec:kbdgen:sem:ldml.kbdl.caps]
+                        [spec:kbdgen:sem:ldml.kbdl.dead-tree]
+                        [spec:kbdgen:sem:ldml.kbdl.layers]
+                        [spec:kbdgen:sem:ldml.kbdl.positions]
+                        [spec:kbdgen:sem:ldml.kbdl.values]
+                    )
+                }
                 deps (ldml.model targets.windows.dll-gen)
+            }
+
+            {
+                id ldml.workspace
+                title "Convert the repo to a workspace (crates/*) with kbd-model, kbd-engine, kbd-ldml skeletons"
+                kind @build
+                implements {
+                    main (
+                        [spec:kbdgen:def:ldml.crate.layout]
+                        [spec:kbdgen:req:ldml.crate.engine]
+                        [spec:kbdgen:req:ldml.crate.ffi]
+                        [spec:kbdgen:req:ldml.crate.kbdgen]
+                        [spec:kbdgen:req:ldml.crate.model]
+                        [spec:kbdgen:req:ldml.crate.targets]
+                    )
+                }
+                deps (ldml.spec)
+            }
+
+            {
+                id ldml.ffi
+                title "Host bindings for the engine: C ABI, JNI and wasm-bindgen"
+                kind @feat
+                deps (ldml.engine)
+            }
+
+            {
+                id ldml.port
+                title "Generate the other targets from the model"
+                kind @feat
+                children (
+                    {
+                        id ldml.port.macos
+                        title "Generate macos output from the v4 model"
+                        kind @feat
+                        deps (ldml.yaml-v4)
+                    }
+
+                    {
+                        id ldml.port.ios
+                        title "Generate ios output from the v4 model"
+                        kind @feat
+                        deps (ldml.yaml-v4)
+                    }
+
+                    {
+                        id ldml.port.android
+                        title "Generate android output from the v4 model"
+                        kind @feat
+                        deps (ldml.yaml-v4)
+                    }
+
+                    {
+                        id ldml.port.chromeos
+                        title "Generate chromeos output from the v4 model"
+                        kind @feat
+                        deps (ldml.yaml-v4)
+                    }
+                )
             }
         )
         log (
