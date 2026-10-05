@@ -117,16 +117,53 @@ children (
 
                     {
                         id targets.windows.test-golden
-                        title "Golden tests for KLC output (shift states, key rendering, SGCap, DEADKEY, metadata, UTF-16LE+BOM)"
+                        title "Golden tests for generated KBDTABLES C output"
                         kind @test
-                        deps (input.layout-order)
+                        deps (targets.windows.kbd-c input.layout-order)
                     }
 
                     {
-                        id targets.windows.line-endings
-                        title "Decide CRLF vs LF for .klc output; align code, docs, and klc.file rule"
-                        kind @fix
-                        deps (targets.windows.test-golden targets.windows.dll)
+                        id targets.windows.kbd-spec
+                        title "Specify KBDTABLES C emission (kbdc.* rules): structs, modifiers, VK_TO_WCHARS, DEADKEY, LIGATURE, key names, scancode->VK, locale flags, .rc/.def"
+                        kind @docs
+                        deps (input.layout)
+                    }
+
+                    {
+                        id targets.windows.kbd-c
+                        title "Emit self-contained keyboard layout .c/.rc/.def directly; remove KLC generation, klc.* rules and targets.windows.klc"
+                        kind @feat
+                        deps (targets.windows.kbd-spec input.layout input.bundle)
+                        log (
+                            {
+                                at 2026-10-05T13:06:42.770479Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Replace KLC + kbdutool with directly generated KBDTABLES C (operator decision 2026-10-05). KLC is deprecated upstream and opaque: we cannot see or control the tables kbdutool emits. Generated .c is self-contained (own struct definitions, no kbd.h/WDK dependency) so it can be cross-compiled with clang-cl/lld-link and golden-tested off Windows. KLC generation, klc.* rules and targets.windows.klc are deleted (not deprecated) when this lands."
+                            }
+                        )
+                    }
+
+                    {
+                        id targets.windows.build-from-c
+                        title "Compile generated C with cl/rc/link or clang-cl/lld-link (x86, x64, arm64); drop kbdutool and MSKLC/pahkat"
+                        kind @feat
+                        deps (targets.windows.kbd-c)
+                    }
+
+                    {
+                        id targets.windows.vro-loads
+                        title "Regression: Võro layout DLL passes LoadKeyboardLayout on Windows"
+                        kind @test
+                        deps (targets.windows.build-from-c)
+                        log (
+                            {
+                                at 2026-10-05T13:06:42.808865Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Evidence (Windows 11 x64, dev-latest outto installer, 2026-10-05): kbdvro.dll present in System32 (8704 B) and SysWOW64 (7680 B); registry Keyboard Layouts\\a0002000 -> kbdvro.dll, Layout Id 00d8, display name @kbdvro.dll,-1000 resolves to 'Võro'; DLL loads as datafile; but LoadKeyboardLayout('a0002000') returns 0, so the layout never appears in the selector, for vro-Latn and en-SE alike. kbdsjd.dll (a0003800) from the same pipeline loads fine. Võro is the only bundle combining dead keys (6 DEADKEY blocks, 00b4 emitted twice) with ligatures (20); sjd has ligatures only, sme dead keys only."
+                            }
+                        )
                     }
                 )
             }
@@ -378,11 +415,11 @@ children (
 
             {
                 id targets.nested-transforms
-                title "Recursive transform trees (replace todo! sites in KLC, keylayout, iOS, Android)"
+                title "Recursive transform trees (replace todo! sites in Windows, keylayout, iOS, Android)"
                 kind @feat
                 deps (
                     input.layout
-                    targets.windows.klc
+                    targets.windows.kbd-c
                     targets.macos.keylayout
                     targets.ios.keyboard-json
                     targets.android.layout
@@ -408,7 +445,7 @@ children (
                     input.layout
                     input.bundle
                     input.cli
-                    targets.windows.klc
+                    targets.windows.kbd-c
                     targets.windows.dll
                     targets.macos.keylayout
                     targets.macos.package
@@ -431,9 +468,9 @@ children (
 
             {
                 id quality.robustness
-                title "Robustness: KLC name collisions on 5-char tag prefix, unchecked subprocess exit codes, Android name sanitiser turning _ into x"
+                title "Robustness: Windows DLL name collisions on 5-char tag prefix, unchecked subprocess exit codes, Android name sanitiser turning _ into x"
                 kind @fix
-                deps (targets.windows.klc targets.android.layout)
+                deps (targets.windows.kbd-c targets.android.layout)
             }
         )
     }
