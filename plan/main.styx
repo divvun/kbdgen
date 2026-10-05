@@ -1344,6 +1344,27 @@ children (
                     }
                 )
             }
+
+            {
+                id ldml.nfd-adjacent-classes
+                title "Reject listed non-NFD class values even when adjacent ranges merge before the NFD check ([\\u{C0}\\u{C1}] warns instead of erroring)"
+                kind @fix
+                deps (ldml.parser)
+            }
+
+            {
+                id ldml.ref-windows-targets
+                title "ldml: layouts silently ignore targets.windows shiftLock/lrmRlm/keyNames; apply or reject them"
+                kind @fix
+                deps (ldml.yaml-v4 input.windows-layers)
+            }
+
+            {
+                id ldml.coverage-gaps
+                title "Annotate long-press application sites; test Id on gap/role keys and at_start after context truncation"
+                kind @test
+                deps (ldml.yaml-v4 ldml.engine)
+            }
         )
         log (
             {

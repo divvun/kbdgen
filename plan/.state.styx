@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T22:09:10.65513Z
+last_sync_at 2026-10-05T22:35:48.087196Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -63,7 +63,7 @@ rule_versions (
     {id kbdl.modifiers, version 0}
     {id kbdl.resources, version 0}
     {id kbdl.resources.fields, version 0}
-    {id kbdl.resources.format, version 0}
+    {id kbdl.resources.format, version 1}
     {id kbdl.resources.version, version 0}
     {id kbdl.scancodes, version 0}
     {id kbdl.scancodes.extended, version 0}
@@ -96,123 +96,123 @@ rule_versions (
     {id layout.schema.targets, version 0}
     {id layout.transforms, version 0}
     {id layout.transforms.dead-key-entries, version 0}
-    {id ldml.cli.commands, version 0}
-    {id ldml.cli.compile, version 0}
+    {id ldml.cli.commands, version 1}
+    {id ldml.cli.compile, version 1}
     {id ldml.cli.export, version 0}
     {id ldml.cli.import, version 0}
     {id ldml.cli.test, version 0}
-    {id ldml.crate.engine, version 0}
+    {id ldml.crate.engine, version 1}
     {id ldml.crate.ffi, version 0}
     {id ldml.crate.kbdgen, version 0}
-    {id ldml.crate.layout, version 0}
+    {id ldml.crate.layout, version 1}
     {id ldml.crate.ldml, version 0}
     {id ldml.crate.model, version 0}
     {id ldml.crate.targets, version 0}
-    {id ldml.crate.tsf, version 0}
+    {id ldml.crate.tsf, version 1}
     {id ldml.engine.action, version 0}
     {id ldml.engine.altgr, version 0}
-    {id ldml.engine.api, version 0}
-    {id ldml.engine.backspace, version 0}
+    {id ldml.engine.api, version 1}
+    {id ldml.engine.backspace, version 1}
     {id ldml.engine.backspace.default, version 0}
-    {id ldml.engine.commit, version 0}
-    {id ldml.engine.context, version 0}
-    {id ldml.engine.contract, version 0}
+    {id ldml.engine.commit, version 1}
+    {id ldml.engine.context, version 1}
+    {id ldml.engine.contract, version 1}
     {id ldml.engine.decimal, version 0}
-    {id ldml.engine.event, version 0}
+    {id ldml.engine.event, version 1}
     {id ldml.engine.extra, version 0}
     {id ldml.engine.hardware, version 0}
     {id ldml.engine.insert, version 0}
-    {id ldml.engine.match, version 0}
+    {id ldml.engine.match, version 1}
     {id ldml.engine.modifiers, version 0}
     {id ldml.engine.no-markers-out, version 0}
-    {id ldml.engine.normalization, version 0}
-    {id ldml.engine.output.form, version 0}
-    {id ldml.engine.output.segment, version 0}
-    {id ldml.engine.preedit, version 0}
-    {id ldml.engine.reorder, version 0}
+    {id ldml.engine.normalization, version 1}
+    {id ldml.engine.output.form, version 1}
+    {id ldml.engine.output.segment, version 1}
+    {id ldml.engine.preedit, version 1}
+    {id ldml.engine.reorder, version 1}
     {id ldml.engine.replace, version 0}
-    {id ldml.engine.shortcuts, version 0}
+    {id ldml.engine.shortcuts, version 1}
     {id ldml.engine.state, version 0}
-    {id ldml.engine.test-keys, version 0}
+    {id ldml.engine.test-keys, version 1}
     {id ldml.engine.touch, version 0}
-    {id ldml.engine.touch.gestures, version 0}
+    {id ldml.engine.touch.gestures, version 1}
     {id ldml.engine.transforms, version 0}
-    {id ldml.engine.tsf, version 0}
+    {id ldml.engine.tsf, version 1}
     {id ldml.kbdl.adapter, version 0}
     {id ldml.kbdl.caps, version 0}
     {id ldml.kbdl.classify, version 0}
-    {id ldml.kbdl.dead-tree, version 0}
+    {id ldml.kbdl.dead-tree, version 1}
     {id ldml.kbdl.layers, version 0}
     {id ldml.kbdl.metadata, version 0}
-    {id ldml.kbdl.model-resource, version 0}
-    {id ldml.kbdl.positions, version 0}
-    {id ldml.kbdl.values, version 0}
+    {id ldml.kbdl.model-resource, version 1}
+    {id ldml.kbdl.positions, version 1}
+    {id ldml.kbdl.values, version 1}
     {id ldml.kbdl.windows-inputs, version 0}
-    {id ldml.migrate.caps-diff, version 0}
-    {id ldml.migrate.dead-keys, version 0}
-    {id ldml.migrate.defects, version 0}
-    {id ldml.migrate.equivalence, version 0}
-    {id ldml.migrate.fields, version 0}
-    {id ldml.migrate.output, version 0}
+    {id ldml.migrate.caps-diff, version 1}
+    {id ldml.migrate.dead-keys, version 1}
+    {id ldml.migrate.defects, version 1}
+    {id ldml.migrate.equivalence, version 1}
+    {id ldml.migrate.fields, version 1}
+    {id ldml.migrate.output, version 1}
     {id ldml.migrate.platforms, version 0}
-    {id ldml.migrate.report, version 0}
+    {id ldml.migrate.report, version 1}
     {id ldml.migrate.survey, version 0}
-    {id ldml.model.context-len, version 0}
+    {id ldml.model.context-len, version 1}
     {id ldml.model.decode, version 0}
-    {id ldml.model.deterministic, version 0}
-    {id ldml.model.displays, version 0}
+    {id ldml.model.deterministic, version 1}
+    {id ldml.model.displays, version 1}
     {id ldml.model.emoji, version 0}
-    {id ldml.model.encoding, version 0}
-    {id ldml.model.flush, version 0}
-    {id ldml.model.hardware, version 0}
-    {id ldml.model.invariants, version 0}
-    {id ldml.model.keyboard, version 0}
+    {id ldml.model.encoding, version 1}
+    {id ldml.model.flush, version 1}
+    {id ldml.model.hardware, version 1}
+    {id ldml.model.invariants, version 1}
+    {id ldml.model.keyboard, version 1}
     {id ldml.model.keys, version 0}
-    {id ldml.model.layout, version 0}
-    {id ldml.model.modifiers, version 0}
+    {id ldml.model.layout, version 1}
+    {id ldml.model.modifiers, version 1}
     {id ldml.model.native, version 0}
-    {id ldml.model.nfd, version 0}
-    {id ldml.model.pattern, version 0}
-    {id ldml.model.text, version 0}
-    {id ldml.model.touch, version 0}
-    {id ldml.model.transforms, version 0}
+    {id ldml.model.nfd, version 1}
+    {id ldml.model.pattern, version 1}
+    {id ldml.model.text, version 1}
+    {id ldml.model.touch, version 1}
+    {id ldml.model.transforms, version 1}
     {id ldml.model.windows, version 0}
     {id ldml.scope.deferred, version 0}
     {id ldml.scope.macos-rules, version 0}
     {id ldml.scope.v1, version 0}
-    {id ldml.test.bundle, version 0}
-    {id ldml.test.cldr, version 0}
+    {id ldml.test.bundle, version 1}
+    {id ldml.test.cldr, version 1}
     {id ldml.test.golden, version 0}
-    {id ldml.test.harness, version 0}
-    {id ldml.test.kmc, version 0}
+    {id ldml.test.harness, version 1}
+    {id ldml.test.kmc, version 1}
     {id ldml.test.oracle, version 0}
     {id ldml.test.repertoire, version 0}
     {id ldml.test.robust, version 0}
     {id ldml.test.roundtrip, version 0}
-    {id ldml.test.vectors, version 0}
+    {id ldml.test.vectors, version 1}
     {id ldml.xml.cldr-data, version 0}
     {id ldml.xml.document, version 0}
-    {id ldml.xml.escape, version 0}
-    {id ldml.xml.export, version 0}
+    {id ldml.xml.escape, version 1}
+    {id ldml.xml.export, version 1}
     {id ldml.xml.export.escape, version 0}
-    {id ldml.xml.from, version 0}
-    {id ldml.xml.implied, version 0}
+    {id ldml.xml.from, version 1}
+    {id ldml.xml.implied, version 1}
     {id ldml.xml.import, version 0}
-    {id ldml.xml.ldml-ref, version 0}
-    {id ldml.xml.ldml-view, version 0}
+    {id ldml.xml.ldml-ref, version 1}
+    {id ldml.xml.ldml-view, version 1}
     {id ldml.xml.lossy, version 0}
-    {id ldml.xml.nfd-classes, version 0}
+    {id ldml.xml.nfd-classes, version 1}
     {id ldml.xml.read, version 0}
-    {id ldml.xml.resolve, version 0}
+    {id ldml.xml.resolve, version 1}
     {id ldml.xml.roundtrip, version 0}
-    {id ldml.xml.sets, version 0}
-    {id ldml.xml.special, version 0}
+    {id ldml.xml.sets, version 1}
+    {id ldml.xml.special, version 1}
     {id ldml.xml.superset-roundtrip, version 0}
     {id ldml.xml.to, version 0}
-    {id ldml.xml.validate, version 0}
+    {id ldml.xml.validate, version 1}
     {id ldml.xml.write, version 0}
     {id ldml.yaml.coexistence, version 0}
-    {id ldml.yaml.dead-keys, version 0}
+    {id ldml.yaml.dead-keys, version 1}
     {id ldml.yaml.dead-keys.backspace, version 0}
     {id ldml.yaml.dead-keys.compose, version 0}
     {id ldml.yaml.dead-keys.fallback, version 0}
@@ -220,30 +220,30 @@ rule_versions (
     {id ldml.yaml.detect, version 0}
     {id ldml.yaml.displays.auto, version 0}
     {id ldml.yaml.emoji, version 0}
-    {id ldml.yaml.escape, version 0}
-    {id ldml.yaml.hardware, version 0}
-    {id ldml.yaml.hardware.rows, version 0}
+    {id ldml.yaml.escape, version 1}
+    {id ldml.yaml.hardware, version 1}
+    {id ldml.yaml.hardware.rows, version 1}
     {id ldml.yaml.hosts, version 0}
-    {id ldml.yaml.implied-layers, version 0}
-    {id ldml.yaml.import, version 0}
-    {id ldml.yaml.key-ids, version 0}
-    {id ldml.yaml.key-ids.collisions, version 0}
-    {id ldml.yaml.ldml-ref, version 0}
-    {id ldml.yaml.long-press, version 0}
-    {id ldml.yaml.lowering, version 0}
+    {id ldml.yaml.implied-layers, version 1}
+    {id ldml.yaml.import, version 1}
+    {id ldml.yaml.key-ids, version 1}
+    {id ldml.yaml.key-ids.collisions, version 1}
+    {id ldml.yaml.ldml-ref, version 1}
+    {id ldml.yaml.long-press, version 1}
+    {id ldml.yaml.lowering, version 1}
     {id ldml.yaml.modifier-names, version 0}
     {id ldml.yaml.native, version 0}
     {id ldml.yaml.normalization, version 0}
-    {id ldml.yaml.roundtrip, version 0}
+    {id ldml.yaml.roundtrip, version 1}
     {id ldml.yaml.rows, version 0}
-    {id ldml.yaml.schema, version 0}
+    {id ldml.yaml.schema, version 1}
     {id ldml.yaml.strict, version 0}
     {id ldml.yaml.targets, version 0}
     {id ldml.yaml.tokens, version 0}
-    {id ldml.yaml.touch, version 0}
+    {id ldml.yaml.touch, version 1}
     {id ldml.yaml.touch.flicks, version 0}
-    {id ldml.yaml.touch.roles, version 0}
-    {id ldml.yaml.verbatim, version 0}
+    {id ldml.yaml.touch.roles, version 1}
+    {id ldml.yaml.verbatim, version 1}
     {id macbundle.installer, version 0}
     {id macbundle.plist, version 1}
     {id macbundle.plist.bundle-resources, version 0}
@@ -258,6 +258,60 @@ rule_versions (
     {id pbxproj.serialize.build-settings, version 0}
     {id pbxproj.serialize.fields, version 0}
     {id pipeline.steps, version 0}
+    {id tsf.arch.arm64x, version 0}
+    {id tsf.arch.builds, version 0}
+    {id tsf.arch.registration, version 0}
+    {id tsf.component, version 0}
+    {id tsf.component.crate, version 0}
+    {id tsf.component.interfaces, version 0}
+    {id tsf.component.logging, version 0}
+    {id tsf.component.panic, version 0}
+    {id tsf.component.self-contained, version 0}
+    {id tsf.data.locate, version 0}
+    {id tsf.data.resource, version 0}
+    {id tsf.data.version, version 0}
+    {id tsf.edit.apply, version 0}
+    {id tsf.edit.cache, version 0}
+    {id tsf.edit.inject, version 0}
+    {id tsf.edit.ops, version 0}
+    {id tsf.edit.preedit, version 0}
+    {id tsf.edit.reset, version 0}
+    {id tsf.edit.session, version 0}
+    {id tsf.edit.units, version 0}
+    {id tsf.emoji.commit, version 0}
+    {id tsf.emoji.data, version 0}
+    {id tsf.emoji.picker, version 0}
+    {id tsf.emoji.trigger, version 0}
+    {id tsf.emoji.ui, version 0}
+    {id tsf.engine.api, version 0}
+    {id tsf.engine.contract, version 0}
+    {id tsf.engine.model, version 0}
+    {id tsf.installer.bundle, version 0}
+    {id tsf.installer.layout-dlls, version 0}
+    {id tsf.keys.altgr, version 0}
+    {id tsf.keys.claim, version 0}
+    {id tsf.keys.identity, version 0}
+    {id tsf.keys.locale-flags, version 0}
+    {id tsf.pairing.alternatives, version 0}
+    {id tsf.pairing.self-sufficient, version 0}
+    {id tsf.pairing.substitute, version 0}
+    {id tsf.register.enable, version 0}
+    {id tsf.register.ids, version 0}
+    {id tsf.register.langid, version 0}
+    {id tsf.register.profile, version 0}
+    {id tsf.register.server, version 0}
+    {id tsf.register.uninstall, version 0}
+    {id tsf.register.upgrade, version 0}
+    {id tsf.register.welcome, version 0}
+    {id tsf.security.appcontainer, version 0}
+    {id tsf.security.disabled, version 0}
+    {id tsf.security.integrity, version 0}
+    {id tsf.security.secure-mode, version 0}
+    {id tsf.security.signing, version 0}
+    {id tsf.test.differential, version 0}
+    {id tsf.test.engine, version 0}
+    {id tsf.test.host, version 0}
+    {id tsf.test.vm, version 0}
     {id xcode.localization, version 0}
     {id xcode.targets, version 0}
     {id xcode.targets.hosting-app, version 0}
@@ -272,16 +326,19 @@ derived_priorities (
     {id input.test-bundle, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id input.windows-layers, priority 2, derived_at 2026-10-05T13:56:44.342691Z}
     {id ldml.conformance, priority 3, derived_at 2026-10-05T16:49:50.96484Z}
+    {id ldml.coverage-gaps, priority 3, derived_at 2026-10-05T22:35:48.087196Z}
     {id ldml.engine, priority 2, derived_at 2026-10-05T16:49:50.96484Z}
     {id ldml.ffi, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.kbdl, priority 3, derived_at 2026-10-05T16:49:50.96484Z}
     {id ldml.migrate, priority 3, derived_at 2026-10-05T16:49:50.96484Z}
     {id ldml.model, priority 1, derived_at 2026-10-05T16:49:50.96484Z}
+    {id ldml.nfd-adjacent-classes, priority 3, derived_at 2026-10-05T22:35:48.087196Z}
     {id ldml.parser, priority 2, derived_at 2026-10-05T16:49:50.96484Z}
     {id ldml.port.android, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.port.chromeos, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.port.ios, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.port.macos, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
+    {id ldml.ref-windows-targets, priority 3, derived_at 2026-10-05T22:35:48.087196Z}
     {id ldml.spec, priority 0, derived_at 2026-10-05T16:49:50.96484Z}
     {id ldml.spec-errata, priority 3, derived_at 2026-10-05T17:57:43.280011Z}
     {id ldml.workspace, priority 1, derived_at 2026-10-05T17:21:48.229555Z}
