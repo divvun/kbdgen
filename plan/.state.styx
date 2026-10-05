@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T15:15:39.343903Z
+last_sync_at 2026-10-05T15:24:31.08516Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -370,6 +370,13 @@ impl_evidence (
         {impl_name main, rule kbdl.image}
         {impl_name main, rule kbdl.image.verify}
         {impl_name main, rule kbdl.wow64}
+    ), rule_versions_seen (
+        {id kbdl.build, version 0}
+        {id kbdl.build.environment, version 0}
+        {id kbdl.build.toolchain, version 1}
+        {id kbdl.image, version 0}
+        {id kbdl.image.verify, version 0}
+        {id kbdl.wow64, version 0}
     )}
     {id targets.windows.dll-gen, covered_rules (
         kbdl.caps

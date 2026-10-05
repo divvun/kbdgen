@@ -92,7 +92,7 @@ children (
                 children (
                     {
                         id targets.windows.test-golden
-                        title "Golden tests for generated KBDTABLES C output"
+                        title "Golden tests for generated Windows layout crates, .res files and DLLs"
                         kind @test
                         deps (targets.windows.dll-gen input.layout-order)
                     }
