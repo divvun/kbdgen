@@ -102,7 +102,7 @@ children (
                                 [spec:kbdgen:syn:klc.layout.key-rendering]
                             )
                         }
-                        deps (input.bundle input.layout)
+                        deps (targets.windows.kbd-c)
                     }
 
                     {
@@ -154,6 +154,7 @@ children (
                     {
                         id targets.windows.vro-loads
                         title "Regression: Võro layout DLL passes LoadKeyboardLayout on Windows"
+                        priority 0
                         kind @test
                         deps (targets.windows.build-from-c)
                         log (
@@ -190,7 +191,7 @@ children (
                                 [spec:kbdgen:req:keylayout.actions.dead-key-next]
                             )
                         }
-                        deps (input.bundle input.layout)
+                        deps (input.bundle input.layout targets.macos.test-golden)
                     }
 
                     {
@@ -256,6 +257,7 @@ children (
                                 [spec:kbdgen:req:pbxproj.serialize.attributes]
                             )
                         }
+                        deps (targets.ios.test-golden)
                     }
 
                     {
@@ -341,7 +343,7 @@ children (
                                 [spec:kbdgen:req:android.metadata.strings]
                             )
                         }
-                        deps (input.bundle input.layout)
+                        deps (input.bundle input.layout targets.android.test-golden)
                     }
 
                     {
@@ -447,13 +449,10 @@ children (
                     input.cli
                     targets.windows.kbd-c
                     targets.windows.dll
-                    targets.macos.keylayout
                     targets.macos.package
                     targets.ios.keyboard-json
-                    targets.ios.pbxproj
                     targets.ios.xcode
                     targets.ios.toolchain
-                    targets.android.layout
                     targets.android.toolchain
                     targets.chromeos.ime
                 )
