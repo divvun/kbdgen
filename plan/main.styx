@@ -460,12 +460,27 @@ children (
                         id targets.windows.installer-dlls
                         title "divvun-actions: ship wow64 DLL to SysWOW64, ship arm64 DLLs, allow Arm64 installs, fix uninstall product-code brace"
                         kind @fix
+                        sealed true
                         log (
                             {
                                 at 2026-10-05T17:22:58.84196Z
                                 author "brendan@necessary.nu"
                                 kind @status
                                 text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-05T17:38:26.453622Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Done in divvun-actions on local branch keyboard-rust-layout-dlls (not pushed), from main bf52329: 0fc4ff5 inno per-installer architectures; 69d2ee5 install kbdgen's x86/x64/arm64/wow64 DLLs unchanged (wow64 to SysWOW64 on x64 and Arm64, arm64 to System32 on Arm64), uniform braced {guid} for install/enable/uninstall plus a migration uninstall of the legacy '{guid' code; af360fe preflight for the three windows-msvc Rust targets; 97fc1ed docker windows image adds i686-pc-windows-msvc. deno check passes; nothing ran on Windows. Open: outto has no arm64 architecture (keyboard outto package now x64-only and refuses Arm64 cleanly; needs an outto change); all Arm64 behaviour unverified (no Arm64 machine); pahkat nightly kbdgen and the image's C:\\bin\\kbdgen must both include the kbdl build; run `deno task docker:check`."
+                            }
+
+                            {
+                                at 2026-10-05T17:38:26.486139Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Doing → Done (nplan complete)"
                             }
                         )
                     }
