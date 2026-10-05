@@ -1181,7 +1181,21 @@ children (
                 id ldml.ffi
                 title "Host bindings for the engine: C ABI, JNI and wasm-bindgen"
                 kind @feat
-                deps (ldml.engine)
+                deps (
+                    ldml.engine
+                    ldml.port.macos
+                    ldml.port.ios
+                    ldml.port.android
+                    ldml.port.chromeos
+                )
+                log (
+                    {
+                        at 2026-10-05T22:09:16.159084Z
+                        author "brendan@necessary.nu"
+                        kind @decision
+                        text "Operator decision 2026-10-06: host bindings are deferred behind the platform ports (consistent with ldml.scope.deferred); the ports in turn wait on ldml.spec-errata so the spec matches the implementation before more is built on it. Spec errata and tsf.reconcile go first."
+                    }
+                )
             }
 
             {
@@ -1193,28 +1207,28 @@ children (
                         id ldml.port.macos
                         title "Generate macos output from the v4 model"
                         kind @feat
-                        deps (ldml.yaml-v4)
+                        deps (ldml.yaml-v4 ldml.spec-errata)
                     }
 
                     {
                         id ldml.port.ios
                         title "Generate ios output from the v4 model"
                         kind @feat
-                        deps (ldml.yaml-v4)
+                        deps (ldml.yaml-v4 ldml.spec-errata)
                     }
 
                     {
                         id ldml.port.android
                         title "Generate android output from the v4 model"
                         kind @feat
-                        deps (ldml.yaml-v4)
+                        deps (ldml.yaml-v4 ldml.spec-errata)
                     }
 
                     {
                         id ldml.port.chromeos
                         title "Generate chromeos output from the v4 model"
                         kind @feat
-                        deps (ldml.yaml-v4)
+                        deps (ldml.yaml-v4 ldml.spec-errata)
                     }
                 )
             }

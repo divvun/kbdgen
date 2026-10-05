@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T21:58:27.074383Z
+last_sync_at 2026-10-05T22:09:10.65513Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -402,6 +402,19 @@ impl_evidence (
         {id layout.schema.targets, version 0}
         {id layout.transforms, version 0}
         {id layout.transforms.dead-key-entries, version 0}
+    )}
+    {id input.windows-layers, covered_rules (
+        ldml.kbdl.windows-inputs
+        ldml.yaml.native
+        ldml.yaml.targets
+    ), covered_claims (
+        {impl_name main, rule ldml.kbdl.windows-inputs}
+        {impl_name main, rule ldml.yaml.native}
+        {impl_name main, rule ldml.yaml.targets}
+    ), rule_versions_seen (
+        {id ldml.kbdl.windows-inputs, version 0}
+        {id ldml.yaml.native, version 0}
+        {id ldml.yaml.targets, version 0}
     )}
     {id ldml.conformance, covered_rules (
         ldml.cli.test
@@ -1138,15 +1151,6 @@ impl_evidence (
         {id kbdl.vk-chars.decimal, version 0}
         {id kbdl.vk-chars.fixed, version 0}
         {id kbdl.vk-chars.values, version 0}
-    )}
-    {id input.windows-layers, covered_rules (
-        ldml.kbdl.windows-inputs
-        ldml.yaml.native
-        ldml.yaml.targets
-    ), covered_claims (
-        {impl_name main, rule ldml.kbdl.windows-inputs}
-        {impl_name main, rule ldml.yaml.native}
-        {impl_name main, rule ldml.yaml.targets}
     )}
 )
 
