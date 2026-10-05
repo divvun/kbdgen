@@ -6,10 +6,18 @@ use std::collections::BTreeMap;
 use super::{diag::Diagnostics, input::Metadata};
 
 const RT_STRING: u16 = 6;
+const RT_RCDATA: u16 = 10;
 const RT_VERSION: u16 = 16;
 const LANG_EN_US: u16 = 0x0409;
 const VERSION_FLAGS: u16 = 0x0030;
 const STRING_FLAGS: u16 = 0x1030;
+/// `MOVEABLE | PURE`, what `rc.exe` writes for `RCDATA`.
+const RCDATA_FLAGS: u16 = 0x0030;
+
+/// Name and language of the `RT_RCDATA` resource holding the engine model
+/// (`tsf.data.resource`).
+pub const MODEL_RESOURCE_ID: u16 = 1;
+pub const MODEL_RESOURCE_LANGUAGE: u16 = 0;
 
 /// String id of the layout description, which the registry's
 /// `Layout Display Name` resolves.
@@ -188,10 +196,12 @@ fn string_block(slots: &[(u16, &str)]) -> Vec<u8> {
     out
 }
 
-/// The complete `.res` file of a layout.
+/// The complete `.res` file of a layout. `model`, the encoded engine model
+/// of the layout, goes in an `RT_RCDATA` entry before the string tables.
 // [spec:kbdgen:req:kbdl.resources]
 // [spec:kbdgen:syn:kbdl.resources.format]
-pub fn res_file(metadata: &Metadata, version: [u16; 4]) -> Vec<u8> {
+// [spec:kbdgen:req:ldml.kbdl.model-resource]
+pub fn res_file(metadata: &Metadata, version: [u16; 4], model: Option<&[u8]>) -> Vec<u8> {
     let mut out = Vec::new();
     entry(&mut out, 0, 0, 0, 0, &[]);
     entry(
@@ -202,6 +212,16 @@ pub fn res_file(metadata: &Metadata, version: [u16; 4]) -> Vec<u8> {
         VERSION_FLAGS,
         &version_info(metadata, version),
     );
+    if let Some(model) = model {
+        entry(
+            &mut out,
+            RT_RCDATA,
+            MODEL_RESOURCE_ID,
+            MODEL_RESOURCE_LANGUAGE,
+            RCDATA_FLAGS,
+            model,
+        );
+    }
 
     let language = (metadata.lcid & 0xffff) as u16;
     let strings = [
@@ -238,7 +258,7 @@ pub fn res_file(metadata: &Metadata, version: [u16; 4]) -> Vec<u8> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     fn vro() -> Metadata {
@@ -256,7 +276,7 @@ mod tests {
     }
 
     /// Parses a `.res` file into (type, name, language, flags, data).
-    fn entries(bytes: &[u8]) -> Vec<(u16, u16, u16, u16, Vec<u8>)> {
+    pub(crate) fn entries(bytes: &[u8]) -> Vec<(u16, u16, u16, u16, Vec<u8>)> {
         let u16_at = |at: usize| u16::from_le_bytes([bytes[at], bytes[at + 1]]);
         let u32_at = |at: usize| u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap());
         let mut at = 0;
@@ -289,7 +309,7 @@ mod tests {
         let mut diag = Diagnostics::new("kbdvro");
         let version = file_version(&vro(), &mut diag);
         assert_eq!(version, [1, 0, 3, 40]);
-        let bytes = res_file(&vro(), version);
+        let bytes = res_file(&vro(), version, None);
         assert_eq!(bytes, include_bytes!("testdata/kbdvro.res").as_slice());
     }
 
@@ -300,7 +320,7 @@ mod tests {
         let mut metadata = vro();
         metadata.lcid = 0x0c3b;
         metadata.description = "Davvisámegiella (Suopma)".into();
-        let entries = entries(&res_file(&metadata, [1, 0, 6, 1]));
+        let entries = entries(&res_file(&metadata, [1, 0, 6, 1], None));
         let header: Vec<(u16, u16, u16, u16)> = entries
             .iter()
             .map(|(kind, name, language, flags, _)| (*kind, *name, *language, *flags))
@@ -336,6 +356,26 @@ mod tests {
                 .enumerate()
                 .all(|(i, s)| i == 8 || s.is_empty())
         );
+    }
+
+    // [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+    // [spec:kbdgen:syn:kbdl.resources.format/test]
+    #[test]
+    fn model_resource_precedes_the_string_tables() {
+        let model = b"DVKB\x01\x00\x00\x00\x07";
+        let with = res_file(&vro(), [1, 0, 3, 40], Some(model));
+        let without = res_file(&vro(), [1, 0, 3, 40], None);
+        let entries = entries(&with);
+        let header: Vec<(u16, u16, u16, u16)> = entries
+            .iter()
+            .map(|(kind, name, language, flags, _)| (*kind, *name, *language, *flags))
+            .collect();
+        assert_eq!(header[2], (RT_RCDATA, 1, 0, 0x0030));
+        assert_eq!(entries[2].4, model);
+        assert_eq!(with.len(), without.len() + 32 + 12, "data padded to 4");
+        let version_end = 32 + 32 + entries[1].4.len().div_ceil(4) * 4;
+        assert_eq!(with[..version_end], without[..version_end]);
+        assert_eq!(with[version_end + 44..], without[version_end..]);
     }
 
     // [spec:kbdgen:req:kbdl.resources/test]

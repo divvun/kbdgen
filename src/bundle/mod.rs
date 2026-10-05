@@ -37,8 +37,8 @@ pub struct KbdgenBundle {
     pub path: PathBuf,
     pub project: Project,
     pub layouts: Layouts,
-    /// The `format: 4` layouts, by tag in bundle layout order, which the
-    /// target generators cannot build yet (`ldml.yaml.coexistence`).
+    /// The `format: 4` layouts, by tag in bundle layout order, which only
+    /// the windows target builds yet (`ldml.yaml.coexistence`).
     pub v4_layouts: Vec<(LanguageTag, PathBuf)>,
     pub targets: Targets,
     pub resources: Resources,
@@ -106,18 +106,17 @@ impl<'a> IntoIterator for &'a Layouts {
 impl KbdgenBundle {
     // [spec:kbdgen:req:ldml.yaml.coexistence]
     /// Fails, naming the first v4 layout and `target`, when the bundle has
-    /// v4 layouts, which no target generator builds yet. A generator never
-    /// skips one silently.
+    /// v4 layouts and `target` cannot build them. Only `windows` can, through
+    /// the kbdl adapter (`ldml.kbdl.adapter`). A generator never skips a v4
+    /// layout silently.
     pub fn reject_v4_layouts(&self, target: &'static str) -> Result<(), Error> {
-        let Some((tag, _)) = self.v4_layouts.first() else {
-            return Ok(());
-        };
-        let tag = tag.to_string();
-        Err(if target == "windows" {
-            Error::V4WindowsLayout { tag }
-        } else {
-            Error::V4Layout { tag, target }
-        })
+        match self.v4_layouts.first() {
+            Some((tag, _)) if target != "windows" => Err(Error::V4Layout {
+                tag: tag.to_string(),
+                target,
+            }),
+            _ => Ok(()),
+        }
     }
 
     // [spec:kbdgen:def:bundle.structure]
@@ -478,11 +477,6 @@ pub enum Error {
         "layout {tag} is a v4 layout (`format: 4`); the {target} target cannot build v4 layouts yet"
     )]
     V4Layout { tag: String, target: &'static str },
-
-    #[error(
-        "layout {tag} is a v4 layout (`format: 4`); the windows target builds v4 layouts through the kbdl adapter (ldml.kbdl.adapter), which this build does not have yet"
-    )]
-    V4WindowsLayout { tag: String },
 }
 
 /// Builds bundle directories on disk for tests that exercise loading.

@@ -1,0 +1,197 @@
+# The Windows parts of giellalt/keyboard-vro layouts/vro.yaml at 438b462,
+# the v3 counterpart of crates/kbd-engine/tests/golden/layouts/vro.yaml.
+languageTag: vro
+displayNames:
+  vro: Võro
+  en: Võro
+decimal: ','
+windows:
+  config:
+    locale: vro-Latn
+    languageName: Võro kiil
+  primary:
+    layers:
+      default: |
+        ˇ 1 2 3 4 5 6 7 8 9 0 + ´
+          q w e r t y u i o p ü õ
+          a s d f g h j k l ö ä '
+        < z x c v b n m , . -
+      shift: |
+        ~ ! " # ¤ % & / ( ) = ? `
+          Q W E R T Y U I O P Ü Õ
+          A S D F G H J K L Ö Ä *
+        > Z X C V B N M ; : _
+      caps: |
+        ˇ 1 2 3 4 5 6 7 8 9 0 + ´
+          Q W E R T Y U I O P Ü Õ
+          A S D F G H J K L Ö Ä '
+        < Z X C V B N M , . -
+      caps+shift: |
+        ~ ! " # ¤ % & / ( ) = ? `
+          q w e r t y u i o p ü õ
+          a s d f g h j k l ö ä *
+        > z x c v b n m ; : _
+      alt: |
+        \u{0} \u{0} @ £ $ € \u{0} { [     ]     }     \ ´
+              \u{0} š     é ŕ     t́ ý     u̬     i̬     ó ṕ ü̬ õ̭
+              á     ś     d́ f́     ǵ h́     \u{0} ḱ     ĺ ő ^ ½
+        |     ź     ž ć v́ b́ ń     ḿ \u{0} \u{0} \u{0}
+      alt+shift: |
+        \u{0} \u{0} @ £ $ \u{0} \u{0} { [     ]     }     \ \u{0}
+              \u{0} Š     É     Ŕ     T́ Ý     U̬     I̬ Ó   Ṕ Ü̬     Õ̭
+              Á     Ś     D́     F́     Ǵ H́     \u{0} Ḱ Ĺ   Ő ^     ½
+        |     Ź     Ž Ć V́ B́     Ń     Ḿ \u{0} \u{0} \u{0}
+      ctrl: |
+        \u{1C} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+               \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+               \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{1B} \u{1D} \u{0}
+        \u{1C} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+      alt+caps: |
+        \u{0} \u{0} @ £ $ \u{0} \u{0} { [     ]     }     \ ´
+              \u{0} Š     É     Ŕ     T́ Ý     U̬     I̬ Ó   Ṕ Ü̬     Õ̭
+              Á     Ś     D́     F́     Ǵ H́     \u{0} Ḱ Ĺ   Ő ^     ½
+        |     Ź     Ž Ć V́ B́     Ń     Ḿ \u{0} \u{0} \u{0}
+  deadKeys:
+    default: ['´', 'ˇ']
+    shift: ['`', '~']
+    caps: ['´', 'ˇ']
+    caps+shift: ['`', '~']
+    alt: ['^', '´']
+    alt+caps: ['´']
+
+transforms:
+  ´:
+    ' ': ´
+    a: á
+    A: Á
+    b: b́
+    B: B́
+    c: ć
+    C: Ć
+    d: d́
+    D: D́
+    e: é
+    E: É
+    f: f́
+    F: F́
+    g: ǵ
+    G: Ǵ
+    h: h́
+    H: H́
+    i: i̬
+    I: I̬
+    k: ḱ
+    K: Ḱ
+    l: ĺ
+    L: Ĺ
+    m: ḿ
+    M: Ḿ
+    'n': ń
+    'N': Ń
+    o: ó
+    O: Ó
+    p: ṕ
+    P: Ṕ
+    r: ŕ
+    R: Ŕ
+    s: ś
+    S: Ś
+    t: t́
+    T: T́
+    v: v́
+    V: V́
+    z: ź
+    Z: Ź
+    u: u̬
+    U: U̬
+    ü: ü̬
+    Ü: Ü̬
+    'y': ý
+    'Y': Ý
+  ¨:
+    ' ': ¨
+    a: ä
+    A: Ä
+    e: ė
+    E: Ė
+    i: ů
+    I: Ů
+    o: ö
+    O: Ö
+    z: ż
+    Z: Ż
+    u: ü
+    U: Ü
+    ö: ő
+    Ö: Ő
+  ˇ:
+    ' ': ˇ
+    c: č
+    C: Č
+    d: ď
+    D: Ď
+    e: ě
+    E: Ě
+    l: ľ
+    L: Ľ
+    'n': ň
+    'N': Ň
+    o: ô
+    O: Ô
+    r: ř
+    R: Ř
+    s: š
+    S: Š
+    z: ž
+    Z: Ž
+    t: ť
+    T: Ť
+  '~':
+    ' ': '~'
+    a: ą
+    A: Ą
+    e: ę
+    E: Ę
+    i: į
+    I: Į
+    l: ł
+    L: Ł
+    o: õ
+    O: Õ
+    u: ų
+    U: Ų
+  ę:
+    ' ': ę
+    a: á
+    A: Á
+    e: é
+    E: É
+    i: i̬
+    I: I̬
+    o: ó
+    O: Ó
+    u: u̬
+    U: U̬
+  '`':
+    ' ': '`'
+    a: à
+    A: À
+    e: è
+    E: È
+    o: ò
+    O: Ò
+    u: ù
+    U: Ù
+  ^:
+    ' ': ^
+    a: â
+    A: Â
+    e: ê
+    E: Ê
+    g: ĝ
+    G: Ĝ
+    i: î
+    I: Î
+    u: û
+    U: Û
+

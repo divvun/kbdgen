@@ -36,7 +36,7 @@ pub fn layout_input(
     layout: &Layout,
     target: &WindowsTarget,
 ) -> Result<(LayoutInput, Diagnostics)> {
-    let metadata = metadata(bundle, language_tag, layout, target)?;
+    let metadata = v3_metadata(bundle, language_tag, layout, target)?;
     let mut diag = Diagnostics::new(metadata.name.clone());
 
     let mut layers = IndexMap::new();
@@ -163,46 +163,53 @@ fn dead_key_node(transform: &Transform) -> DeadKeyNode {
     }
 }
 
-/// `kbd` followed by `windows.config.id`, or else by the first five scalar
-/// values of the language tag.
+/// `kbd` followed by the layout's Windows `id`, or else by the first five
+/// scalar values of the language tag.
 // [spec:kbdgen:req:kbdl.metadata.bundle]
-pub fn keyboard_name(language_tag: &LanguageTag, target: &WindowsTarget) -> String {
-    format!(
-        "kbd{}",
-        target
-            .config
-            .as_ref()
-            .and_then(|config| config.id.clone())
-            .unwrap_or_else(|| language_tag.as_str().chars().take(5).collect())
+pub fn keyboard_name(language_tag: &LanguageTag, id: Option<&str>) -> String {
+    match id {
+        Some(id) => format!("kbd{id}"),
+        None => format!(
+            "kbd{}",
+            language_tag.as_str().chars().take(5).collect::<String>()
+        ),
+    }
+}
+
+/// The layout's Windows `id` and `locale` from `windows.config`.
+pub fn config(target: &WindowsTarget) -> (Option<&str>, Option<String>) {
+    let config = target.config.as_ref();
+    (
+        config.and_then(|config| config.id.as_deref()),
+        config
+            .and_then(|config| config.locale.as_ref())
+            .map(|locale| locale.to_string()),
     )
 }
 
+/// Metadata from the layout's display name for its primary language
+/// subtag, its Windows `id` and `locale`, and the project and Windows
+/// target.
 // [spec:kbdgen:req:kbdl.metadata.bundle]
-fn metadata(
+pub fn metadata(
     bundle: &KbdgenBundle,
     language_tag: &LanguageTag,
-    layout: &Layout,
-    target: &WindowsTarget,
+    display_name: Option<&str>,
+    id: Option<&str>,
+    locale_override: Option<&str>,
 ) -> Result<Metadata> {
-    let name = keyboard_name(language_tag, target);
-
+    let name = keyboard_name(language_tag, id);
     let primary = language_tag.primary_language();
-    let Some(display_name) = layout
-        .display_names
-        .iter()
-        .find(|(tag, _)| tag.as_str() == primary)
-        .map(|(_, name)| name.clone())
-    else {
+    let Some(display_name) = display_name else {
         bail!("{name}: displayNames has no entry for the primary language subtag {primary:?}");
     };
-
-    let (lcid, locale_name) = locale(language_tag, target);
+    let (lcid, locale_name) = locale(language_tag, locale_override);
     let windows = bundle.targets.windows.as_ref();
 
     Ok(Metadata {
         name,
-        description: display_name.clone(),
-        language_name: display_name,
+        description: display_name.to_owned(),
+        language_name: display_name.to_owned(),
         locale_name,
         lcid,
         company: bundle.project.organisation.clone(),
@@ -212,30 +219,42 @@ fn metadata(
     })
 }
 
+fn v3_metadata(
+    bundle: &KbdgenBundle,
+    language_tag: &LanguageTag,
+    layout: &Layout,
+    target: &WindowsTarget,
+) -> Result<Metadata> {
+    let primary = language_tag.primary_language();
+    let display_name = layout
+        .display_names
+        .iter()
+        .find(|(tag, _)| tag.as_str() == primary)
+        .map(|(_, name)| name.as_str());
+    let (id, locale) = config(target);
+    metadata(bundle, language_tag, display_name, id, locale.as_deref())
+}
+
 /// The LCID and locale name of a layout. The LCID always comes from the
-/// layout's own language tag, never from `windows.config.locale`.
+/// layout's own language tag, never from the Windows `locale`.
 // [spec:kbdgen:req:kbdl.metadata.locale]
-fn locale(language_tag: &LanguageTag, target: &WindowsTarget) -> (u32, String) {
+fn locale(language_tag: &LanguageTag, locale_override: Option<&str>) -> (u32, String) {
     let record = iso639::lcid::get(
         language_tag.primary_language(),
         language_tag.script(),
         language_tag.region(),
     );
     let lcid = record.map_or(LCID_UNSPECIFIED, |record| record.lcid);
-    let locale_name = target
-        .config
-        .as_ref()
-        .and_then(|config| config.locale.as_ref())
-        .map(|locale| locale.to_string())
-        .unwrap_or_else(|| match record {
-            Some(_) => language_tag.to_string(),
-            None => format!(
-                "{}-{}-{}",
-                language_tag.primary_language(),
-                language_tag.script().unwrap_or("Latn"),
-                language_tag.region().unwrap_or("001")
-            ),
-        });
+    let locale_name = match (locale_override, record) {
+        (Some(locale), _) => locale.to_owned(),
+        (None, Some(_)) => language_tag.to_string(),
+        (None, None) => format!(
+            "{}-{}-{}",
+            language_tag.primary_language(),
+            language_tag.script().unwrap_or("Latn"),
+            language_tag.region().unwrap_or("001")
+        ),
+    };
     (lcid, locale_name)
 }
 

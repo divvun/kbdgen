@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T20:14:30.358196Z
+last_sync_at 2026-10-05T20:43:50.857755Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -403,6 +403,43 @@ impl_evidence (
         {id layout.schema.targets, version 0}
         {id layout.transforms, version 0}
         {id layout.transforms.dead-key-entries, version 0}
+    )}
+    {id ldml.conformance, covered_rules (
+        ldml.cli.test
+        ldml.test.bundle
+        ldml.test.cldr
+        ldml.test.golden
+        ldml.test.harness
+        ldml.test.kmc
+        ldml.test.oracle
+        ldml.test.repertoire
+        ldml.test.robust
+        ldml.test.roundtrip
+        ldml.test.vectors
+    ), covered_claims (
+        {impl_name main, rule ldml.cli.test}
+        {impl_name main, rule ldml.test.bundle}
+        {impl_name main, rule ldml.test.cldr}
+        {impl_name main, rule ldml.test.golden}
+        {impl_name main, rule ldml.test.harness}
+        {impl_name main, rule ldml.test.kmc}
+        {impl_name main, rule ldml.test.oracle}
+        {impl_name main, rule ldml.test.repertoire}
+        {impl_name main, rule ldml.test.robust}
+        {impl_name main, rule ldml.test.roundtrip}
+        {impl_name main, rule ldml.test.vectors}
+    ), rule_versions_seen (
+        {id ldml.cli.test, version 0}
+        {id ldml.test.bundle, version 0}
+        {id ldml.test.cldr, version 0}
+        {id ldml.test.golden, version 0}
+        {id ldml.test.harness, version 0}
+        {id ldml.test.kmc, version 0}
+        {id ldml.test.oracle, version 0}
+        {id ldml.test.repertoire, version 0}
+        {id ldml.test.robust, version 0}
+        {id ldml.test.roundtrip, version 0}
+        {id ldml.test.vectors, version 0}
     )}
     {id ldml.engine, covered_rules (
         ldml.cli.compile
@@ -1041,30 +1078,26 @@ impl_evidence (
         {id kbdl.vk-chars.fixed, version 0}
         {id kbdl.vk-chars.values, version 0}
     )}
-    {id ldml.conformance, covered_rules (
-        ldml.cli.test
-        ldml.test.bundle
-        ldml.test.cldr
-        ldml.test.golden
-        ldml.test.harness
-        ldml.test.kmc
-        ldml.test.oracle
-        ldml.test.repertoire
-        ldml.test.robust
-        ldml.test.roundtrip
-        ldml.test.vectors
+    {id ldml.kbdl, covered_rules (
+        ldml.kbdl.adapter
+        ldml.kbdl.caps
+        ldml.kbdl.classify
+        ldml.kbdl.dead-tree
+        ldml.kbdl.layers
+        ldml.kbdl.metadata
+        ldml.kbdl.model-resource
+        ldml.kbdl.positions
+        ldml.kbdl.values
     ), covered_claims (
-        {impl_name main, rule ldml.cli.test}
-        {impl_name main, rule ldml.test.bundle}
-        {impl_name main, rule ldml.test.cldr}
-        {impl_name main, rule ldml.test.golden}
-        {impl_name main, rule ldml.test.harness}
-        {impl_name main, rule ldml.test.kmc}
-        {impl_name main, rule ldml.test.oracle}
-        {impl_name main, rule ldml.test.repertoire}
-        {impl_name main, rule ldml.test.robust}
-        {impl_name main, rule ldml.test.roundtrip}
-        {impl_name main, rule ldml.test.vectors}
+        {impl_name main, rule ldml.kbdl.adapter}
+        {impl_name main, rule ldml.kbdl.caps}
+        {impl_name main, rule ldml.kbdl.classify}
+        {impl_name main, rule ldml.kbdl.dead-tree}
+        {impl_name main, rule ldml.kbdl.layers}
+        {impl_name main, rule ldml.kbdl.metadata}
+        {impl_name main, rule ldml.kbdl.model-resource}
+        {impl_name main, rule ldml.kbdl.positions}
+        {impl_name main, rule ldml.kbdl.values}
     )}
 )
 

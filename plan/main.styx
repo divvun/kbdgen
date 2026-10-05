@@ -1113,6 +1113,21 @@ children (
                     )
                 }
                 deps (ldml.model targets.windows.dll-gen)
+                log (
+                    {
+                        at 2026-10-05T20:44:12.399449Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T21:09:52.432164Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Verified on jaheira-win11: v4 Võro DLL with embedded RCDATA model loads (LoadKeyboardLayout ok, settles tsf.data.resource's open question) and types correctly from 64- and 32-bit processes; embedded model SHA-256 equals the local compile. Interpretations (ldml.spec-errata): dead-tree branch = empty commit + exactly one new pending marker; re-pressed pending marker with empty standalone = unmatched, not a cycle; values in kbdl-layer then position order, \" \" values skipped (standalone covers them), space via Emit(\" \"); a us form without 56 makes B00 'no key'; kbdl.resources.format should cross-reference the RCDATA entry. The adapter reimplements engine layer selection (kbd-engine has no selection API; a test checks agreement). Open: v3 layouts build without the model resource until ldml.migrate provides in-memory migration (warns). ldml.kbdl.windows-inputs is implemented in adapter/mod.rs windows_inputs but unannotated, for input.windows-layers to claim."
+                    }
+                )
             }
 
             {

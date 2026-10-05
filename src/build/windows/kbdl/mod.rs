@@ -6,8 +6,17 @@ use std::path::Path;
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 
-use crate::{build::BuildStep, bundle::KbdgenBundle};
+use language_tags::LanguageTag;
 
+use crate::{
+    build::BuildStep,
+    bundle::{
+        KbdgenBundle,
+        layout::{Layout, WindowsTarget},
+    },
+};
+
+pub mod adapter;
 pub mod build;
 pub mod bundle;
 pub mod diag;
@@ -68,9 +77,14 @@ fn check_metadata(metadata: &Metadata) -> Result<()> {
     Ok(())
 }
 
-/// Generates one layout's crate files from its input. Nothing is written;
-/// an error means the layout has no output.
-pub fn generate(input: &LayoutInput, diag: &mut Diagnostics) -> Result<GeneratedLayout> {
+/// Generates one layout's crate files from its input and, when it has
+/// one, its encoded engine model. Nothing is written; an error means the
+/// layout has no output.
+pub fn generate(
+    input: &LayoutInput,
+    model: Option<&[u8]>,
+    diag: &mut Diagnostics,
+) -> Result<GeneratedLayout> {
     check_metadata(&input.metadata)?;
     let tables = tables::build(input, diag)?;
     let version = resources::file_version(&input.metadata, diag);
@@ -78,26 +92,89 @@ pub fn generate(input: &LayoutInput, diag: &mut Diagnostics) -> Result<Generated
         name: input.metadata.name.clone(),
         cargo_toml: source::cargo_toml(&input.metadata.name),
         lib_rs: source::lib_rs(&tables),
-        res: resources::res_file(&input.metadata, version),
+        res: resources::res_file(&input.metadata, version, model),
     })
 }
 
-/// Generates every layout of a bundle that has a `windows` section, in
-/// bundle layout order. Any fatal condition fails the whole bundle.
+/// A layout of the bundle with Windows output, of either format.
+enum Source<'a> {
+    V3(&'a LanguageTag, &'a Layout, &'a WindowsTarget),
+    V4(&'a LanguageTag, &'a Path),
+}
+
+impl Source<'_> {
+    fn tag(&self) -> &LanguageTag {
+        match self {
+            Source::V3(tag, ..) | Source::V4(tag, _) => tag,
+        }
+    }
+}
+
+/// Every layout that may have Windows output, in bundle layout order: v3
+/// layouts with a `windows` section and all v4 layouts.
+fn sources(bundle: &KbdgenBundle) -> Vec<Source<'_>> {
+    let mut sources: Vec<Source> = bundle
+        .layouts
+        .iter()
+        .filter_map(|(tag, layout)| Some(Source::V3(tag, layout, layout.windows.as_ref()?)))
+        .chain(
+            bundle
+                .v4_layouts
+                .iter()
+                .map(|(tag, path)| Source::V4(tag, path)),
+        )
+        .collect();
+    sources.sort_by(|a, b| a.tag().as_str().cmp(b.tag().as_str()));
+    sources
+}
+
+/// The input of one v3 layout. Its engine model would come from migrating
+/// it in memory, which this build cannot do, so the DLL has no model.
+// [spec:kbdgen:req:ldml.kbdl.model-resource]
+fn v3_layout(
+    bundle: &KbdgenBundle,
+    tag: &LanguageTag,
+    layout: &Layout,
+    target: &WindowsTarget,
+) -> Result<GeneratedLayout> {
+    let (input, mut diag) = bundle::layout_input(bundle, tag, layout, target)?;
+    diag.warn(
+        "v3 layout: no engine model is embedded, because in-memory migration (ldml.migrate) is unavailable; the text service stays inert for this layout",
+    );
+    generate(&input, None, &mut diag)
+}
+
+/// The generated crate of one layout, or `None` for a v4 layout without a
+/// `windows` document.
+// [spec:kbdgen:def:ldml.kbdl.adapter]
+fn generate_source(bundle: &KbdgenBundle, source: &Source) -> Result<Option<GeneratedLayout>> {
+    match source {
+        Source::V3(tag, layout, target) => v3_layout(bundle, tag, layout, target).map(Some),
+        Source::V4(tag, path) => {
+            let Some(layout) = adapter::load(tag, path)? else {
+                return Ok(None);
+            };
+            let mut adapted = adapter::adapt(bundle, &layout)?;
+            generate(&adapted.input, Some(&adapted.model), &mut adapted.diag).map(Some)
+        }
+    }
+}
+
+/// Generates every layout of the bundle with Windows output, v3 and v4 side
+/// by side in bundle layout order. Any fatal condition fails the whole
+/// bundle.
 // [spec:kbdgen:req:kbdl.metadata]
 pub fn generate_bundle(bundle: &KbdgenBundle) -> Result<Vec<GeneratedLayout>> {
     let mut generated: Vec<GeneratedLayout> = Vec::new();
-    for (language_tag, layout) in &bundle.layouts {
-        let Some(target) = &layout.windows else {
+    for source in sources(bundle) {
+        let layout = generate_source(bundle, &source)
+            .with_context(|| format!("Windows layout for {}", source.tag()))?;
+        let Some(layout) = layout else {
             continue;
         };
-        let (input, mut diag) = bundle::layout_input(bundle, language_tag, layout, target)
-            .with_context(|| format!("Windows layout for {language_tag}"))?;
-        let layout = generate(&input, &mut diag)
-            .with_context(|| format!("Windows layout for {language_tag}"))?;
         if generated.iter().any(|other| other.name == layout.name) {
             bail!(
-                "two Windows layouts are named {}; set windows.config.id to tell them apart",
+                "two Windows layouts are named {}; set the Windows id to tell them apart",
                 layout.name
             );
         }
@@ -145,15 +222,20 @@ pub fn write(output_path: &Path, layouts: &[GeneratedLayout]) -> Result<()> {
 
 /// The keyboard names of the bundle's Windows layouts, in the order
 /// [`generate_bundle`] produces them.
-pub fn layout_names(bundle: &KbdgenBundle) -> Vec<String> {
-    bundle
-        .layouts
-        .iter()
-        .filter_map(|(language_tag, layout)| {
-            let target = layout.windows.as_ref()?;
-            Some(bundle::keyboard_name(language_tag, target))
-        })
-        .collect()
+pub fn layout_names(bundle: &KbdgenBundle) -> Result<Vec<String>> {
+    let mut names = Vec::new();
+    for source in sources(bundle) {
+        match source {
+            Source::V3(tag, _, target) => {
+                names.push(bundle::keyboard_name(tag, bundle::config(target).0))
+            }
+            Source::V4(tag, path) => names.extend(
+                adapter::layout_name(tag, path)
+                    .with_context(|| format!("Windows layout for {tag}"))?,
+            ),
+        }
+    }
+    Ok(names)
 }
 
 /// The build step that generates every layout crate of the bundle.
@@ -176,7 +258,7 @@ impl BuildStep for BuildKbdl {
     // [spec:kbdgen:req:kbdl.build]
     // [spec:kbdgen:req:kbdl.build.toolchain+1]
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        let names = layout_names(bundle);
+        let names = layout_names(bundle)?;
         if names.is_empty() {
             return Ok(());
         }
@@ -191,7 +273,6 @@ impl BuildStep for BuildKbdl {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bundle::layout::Layout;
     use indexmap::IndexMap;
 
     const KEYS: &str = "´ 1 2 3 4 5 6 7 8 9 0 + ' q w e r t y u i o p å ¨ a s d f g h j k l ø æ @ < z x c v b n m , . -";
@@ -256,7 +337,7 @@ mod tests {
         let bundle = bundle(vec![layout("se-NO", None), layout("se-FI", None)]);
         let first = generate_bundle(&bundle).unwrap();
         assert_eq!(
-            layout_names(&bundle),
+            layout_names(&bundle).unwrap(),
             first
                 .iter()
                 .map(|layout| layout.name.clone())

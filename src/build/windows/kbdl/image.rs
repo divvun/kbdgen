@@ -12,6 +12,10 @@ const PE32_MAGIC: u16 = 0x10b;
 const PE32_PLUS_MAGIC: u16 = 0x20b;
 const DIRECTORY_EXPORT: usize = 0;
 const DIRECTORY_IMPORT: usize = 1;
+const DIRECTORY_RESOURCE: usize = 2;
+/// The high bit of a resource directory entry's fields: a string name, or
+/// a subdirectory rather than data.
+const RESOURCE_HIGH_BIT: u32 = 0x8000_0000;
 
 /// The name of the layout DLL's only export.
 pub const EXPORT_NAME: &str = "KbdLayerDescriptor";
@@ -149,6 +153,48 @@ impl Image {
             bail!("RVA 0x{rva:x} lies past the raw data of {}", section.name);
         }
         Ok(section.raw_offset as usize + delta as usize)
+    }
+
+    /// The offset field of the first entry of the resource directory at
+    /// file offset `at` with numeric id `id`, or with any numeric id.
+    fn resource_entry(reader: &Reader, at: usize, id: Option<u16>) -> Result<Option<u32>> {
+        let named = usize::from(reader.u16(at + 12)?);
+        let ids = usize::from(reader.u16(at + 14)?);
+        for i in named..named + ids {
+            let entry = at + 16 + 8 * i;
+            let name = reader.u32(entry)?;
+            if name & RESOURCE_HIGH_BIT == 0 && id.is_none_or(|id| name == u32::from(id)) {
+                return Ok(Some(reader.u32(entry + 4)?));
+            }
+        }
+        Ok(None)
+    }
+
+    /// The data of the resource with type `kind` and numeric name `id`, in
+    /// its first language, or `None` when the image has no such resource.
+    pub fn resource(&self, bytes: &[u8], kind: u16, id: u16) -> Result<Option<Vec<u8>>> {
+        let (rva, size) = self.directory(DIRECTORY_RESOURCE);
+        if rva == 0 || size == 0 {
+            return Ok(None);
+        }
+        let reader = Reader(bytes);
+        let rsrc = self.offset_of(rva)?;
+        let mut at = rsrc;
+        for level in [Some(kind), Some(id), None] {
+            let Some(offset) = Self::resource_entry(&reader, at, level)? else {
+                return Ok(None);
+            };
+            let subdirectory = offset & RESOURCE_HIGH_BIT != 0;
+            if subdirectory == level.is_none() {
+                bail!("resource directory for type {kind} name {id} is malformed");
+            }
+            at = rsrc + (offset & !RESOURCE_HIGH_BIT) as usize;
+        }
+        let data_rva = reader.u32(at)?;
+        let data_size = reader.u32(at + 4)? as usize;
+        Ok(Some(
+            reader.bytes(self.offset_of(data_rva)?, data_size)?.to_vec(),
+        ))
     }
 
     /// The exported names, the number of exported functions, the ordinal
@@ -302,6 +348,8 @@ mod tests {
     /// The x64 layout linked without the `/MERGE` and `/SECTION` arguments,
     /// which `LoadKeyboardLayout` rejects.
     const UNMERGED: &[u8] = include_bytes!("testdata/kbdvro-x64-unmerged.dll");
+    /// The v4 Võro golden layout built for x64, with its engine model.
+    const V4_X64: &[u8] = include_bytes!("testdata/kbdvro4-x64.dll");
 
     fn pe(bytes: &[u8]) -> usize {
         u32::from_le_bytes(bytes[0x3c..0x40].try_into().unwrap()) as usize
@@ -345,6 +393,30 @@ mod tests {
         assert_eq!(exports.names, vec![(EXPORT_NAME.to_owned(), 0)]);
         assert_eq!((exports.base, exports.function_count), (1, 1));
         assert_eq!(Image::parse(WOW64).unwrap().machine, 0x014c);
+    }
+
+    // [spec:kbdgen:req:kbdl.image.verify/test]
+    // [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+    #[test]
+    fn embedded_models_keep_the_image_valid() {
+        verify(V4_X64, 0x8664).unwrap();
+        let image = Image::parse(V4_X64).unwrap();
+        let model = image.resource(V4_X64, 10, 1).unwrap().unwrap();
+        let model = kbd_engine::Model::from_bytes(&model).unwrap();
+        assert_eq!(model.keyboard().locale, "vro");
+
+        let image = Image::parse(X64).unwrap();
+        assert_eq!(image.resource(X64, 10, 1).unwrap(), None);
+        let version = image.resource(X64, 16, 1).unwrap().unwrap();
+        let key: Vec<u8> = "VS_VERSION_INFO"
+            .encode_utf16()
+            .flat_map(u16::to_le_bytes)
+            .collect();
+        assert_eq!(&version[6..6 + key.len()], key.as_slice());
+
+        let rsrc = image.sections.iter().find(|s| s.name == ".rsrc").unwrap();
+        let truncated = &X64[..rsrc.raw_offset as usize + 20];
+        assert!(image.resource(truncated, 16, 1).is_err());
     }
 
     // [spec:kbdgen:req:kbdl.image.verify/test]

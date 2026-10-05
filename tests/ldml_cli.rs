@@ -122,8 +122,9 @@ fn v4_bundle_exports_compiles_and_imports_back() {
 }
 
 // [spec:kbdgen:req:ldml.yaml.coexistence/test]
+// [spec:kbdgen:def:ldml.kbdl.adapter/test]
 #[test]
-fn target_generators_fail_on_v4_layouts() {
+fn only_the_windows_target_builds_v4_layouts() {
     let dir = tempfile::tempdir().unwrap();
     let bundle = dir.path().join("vro.kbdgen");
     for sub in ["layouts", "targets", "resources"] {
@@ -157,11 +158,6 @@ fn target_generators_fail_on_v4_layouts() {
             None,
             "the chromeos target cannot build v4 layouts yet",
         ),
-        (
-            "windows",
-            None,
-            "the windows target builds v4 layouts through the kbdl adapter",
-        ),
     ] {
         let mut args: Vec<&std::ffi::OsStr> = vec![
             "target".as_ref(),
@@ -182,6 +178,20 @@ fn target_generators_fail_on_v4_layouts() {
         assert!(stderr.contains(expected), "{target}: {stderr}");
         assert!(!out.exists(), "{target} wrote output");
     }
+    let output = kbdgen(&[
+        "target".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+        "-o".as_ref(),
+        out.as_os_str(),
+        "windows".as_ref(),
+    ]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stderr.contains("is a v4 layout"), "{stderr}");
+    assert!(
+        out.join("build/kbdvro/lib.rs").is_file(),
+        "the windows target generates the v4 layout's crate: {stderr}"
+    );
 }
 
 /// Standard output without the log lines `tracing` writes there.
