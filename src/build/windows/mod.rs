@@ -6,13 +6,10 @@ use crate::bundle::KbdgenBundle;
 
 use super::{BuildStep, BuildSteps};
 
-use generate_klc::GenerateKlc;
-
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 mod build_klc;
-mod generate_klc;
-mod klc;
-mod layer_set;
+pub mod kbdl;
 
 pub struct WindowsBuild {
     pub bundle: KbdgenBundle,
@@ -20,19 +17,10 @@ pub struct WindowsBuild {
     pub steps: Vec<Box<dyn BuildStep>>,
 }
 
-// [spec:kbdgen:req:windows.dll]
 #[async_trait(?Send)]
 impl BuildSteps for WindowsBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
-        let mut steps: Vec<Box<dyn BuildStep>> = vec![];
-        steps.push(Box::new(GenerateKlc {}));
-        #[cfg(target_os = "windows")]
-        steps.push(Box::new(build_klc::BuildKlc {}));
-        #[cfg(not(target_os = "windows"))]
-        {
-            tracing::warn!("Skipping BuildKlc step");
-            tracing::warn!(".klc .dlls require MSKLC to build, which is only available on Windows");
-        }
+        let steps: Vec<Box<dyn BuildStep>> = vec![Box::new(kbdl::GenerateKbdl)];
 
         Self {
             bundle,

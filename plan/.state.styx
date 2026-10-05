@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T14:32:32.594152Z
+last_sync_at 2026-10-05T15:00:26.321565Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -41,17 +41,17 @@ rule_versions (
     {id kbdl.caps, version 0}
     {id kbdl.caps.sgcaps, version 0}
     {id kbdl.crate, version 0}
-    {id kbdl.dead-keys, version 0}
+    {id kbdl.dead-keys, version 1}
     {id kbdl.dead-keys.chains, version 0}
     {id kbdl.dead-keys.diagnostics, version 0}
-    {id kbdl.dead-keys.names, version 0}
+    {id kbdl.dead-keys.names, version 1}
     {id kbdl.dead-keys.table, version 0}
     {id kbdl.escaping, version 0}
     {id kbdl.export, version 0}
     {id kbdl.image, version 0}
     {id kbdl.image.verify, version 0}
     {id kbdl.input, version 0}
-    {id kbdl.input.bundle, version 0}
+    {id kbdl.input.bundle, version 1}
     {id kbdl.key-names, version 0}
     {id kbdl.layers, version 0}
     {id kbdl.ligatures, version 0}
@@ -89,20 +89,9 @@ rule_versions (
     {id keylayout.keymaps.iso-codes, version 0}
     {id keylayout.keymaps.tokens, version 0}
     {id keylayout.transforms, version 0}
-    {id keys.escape, version 0}
+    {id keys.escape, version 1}
     {id keys.iso-order, version 0}
     {id keys.iso-order.desktop-layers, version 0}
-    {id klc.caps, version 0}
-    {id klc.deadkeys, version 0}
-    {id klc.file, version 0}
-    {id klc.file.encoding, version 0}
-    {id klc.layout, version 0}
-    {id klc.layout.key-codes, version 0}
-    {id klc.layout.key-rendering, version 0}
-    {id klc.layout.tokens, version 0}
-    {id klc.ligatures, version 0}
-    {id klc.metadata, version 0}
-    {id klc.metadata.locale, version 0}
     {id layout.schema, version 0}
     {id layout.schema.targets, version 0}
     {id layout.transforms, version 0}
@@ -165,7 +154,6 @@ derived_priorities (
     {id targets.windows.dll-gen, priority 3, derived_at 2026-10-05T13:56:44.342691Z}
     {id targets.windows.dll-spec, priority 1, derived_at 2026-10-05T13:56:44.342691Z}
     {id targets.windows.kbd-spec, priority 1, derived_at 2026-10-05T13:07:42.265562Z}
-    {id targets.windows.klc, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.windows.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.windows.tsf.compose, priority 3, derived_at 2026-10-05T13:56:44.342691Z}
     {id targets.windows.tsf.design, priority 2, derived_at 2026-10-05T13:56:44.342691Z}
@@ -381,19 +369,86 @@ impl_evidence (
         {id windows.dll.link, version 0}
     )}
     {id targets.windows.dll-build}
-    {id targets.windows.dll-gen}
-    {id targets.windows.klc, rule_versions_seen (
-        {id klc.caps, version 0}
-        {id klc.deadkeys, version 0}
-        {id klc.file, version 0}
-        {id klc.file.encoding, version 0}
-        {id klc.layout, version 0}
-        {id klc.layout.key-codes, version 0}
-        {id klc.layout.key-rendering, version 0}
-        {id klc.layout.tokens, version 0}
-        {id klc.ligatures, version 0}
-        {id klc.metadata, version 0}
-        {id klc.metadata.locale, version 0}
+    {id targets.windows.dll-gen, covered_rules (
+        kbdl.caps
+        kbdl.caps.sgcaps
+        kbdl.crate
+        kbdl.dead-keys
+        kbdl.dead-keys.chains
+        kbdl.dead-keys.diagnostics
+        kbdl.dead-keys.names
+        kbdl.dead-keys.table
+        kbdl.escaping
+        kbdl.export
+        kbdl.input
+        kbdl.input.bundle
+        kbdl.key-names
+        kbdl.layers
+        kbdl.ligatures
+        kbdl.ligatures.limit
+        kbdl.locale
+        kbdl.metadata
+        kbdl.metadata.bundle
+        kbdl.metadata.locale
+        kbdl.modifiers
+        kbdl.resources
+        kbdl.resources.fields
+        kbdl.resources.format
+        kbdl.resources.version
+        kbdl.scancodes
+        kbdl.scancodes.extended
+        kbdl.scancodes.extra-modifiers
+        kbdl.scancodes.iso
+        kbdl.source
+        kbdl.structs
+        kbdl.structs.layout
+        kbdl.structs.pointers
+        kbdl.tables
+        kbdl.tables.invariants
+        kbdl.vk-chars
+        kbdl.vk-chars.decimal
+        kbdl.vk-chars.fixed
+        kbdl.vk-chars.values
+    ), covered_claims (
+        {impl_name main, rule kbdl.caps}
+        {impl_name main, rule kbdl.caps.sgcaps}
+        {impl_name main, rule kbdl.crate}
+        {impl_name main, rule kbdl.dead-keys}
+        {impl_name main, rule kbdl.dead-keys.chains}
+        {impl_name main, rule kbdl.dead-keys.diagnostics}
+        {impl_name main, rule kbdl.dead-keys.names}
+        {impl_name main, rule kbdl.dead-keys.table}
+        {impl_name main, rule kbdl.escaping}
+        {impl_name main, rule kbdl.export}
+        {impl_name main, rule kbdl.input}
+        {impl_name main, rule kbdl.input.bundle}
+        {impl_name main, rule kbdl.key-names}
+        {impl_name main, rule kbdl.layers}
+        {impl_name main, rule kbdl.ligatures}
+        {impl_name main, rule kbdl.ligatures.limit}
+        {impl_name main, rule kbdl.locale}
+        {impl_name main, rule kbdl.metadata}
+        {impl_name main, rule kbdl.metadata.bundle}
+        {impl_name main, rule kbdl.metadata.locale}
+        {impl_name main, rule kbdl.modifiers}
+        {impl_name main, rule kbdl.resources}
+        {impl_name main, rule kbdl.resources.fields}
+        {impl_name main, rule kbdl.resources.format}
+        {impl_name main, rule kbdl.resources.version}
+        {impl_name main, rule kbdl.scancodes}
+        {impl_name main, rule kbdl.scancodes.extended}
+        {impl_name main, rule kbdl.scancodes.extra-modifiers}
+        {impl_name main, rule kbdl.scancodes.iso}
+        {impl_name main, rule kbdl.source}
+        {impl_name main, rule kbdl.structs}
+        {impl_name main, rule kbdl.structs.layout}
+        {impl_name main, rule kbdl.structs.pointers}
+        {impl_name main, rule kbdl.tables}
+        {impl_name main, rule kbdl.tables.invariants}
+        {impl_name main, rule kbdl.vk-chars}
+        {impl_name main, rule kbdl.vk-chars.decimal}
+        {impl_name main, rule kbdl.vk-chars.fixed}
+        {impl_name main, rule kbdl.vk-chars.values}
     )}
 )
 

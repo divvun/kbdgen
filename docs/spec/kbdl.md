@@ -7,10 +7,12 @@ version and string resources as a binary `.res` itself, and links with `cargo`
 and `rust-lld` for x86, x64, arm64 and the WOW64 variant installed to
 `SysWOW64`. Building needs only a Rust toolchain with the three
 `*-pc-windows-msvc` targets installed, on any host: no MSVC, Windows SDK,
-MSKLC, `kbdutool` or `rc.exe`. These rules replace the MSKLC path (`klc.*`,
-`windows.dll*` in [windows.md](windows.md)) and the earlier generated-C
-design; the user-visible layout semantics of `klc.*` are restated here in
-table terms, its known defects are corrected, and the generator gains chained
+MSKLC, `kbdutool` or `rc.exe`. These rules replace the MSKLC path (KLC
+generation and `windows.dll*` in [windows.md](windows.md)) and the earlier
+generated-C design; the user-visible layout semantics of KLC generation are
+restated here in table terms (`kbdl.vk-chars.values`, `kbdl.caps`,
+`kbdl.dead-keys`, `kbdl.ligatures`, `kbdl.metadata`), its known defects are
+corrected, and the generator gains chained
 dead keys, the 49th ISO key, extra modifier layers, locale flags, dead-key
 names and localised key names. Text processing beyond what these tables can
 express (multi-unit dead-key output, ligatures over 16 units) belongs to a
@@ -72,7 +74,7 @@ Sources:
 > key-name overrides (`kbdl.key-names` entry → name); and the flags
 > `shiftLock` and `lrmRlm`. Absent parts are empty, flags false.
 
-> [spec:kbdgen:req:kbdl.input.bundle]
+> [spec:kbdgen:req:kbdl.input.bundle+1]
 > Until the bundle format carries the other parts, kbdgen MUST derive the
 > input from a layout's `windows` section and leave extra modifiers, names and
 > flags empty. Layers `default` to `ctrl` take tokens per
@@ -83,7 +85,9 @@ Sources:
 > raw `windows.deadKeys[<layer>]` list contains its decoded string. The tree
 > is `transforms` (`[spec:kbdgen:def:layout.transforms]`) with its strings
 > used verbatim; a dead value's entry is the top-level key equal to its
-> decoded string. The decimal separator is the layout's `decimal`.
+> decoded string. The decimal separator is the layout's `decimal`. Where
+> those rules panic (an escape outside the Unicode scalar values, a layer of
+> fewer than 48 tokens), the adapter MUST instead fail with a fatal error.
 
 ## Crate
 
@@ -306,15 +310,27 @@ Sources:
 
 ## Dead keys
 
-> [spec:kbdgen:req:kbdl.dead-keys]
+> [spec:kbdgen:req:kbdl.dead-keys+1]
 > A one-unit value flagged dead MUST make its cell `WCH_DEAD`, and its row
 > MUST be followed by a row with `VirtualKey` `0xff`, `Attributes` `0`, the
-> dead character in each `WCH_DEAD` column and `WCH_NONE` in every other
-> column. The *key dead characters* of a layout are the distinct dead units
-> emitted, ordered by first emission (rows in table order, columns 0 to
-> *N*−1). Each key dead character, and each chained state
+> dead id of that dead character in each `WCH_DEAD` column and `WCH_NONE` in
+> every other column. The *key dead characters* of a layout are the distinct
+> dead units emitted, ordered by first emission (rows in table order, columns
+> 0 to *N*−1). Each key dead character, and each chained state
 > (`kbdl.dead-keys.chains`), is a *dead state*, identified by one unit, its
-> *dead id*; a key dead character's id is itself.
+> *dead id*; on a key with no entry in the state's group, Windows emits the
+> dead id, then that key's character. Key dead characters are given ids in
+> order, before any chained state. A key dead character's id MUST be the
+> standalone output of its tree branch when that is exactly one unit, outside
+> `0xF000`–`0xF002` and not already a dead id, so that an unmatched key emits
+> the standalone output followed by the key, as on macOS; otherwise it MUST
+> be the dead character itself when that is not already a dead id, and
+> otherwise the fallback unit of `kbdl.dead-keys.chains`, each with a warning
+> naming the dead key. Windows also reports the dead id as the dead key's
+> character to `ToUnicodeEx`, `WM_DEADCHAR` and `GetKeyNameText`, and
+> `VkKeyScan` finds the dead key under its id rather than under the dead
+> character, ahead of any later key producing the same character (verified
+> with a standalone output differing from the dead character).
 
 > [spec:kbdgen:req:kbdl.dead-keys.table]
 > `aDeadKey` MUST contain one group of entries per dead state: first the key
@@ -349,15 +365,16 @@ Sources:
 > (`b` → `b́`). Tree entries for dead-key outputs that no key emits are
 > ignored. None of these conditions may panic.
 
-> [spec:kbdgen:req:kbdl.dead-keys.names]
+> [spec:kbdgen:req:kbdl.dead-keys.names+1]
 > `aKeyNamesDead` MUST hold, for each key dead character in order that has a
 > dead-key name, a slot pointing to a zero-terminated unit array of the dead
-> character followed by the name's units (`kbd.h` style
-> `L"^" L"CIRCUMFLEX"`), then a null slot; `pKeyNamesDead` is null when no
-> entry is emitted. A name for an output that is not a key dead character,
-> and an empty name or one containing U+0000, warn and are ignored.
-> `GetKeyNameText` then returns the name for a key whose `default` value is
-> that dead key (verified).
+> character's dead id (`kbdl.dead-keys`), which is what Windows matches,
+> followed by the name's units (`kbd.h` style `L"^" L"CIRCUMFLEX"`), then a
+> null slot; `pKeyNamesDead` is null when no entry is emitted. A name for an
+> output that is not a key dead character, and an empty name or one
+> containing U+0000, warn and are ignored. `GetKeyNameText` then returns the
+> name for a key whose `default` value is that dead key (verified with a
+> dead id equal to the dead character).
 
 ## Ligatures
 

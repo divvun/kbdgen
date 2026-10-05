@@ -91,35 +91,13 @@ children (
                 kind @feat
                 children (
                     {
-                        id targets.windows.klc
-                        title "KLC generation"
-                        kind @feat
-                        implements {
-                            main (
-                                [spec:kbdgen:def:klc.file]
-                                [spec:kbdgen:req:klc.layout]
-                                [spec:kbdgen:sem:klc.caps]
-                                [spec:kbdgen:req:klc.deadkeys]
-                                [spec:kbdgen:req:klc.ligatures]
-                                [spec:kbdgen:req:klc.metadata]
-                                [spec:kbdgen:req:klc.file.encoding]
-                                [spec:kbdgen:req:klc.metadata.locale]
-                                [spec:kbdgen:def:klc.layout.key-codes]
-                                [spec:kbdgen:sem:klc.layout.tokens]
-                                [spec:kbdgen:syn:klc.layout.key-rendering]
-                            )
-                        }
-                        deps (targets.windows.dll-gen)
-                    }
-
-                    {
                         id targets.windows.dll
                         title "KLC to DLL build (kbdutool/cl/rc/link, MSKLC via pahkat)"
                         kind @feat
                         implements {
                             main ([spec:kbdgen:req:windows.dll] [spec:kbdgen:req:windows.dll.link])
                         }
-                        deps (targets.windows.klc)
+                        deps (input.bundle)
                     }
 
                     {
@@ -253,6 +231,20 @@ children (
                                 author "brendan@necessary.nu"
                                 kind @decision
                                 text "Operator decisions 2026-10-05: (1) KLC/kbdutool are dropped; the Windows layout DLL is generated as a no_std Rust crate (repr(C) mirrors of kbd.h, Sync pointer wrapper, WOW64 {ptr32,0} slots), linked with rust-lld and the single read+execute .data image flags, with kbdgen writing the .res itself, so builds need only rustup targets on any host. Chosen over generated C (needs MSVC or clang-cl) and over hand-written PE bytes. (2) In scope for the table generator: chained dead keys via DKF_DEAD, the 49th ISO key (B11 -> VK_ABNT_C1), extra modifiers/layers, KLLF_SHIFTLOCK/KLLF_LRM_RLM flags, dead-key and key names. The partial generated-C emitter from the abandoned kbd-c node is saved outside the repo for reference only."
+                            }
+
+                            {
+                                at 2026-10-05T14:33:11.782107Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-05T14:37:29.73124Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Operator decision 2026-10-05: keyboard semantics follow macOS. For the layout DLL this means an unmatched dead key emits the dead key's standalone output then the key, implemented by making a key dead character's dead id its standalone output when that is one unique unit (kbdl.dead-keys bumped to +1). Caps behaviour in the DLL keeps Windows' convention (kbdl.caps); the macOS caps rule (Caps+Shift+letter uppercase), no normalization, and backspace-cancels-pending-dead-key apply to the cross-platform engine."
                             }
                         )
                     }

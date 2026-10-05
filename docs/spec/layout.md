@@ -62,14 +62,15 @@ order that desktop generators map layer tokens onto.
 
 ## Key notation
 
-> [spec:kbdgen:syn:keys.escape]
+> [spec:kbdgen:syn:keys.escape+1]
 > A key escape is `\u{H}` with H 1–6 hex digits of either case (regex
 > `\\u\{([0-9A-Fa-f]{1,6})\}`). Decoding replaces every match anywhere in a
 > string with the character of scalar value H; non-matching text (`\u{}`,
 > seven digits, `\u` without braces) stays verbatim. H outside the Unicode scalar values
-> (surrogates, above U+10FFFF) panics; the U+FEFF fallback for unparseable hex
-> is unreachable. Whitespace outputs MUST be escaped (e.g. `\u{20}`) because
-> layers are split on whitespace. Only two generators decode: Windows KLC
+> (surrogates, above U+10FFFF) panics, except in the Windows layout input
+> where it is fatal (`kbdl.input.bundle`); the U+FEFF fallback for unparseable
+> hex is unreachable. Whitespace outputs MUST be escaped (e.g. `\u{20}`) because
+> layers are split on whitespace. Only two generators decode: Windows
 > decodes each layer token (not `deadKeys` or transforms), and macOS decodes
 > every `output` attribute it writes, transform outputs included, while
 > matching against raw tokens. iOS, Android and ChromeOS emit all strings

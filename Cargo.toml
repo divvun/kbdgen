@@ -23,7 +23,6 @@ indexmap = { version = "2", features = ["serde"] }
 language-tags = { version = "0.3.2", features = ["serde"] }
 iso639 = "0.1.0"
 dunce = "1.0.2"
-codecs = "0.0.1"
 thiserror = "1.0.30"
 pahkat-client = { git = "https://github.com/divvun/pahkat", features = ["prefix"] }
 anyhow = "1.0.57"

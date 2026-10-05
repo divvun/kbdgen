@@ -3,7 +3,6 @@ specs ({
     include (docs/spec/**/*.md),
     impls ({name main, languages (@rust), include (src/**/*.rs examples/**/*.rs), exclude (target/**)}),
     verify_required (
-        {pattern "klc.*", facet "/test/golden"}
         {pattern "keylayout.document", facet "/test/golden"}
         {pattern "keylayout.document.name", facet "/test/golden"}
         {pattern "keylayout.keymaps*", facet "/test/golden"}
