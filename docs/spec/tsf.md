@@ -1,17 +1,17 @@
 # Windows text service (TSF)
 
-On Windows a Divvun keyboard has two layers. The base is the `KBDTABLES`
-layout DLL of `docs/spec/kbdl.md`. It works wherever Windows reads keyboard
-layouts: the sign-in screen, the secure desktop, elevated processes, consoles
-and games. On top of it sits a Text Services Framework *text input
-processor* (TIP), the *text service*. It does what tables cannot: dead-key
-and transform output of any length, deep chains, rules on visible text, a
-visible pending state, and an emoji picker. The text service hosts a keyboard
-*engine*. Its long-term engine is Divvun's own Rust implementation of CLDR
-LDML Keyboard 3.0 (UTS #35 Part 7), shared across operating systems. Until
-that exists, an interim engine built from the `kbdl.input` model fills the
-same interface (`tsf.engine.interim`). Where targets disagree, keyboard
-semantics follow macOS.
+On Windows a Divvun keyboard is a Text Services Framework *text input
+processor* (TIP), the *text service*, backed by the `KBDTABLES` layout DLL
+of `docs/spec/kbdl.md`. Users see one entry per keyboard: the text service's
+profile (`tsf.register.enable`). The text service runs kbdgen's keyboard
+engine, `kbd-engine` (`ldml.engine.*`), on the layout's model, so it does
+what tables cannot: dead-key and transform output of any length, deep
+chains, rules on visible text, a visible pending state, and an emoji picker.
+The layout DLL is the fallback wherever Windows reads keyboard layouts
+without TSF: the sign-in screen, the secure desktop, consoles and games, and
+any machine without the text service. It also carries the text service's
+data (`tsf.data.resource`). Keyboard semantics are those of
+`ldml.engine.*`; these rules cover only what is specific to TSF.
 
 These rules cover:
 
@@ -26,9 +26,10 @@ These rules cover:
 - the engine boundary
 - testing
 
-Rules naming `kbdi` or the keyboard installer bind those projects
-(github.com/divvun/kbdi, divvun-actions `actions/keyboard/build`), not
-kbdgen.
+The text service's source is the kbdgen workspace crate `crates/kbd-tsf`
+(`ldml.crate.layout`, `ldml.crate.tsf`). Rules naming `kbdi` or the
+keyboard installer bind those projects (github.com/divvun/kbdi,
+divvun-actions `actions/keyboard/build`), not kbdgen.
 
 **Pairing with the layout DLL is not what was first planned.** The original
 plan paired the text service with the layout DLL as its TSF *substitute
@@ -96,7 +97,12 @@ Sources:
 - Unicode CLDR `common/annotations` and `common/annotationsDerived`, and
   Unicode `emoji-test.txt`
 - divvun/kbdi `main` (`src/keyboard.rs`, `src/keyboard_win8.rs`) and
-  divvun-actions `actions/keyboard/build/{mod,iss,outto,wind}.ts`
+  divvun-actions `actions/keyboard/build/{mod,iss,outto,wind,layouts}.ts`,
+  including branch `keyboard-rust-layout-dlls`
+- `docs/spec/ldml/engine.md` (`ldml.engine.*`), `docs/spec/ldml/crate.md`
+  (`ldml.crate.*`), `docs/spec/ldml/model.md` (`ldml.model.encoding`,
+  `ldml.model.emoji`, `ldml.model.windows`) and `docs/spec/ldml/kbdl.md`
+  (`ldml.kbdl.*`); `src/build/windows/kbdl/resources.rs`
 
 `divvun-wind` is unrelated to this layer. It is a per-session daemon that
 injects a DLL into Explorer to relabel keyboards, and it runs only on
@@ -107,25 +113,28 @@ bundles divvun-wind (`tsf.installer.bundle`).
 ## Component
 
 > [spec:kbdgen:def:tsf.component]
-> The *text service* is one in-process COM server. Every Divvun keyboard
+> The *text service* is one in-process COM server built from the kbdgen
+> workspace crate `crates/kbd-tsf` (`ldml.crate.tsf`). Every Divvun keyboard
 > shares it: there is one CLSID, `{5E668C8A-2FB8-41D2-90B1-9C132653FA9D}`,
 > and one DLL per architecture (`tsf.arch.builds`). Each installed layout
 > adds a TSF language profile to it (`tsf.register.profile`) and supplies
-> its keyboard data (`tsf.data.resource`). The text service is a separate
-> product, not part of kbdgen or divvun-wind. kbdgen produces only the
+> its keyboard data (`tsf.data.resource`). It is released, versioned (by the
+> `kbd-tsf` package version) and installed separately from keyboards, so one
+> installation serves them all; kbdgen's keyboard builds produce only the
 > per-keyboard data. A shared binary keeps one copy loaded per process and
-> one place to fix bugs. The cost is that keyboard data and engine versions
-> must stay compatible (`tsf.data.version`).
+> one place to fix bugs. The cost is that keyboard data and text service
+> versions must stay compatible (`tsf.data.version`).
 
 > [spec:kbdgen:req:tsf.component.crate]
-> The text service MUST be a Rust `cdylib` that uses `windows` and
-> `windows-core` 0.62.x and implements COM interfaces with
-> `windows_core::implement`. It MUST export exactly `DllGetClassObject`,
-> `DllCanUnloadNow`, `DllRegisterServer` and `DllUnregisterServer`.
-> `DllGetClassObject` MUST return `CLASS_E_CLASSNOTAVAILABLE` for any other
-> CLSID. `DllCanUnloadNow` MUST return `S_OK` only when no object and no
-> server lock is alive. (Verified: a crate of this shape loads in x64 and
-> x86 processes, activates and edits text.)
+> `kbd-tsf` MUST be a Rust `cdylib` that uses `windows` and `windows-core`
+> 0.62.x, implements COM interfaces with `windows_core::implement`, and runs
+> `kbd-engine` with its default `normalization` feature (`ldml.crate.tsf`).
+> It MUST export exactly `DllGetClassObject`, `DllCanUnloadNow`,
+> `DllRegisterServer` and `DllUnregisterServer`. `DllGetClassObject` MUST
+> return `CLASS_E_CLASSNOTAVAILABLE` for any other CLSID. `DllCanUnloadNow`
+> MUST return `S_OK` only when no object and no server lock is alive.
+> (Verified: a crate of this shape loads in x64 and x86 processes, activates
+> and edits text.)
 
 > [spec:kbdgen:req:tsf.component.interfaces]
 > The TIP object MUST implement:
@@ -186,15 +195,18 @@ bundles divvun-wind (`tsf.installer.bundle`).
 ## Keyboard data
 
 > [spec:kbdgen:req:tsf.data.resource]
-> For each layout, kbdgen MUST put the serialized engine model
-> (`tsf.engine.model`) in the layout DLL. It goes in an `RT_RCDATA` (10)
-> resource with id 1 and language 0 in `<name>.res`, written as in
-> `[spec:kbdgen:syn:kbdl.resources.format]` before the string tables. Every
-> variant built by `kbdl.build` therefore carries identical data. This keeps
-> the text service's data in step with the table fallback and readable
-> wherever the layout DLL is, because System32 and SysWOW64 are readable from
-> AppContainers. (Unverified: that `LoadKeyboardLayout` still accepts a
-> layout DLL carrying this resource.)
+> For each layout, kbdgen MUST put the model (`tsf.engine.model`) in the
+> layout DLL's `<name>.res`, written as in
+> `[spec:kbdgen:syn:kbdl.resources.format]`: an `RT_RCDATA` (10) entry with
+> name 1, language 0 and memory flags `0x0030`, placed after the
+> `RT_VERSION` entry and before the string tables
+> (`ldml.kbdl.model-resource`). Every variant built by `kbdl.build`
+> therefore carries identical data. This keeps the text service's data in
+> step with the table fallback and readable wherever the layout DLL is,
+> because System32 and SysWOW64 are readable from AppContainers. A layout
+> whose model cannot be built gets no resource, and its profile is inert.
+> (Verified: `LoadKeyboardLayout` accepts layout DLLs carrying the resource,
+> Windows 11 x64, 2026-10-05.)
 
 > [spec:kbdgen:req:tsf.data.locate]
 > On activation for a profile, the text service MUST find the layout under
@@ -209,14 +221,16 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > key is readable from AppContainers.)
 
 > [spec:kbdgen:req:tsf.data.version]
-> The model MUST begin with the ASCII magic `DVKB`, then a u16 major and a
-> u16 minor format version, little-endian. The text service MUST refuse a
-> model whose major version it does not implement, and the profile is then
-> inert. It MUST accept a higher minor version. A minor version only appends
-> fields that older readers can ignore. The keyboard installer installs the
-> text service it bundles before registering layouts
-> (`tsf.installer.bundle`), so a keyboard never runs against an older
-> service than the one it was built for.
+> The model's header is that of `ldml.model.encoding`: the ASCII magic
+> `DVKB`, then a little-endian u16 major and u16 minor version, currently
+> 1.0. The text service decodes it with `Model::from_bytes`, which refuses
+> an unknown major version and accepts a higher minor one
+> (`ldml.model.decode`); on refusal the profile is inert. The keyboard
+> installer installs the text service it bundles before registering layouts
+> (`tsf.installer.bundle`), and that bundled release MUST be built from a
+> kbdgen revision whose `kbd-model` reads the major version kbdgen wrote.
+> A keyboard therefore never runs against a text service older than its
+> model.
 
 ## Relation to the layout DLL
 
@@ -238,15 +252,15 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > it claims. The layout DLL remains the input method wherever the text
 > service is not consulted:
 >
-> - when its profile is not selected
+> - when the text service is not installed (`tsf.register.enable`)
 > - at the welcome screen (`tsf.register.welcome`)
 > - when the text service is poisoned or inert
 >
-> Its `kbdl` output for table-expressible keys equals the engine's output
-> (`tsf.test.differential`).
+> Both derive from one model, and the DLL's output equals the engine's on
+> every table-expressible key, except as `tsf.test.differential` lists.
 
 > [spec:kbdgen:sem:tsf.pairing.alternatives]
-> Two other pairings were tried. Neither is used.
+> Two other pairings were tried. Neither is adopted, even as a fallback.
 >
 > - **Per-user substitute of the dummy layout.** Setting
 >   `HKCU\Keyboard Layout\Substitutes` for the language's dummy KLID (from
@@ -264,47 +278,55 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 > [spec:kbdgen:req:tsf.keys.identity]
 > The text service MUST identify a key by its scan code and extended flag
-> (`lParam` bits 16–23 and 24), never by its virtual key. The virtual key
-> depends on the HKL beneath, which is not the layout
-> (`tsf.pairing.substitute`). Scan codes map to positions as in
-> `[spec:kbdgen:req:kbdl.scancodes.iso]`. It also recognises space
-> (`39`), numpad decimal (`53`, not extended), Backspace (`0e`) and the
-> physical keys of extra modifiers (`kbdl.scancodes.extra-modifiers`). It
-> reads modifier and Caps Lock state with `GetKeyState` while handling the
-> event. `VK_PACKET`, `VK_PROCESSKEY` and the service's own injected input
-> (`tsf.edit.inject`) are always passed through.
+> (`lParam` bits 16–23 and 24), never by its virtual key, which depends on
+> the dummy HKL beneath (`tsf.pairing.substitute`). A key that is not
+> extended becomes `Backspace` for `0e`, `Decimal` for `53`, and otherwise
+> `Scan(code)` (`ldml.engine.event`). Extended keys, `VK_PACKET`,
+> `VK_PROCESSKEY` and the service's own injected input (`tsf.edit.inject`)
+> are never sent to the engine and pass. Modifiers are read with
+> `GetKeyState` while handling the event: left and right Shift, Ctrl and
+> Alt, Caps Lock's toggle as `caps`, either Win key as `cmd`, and held
+> extra-modifier keys as `extra` (`ldml.engine.extra`). `repeat` is
+> `lParam` bit 30.
 
 > [spec:kbdgen:req:tsf.keys.claim]
-> A key down is eaten exactly when the engine's action for it is not *pass*
-> (`tsf.engine.api`). `OnTestKeyDown` MUST compute that action without
+> A key down is eaten exactly when the engine's action for it is not `Pass`
+> (`ldml.engine.api`). `OnTestKeyDown` MUST compute that action without
 > changing engine state, and `OnKeyDown` MUST commit the same action. A key
-> up MUST be eaten exactly when its key down was eaten. Auto-repeat is
-> processed like a fresh key down. While a context is read-only or the
-> service is poisoned or inert, every key passes. Keys not in the model pass
-> and reset the context (`tsf.edit.reset`). Shift, Ctrl, Alt, Win and Caps
-> Lock alone never reset it.
+> up MUST be eaten exactly when its key down was eaten. While a context is
+> read-only or the service is poisoned or inert, every key passes. A passed
+> key resets the context (`tsf.edit.reset`). Shift, Ctrl, Alt, Win and Caps
+> Lock alone are not sent to the engine and never reset it; a `B00` bound as
+> an extra modifier is sent, and the engine consumes it
+> (`ldml.engine.extra`). A form key with no output in the selected layer is
+> eaten with no output (`ldml.engine.hardware`), not passed to the dummy
+> layout.
 
 > [spec:kbdgen:req:tsf.keys.altgr]
-> If the model has any `alt` or `alt+shift` value, the text service MUST
-> treat Right Alt as AltGr. It MUST eat Right Alt's own key down and key up,
-> so the application never sees a lone Alt and does not open its menu bar.
-> If the HKL beneath synthesises Left Ctrl with Right Alt, that Ctrl MUST NOT
-> count as Ctrl. Left Alt chords always pass. (Unverified: the menu-bar
-> behaviour beneath the US dummy layout, and the use of Caps Lock as an extra
-> modifier while the system still toggles its lock state.)
+> The text service MUST treat Right Alt as AltGr, sending `alt_r` with
+> `altgr` set (`ldml.engine.tsf`), when the layout DLL built from the same
+> model sets `KLLF_ALTGR` (`kbdl.locale`, `ldml.kbdl.layers`). It MUST then
+> eat Right Alt's own key down and key up, so the application never sees a
+> lone Alt and does not open its menu bar. A Left Ctrl that the system
+> synthesises with Right Alt MUST NOT be sent as `ctrl_l`. A Ctrl the user
+> really holds with AltGr is sent, and reaches layers that name both ctrl
+> and alt (`ldml.engine.altgr`). (Unverified: the menu-bar behaviour beneath
+> the US dummy layout, and how to tell synthesised from held Left Ctrl.)
 
 > [spec:kbdgen:req:tsf.keys.locale-flags]
-> When the model's `lrmRlm` flag is set (`kbdl.locale`), the text service
-> MUST make left Shift+Backspace insert U+200E and right Shift+Backspace
-> insert U+200F. When `shiftLock` is set, it SHOULD treat the Caps Lock
-> toggle as Shift Lock, where Shift releases it. It cannot clear the system
-> toggle, so where that diverges the indicator light may disagree.
+> LRM/RLM on Shift+Backspace is the engine's (`ldml.engine.backspace`), so
+> the text service sends Backspace with the Shift side held. When the
+> model's `windows.shift_lock` is set (`ldml.model.windows`), the text
+> service SHOULD send `caps` from its own Shift Lock state, which Caps Lock
+> sets and Shift releases, instead of the system toggle. It cannot clear the
+> system toggle, so where the two diverge the indicator light may disagree.
 > (Unverified.)
 
 ## Edit operations
 
 > [spec:kbdgen:def:tsf.edit.ops]
-> An *edit* is a triple (*d*, *s*, *p*):
+> An *edit* is a triple (*d*, *s*, *p*), the engine's `Edit { delete,
+> insert, preedit }` (`ldml.engine.action`):
 >
 > - *d*: the number of Unicode scalar values to delete before the caret
 > - *s*: a string to insert at the caret as committed text
@@ -312,26 +334,30 @@ bundles divvun-wind (`tsf.installer.bundle`).
 >   composition (empty for none)
 >
 > They are applied in that order. *d* never exceeds the scalar values of the
-> context passed to the engine (`tsf.engine.contract`).
+> context passed to the engine. The text service ignores `Edit.layer`.
 
 > [spec:kbdgen:thm:tsf.edit.units]
 > The number of UTF-16 units to delete is well defined. It is the UTF-16
 > length of the last *d* scalar values of the context string the text
-> service passed to the engine. By `tsf.engine.contract`, *d* is at most that
-> context's scalar count. The context ends at the caret, so those units are
-> exactly the units before the caret. The text service therefore never
-> splits a surrogate pair while the context is authoritative.
+> service passed to the engine. By `ldml.engine.action`, *d* is at most that
+> context's scalar count, counted on the text as given even when the engine
+> normalizes internally (`ldml.engine.output.segment`). The context ends at
+> the caret, so those units are exactly the units before the caret. The text
+> service therefore never splits a surrogate pair while the context is
+> authoritative.
 
 > [spec:kbdgen:req:tsf.edit.session]
 > For each eaten key down, the text service MUST request one
 > `TF_ES_SYNC | TF_ES_READWRITE` edit session. In it, it reads the context:
 > it clones the default selection, collapses the clone to its start, shifts
-> the start back by up to the engine's context length, and calls `GetText`.
+> the start back by up to `context_len` scalar values, and calls `GetText`.
 > The context is *authoritative* when the read succeeds and the context's
 > static flags lack `TS_SS_TRANSITORY`. Otherwise the cache of
-> `tsf.edit.cache` is used. A non-empty selection resets the engine first.
-> (Verified: transitory contexts return no text before the caret; a WPF
-> `TextBox` returns it.)
+> `tsf.edit.cache` is used. `at_start` is set only when an authoritative
+> read's shift stopped short of the request; otherwise it is `false`. A
+> non-empty selection resets the engine first. (Verified: transitory
+> contexts return no text before the caret; a WPF `TextBox` returns it.
+> Unverified: `at_start`.)
 
 > [spec:kbdgen:req:tsf.edit.apply]
 > In an authoritative context, the edit MUST be applied in the edit session:
@@ -362,15 +388,16 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 > [spec:kbdgen:req:tsf.edit.cache]
 > For contexts that are not authoritative, the text service MUST keep a
-> per-context cache of at most the engine's context length. The cache holds
+> per-context cache of at most `context_len` scalar values. The cache holds
 > the scalar values its own edits left before the caret. Keys the text
 > service eats are the only source of character input it does not see as
 > text, so the cache is complete until a reset (`tsf.edit.reset`). It is
-> discarded with the context. The cache MUST be passed to the engine marked
-> not authoritative.
+> discarded with the context. The cache MUST be passed to the engine with
+> `authoritative` and `at_start` false.
 
 > [spec:kbdgen:req:tsf.edit.reset]
-> The text service MUST reset the engine state and the cache when:
+> The text service MUST reset the engine state to `State::default()`, and
+> clear the cache, at each event of `ldml.engine.state`:
 >
 > - the focused document or context changes (`OnSetFocus`, context push
 >   or pop)
@@ -380,7 +407,11 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > - a key passes other than a lone modifier
 > - the application terminates its composition
 >
-> A reset ends any composition by leaving its text committed.
+> A reset ends any composition by leaving its text committed, which equals
+> `Commit`'s output (`ldml.engine.preedit`). Where no preedit was shown
+> (`tsf.edit.preedit`), the text service MUST first apply the edit of a
+> `Commit` event (`ldml.engine.commit`) before passing a key other than a
+> lone modifier.
 
 > [spec:kbdgen:req:tsf.edit.preedit]
 > A non-empty preedit MUST be shown as a composition, started with
@@ -450,8 +481,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 ## Architectures
 
 > [spec:kbdgen:req:tsf.arch.builds]
-> The text service MUST be built as three DLLs, named after the cargo
-> target they come from:
+> The text service MUST be built as three DLLs, each the `kbd_tsf.dll` that
+> cargo builds from `crates/kbd-tsf` for one target, renamed:
 >
 > | DLL | Target | Process |
 > |---|---|---|
@@ -545,9 +576,10 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > [spec:kbdgen:req:tsf.register.enable]
 > `kbdi keyboard_enable` MUST add the layout's TIP string with
 > `InstallLayoutOrTip(…, 0)`, not `LLLL:<KLID>`, so the user sees one entry
-> per keyboard. The layout stays registered machine-wide and is enabled for
-> the user only when the text service is absent or the user asks for the
-> basic layout. Afterwards the existing `ctfmon` refresh applies. `kbdi` MUST
+> per keyboard: the text service's profile. The layout stays registered
+> machine-wide as the fallback, and is enabled for the user instead of the
+> TIP string only when the text service is absent; it MUST NOT be enabled
+> beside it. Afterwards the existing `ctfmon` refresh applies. `kbdi` MUST
 > accept TIP strings wherever it lists or verifies inputs. (Verified:
 > `InstallLayoutOrTip` with a TIP string adds it to the language's
 > `InputMethodTips`, and the profile activates.)
@@ -575,7 +607,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > Explorer and consoles included. Its installer MUST therefore:
 >
 > 1. install each version into its own directory
->    `%ProgramFiles%\Divvun\Text Service\<version>\`
+>    `%ProgramFiles%\Divvun\Text Service\<version>\`, where `<version>` is
+>    the `kbd-tsf` package version (`tsf.component`)
 > 2. point `InprocServer32` at the new version
 > 3. delete older directories only when no file in them is in use, otherwise
 >    at the next install or reboot
@@ -591,12 +624,13 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > the text service's installer, as divvun-actions embeds divvun-wind. It MUST
 > run that installer silently before any `kbdi keyboard_install`. The text
 > service installer upgrades but never downgrades an installed text service.
-> It MUST run on x86, x64 and Arm64 Windows 10 and 11. It is not gated like
-> divvun-wind. Failure to install it MUST NOT fail the keyboard install, and
-> the keyboard then falls back to its layout (`tsf.register.enable`).
+> It MUST run on every Windows the keyboard installer accepts
+> (`tsf.installer.layout-dlls`). It is not gated like divvun-wind. Failure to
+> install it MUST NOT fail the keyboard install, and the keyboard then falls
+> back to its layout (`tsf.register.enable`).
 
 > [spec:kbdgen:req:tsf.installer.layout-dlls]
-> The keyboard installer MUST place kbdgen's layout DLL variants:
+> The keyboard installer MUST place kbdgen's layout DLL variants unchanged:
 >
 > | Windows | System32 | SysWOW64 |
 > |---|---|---|
@@ -604,14 +638,12 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > | Arm64 | `arm64` | `wow64` |
 > | x86 | `x86` | — |
 >
-> It MUST place them unchanged. A plain `x86` DLL in SysWOW64 does not load
-> (`[spec:kbdgen:req:kbdl.wow64]`). The installer MUST run on Arm64 Windows.
-> Today divvun-actions does neither:
->
-> - `createArchitectureDirectories` copies `x86` over `wow64`
-> - the `arm64` build is ignored
-> - Inno refuses Arm64
-> - outto skips files on Arm64 but still runs `kbdi`
+> A plain `x86` DLL in SysWOW64 does not load
+> (`[spec:kbdgen:req:kbdl.wow64]`). The installer MUST run on Arm64 Windows
+> 11. divvun-actions branch `keyboard-rust-layout-dlls` does this for the
+> Inno installer, which refuses Arm64 Windows 10 because `kbdi` there needs
+> x64 emulation. outto has no Arm64 architecture selector, so its package
+> refuses Arm64 until outto gains one.
 
 ## Emoji picker
 
@@ -627,11 +659,12 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 > [spec:kbdgen:req:tsf.emoji.trigger]
 > The picker MUST open from a preserved key, registered with
-> `ITfKeystrokeMgr::PreserveKey` while the profile is active. The model
-> names it, and none is registered if the model names none. It MUST NOT
-> open in secure mode or in disabled contexts
-> (`tsf.security.disabled`). While the picker is open, the text service
-> eats keys:
+> `ITfKeystrokeMgr::PreserveKey` while the profile is active. The key is
+> `Model::preserved_keys()` (`ldml.model.emoji`): its scan code is mapped to
+> a virtual key of the HKL beneath with `MapVirtualKeyExW`, and none is
+> registered if the model names none. It MUST NOT open in secure mode or in
+> disabled contexts (`tsf.security.disabled`). While the picker is open, the
+> text service eats keys:
 >
 > - letters edit the search; it MAY type them through the engine
 > - arrows move the selection
@@ -639,7 +672,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > - Escape closes the picker
 >
 > Opening the picker first resets the engine (`tsf.edit.reset`), which
-> commits any preedit and drops a pending dead key.
+> commits any preedit.
 
 > [spec:kbdgen:req:tsf.emoji.ui]
 > The picker MUST be published as an `ITfCandidateListUIElement` through
@@ -670,7 +703,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > CLDR has no annotations for most Divvun languages, Sámi included (it has
 > `fo`, `kl`, `fi`), so the first source matters. CLDR data MUST be compiled
 > into per-locale files in the text service's install directory. Bundle
-> annotations travel in the model (`tsf.engine.model`). No data is fetched
+> annotations travel in the model (`ldml.model.emoji`). No data is fetched
 > at runtime.
 
 > [spec:kbdgen:req:tsf.emoji.commit]
@@ -682,88 +715,65 @@ bundles divvun-wind (`tsf.installer.bundle`).
 ## Engine boundary
 
 > [spec:kbdgen:def:tsf.engine.api]
-> The engine crate exposes:
->
-> - `Model::from_bytes(&[u8]) -> Result<Model, Error>`
-> - `Model::context_len() -> usize`, at most 64
-> - `Model::preserved_keys()`
-> - a value type `State`, where `State::default()` is the reset state
-> - the pure function `Model::key(&State, &Context, KeyEvent) -> (Action,
->   State)`
->
-> The types are:
->
-> - `KeyEvent` is (position or space, decimal or Backspace; Shift; Caps
->   toggle; Ctrl; Left Alt; AltGr; extra modifiers; repeat).
-> - `Context` is (scalar values before the caret, authoritative flag).
-> - `Action` is either *pass* or an edit (`tsf.edit.ops`).
->
-> Hosts own the state. Purity makes `OnTestKeyDown` exact
-> (`tsf.keys.claim`).
+> The text service's engine is `kbd-engine`, through the API of
+> `ldml.engine.api` as bounded for TSF by `ldml.engine.tsf`. Per profile it
+> decodes the model with `Model::from_bytes`, which uses the default
+> options (`CancelOrPass`, `Nfc`; `ldml.engine.backspace.default`,
+> `ldml.engine.output.form`). Per context it owns one `State` and calls
+> `Model::key(&State, &Context, &KeyEvent)`. It sends only `Scan`,
+> `Decimal`, `Backspace` (`tsf.keys.identity`) and `Commit`
+> (`tsf.edit.reset`) keys, builds `Context` per `tsf.edit.session` and
+> `tsf.edit.cache`, and applies `Edit` per `tsf.edit.ops`. Purity makes
+> `OnTestKeyDown` exact (`tsf.keys.claim`).
 
 > [spec:kbdgen:req:tsf.engine.contract]
-> The engine:
+> The text service MUST rely on `ldml.engine.contract` and MUST NOT
+> second-guess the engine's choice to pass or consume a key. In particular:
 >
-> - MUST be deterministic and MUST NOT panic, perform I/O or read the clock
-> - MUST bound its work per key by the model size and `context_len`
-> - MUST return a delete count no larger than the context's scalar count,
->   and no preedit unless the model asks for one
-> - MUST NOT normalize text
-> - MUST pass any event with Ctrl (but not AltGr), Left Alt, or a key the
->   model does not define, so shortcuts reach the application
-> - MUST handle a non-authoritative context exactly like an authoritative
->   one; the flag only informs diagnostics
+> - Keyboards with normalization `Enabled` normalize
+>   (`ldml.engine.output.form`); `Disabled` ones, every v4 default, change
+>   no text.
+> - Ctrl without Alt, Left Alt and Win chords pass
+>   (`ldml.engine.shortcuts`); Ctrl held with AltGr reaches layers that
+>   name both ctrl and alt.
+> - A form key with no output is consumed; scan codes in no form row pass
+>   (`ldml.engine.hardware`).
 >
-> The same crate MUST build for every target of `tsf.arch.builds` and for the
-> other operating-system hosts.
+> `kbd-engine` MUST build for every target of `tsf.arch.builds`
+> (`ldml.crate.targets`).
 
 > [spec:kbdgen:def:tsf.engine.model]
-> The *model* is the engine's compiled input for one layout, preceded by the
-> header of `tsf.data.version`. Major version 1 is the interim model. It
-> holds `kbdl.input` resolved at build time:
->
-> - for every layer of `kbdl.layers`, the 49 position values with dead
->   flags, space and the decimal separator
-> - the dead-key tree, at any depth
-> - the extra modifiers, `shiftLock` and `lrmRlm`
-> - the preserved emoji key and the bundle's emoji annotations
->
-> The LDML engine defines major version 2 or later.
-
-> [spec:kbdgen:req:tsf.engine.interim]
-> The interim engine is defined as follows.
->
-> - A key's value for the current modifiers is inserted unless it is dead.
-> - A dead value enters its tree state. Each further key follows the branch,
->   to any depth, and a leaf inserts its whole output.
-> - A key with no entry inserts the state's standalone output followed by
->   the key's own value.
-> - Backspace with a pending state cancels only that state. Otherwise
->   Backspace passes.
-> - Caps+Shift on a letter selects `shift`, as on macOS; `caps+shift`
->   applies only when the layout defines it.
->
-> A pending state SHOULD be shown as the preedit of its standalone output,
-> as macOS shows marked text. Its context is unused.
+> The *model* of a layout is the `ldml.model.encoding` (`DVKB` major 1) of
+> the layout's `windows` keyboard, the same keyboard the `kbdl` adapter
+> reads (`ldml.kbdl.model-resource`). A v3 layout gets it by in-memory
+> migration. Of it, the text service uses the hardware set and its layers,
+> the transforms, the flush outputs that form the preedit, `windows`
+> (`ldml.model.windows`) and `emoji` (`ldml.model.emoji`). It does not use
+> touch sets or displays.
 
 ## Testing
 
 > [spec:kbdgen:req:tsf.test.engine]
 > Engine behaviour MUST be tested on every host operating system without
-> Windows, through `Model::key` alone. Test cases are sequences of key events
-> with the expected text before the caret and the expected preedit. kbdgen
-> MUST also test that the model it embeds (`tsf.data.resource`) round-trips
-> through `Model::from_bytes` for every fixture bundle.
+> Windows, through `Model::key` alone (`ldml.test.harness`). Test cases are
+> sequences of key events with the expected text before the caret and the
+> expected preedit. kbdgen MUST also test, for every fixture bundle, that
+> the resource of `tsf.data.resource` in each built `<name>.res` decodes
+> with `Model::from_bytes` to the model of `ldml.kbdl.model-resource`.
 
 > [spec:kbdgen:req:tsf.test.differential]
-> For every fixture layout, a test MUST compare the interim engine and the
-> layout DLL. For each table-expressible position, layer and dead-key path,
-> the engine's committed output MUST equal what `ToUnicodeEx` returns for the
-> built layout DLL on Windows. The exceptions are the documented ones:
+> For every fixture layout, a test MUST compare `kbd-engine` on the layout's
+> model with the layout DLL built from it. For each table-expressible
+> position, `kbdl.layers` layer and dead-key path, the engine's committed
+> output MUST equal what `ToUnicodeEx` returns for the built DLL on Windows.
+> The exceptions are the documented ones:
 >
-> - multi-unit dead-key leaves, which the table omits
-> - Caps+Shift on `CAPLOK` keys (`tsf.engine.interim` against
->   `[spec:kbdgen:sem:kbdl.caps]`)
+> - Caps+Shift on `CAPLOK` keys (`ldml.kbdl.caps`)
+> - the `ctrl` layer, which the engine passes (`ldml.engine.shortcuts`)
+> - what `ldml.kbdl.classify` reports: multi-unit dead-key leaves,
+>   transforms that do not start with a marker, `reorder` and extra
+>   `backspace` rules, mixed outputs, enabled normalization
+> - positions `ldml.kbdl.positions` drops or warns about
 >
 > Each exception MUST be listed in the test.
 

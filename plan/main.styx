@@ -381,8 +381,8 @@ children (
 
                             {
                                 id targets.windows.tsf.compose
-                                title "Ligature and dead-key layering beyond what KBDTABLES can express"
-                                kind @feat
+                                title "Acceptance: multi-unit dead-key outputs, deep transforms and ligature layering typed through the installed text service"
+                                kind @test
                                 deps (targets.windows.tsf.host targets.windows.tsf.installer)
                             }
 
@@ -390,6 +390,15 @@ children (
                                 id targets.windows.tsf.emoji
                                 title "Emoji keyboard"
                                 kind @feat
+                                implements {
+                                    main (
+                                        [spec:kbdgen:def:tsf.emoji.picker]
+                                        [spec:kbdgen:req:tsf.emoji.commit]
+                                        [spec:kbdgen:req:tsf.emoji.data]
+                                        [spec:kbdgen:req:tsf.emoji.trigger]
+                                        [spec:kbdgen:req:tsf.emoji.ui]
+                                    )
+                                }
                                 deps (targets.windows.tsf.host)
                             }
 
@@ -398,12 +407,37 @@ children (
                                 title "Revise tsf.md for the in-workspace TIP, one entry per keyboard and the shared engine (no interim engine)"
                                 kind @docs
                                 deps (targets.windows.tsf.design ldml.spec)
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-10-05T22:09:52.415403Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-05T22:16:51.175196Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
+                                    }
+                                )
                             }
 
                             {
                                 id targets.windows.tsf.data
                                 title "Embed the serialized keyboard model in the layout DLL"
                                 kind @feat
+                                implements {
+                                    main (
+                                        [spec:kbdgen:def:tsf.engine.model]
+                                        [spec:kbdgen:req:tsf.data.resource]
+                                        [spec:kbdgen:req:tsf.data.version]
+                                        [spec:kbdgen:req:tsf.test.differential]
+                                        [spec:kbdgen:req:tsf.test.engine]
+                                    )
+                                }
                                 deps (targets.windows.tsf.reconcile ldml.model targets.windows.dll-build)
                             }
 
@@ -412,7 +446,38 @@ children (
                                 title "Text service crate crates/kbd-tsf: COM component, keys, edits, security"
                                 kind @feat
                                 implements {
-                                    main ([spec:kbdgen:req:ldml.crate.tsf])
+                                    main (
+                                        [spec:kbdgen:req:ldml.crate.tsf]
+                                        [spec:kbdgen:def:tsf.component]
+                                        [spec:kbdgen:def:tsf.edit.ops]
+                                        [spec:kbdgen:def:tsf.engine.api]
+                                        [spec:kbdgen:req:tsf.component.crate]
+                                        [spec:kbdgen:req:tsf.component.interfaces]
+                                        [spec:kbdgen:req:tsf.component.logging]
+                                        [spec:kbdgen:req:tsf.component.panic]
+                                        [spec:kbdgen:req:tsf.component.self-contained]
+                                        [spec:kbdgen:req:tsf.data.locate]
+                                        [spec:kbdgen:req:tsf.edit.apply]
+                                        [spec:kbdgen:req:tsf.edit.cache]
+                                        [spec:kbdgen:req:tsf.edit.inject]
+                                        [spec:kbdgen:req:tsf.edit.preedit]
+                                        [spec:kbdgen:req:tsf.edit.reset]
+                                        [spec:kbdgen:req:tsf.edit.session]
+                                        [spec:kbdgen:req:tsf.engine.contract]
+                                        [spec:kbdgen:req:tsf.keys.altgr]
+                                        [spec:kbdgen:req:tsf.keys.claim]
+                                        [spec:kbdgen:req:tsf.keys.identity]
+                                        [spec:kbdgen:req:tsf.keys.locale-flags]
+                                        [spec:kbdgen:req:tsf.pairing.self-sufficient]
+                                        [spec:kbdgen:req:tsf.security.disabled]
+                                        [spec:kbdgen:req:tsf.security.secure-mode]
+                                        [spec:kbdgen:req:tsf.test.host]
+                                        [spec:kbdgen:req:tsf.test.vm]
+                                        [spec:kbdgen:sem:tsf.security.integrity]
+                                        [spec:kbdgen:thm:tsf.edit.units]
+                                        [spec:kbdgen:sem:tsf.pairing.substitute]
+                                        [spec:kbdgen:sem:tsf.pairing.alternatives]
+                                    )
                                 }
                                 deps (targets.windows.tsf.reconcile ldml.engine targets.windows.tsf.data)
                             }
@@ -421,6 +486,9 @@ children (
                                 id targets.windows.tsf.arch
                                 title "Text service builds for x86, x64, arm64 and the Arm64X forwarder; signing"
                                 kind @feat
+                                implements {
+                                    main ([spec:kbdgen:req:tsf.arch.arm64x] [spec:kbdgen:req:tsf.arch.builds] [spec:kbdgen:req:tsf.security.signing])
+                                }
                                 deps (targets.windows.tsf.host)
                             }
 
@@ -428,6 +496,14 @@ children (
                                 id targets.windows.tsf.register
                                 title "Text service COM registration, upgrade in versioned directories, AppContainer access"
                                 kind @feat
+                                implements {
+                                    main (
+                                        [spec:kbdgen:req:tsf.arch.registration]
+                                        [spec:kbdgen:req:tsf.register.server]
+                                        [spec:kbdgen:req:tsf.register.upgrade]
+                                        [spec:kbdgen:req:tsf.security.appcontainer]
+                                    )
+                                }
                                 deps (targets.windows.tsf.arch)
                             }
 
@@ -435,6 +511,16 @@ children (
                                 id targets.windows.tsf.kbdi
                                 title "kbdi: register, enable and uninstall TIP profiles (divvun/kbdi)"
                                 kind @feat
+                                implements {
+                                    main (
+                                        [spec:kbdgen:def:tsf.register.ids]
+                                        [spec:kbdgen:req:tsf.register.enable]
+                                        [spec:kbdgen:req:tsf.register.langid]
+                                        [spec:kbdgen:req:tsf.register.profile]
+                                        [spec:kbdgen:req:tsf.register.uninstall]
+                                        [spec:kbdgen:req:tsf.register.welcome]
+                                    )
+                                }
                                 deps (targets.windows.tsf.register)
                             }
 
@@ -442,6 +528,9 @@ children (
                                 id targets.windows.tsf.installer
                                 title "Bundle the text service in keyboard installers (divvun-actions)"
                                 kind @feat
+                                implements {
+                                    main ([spec:kbdgen:req:tsf.installer.bundle] [spec:kbdgen:req:tsf.installer.layout-dlls])
+                                }
                                 deps (targets.windows.tsf.register targets.windows.tsf.kbdi)
                             }
                         )
@@ -1238,6 +1327,14 @@ children (
                 title "Fold implementation interpretations from ldml.model (and later nodes) back into docs/spec/ldml, bumping the affected rules"
                 kind @docs
                 deps (ldml.model)
+                log (
+                    {
+                        at 2026-10-05T22:09:52.254886Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+                )
             }
         )
         log (
