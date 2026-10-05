@@ -126,6 +126,7 @@ children (
                         priority 0
                         kind @test
                         deps (targets.windows.dll-build)
+                        sealed true
                         log (
                             {
                                 at 2026-10-05T13:06:42.808865Z
@@ -139,6 +140,27 @@ children (
                                 author "brendan@necessary.nu"
                                 kind @note
                                 text "Correction to the evidence note above. Root cause found on jaheira-win11 using an interactive-session LoadKeyboardLayout harness: the installed kbdvro.dll (8704 B, from the dev-latest outto installer) has the pre-47ad789 PE layout (.text RX + .data RW) and fails LoadKeyboardLayout; kbdvro.dll rebuilt from current kbdgen main (single .data RX, 8192 B) loads (HKL f0ff0409). Installed kbdsjd.dll was built 2026-09-15 00:18, after the 47ad789 fix, which is why it loads. The dead-keys+ligatures hypothesis is wrong: Võro's tables load fine; CI built it with a kbdgen predating 47ad789. Immediate remedy: rebuild keyboard-vro with current kbdgen. This node still verifies the generated-C DLL loads."
+                            }
+
+                            {
+                                at 2026-10-05T15:23:48.073679Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-05T15:24:23.769954Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Verified 2026-10-05 on jaheira-win11 (Windows 11 x64, interactive session): kbdvro.dll built by `kbdgen target windows` at 9998435 (cargo + rust-lld; x64 and wow64 variants) installed as a0460409 loads (HKL f0e60409) from 64-bit and 32-bit processes. Strings 1000/1100/1200 resolve (Võro, Võro, vro-Latn). ToUnicodeEx: ´+a=á, ´+A=Á, ´+space=´, ´+j=´j (macOS-style fallback), ˇ+c=č, ~+a=ą, AltGr ^+a=â, AltGr+t=t+U+0301, AltGr+Shift+t=T+U+0301, Caps+q=Q. SendInput typing matches. Test registrations and DLLs removed afterwards; installed kbdvro.dll / a0002000 untouched."
+                            }
+
+                            {
+                                at 2026-10-05T15:24:23.845116Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Doing → Done (nplan complete)"
                             }
                         )
                     }
