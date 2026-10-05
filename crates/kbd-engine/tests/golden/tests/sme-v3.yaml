@@ -1,0 +1,31 @@
+# The v3 Northern Sámi (Norway) layout (v3/se-NO.yaml), migrated in
+# memory: its macOS dead keys, whose standalone differs from the root, and
+# its caps, implied from shift where v3 authored none.
+layout: v3/se-NO.yaml
+host: macOS
+tests:
+  - name: migrated macos dead keys compose
+    steps:
+      - press: {key: E12}
+      - press: {key: C01}
+      - expect: {text: á}
+      - press: {key: E05, mods: alt}
+      - expect: {preedit: '^'}
+      - press: {key: C01, mods: shift}
+      - expect: {text: áÂ}
+  - name: migrated standalone differs from the root
+    steps:
+      - press: {key: E05, mods: alt}
+      - press: {key: space}
+      - press: {key: E05, mods: alt}
+      - press: {key: D05}
+      - expect: {text: ^^t}
+  - name: migrated macos caps and caps shift
+    steps:
+      - press: {key: D01, mods: caps}
+      - press: {key: D01, mods: caps shift}
+      - press: {key: E01, mods: caps shift}
+      - expect: {text: ÁÁ!}
+      - press: {key: E12, mods: caps}
+      - press: {key: C01, mods: caps}
+      - expect: {text: ÁÁ!Á}

@@ -4,6 +4,7 @@
 use std::path::Path;
 
 use kbd_model::Host;
+use language_tags::LanguageTag;
 
 use crate::build::BuildStep;
 use crate::build::windows::kbdl::{
@@ -60,11 +61,40 @@ fn v3_and_v4_layouts_build_side_by_side() {
     let names: Vec<&str> = generated.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["kbdse", "kbdvro"], "bundle layout order");
     assert_eq!(layout_names(&fixture.bundle).unwrap(), names);
-    assert!(
-        model_entry(&generated[0].res).is_none(),
-        "a v3 layout has no model without migration"
-    );
+    let migration = crate::ldml::migrate::migrate_bundle_layout(&fixture.bundle.path, "se")
+        .unwrap()
+        .unwrap();
+    let migrated = crate::ldml::migrate::windows_model(&migration)
+        .unwrap()
+        .unwrap();
+    let (_, _, data) = model_entry(&generated[0].res).unwrap();
+    assert_eq!(data, migrated, "a v3 layout embeds its migrated model");
     assert!(model_entry(&generated[1].res).is_some());
+}
+
+// [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+#[test]
+fn blocked_v3_migration_builds_without_model() {
+    let extra = SE_V3.replace("K L\n", "K L M\n");
+    let fixture = fixture(&[("se", &extra)]);
+    let tag: LanguageTag = "se".parse().unwrap();
+    let bundle = &fixture.bundle;
+    let layout = bundle.layouts.get(&tag).unwrap();
+    let target = layout.windows.as_ref().unwrap();
+    let (input, mut diag) =
+        super::super::super::bundle::layout_input(bundle, &tag, layout, target).unwrap();
+    let model = super::super::super::v3_model(bundle, &tag, &mut diag);
+    assert!(model.is_none());
+    assert!(
+        diag.warnings()
+            .iter()
+            .any(|w| w.contains("blocked by defects M05")),
+        "{:?}",
+        diag.warnings()
+    );
+    let generated = generate_bundle(bundle).unwrap();
+    assert!(model_entry(&generated[0].res).is_none());
+    assert_eq!(generated[0].name, input.metadata.name);
 }
 
 /// Builds `bundle` for every variant into `out` and checks each DLL's

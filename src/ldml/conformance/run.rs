@@ -12,12 +12,41 @@ use super::vectors::{Source, VectorFile, VectorTest, parse};
 use super::{Failure, Observed, Report};
 use crate::ldml::LdmlError;
 use crate::ldml::layouts::normalise_tag;
-use crate::ldml::yaml::{load, lower, read_yaml};
+use crate::ldml::migrate::migrate_file;
+use crate::ldml::yaml::{Layout4, load, lower, read_yaml};
 
 fn vector_error(path: &Path, message: impl Into<String>) -> LdmlError {
     LdmlError::Vectors {
         path: path.to_path_buf(),
         message: message.into(),
+    }
+}
+
+// [spec:kbdgen:def:ldml.test.vectors]
+/// The v4 layout at `path`; a v3 layout is migrated in memory
+/// (`ldml.migrate.*`), and its blocking defects are an error naming their
+/// codes.
+fn layout(path: &Path, tag: &str) -> Result<Layout4, LdmlError> {
+    match load(path, tag) {
+        Err(LdmlError::V3Layout { .. }) => {
+            let migration = migrate_file(path, tag)?;
+            let codes: Vec<&str> = migration
+                .blocking_codes()
+                .into_iter()
+                .map(|c| c.name())
+                .collect();
+            match migration.layout {
+                Some(layout) if codes.is_empty() => Ok(layout),
+                _ => Err(vector_error(
+                    path,
+                    format!(
+                        "the v3 layout does not migrate: blocked by defects {}",
+                        codes.join(", ")
+                    ),
+                )),
+            }
+        }
+        other => other,
     }
 }
 
@@ -29,7 +58,7 @@ fn layout_keyboard(path: &Path, host: Host) -> Result<Keyboard, LdmlError> {
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_default();
     let tag = normalise_tag(&stem).ok_or(LdmlError::InvalidTag { tag: stem })?;
-    let documents = lower(&load(path, &tag)?)?;
+    let documents = lower(&layout(path, &tag)?)?;
     let (_, source) = documents
         .into_iter()
         .find(|(h, _)| *h == host)

@@ -77,9 +77,15 @@ pub fn read_yaml(path: &Path) -> Result<Value, LdmlError> {
 /// inheritance resolved, and emoji annotations read.
 pub fn load(path: &Path, tag: &str) -> Result<Layout4, LdmlError> {
     let value = read_yaml(path)?;
+    load_value(path, tag, &value)
+}
+
+/// Loads a layout already parsed as a YAML tree, as if read from `path`:
+/// how `kbdgen ldml migrate` checks a layout before writing it.
+pub fn load_value(path: &Path, tag: &str, value: &Value) -> Result<Layout4, LdmlError> {
     let file = path.display().to_string();
-    match detect(&value) {
-        Ok(LayoutFormat::V4) => Ok(schema::parse(&file, path, tag, &value)?),
+    match detect(value) {
+        Ok(LayoutFormat::V4) => Ok(schema::parse(&file, path, tag, value)?),
         Ok(LayoutFormat::V3) => Err(LdmlError::V3Layout {
             tag: tag.to_string(),
         }),

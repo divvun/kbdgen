@@ -1,0 +1,30 @@
+# The v3 Võro layout (v3/vro.yaml), migrated in memory: its Windows dead
+# keys and caps as the v3 Windows section defines them.
+layout: v3/vro.yaml
+host: windows
+tests:
+  - name: migrated windows dead keys compose
+    steps:
+      - press: {key: E12}
+      - expect: {text: '', preedit: ´}
+      - press: {key: C01}
+      - expect: {text: á}
+      - press: {key: E12, mods: shift}
+      - press: {key: D03}
+      - expect: {text: áè}
+      - press: {key: E12, mods: altgr}
+      - press: {key: C01, mods: shift}
+      - expect: {text: áèÁ}
+  - name: migrated windows dead key then space
+    steps:
+      - press: {key: E00}
+      - press: {key: space}
+      - expect: {text: ˇ}
+  - name: migrated windows caps layers keep v3 caps
+    steps:
+      - press: {key: D01, mods: caps}
+      - press: {key: D01, mods: caps shift}
+      - press: {key: E01, mods: caps shift}
+      - expect: {text: Qq!}
+      - press: {key: D02, mods: altgr caps}
+      - expect: {text: Qq!Š}

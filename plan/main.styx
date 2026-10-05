@@ -1093,6 +1093,21 @@ children (
                     )
                 }
                 deps (ldml.yaml-v4)
+                log (
+                    {
+                        at 2026-10-05T21:10:36.852602Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T21:57:19.429044Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Survey (scratch copies, no repo edits): every surveyed layout migrates with 0 unexplained differences except blocked: divvun-dev fkv (M05: 49-token macOS cmd+alt+shift layer) and divvun-keyboard fi/nb/sv (M07: v2 format). 17 dependency repos not present locally (aan bwi gvp liv lut mpu myu pad pur rmn sje sju skf tqb txi waw wyr) — ldml.migrate.survey still requires running over them before freezing v4. Interpretations for ldml.spec-errata: M14 extended to transform strings and longpress entries; an escaped Windows deadKeys entry needs a new defect code (v3 never made it dead; currently would be M99); macOS compose checks limited to layers with deadKeys; equivalence covers the 48 ISO positions only (macOS.space now honoured); bare \\u takes up to 4 hex digits; keyNames keep \\u{} spelling; YAML 1.1 bool/null words quoted; touch \\u{0} -> \\s{gap} with M14; macOS caps+shift picks the first of shift/caps+shift; M01 before M04; M13/M14 once per layer and token. Survey tool: cargo run --example migrate-survey -- <bundles>."
+                    }
+                )
             }
 
             {

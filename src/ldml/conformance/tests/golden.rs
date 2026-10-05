@@ -196,6 +196,26 @@ const COVERAGE: &[(&str, &str, &str)] = &[
     ),
     ("vro caps", "vro-windows", "dead keys and caps on windows"),
     ("vro long press", "vro-ios", "long press picks a candidate"),
+    (
+        "migrated vro dead keys",
+        "vro-v3",
+        "migrated windows dead keys compose",
+    ),
+    (
+        "migrated vro caps",
+        "vro-v3",
+        "migrated windows caps layers keep v3 caps",
+    ),
+    (
+        "migrated sme dead keys",
+        "sme-v3",
+        "migrated macos dead keys compose",
+    ),
+    (
+        "migrated sme caps",
+        "sme-v3",
+        "migrated macos caps and caps shift",
+    ),
     ("vro flicks", "vro-ios", "flicks type their target"),
     (
         "vro role keys",

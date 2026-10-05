@@ -319,3 +319,58 @@ fn ldml_test_runs_golden_and_cldr_vectors() {
         "{stderr}"
     );
 }
+
+const SE_V3: &str = "displayNames:\n  se: Davvisámegiella\nwindows:\n  primary:\n    layers:\n      default: a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 + , . - ' ¨ < ´ § ½ å æ\n      shift: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z ! \" @ ¤ % & / ( ) = ? ; | _ * ^ > ` ° ¶ Å Æ\n";
+
+// [spec:kbdgen:def:ldml.cli.commands/test]
+// [spec:kbdgen:def:ldml.migrate.report/test]
+#[test]
+fn migrate_writes_unblocked_layouts_and_reports() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundle = dir.path().join("se.kbdgen");
+    std::fs::create_dir_all(bundle.join("layouts")).unwrap();
+    std::fs::write(bundle.join("layouts/se.yaml"), SE_V3).unwrap();
+    let migrate = |extra: &[&std::ffi::OsStr]| {
+        let mut args: Vec<&std::ffi::OsStr> = vec![
+            "ldml".as_ref(),
+            "migrate".as_ref(),
+            "-b".as_ref(),
+            bundle.as_os_str(),
+        ];
+        args.extend_from_slice(extra);
+        kbdgen(&args)
+    };
+    let output = migrate(&["--dry-run".as_ref()]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(report(&output).contains("se.yaml: migrated (dry run)"));
+    assert_eq!(
+        std::fs::read_to_string(bundle.join("layouts/se.yaml")).unwrap(),
+        SE_V3
+    );
+
+    std::fs::write(
+        bundle.join("layouts/fi.yaml"),
+        "displayNames:\n  fi: suomi\nmodes: {}\n",
+    )
+    .unwrap();
+    let path = dir.path().join("report.yaml");
+    let output = migrate(&["--report".as_ref(), path.as_os_str()]);
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("migration blocked for") && stderr.contains("fi.yaml"),
+        "{stderr}"
+    );
+    let written = std::fs::read_to_string(bundle.join("layouts/se.yaml")).unwrap();
+    assert!(written.starts_with("format: 4\n"), "{written}");
+    let blocked = std::fs::read_to_string(bundle.join("layouts/fi.yaml")).unwrap();
+    assert!(blocked.contains("modes"));
+    let yaml: serde_yaml::Value =
+        serde_yaml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(yaml["summary"]["counts"]["M07"].as_u64(), Some(1));
+    assert!(report(&output).starts_with("summary: 2 layout(s)"));
+}

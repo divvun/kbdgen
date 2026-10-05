@@ -11,6 +11,7 @@ use super::conformance::bundle::run_bundle;
 use super::export::export;
 use super::import::{destinations, group, report, write};
 use super::layouts::{compiled_layouts, host_documents, layout_files};
+use super::migrate::migrate_bundle;
 
 // [spec:kbdgen:def:ldml.cli.commands]
 /// `kbdgen ldml <command>`.
@@ -20,6 +21,8 @@ pub enum LdmlCommand {
     Export(OutputArgs),
     /// Read keyboard3 XML files into v4 layouts/<tag>.yaml
     Import(ImportArgs),
+    /// Convert the bundle's v3 layouts to v4 in place, reporting data defects
+    Migrate(MigrateArgs),
     /// Write <OUT>/<tag>.<host>.dvkb engine models for each v4 layout and host
     Compile(OutputArgs),
     /// Run the bundle's tests/*.yaml vectors, and with --cldr CLDR's
@@ -54,6 +57,19 @@ pub struct ImportArgs {
     /// keyboard3 XML files
     #[arg(value_name = "XML", required = true)]
     pub files: Vec<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+pub struct MigrateArgs {
+    /// Path to a .kbdgen bundle
+    #[arg(short = 'b', long = "bundle-path", value_name = "BUNDLE")]
+    pub bundle: PathBuf,
+    /// Report only; write no layout
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Write the report to FILE as YAML instead of printing it
+    #[arg(long, value_name = "FILE")]
+    pub report: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]
@@ -113,6 +129,27 @@ pub fn run(command: &LdmlCommand) -> Result<(), LdmlError> {
             }
             for path in paths {
                 println!("{}", path.display());
+            }
+        }
+        // [spec:kbdgen:def:ldml.migrate.report]
+        // [spec:kbdgen:req:ldml.migrate.survey]
+        LdmlCommand::Migrate(args) => {
+            let report = migrate_bundle(&args.bundle, args.dry_run)?;
+            match &args.report {
+                Some(path) => {
+                    std::fs::write(path, report.yaml()).map_err(|source| LdmlError::Io {
+                        path: path.clone(),
+                        source,
+                    })?;
+                    for line in report.summary() {
+                        println!("{line}");
+                    }
+                }
+                None => print!("{}", report.text()),
+            }
+            let blocked: Vec<String> = report.blocked().iter().map(|l| l.file.clone()).collect();
+            if !blocked.is_empty() {
+                return Err(LdmlError::MigrationBlocked { layouts: blocked });
             }
         }
         // [spec:kbdgen:req:ldml.cli.test]

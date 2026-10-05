@@ -260,16 +260,31 @@ fn xml_host_must_match_the_document() {
 
 // [spec:kbdgen:def:ldml.test.vectors/test]
 #[test]
-fn v3_layouts_need_migrating_first() {
+fn v3_layouts_migrate_in_memory() {
     let dir = tempfile::tempdir().unwrap();
+    let keys = "a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 A B C D E F G H I J K L";
     std::fs::write(
         dir.path().join("sme.yaml"),
-        "displayNames: {sme: Sámegiella}\n",
+        format!("displayNames: {{sme: Sámegiella}}\nwindows:\n  primary:\n    layers:\n      default: {keys}\n"),
     )
     .unwrap();
     let file = vector_file("layout: sme.yaml\nhost: windows\ntests: []").unwrap();
+    let model = vector_model(&file, dir.path()).unwrap();
+    assert_eq!(model.keyboard().host, Some(Host::Windows));
+    assert_eq!(
+        std::fs::read_dir(dir.path()).unwrap().count(),
+        1,
+        "nothing written"
+    );
+
+    std::fs::write(
+        dir.path().join("fi.yaml"),
+        "displayNames: {fi: suomi}\nmodes: {}\n",
+    )
+    .unwrap();
+    let file = vector_file("layout: fi.yaml\nhost: windows\ntests: []").unwrap();
     let err = vector_model(&file, dir.path()).unwrap_err().to_string();
-    assert!(err.contains("kbdgen ldml migrate"), "{err}");
+    assert!(err.contains("blocked by defects M07"), "{err}");
 }
 
 // [spec:kbdgen:req:ldml.cli.test/test]

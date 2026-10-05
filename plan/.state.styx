@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T20:43:50.857755Z
+last_sync_at 2026-10-05T21:10:13.026546Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -541,6 +541,37 @@ impl_evidence (
         {id ldml.scope.deferred, version 0}
         {id ldml.scope.v1, version 0}
     )}
+    {id ldml.kbdl, covered_rules (
+        ldml.kbdl.adapter
+        ldml.kbdl.caps
+        ldml.kbdl.classify
+        ldml.kbdl.dead-tree
+        ldml.kbdl.layers
+        ldml.kbdl.metadata
+        ldml.kbdl.model-resource
+        ldml.kbdl.positions
+        ldml.kbdl.values
+    ), covered_claims (
+        {impl_name main, rule ldml.kbdl.adapter}
+        {impl_name main, rule ldml.kbdl.caps}
+        {impl_name main, rule ldml.kbdl.classify}
+        {impl_name main, rule ldml.kbdl.dead-tree}
+        {impl_name main, rule ldml.kbdl.layers}
+        {impl_name main, rule ldml.kbdl.metadata}
+        {impl_name main, rule ldml.kbdl.model-resource}
+        {impl_name main, rule ldml.kbdl.positions}
+        {impl_name main, rule ldml.kbdl.values}
+    ), rule_versions_seen (
+        {id ldml.kbdl.adapter, version 0}
+        {id ldml.kbdl.caps, version 0}
+        {id ldml.kbdl.classify, version 0}
+        {id ldml.kbdl.dead-tree, version 0}
+        {id ldml.kbdl.layers, version 0}
+        {id ldml.kbdl.metadata, version 0}
+        {id ldml.kbdl.model-resource, version 0}
+        {id ldml.kbdl.positions, version 0}
+        {id ldml.kbdl.values, version 0}
+    )}
     {id ldml.model, covered_rules (
         ldml.model.context-len
         ldml.model.decode
@@ -1078,26 +1109,26 @@ impl_evidence (
         {id kbdl.vk-chars.fixed, version 0}
         {id kbdl.vk-chars.values, version 0}
     )}
-    {id ldml.kbdl, covered_rules (
-        ldml.kbdl.adapter
-        ldml.kbdl.caps
-        ldml.kbdl.classify
-        ldml.kbdl.dead-tree
-        ldml.kbdl.layers
-        ldml.kbdl.metadata
-        ldml.kbdl.model-resource
-        ldml.kbdl.positions
-        ldml.kbdl.values
+    {id ldml.migrate, covered_rules (
+        ldml.migrate.caps-diff
+        ldml.migrate.dead-keys
+        ldml.migrate.defects
+        ldml.migrate.equivalence
+        ldml.migrate.fields
+        ldml.migrate.output
+        ldml.migrate.platforms
+        ldml.migrate.report
+        ldml.migrate.survey
     ), covered_claims (
-        {impl_name main, rule ldml.kbdl.adapter}
-        {impl_name main, rule ldml.kbdl.caps}
-        {impl_name main, rule ldml.kbdl.classify}
-        {impl_name main, rule ldml.kbdl.dead-tree}
-        {impl_name main, rule ldml.kbdl.layers}
-        {impl_name main, rule ldml.kbdl.metadata}
-        {impl_name main, rule ldml.kbdl.model-resource}
-        {impl_name main, rule ldml.kbdl.positions}
-        {impl_name main, rule ldml.kbdl.values}
+        {impl_name main, rule ldml.migrate.caps-diff}
+        {impl_name main, rule ldml.migrate.dead-keys}
+        {impl_name main, rule ldml.migrate.defects}
+        {impl_name main, rule ldml.migrate.equivalence}
+        {impl_name main, rule ldml.migrate.fields}
+        {impl_name main, rule ldml.migrate.output}
+        {impl_name main, rule ldml.migrate.platforms}
+        {impl_name main, rule ldml.migrate.report}
+        {impl_name main, rule ldml.migrate.survey}
     )}
 )
 

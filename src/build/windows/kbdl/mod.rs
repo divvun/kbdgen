@@ -14,6 +14,7 @@ use crate::{
         KbdgenBundle,
         layout::{Layout, WindowsTarget},
     },
+    ldml::migrate::{defect::Code, migrate_bundle_layout, windows_model},
 };
 
 pub mod adapter;
@@ -22,6 +23,7 @@ pub mod bundle;
 pub mod diag;
 pub mod image;
 pub mod input;
+pub mod migrated;
 pub mod resources;
 pub mod source;
 pub mod tables;
@@ -128,8 +130,57 @@ fn sources(bundle: &KbdgenBundle) -> Vec<Source<'_>> {
     sources
 }
 
-/// The input of one v3 layout. Its engine model would come from migrating
-/// it in memory, which this build cannot do, so the DLL has no model.
+// [spec:kbdgen:req:ldml.kbdl.model-resource]
+/// The engine model of a v3 layout, by migrating its file in memory
+/// (`ldml.migrate.*`) with nothing written. When that is not possible the
+/// DLL has no model, which leaves the text service inert for the layout,
+/// and the warning says why: the blocking defect codes, or the error.
+fn v3_model(bundle: &KbdgenBundle, tag: &LanguageTag, diag: &mut Diagnostics) -> Option<Vec<u8>> {
+    let inert = "no engine model is embedded, so the text service stays inert for this layout";
+    let migration = match migrate_bundle_layout(&bundle.path, tag.as_str()) {
+        Ok(Some(migration)) => migration,
+        Ok(None) => {
+            diag.warn(format!(
+                "v3 layout: the bundle has no v3 layout file for it to migrate; {inert}"
+            ));
+            return None;
+        }
+        Err(error) => {
+            diag.warn(format!("v3 layout: migrating it failed: {error}; {inert}"));
+            return None;
+        }
+    };
+    if migration.blocked() {
+        let codes: Vec<&str> = migration
+            .blocking_codes()
+            .into_iter()
+            .map(Code::name)
+            .collect();
+        diag.warn(format!(
+            "v3 layout: its migration is blocked by defects {}; {inert}",
+            codes.join(", ")
+        ));
+        return None;
+    }
+    match windows_model(&migration) {
+        Ok(Some(model)) => Some(model),
+        Ok(None) => {
+            diag.warn(format!(
+                "v3 layout: its migration has no windows keyboard; {inert}"
+            ));
+            None
+        }
+        Err(error) => {
+            diag.warn(format!(
+                "v3 layout: its migration does not compile: {error}; {inert}"
+            ));
+            None
+        }
+    }
+}
+
+/// The input of one v3 layout (`kbdl.input.bundle`) with the model of
+/// its in-memory migration.
 // [spec:kbdgen:req:ldml.kbdl.model-resource]
 fn v3_layout(
     bundle: &KbdgenBundle,
@@ -138,10 +189,8 @@ fn v3_layout(
     target: &WindowsTarget,
 ) -> Result<GeneratedLayout> {
     let (input, mut diag) = bundle::layout_input(bundle, tag, layout, target)?;
-    diag.warn(
-        "v3 layout: no engine model is embedded, because in-memory migration (ldml.migrate) is unavailable; the text service stays inert for this layout",
-    );
-    generate(&input, None, &mut diag)
+    let model = v3_model(bundle, tag, &mut diag);
+    generate(&input, model.as_deref(), &mut diag)
 }
 
 /// The generated crate of one layout, or `None` for a v4 layout without a

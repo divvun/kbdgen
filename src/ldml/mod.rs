@@ -8,6 +8,7 @@ pub mod conformance;
 pub mod export;
 pub mod import;
 pub mod layouts;
+pub mod migrate;
 pub mod yaml;
 
 use std::path::PathBuf;
@@ -58,6 +59,8 @@ pub enum LdmlError {
     Vectors { path: PathBuf, message: String },
     #[error("{failed} conformance steps failed")]
     TestsFailed { failed: usize },
+    #[error("migration blocked for {}", layouts.join(", "))]
+    MigrationBlocked { layouts: Vec<String> },
 }
 
 #[cfg(test)]

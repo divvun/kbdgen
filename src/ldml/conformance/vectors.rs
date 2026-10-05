@@ -16,7 +16,7 @@ type Result<T> = std::result::Result<T, YamlError>;
 /// The keyboard a vector file runs on, by a path relative to the bundle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
-    /// A v4 (or, once migrated, v3) layout file.
+    /// A v4 layout file, or a v3 one, migrated in memory.
     Layout(PathBuf),
     /// A keyboard3 XML file.
     Keyboard(PathBuf),
