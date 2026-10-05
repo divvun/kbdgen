@@ -272,6 +272,7 @@ children (
                                 [spec:kbdgen:req:kbdl.build.environment]
                                 [spec:kbdgen:req:kbdl.image]
                                 [spec:kbdgen:req:kbdl.image.verify]
+                                [spec:kbdgen:req:kbdl.wow64]
                             )
                         }
                         deps (targets.windows.dll-gen)
