@@ -62,6 +62,22 @@ children (
                 title "Fixture-bundle tests for loading, autonym/decimal/BCP47 errors, target stems, icon tags"
                 kind @test
                 deps (input.bundle input.layout)
+                sealed true
+                log (
+                    {
+                        at 2026-10-05T16:27:09.062793Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T16:32:42.738624Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
             }
 
             {
@@ -647,6 +663,14 @@ children (
                 title "Robustness: Windows DLL name collisions on 5-char tag prefix, unchecked subprocess exit codes, Android name sanitiser turning _ into x"
                 kind @fix
                 deps (targets.windows.dll-gen targets.android.layout)
+                log (
+                    {
+                        at 2026-10-05T16:32:42.700251Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Panics on malformed bundles confirmed by input.test-bundle tests (documented in the spec, should become errors): empty or non-mapping layout file; ios.yaml/android.yaml that is not a mapping (unwrap); icon file with a malformed tag (icon.se_FI.png); non-string scalar inside transforms."
+                    }
+                )
             }
         )
     }

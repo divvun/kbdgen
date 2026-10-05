@@ -57,3 +57,34 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use indexmap::IndexMap;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn fetch_without_dependencies_creates_directories() {
+        let root = tempfile::tempdir().unwrap();
+        let project = Project {
+            locales: IndexMap::new(),
+            author: "Test".to_string(),
+            copyright: "Test".to_string(),
+            email: "test@example.com".to_string(),
+            organisation: "Test".to_string(),
+            dependencies: IndexMap::new(),
+        };
+
+        fetch(root.path(), &project).await.unwrap();
+
+        assert!(root.path().join("layouts").is_dir());
+        assert!(root.path().join("projects").is_dir());
+        assert_eq!(
+            std::fs::read_dir(root.path().join("projects"))
+                .unwrap()
+                .count(),
+            0
+        );
+    }
+}

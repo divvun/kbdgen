@@ -454,6 +454,14 @@ pub(crate) mod fixture {
         }
         bundle
     }
+
+    /// Writes `contents` to `<bundle>/<relative>`, creating parent
+    /// directories, replacing any existing file.
+    pub(crate) fn write_file(bundle: &Path, relative: &str, contents: &str) {
+        let path = bundle.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents).unwrap();
+    }
 }
 
 #[cfg(test)]
@@ -562,5 +570,223 @@ mod tests {
             // `se-fi.yaml` sorts after `se-FI.yaml` byte-wise ('f' > 'F').
             assert_eq!(autonym, "lower");
         }
+    }
+    fn minimal_bundle(root: &Path, name: &str) -> PathBuf {
+        fixture::write_bundle(
+            root,
+            name,
+            &[("se", "displayNames:\n  se: Davvisámegiella\n")],
+            &[],
+            &[],
+        )
+    }
+
+    fn io_error(result: Result<KbdgenBundle, Error>) -> (PathBuf, std::io::ErrorKind) {
+        match result {
+            Err(Error::Io(path, e)) => (path, e.kind()),
+            other => panic!("expected an I/O error, got {other:?}"),
+        }
+    }
+
+    fn load_single_layout(stem: &str, yaml: &str) -> Result<KbdgenBundle, Error> {
+        let root = tempfile::tempdir().unwrap();
+        let path = fixture::write_bundle(root.path(), "single", &[(stem, yaml)], &[], &[]);
+        read_kbdgen_bundle(&path)
+    }
+
+    fn single_layout(stem: &str, yaml: &str) -> Layout {
+        let mut bundle = load_single_layout(stem, yaml).unwrap();
+        assert_eq!(bundle.layouts.len(), 1);
+        let tag = bundle.layouts.keys().next().unwrap().clone();
+        bundle.layouts.0.swap_remove(&tag).unwrap()
+    }
+
+    // [spec:kbdgen:def:bundle.structure/test]
+    #[test]
+    fn missing_project_file_names_bundle_path() {
+        let root = tempfile::tempdir().unwrap();
+        let path = minimal_bundle(root.path(), "sme");
+        fs::remove_file(path.join(PROJECT_FILENAME)).unwrap();
+
+        let (named, kind) = io_error(read_kbdgen_bundle(&path));
+
+        assert_eq!(named, path);
+        assert_eq!(kind, std::io::ErrorKind::NotFound);
+    }
+
+    // [spec:kbdgen:def:bundle.structure/test]
+    #[test]
+    fn missing_bundle_directories_abort_with_io_errors() {
+        for dir in [LAYOUTS_FOLDER, TARGETS_FOLDER, RESOURCES_FOLDER] {
+            let root = tempfile::tempdir().unwrap();
+            let path = minimal_bundle(root.path(), "sme");
+            fs::remove_dir_all(path.join(dir)).unwrap();
+
+            let (named, kind) = io_error(read_kbdgen_bundle(&path));
+
+            assert_eq!(named, fs::canonicalize(&path).unwrap().join(dir), "{dir}");
+            assert_eq!(kind, std::io::ErrorKind::NotFound, "{dir}");
+        }
+    }
+
+    // [spec:kbdgen:def:bundle.structure/test]
+    #[test]
+    fn missing_bundle_path_aborts_with_io_error() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("absent.kbdgen");
+
+        let (named, kind) = io_error(read_kbdgen_bundle(&path));
+
+        assert_eq!(named, path);
+        assert_eq!(kind, std::io::ErrorKind::NotFound);
+    }
+
+    // [spec:kbdgen:def:bundle.structure/test]
+    #[test]
+    fn bundle_name_is_canonical_path_stem() {
+        let root = tempfile::tempdir().unwrap();
+        let path = minimal_bundle(root.path(), "sme");
+        fs::create_dir(root.path().join("elsewhere")).unwrap();
+        let indirect = root.path().join("elsewhere").join("..").join("sme.kbdgen");
+
+        let bundle = read_kbdgen_bundle(&indirect).unwrap();
+
+        assert_eq!(bundle.path, fs::canonicalize(&path).unwrap());
+        assert_eq!(bundle.name(), "sme");
+    }
+
+    // [spec:kbdgen:def:bundle.structure/test]
+    #[test]
+    fn only_regular_yaml_files_are_read() {
+        let root = tempfile::tempdir().unwrap();
+        let path = minimal_bundle(root.path(), "sme");
+        for skipped in [
+            "layouts/fi.yml",
+            "layouts/fi.YAML",
+            "layouts/fi",
+            "layouts/fi.yaml.bak",
+            "targets/windows.yml",
+            "targets/macos",
+            "projects/sme.yaml",
+        ] {
+            fixture::write_file(&path, skipped, "not: [valid");
+        }
+        fs::create_dir_all(path.join("layouts").join("sma.yaml")).unwrap();
+        fs::create_dir_all(path.join("targets").join("ios.yaml")).unwrap();
+
+        let bundle = read_kbdgen_bundle(&path).unwrap();
+
+        assert_eq!(tags(&bundle.layouts), ["se"]);
+        assert!(bundle.targets.windows.is_none());
+        assert!(bundle.targets.macos.is_none());
+        assert!(bundle.targets.ios.is_none());
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn malformed_layout_stem_is_invalid_language_tag() {
+        for stem in ["se_FI", "not a tag", "x"] {
+            match load_single_layout(stem, "displayNames:\n  se: Davvisámegiella\n") {
+                Err(Error::InvalidLanguageTag { tag }) => assert_eq!(tag, stem),
+                other => panic!("{stem}: expected InvalidLanguageTag, got {other:?}"),
+            }
+        }
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn stem_tag_overrides_authored_language_tag() {
+        let layout = single_layout(
+            "se-fi",
+            "languageTag: en\ndisplayNames:\n  se: Davvisámegiella\n",
+        );
+
+        assert_eq!(layout.language_tag.as_str(), "se-FI");
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn unsupported_decimal_is_reset_to_period() {
+        let decimal = |value: Option<&str>| {
+            let mut yaml = "displayNames:\n  se: Davvisámegiella\n".to_string();
+            if let Some(value) = value {
+                yaml.push_str(&format!("decimal: \"{value}\"\n"));
+            }
+            single_layout("se", &yaml).decimal
+        };
+
+        assert_eq!(decimal(Some(".")).as_deref(), Some("."));
+        assert_eq!(decimal(Some(",")).as_deref(), Some(","));
+        assert_eq!(decimal(Some("·")).as_deref(), Some("."));
+        assert_eq!(decimal(Some(",,")).as_deref(), Some("."));
+        assert_eq!(decimal(Some("")).as_deref(), Some("."));
+        assert_eq!(decimal(None), None);
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    #[should_panic(expected = "top level yaml type must be a mapping")]
+    fn empty_layout_file_panics() {
+        let _ = load_single_layout("se", "");
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    #[should_panic(expected = "top level yaml type must be a mapping")]
+    fn sequence_layout_file_panics() {
+        let _ = load_single_layout("se", "- se\n");
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn first_failing_layout_by_name_aborts_loading() {
+        let root = tempfile::tempdir().unwrap();
+        let path = fixture::write_bundle(
+            root.path(),
+            "failing",
+            &[
+                ("sme_X", "displayNames:\n  sme: Davvisámegiella\n"),
+                ("en", "displayNames:\n  en: English\n"),
+                ("fi", "displayNames:\n  en: Finnish\n"),
+            ],
+            &[],
+            &[],
+        );
+
+        match read_kbdgen_bundle(&path) {
+            Err(Error::MissingMandatoryDisplayName { tag }) => assert_eq!(tag, "fi"),
+            other => panic!("expected the `fi` layout to fail first, got {other:?}"),
+        }
+    }
+
+    // [spec:kbdgen:req:bundle.layouts.autonym/test]
+    #[test]
+    fn full_tag_display_name_is_not_autonym() {
+        for (stem, yaml) in [
+            ("se-FI", "displayNames:\n  se-FI: Davvisámegiella\n"),
+            ("se", "displayNames:\n  en: Northern Sami\n"),
+            (
+                "sme-Latn-NO",
+                "displayNames:\n  sme-Latn: Davvisámegiella\n",
+            ),
+        ] {
+            match load_single_layout(stem, yaml) {
+                Err(Error::MissingMandatoryDisplayName { tag }) => {
+                    assert_eq!(tag, stem.parse::<LanguageTag>().unwrap().as_str());
+                }
+                other => panic!("{stem}: expected MissingMandatoryDisplayName, got {other:?}"),
+            }
+        }
+    }
+
+    // [spec:kbdgen:req:bundle.layouts.autonym/test]
+    #[test]
+    fn autonym_keyed_by_primary_subtag_loads() {
+        let layout = single_layout(
+            "se-FI",
+            "displayNames:\n  SE: Davvisámegiella\n  en: Northern Sami\n",
+        );
+
+        assert_eq!(layout.autonym(), "Davvisámegiella");
     }
 }
