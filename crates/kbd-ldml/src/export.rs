@@ -42,7 +42,7 @@ fn kb_name(local: &str) -> String {
 
 /// A width in key widths, with at most three decimals and no trailing
 /// zeros.
-fn width(thousandths: u32) -> String {
+pub fn encode_width(thousandths: u32) -> String {
     let int = thousandths / 1000;
     let frac = thousandths % 1000;
     if frac == 0 {
@@ -68,8 +68,9 @@ fn set_id(index: u16) -> String {
     format!("s{}", u32::from(index) + 1)
 }
 
-/// Whether a hardware layer can only be written in kbdgen's namespace.
-fn is_kbdgen_layer(sets: &[ModifierSet]) -> bool {
+/// Whether a hardware layer can only be written in kbdgen's namespace, as
+/// a `kbdgen:layer`: it is native-only or uses `cmd` or `extra`n.
+pub fn is_kbdgen_layer(sets: &[ModifierSet]) -> bool {
     sets.iter().any(|s| match s {
         ModifierSet::Set(m) => {
             m.is_native()
@@ -297,7 +298,7 @@ impl Builder<'_> {
             attrs.push(("layerId", l.clone()));
         }
         if key.width != kbd_model::DEFAULT_WIDTH {
-            attrs.push(("width", width(key.width)));
+            attrs.push(("width", encode_width(key.width)));
         }
         attrs
     }

@@ -29,7 +29,8 @@ pub(crate) fn is_nfd_char(c: char) -> bool {
     CanonicalDecompositionBorrowed::new().decompose(c) == Decomposed::Default
 }
 
-pub(crate) fn nfd_str(s: &str) -> String {
+/// `s` in NFD.
+pub fn nfd_str(s: &str) -> String {
     DecomposingNormalizerBorrowed::new_nfd()
         .normalize(s)
         .into_owned()

@@ -1050,6 +1050,13 @@ children (
                         kind @status
                         text "Todo → Doing (nplan start)"
                     }
+
+                    {
+                        at 2026-10-05T20:12:42.850726Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Interpretations for ldml.spec-errata (20, full list in the agent report): spec yaml example is not valid YAML (quoted in fixture) and has overlap/role errors; a key with extra attributes gets u-XXXX not its char; hardware id order puts kbdgen:layer layers last; o-<n> counts distinct marker outputs; 'not authored' for implied caps = no overlapping non-native set; mid-row \\u{0} becomes gap; custom form space row = final row '39'; space entries must equal a layer key set; nested dead-key identity = parent identity + input; shiftSymbols toggles symbols-1/2; touch inherits longPress entry by entry ('' cancels); longPress applies to token keys only; every document carries the whole deadKeys table; displays list may hold one {displayBase}; dead-key strings decode \\u but no markers/variables; numbers accepted only for width and reorder lists; locale = layout tag, conformsTo 45/47; layout decimal/labels replace the ldml file's kbdgen:keyboard; fallback space written \\u{20}; import host→variant mapping (web→default, iOS touch only, equal-to-default dropped, unnamed touch sets named by width). Round-trip theorem gaps (spec must narrow ldml.yaml.roundtrip): mark-only outputs without display; foreign unnamed touch sets; locale≠tag or other conformsTo; emoji annotations file not written; flush/dead-key names without deadKeys sugar; grouped foreign documents share one keys table. For input.windows-layers: extraModifiers/native layers/targets/windows key names already parse+lower+round-trip but are unannotated; missing: B00 positions must be \\u{0} with a B00 binding, YAML-level extra<n> binding check, 49th key needs form abnt2, windows.locale/id into kbdl metadata. For ldml.kbdl: replace Error::V4WindowsLayout in bundle::reject_v4_layouts with the adapter. For ldml.migrate: emit Layout4 that passes yaml::load (rewrite bare \\u, quote escapes in flow maps, split rows by form, full variants); reuse import::write."
+                    }
                 )
             }
 

@@ -10,6 +10,7 @@ use kbd_model::{Host, Layout};
 use language_tags::LanguageTag;
 
 use super::LdmlError;
+use super::yaml::{LayoutFormat, detect, load, lower, read_yaml};
 
 /// A source document lowered for one host of a layout
 /// (`ldml.yaml.hosts`); its `kbdgen:keyboard@host` names `host`.
@@ -18,15 +19,6 @@ pub struct HostDocument {
     pub tag: String,
     pub host: Host,
     pub source: SourceDocument,
-}
-
-/// The layout formats a bundle may mix (`bundle.layouts`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LayoutFormat {
-    /// A layout without `format`.
-    V3,
-    /// `format: 4`.
-    V4,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,25 +36,10 @@ pub fn normalise_tag(tag: &str) -> Option<String> {
 }
 
 fn format_of(path: &Path) -> Result<LayoutFormat, LdmlError> {
-    let text = std::fs::read_to_string(path).map_err(|source| LdmlError::Io {
+    detect(&read_yaml(path)?).map_err(|value| LdmlError::Format {
         path: path.to_path_buf(),
-        source,
-    })?;
-    let value: serde_yaml::Value = serde_yaml::from_str(&text).map_err(|e| LdmlError::Yaml {
-        path: path.to_path_buf(),
-        message: e.to_string(),
-    })?;
-    match value.get("format") {
-        None => Ok(LayoutFormat::V3),
-        Some(serde_yaml::Value::Number(n)) if n.as_u64() == Some(4) => Ok(LayoutFormat::V4),
-        Some(other) => Err(LdmlError::Format {
-            path: path.to_path_buf(),
-            value: serde_yaml::to_string(other)
-                .unwrap_or_default()
-                .trim()
-                .to_string(),
-        }),
-    }
+        value,
+    })
 }
 
 /// The bundle's `layouts/*.yaml` in bundle layout order: ascending by the
@@ -98,10 +75,9 @@ pub fn layout_files(bundle: &Path) -> Result<Vec<LayoutFile>, LdmlError> {
 }
 
 /// The host documents of the selected layouts, in bundle layout order and
-/// host order. A v3 layout is an error suggesting `kbdgen ldml migrate`.
-/// Lowering a v4 layout to its host documents is `ldml.yaml.lowering`,
-/// which this build does not provide, so a v4 layout is an error naming
-/// it.
+/// host order (`ldml.yaml.lowering`). Each is resolved once here, so a
+/// layout that does not lower to valid keyboards fails before anything is
+/// written. A v3 layout is an error suggesting `kbdgen ldml migrate`.
 pub fn host_documents(
     files: &[LayoutFile],
     layouts: &[String],
@@ -113,17 +89,25 @@ pub fn host_documents(
         .iter()
         .filter(|f| layouts.is_empty() || layouts.contains(&f.tag))
         .collect();
+    // [spec:kbdgen:req:ldml.yaml.coexistence]
     if let Some(v3) = selected.iter().find(|f| f.format == LayoutFormat::V3) {
         return Err(LdmlError::V3Layout {
             tag: v3.tag.clone(),
         });
     }
-    match selected.first() {
-        None => Ok(Vec::new()),
-        Some(file) => Err(LdmlError::LoweringUnavailable {
-            tag: file.tag.clone(),
-        }),
+    let mut out = Vec::new();
+    for file in selected {
+        let layout = load(&file.path, &file.tag)?;
+        for (host, source) in lower(&layout)? {
+            kbd_ldml::resolve(&source)?;
+            out.push(HostDocument {
+                tag: file.tag.clone(),
+                host,
+                source,
+            });
+        }
     }
+    Ok(out)
 }
 
 /// Resolves each host document (`ldml.xml.resolve`), checks that the

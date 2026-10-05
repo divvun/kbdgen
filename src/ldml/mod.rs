@@ -7,6 +7,7 @@ pub mod compile;
 pub mod export;
 pub mod import;
 pub mod layouts;
+pub mod yaml;
 
 use std::path::PathBuf;
 
@@ -29,12 +30,8 @@ pub enum LdmlError {
     UnknownLayout(String),
     #[error("layout {tag} is a v3 layout; convert it with `kbdgen ldml migrate`")]
     V3Layout { tag: String },
-    #[error(
-        "layout {tag} is a v4 layout, and this build cannot lower v4 layouts to host documents"
-    )]
-    LoweringUnavailable { tag: String },
-    #[error("this build cannot write v4 layouts; {count} layout(s) were read and checked")]
-    LayoutWriterUnavailable { count: usize },
+    #[error(transparent)]
+    Layout4(#[from] yaml::YamlError),
     #[error(transparent)]
     Ldml(#[from] kbd_ldml::Error),
     #[error("layout {tag}: the {host} keyboard does not load in the engine: {source:?}")]

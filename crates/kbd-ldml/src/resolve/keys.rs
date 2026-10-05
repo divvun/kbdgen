@@ -192,7 +192,7 @@ pub(super) fn displays(ctx: &mut Ctx, root: &El, pending: Vec<PendingDisplay>) -
 
 /// The implied keys of `keys-Latn-implied.xml` at the version a keyboard
 /// conforming to `version` uses, as resolution builds them.
-pub(crate) fn implied_keys(version: u8) -> Vec<Key> {
+pub fn implied_keys(version: u8) -> Vec<Key> {
     let path = format!(
         "{}/keys-Latn-implied.xml",
         crate::cldr::implied_version(version)

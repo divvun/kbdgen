@@ -8,7 +8,8 @@ use super::cli::LdmlCommand;
 use super::compile::{Selection, compile};
 use super::export::{export, render};
 use super::import::{destinations, group, report};
-use super::layouts::{HostDocument, LayoutFormat, compiled_layouts, host_documents, layout_files};
+use super::layouts::{HostDocument, compiled_layouts, host_documents, layout_files};
+use super::yaml::LayoutFormat;
 
 fn keyboard_xml(tag: &str, output: &str) -> String {
     format!(
@@ -131,6 +132,8 @@ fn bundle(layouts: &[(&str, &str)]) -> tempfile::TempDir {
 }
 
 // [spec:kbdgen:def:ldml.cli.commands/test]
+// [spec:kbdgen:def:ldml.yaml.detect/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence/test]
 #[test]
 fn layouts_load_in_bundle_order_by_format() {
     let dir = bundle(&[
@@ -153,9 +156,10 @@ fn layouts_load_in_bundle_order_by_format() {
     assert!(err.to_string().contains("kbdgen ldml migrate"), "{err}");
     let err = host_documents(&files, &["smj".into()]).unwrap_err();
     assert!(
-        matches!(err, LdmlError::LoweringUnavailable { ref tag } if tag == "smj"),
+        matches!(err, LdmlError::Layout4(ref e) if e.to_string().ends_with("smj.yaml: the field displayNames is required")),
         "{err}"
     );
+    assert!(host_documents(&files, &["sme".into()]).unwrap().is_empty());
     assert!(matches!(
         host_documents(&files, &["fkv".into()]),
         Err(LdmlError::UnknownLayout(_))

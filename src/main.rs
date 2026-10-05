@@ -85,6 +85,8 @@ async fn main() -> anyhow::Result<()> {
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(&bundle_path)?;
+            // [spec:kbdgen:req:ldml.yaml.coexistence]
+            bundle.reject_v4_layouts(target_command_struct.target_command.name())?;
 
             let output_path = &target_command_struct.output_path;
             std::fs::create_dir_all(&output_path)?;
@@ -165,6 +167,19 @@ struct FetchCommand {
     #[clap(short, long)]
     /// Path to a .kbdgen bundle to process
     bundle_path: PathBuf,
+}
+
+impl TargetCommand {
+    fn name(&self) -> &'static str {
+        match self {
+            TargetCommand::Windows(_) => "windows",
+            TargetCommand::ChromeOs(_) => "chromeos",
+            TargetCommand::MacOs(_) => "macos",
+            TargetCommand::Svg(_) => "svg",
+            TargetCommand::Android(_) => "android",
+            TargetCommand::Ios(_) => "ios",
+        }
+    }
 }
 
 #[derive(Subcommand)]

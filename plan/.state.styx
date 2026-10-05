@@ -338,7 +338,6 @@ assertions (
     {id targets.windows.tsf.design, kind @complete, author "brendan@necessary.nu", at 2026-10-05T17:01:12.760122Z}
     {id ldml.spec, kind @complete, author "brendan@necessary.nu", at 2026-10-05T17:22:01.13452Z}
     {id targets.windows.installer-dlls, kind @complete, author "brendan@necessary.nu", at 2026-10-05T17:38:26.486139Z}
-    {id ldml.yaml-v4, kind @doing, author "brendan@necessary.nu", at 2026-10-05T18:26:54.088763Z}
 )
 
 impl_evidence (
@@ -915,6 +914,73 @@ impl_evidence (
         {id kbdl.vk-chars.decimal, version 0}
         {id kbdl.vk-chars.fixed, version 0}
         {id kbdl.vk-chars.values, version 0}
+    )}
+    {id ldml.yaml-v4, covered_rules (
+        ldml.scope.macos-rules
+        ldml.yaml.coexistence
+        ldml.yaml.dead-keys
+        ldml.yaml.dead-keys.backspace
+        ldml.yaml.dead-keys.compose
+        ldml.yaml.dead-keys.fallback
+        ldml.yaml.dead-keys.keys
+        ldml.yaml.detect
+        ldml.yaml.displays.auto
+        ldml.yaml.emoji
+        ldml.yaml.escape
+        ldml.yaml.hardware
+        ldml.yaml.hardware.rows
+        ldml.yaml.hosts
+        ldml.yaml.implied-layers
+        ldml.yaml.import
+        ldml.yaml.key-ids
+        ldml.yaml.key-ids.collisions
+        ldml.yaml.ldml-ref
+        ldml.yaml.long-press
+        ldml.yaml.lowering
+        ldml.yaml.modifier-names
+        ldml.yaml.normalization
+        ldml.yaml.roundtrip
+        ldml.yaml.rows
+        ldml.yaml.schema
+        ldml.yaml.strict
+        ldml.yaml.tokens
+        ldml.yaml.touch
+        ldml.yaml.touch.flicks
+        ldml.yaml.touch.roles
+        ldml.yaml.verbatim
+    ), covered_claims (
+        {impl_name main, rule ldml.scope.macos-rules}
+        {impl_name main, rule ldml.yaml.coexistence}
+        {impl_name main, rule ldml.yaml.dead-keys}
+        {impl_name main, rule ldml.yaml.dead-keys.backspace}
+        {impl_name main, rule ldml.yaml.dead-keys.compose}
+        {impl_name main, rule ldml.yaml.dead-keys.fallback}
+        {impl_name main, rule ldml.yaml.dead-keys.keys}
+        {impl_name main, rule ldml.yaml.detect}
+        {impl_name main, rule ldml.yaml.displays.auto}
+        {impl_name main, rule ldml.yaml.emoji}
+        {impl_name main, rule ldml.yaml.escape}
+        {impl_name main, rule ldml.yaml.hardware}
+        {impl_name main, rule ldml.yaml.hardware.rows}
+        {impl_name main, rule ldml.yaml.hosts}
+        {impl_name main, rule ldml.yaml.implied-layers}
+        {impl_name main, rule ldml.yaml.import}
+        {impl_name main, rule ldml.yaml.key-ids}
+        {impl_name main, rule ldml.yaml.key-ids.collisions}
+        {impl_name main, rule ldml.yaml.ldml-ref}
+        {impl_name main, rule ldml.yaml.long-press}
+        {impl_name main, rule ldml.yaml.lowering}
+        {impl_name main, rule ldml.yaml.modifier-names}
+        {impl_name main, rule ldml.yaml.normalization}
+        {impl_name main, rule ldml.yaml.roundtrip}
+        {impl_name main, rule ldml.yaml.rows}
+        {impl_name main, rule ldml.yaml.schema}
+        {impl_name main, rule ldml.yaml.strict}
+        {impl_name main, rule ldml.yaml.tokens}
+        {impl_name main, rule ldml.yaml.touch}
+        {impl_name main, rule ldml.yaml.touch.flicks}
+        {impl_name main, rule ldml.yaml.touch.roles}
+        {impl_name main, rule ldml.yaml.verbatim}
     )}
 )
 

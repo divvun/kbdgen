@@ -12,6 +12,7 @@ use serde_yaml::Value;
 use target::Targets;
 
 use self::resources::Resources;
+use crate::ldml::yaml::LayoutFormat;
 
 pub(crate) mod fetch;
 pub mod layout;
@@ -36,6 +37,9 @@ pub struct KbdgenBundle {
     pub path: PathBuf,
     pub project: Project,
     pub layouts: Layouts,
+    /// The `format: 4` layouts, by tag in bundle layout order, which the
+    /// target generators cannot build yet (`ldml.yaml.coexistence`).
+    pub v4_layouts: Vec<(LanguageTag, PathBuf)>,
     pub targets: Targets,
     pub resources: Resources,
 }
@@ -100,6 +104,22 @@ impl<'a> IntoIterator for &'a Layouts {
 }
 
 impl KbdgenBundle {
+    // [spec:kbdgen:req:ldml.yaml.coexistence]
+    /// Fails, naming the first v4 layout and `target`, when the bundle has
+    /// v4 layouts, which no target generator builds yet. A generator never
+    /// skips one silently.
+    pub fn reject_v4_layouts(&self, target: &'static str) -> Result<(), Error> {
+        let Some((tag, _)) = self.v4_layouts.first() else {
+            return Ok(());
+        };
+        let tag = tag.to_string();
+        Err(if target == "windows" {
+            Error::V4WindowsLayout { tag }
+        } else {
+            Error::V4Layout { tag, target }
+        })
+    }
+
     // [spec:kbdgen:def:bundle.structure]
     pub fn name(&self) -> &str {
         self.path
@@ -122,6 +142,7 @@ impl KbdgenBundle {
                 dependencies: IndexMap::new(),
             },
             layouts: layouts.into_iter().collect(),
+            v4_layouts: Vec::new(),
             targets: target::Targets::default(),
             resources: resources::Resources::default(),
         }
@@ -145,7 +166,7 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     let targets_path = canonical_bundle_path.join(TARGETS_FOLDER);
     let resources_path = canonical_bundle_path.join(RESOURCES_FOLDER);
 
-    let layouts = read_layouts(&layouts_path)?;
+    let (layouts, v4_layouts) = read_layouts(&layouts_path)?;
     let targets = read_targets(&targets_path)?;
     let resources = read_resources(&resources_path)?;
 
@@ -153,13 +174,17 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
         path: canonical_bundle_path,
         project,
         layouts,
+        v4_layouts,
         targets,
         resources,
     })
 }
 
 // [spec:kbdgen:req:bundle.layouts+1]
-fn read_layouts(path: &Path) -> Result<Layouts, Error> {
+// [spec:kbdgen:def:ldml.yaml.detect]
+/// The v3 layouts, and the paths of the v4 ones, which are detected by
+/// `format: 4` and not read as v3.
+fn read_layouts(path: &Path) -> Result<(Layouts, Vec<(LanguageTag, PathBuf)>), Error> {
     tracing::debug!("Reading layouts");
     let mut paths: Vec<PathBuf> = read_dir(path)
         .map_err(|e| Error::Io(path.to_path_buf(), e))?
@@ -180,62 +205,92 @@ fn read_layouts(path: &Path) -> Result<Layouts, Error> {
             .cmp(&b.file_name().map(|n| n.as_encoded_bytes()))
     });
 
-    paths
+    let mut v4 = Vec::new();
+    let layouts = paths
         .into_iter()
-        .map(|path| {
-            tracing::debug!("Loading {}", path.display());
-            let tag = path
-                .file_stem()
-                .ok_or_else(|| Error::NoFileStem { path: path.clone() })?
-                .to_string_lossy();
-
-            let tag: LanguageTag = tag.parse().map_err(|_| Error::InvalidLanguageTag {
-                tag: tag.to_string(),
-            })?;
-
-            let yaml_text =
-                fs::read_to_string(&path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
-            let deserializer = serde_yaml::Deserializer::from_str(&yaml_text);
-            let mut yaml: Value = serde_path_to_error::deserialize(deserializer)
-                .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
-            yaml.as_mapping_mut()
-                .expect("top level yaml type must be a mapping")
-                .insert(
-                    Value::String("languageTag".to_owned()),
-                    Value::String(tag.to_string()),
-                );
-
-            let mut layout: Layout = serde_path_to_error::deserialize(yaml)
-                .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
-
-            // [spec:kbdgen:req:bundle.layouts.autonym]
-            let _autonym = match layout
-                .display_names
-                .get(&tag.primary_language().parse::<LanguageTag>().unwrap())
-            {
-                Some(v) => v,
-                None => {
-                    return Err(Error::MissingMandatoryDisplayName {
-                        tag: tag.to_string(),
-                    });
-                }
-            };
-
-            // [spec:kbdgen:req:bundle.layouts+1]
-            if let Some(decimal) = layout.decimal.as_ref() {
-                if decimal != COMMA_DECIMAL && decimal != DEFAULT_DECIMAL {
-                    tracing::error!(
-                        "{} is not supported as a decimal character, setting to {}",
-                        decimal,
-                        DEFAULT_DECIMAL
-                    );
-                    layout.decimal = Some(DEFAULT_DECIMAL.to_owned());
-                }
-            };
-
-            Ok((tag, layout))
+        .filter_map(|path| match load_layout(&path) {
+            Ok(Loaded::V3(tag, layout)) => Some(Ok((tag, *layout))),
+            Ok(Loaded::V4(tag)) => {
+                v4.retain(|(t, _): &(LanguageTag, PathBuf)| t != &tag);
+                v4.push((tag, path));
+                None
+            }
+            Err(e) => Some(Err(e)),
         })
-        .collect()
+        .collect::<Result<Layouts, Error>>()?;
+    v4.sort_by(|a, b| a.0.as_str().cmp(b.0.as_str()));
+    Ok((layouts, v4))
+}
+
+enum Loaded {
+    V3(LanguageTag, Box<Layout>),
+    V4(LanguageTag),
+}
+
+fn load_layout(path: &Path) -> Result<Loaded, Error> {
+    tracing::debug!("Loading {}", path.display());
+    let tag = path
+        .file_stem()
+        .ok_or_else(|| Error::NoFileStem {
+            path: path.to_path_buf(),
+        })?
+        .to_string_lossy();
+
+    let tag: LanguageTag = tag.parse().map_err(|_| Error::InvalidLanguageTag {
+        tag: tag.to_string(),
+    })?;
+
+    let yaml_text = fs::read_to_string(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
+    let deserializer = serde_yaml::Deserializer::from_str(&yaml_text);
+    let mut yaml: Value = serde_path_to_error::deserialize(deserializer)
+        .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+    match crate::ldml::yaml::detect(&yaml) {
+        Ok(LayoutFormat::V3) => {}
+        Ok(LayoutFormat::V4) => return Ok(Loaded::V4(tag)),
+        Err(value) => {
+            return Err(Error::LayoutFormat {
+                path: path.to_path_buf(),
+                value,
+            });
+        }
+    }
+    yaml.as_mapping_mut()
+        .expect("top level yaml type must be a mapping")
+        .insert(
+            Value::String("languageTag".to_owned()),
+            Value::String(tag.to_string()),
+        );
+
+    let mut layout: Layout =
+        serde_path_to_error::deserialize(yaml).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+
+    // [spec:kbdgen:req:bundle.layouts.autonym]
+    let _autonym = match layout
+        .display_names
+        .get(&tag.primary_language().parse::<LanguageTag>().unwrap())
+    {
+        Some(v) => v,
+        None => {
+            return Err(Error::MissingMandatoryDisplayName {
+                tag: tag.to_string(),
+            });
+        }
+    };
+
+    // [spec:kbdgen:req:bundle.layouts+1]
+    if let Some(decimal) = layout.decimal.as_ref()
+        && decimal != COMMA_DECIMAL
+        && decimal != DEFAULT_DECIMAL
+    {
+        tracing::error!(
+            "{} is not supported as a decimal character, setting to {}",
+            decimal,
+            DEFAULT_DECIMAL
+        );
+        layout.decimal = Some(DEFAULT_DECIMAL.to_owned());
+    }
+
+    Ok(Loaded::V3(tag, Box::new(layout)))
 }
 
 fn load_yaml<T>(path: &Path) -> Result<T, Error>
@@ -415,6 +470,19 @@ pub enum Error {
 
     #[error("Missing mandatory display name for language tag: `{}`", tag)]
     MissingMandatoryDisplayName { tag: String },
+
+    #[error("{}: format {value} is not a layout format; v4 layouts have `format: 4`", path.display())]
+    LayoutFormat { path: PathBuf, value: String },
+
+    #[error(
+        "layout {tag} is a v4 layout (`format: 4`); the {target} target cannot build v4 layouts yet"
+    )]
+    V4Layout { tag: String, target: &'static str },
+
+    #[error(
+        "layout {tag} is a v4 layout (`format: 4`); the windows target builds v4 layouts through the kbdl adapter (ldml.kbdl.adapter), which this build does not have yet"
+    )]
+    V4WindowsLayout { tag: String },
 }
 
 /// Builds bundle directories on disk for tests that exercise loading.

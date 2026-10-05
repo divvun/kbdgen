@@ -15,7 +15,7 @@ use crate::tree::El;
 
 /// A width in thousandths of a key: a plain decimal with at most three
 /// fraction digits.
-pub(crate) fn parse_width(s: &str) -> Option<u32> {
+pub fn parse_width(s: &str) -> Option<u32> {
     let (int, frac) = s.split_once('.').unwrap_or((s, ""));
     if (int.is_empty() && frac.is_empty()) || frac.len() > 3 {
         return None;
@@ -121,7 +121,7 @@ fn form(ctx: &Ctx, root: &El, layers: &El, id: &str) -> Result<Form> {
 // [spec:kbdgen:sem:ldml.xml.implied]
 /// The implied form `id` from `scanCodes-implied.xml` at the version a
 /// keyboard conforming to `version` uses.
-pub(crate) fn implied_form(version: u8, id: &str) -> Option<Form> {
+pub fn implied_form(version: u8, id: &str) -> Option<Form> {
     let path = format!("{}/scanCodes-implied.xml", cldr::implied_version(version));
     let source = read_import(&path, None, cldr::file(&path)?.as_bytes()).ok()?;
     let implied = El::from_document(&source.name, &source.document).ok()?;

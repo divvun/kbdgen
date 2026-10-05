@@ -19,9 +19,8 @@ use crate::special::{Extensions, kbdgen_prefix};
 use crate::tree::El;
 use vars::Vars;
 
-pub(crate) use keys::implied_keys;
-pub(crate) use layers::implied_form;
-pub use layers::{encode_modifiers, parse_modifiers};
+pub use keys::implied_keys;
+pub use layers::{encode_modifiers, implied_form, parse_modifiers, parse_width};
 
 /// A resolved keyboard: the model, the kbdgen data outside it, and the
 /// warnings of reading and resolving.

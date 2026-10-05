@@ -25,10 +25,11 @@ mod tree;
 mod write;
 
 pub use diag::{Diagnostic, Error, Result};
-pub use export::{LayoutData, export, replace_extensions, set_host};
-pub use nfd::IcuNfd;
+pub use export::{LayoutData, encode_width, export, is_kbdgen_layer, replace_extensions, set_host};
+pub use gencat::is_mark;
+pub use nfd::{IcuNfd, nfd_str};
 pub use read::{SourceDocument, read_document, read_import, read_keyboard, read_keyboard_file};
-pub use resolve::{Resolved, resolve};
+pub use resolve::{Resolved, implied_form, implied_keys, parse_width, resolve};
 pub use resolve::{encode_modifiers, parse_modifiers};
 pub use special::{
     Compose, ComposeValue, DeadKey, Extensions, Generated, KBDGEN_NS, KBDGEN_PREFIX, Target,

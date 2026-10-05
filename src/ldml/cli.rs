@@ -8,7 +8,7 @@ use kbd_model::Host;
 use super::LdmlError;
 use super::compile::{Selection, compile};
 use super::export::export;
-use super::import::{destinations, group, report};
+use super::import::{destinations, group, report, write};
 use super::layouts::{compiled_layouts, host_documents, layout_files};
 
 // [spec:kbdgen:def:ldml.cli.commands]
@@ -90,13 +90,17 @@ pub fn run(command: &LdmlCommand) -> Result<(), LdmlError> {
         }
         LdmlCommand::Import(args) => {
             let groups = group(&args.files)?;
-            destinations(&args.bundle, &groups, args.force)?;
+            let paths = destinations(&args.bundle, &groups, args.force)?;
+            let warnings = write(&groups, &paths)?;
             for line in report(&groups) {
                 println!("{line}");
             }
-            return Err(LdmlError::LayoutWriterUnavailable {
-                count: groups.len(),
-            });
+            for line in warnings {
+                println!("{line}");
+            }
+            for path in paths {
+                println!("{}", path.display());
+            }
         }
     }
     Ok(())

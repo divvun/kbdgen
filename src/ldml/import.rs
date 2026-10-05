@@ -130,3 +130,37 @@ pub fn report(groups: &[ImportGroup]) -> Vec<String> {
     }
     lines
 }
+
+// [spec:kbdgen:req:ldml.cli.import]
+/// Writes each group's layout to its destination (`ldml.yaml.import`).
+/// Every layout is built and checked before the first file is written, so
+/// a failure writes nothing. Returns the warnings of every layout.
+pub fn write(groups: &[ImportGroup], destinations: &[PathBuf]) -> Result<Vec<String>, LdmlError> {
+    let mut layouts = Vec::new();
+    for (group, dest) in groups.iter().zip(destinations) {
+        layouts.push((
+            dest,
+            super::yaml::import::import(&group.tag, dest, &group.files)?,
+        ));
+    }
+    let mut warnings = Vec::new();
+    for (dest, imported) in layouts {
+        if let Some(dir) = dest.parent() {
+            std::fs::create_dir_all(dir).map_err(|source| LdmlError::Io {
+                path: dir.to_path_buf(),
+                source,
+            })?;
+        }
+        std::fs::write(dest, &imported.yaml).map_err(|source| LdmlError::Io {
+            path: dest.clone(),
+            source,
+        })?;
+        warnings.extend(
+            imported
+                .warnings
+                .into_iter()
+                .map(|w| format!("warning: {w}")),
+        );
+    }
+    Ok(warnings)
+}

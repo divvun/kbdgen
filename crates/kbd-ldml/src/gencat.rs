@@ -379,7 +379,7 @@ fn in_table(table: &[(char, char)], c: char) -> bool {
 }
 
 /// Whether `c` is of general category M.
-pub(crate) fn is_mark(c: char) -> bool {
+pub fn is_mark(c: char) -> bool {
     in_table(MARKS, c)
 }
 

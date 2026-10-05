@@ -1,0 +1,88 @@
+format: 4
+displayNames: {vro: Võro, en: Võro}
+keyNames: {space: vaih, return: sisse}
+decimal: ','
+deadKeys:
+  ´: {standalone: ´, compose: {a: á, A: Á, b: b́, B: B́}}
+  ˇ: {standalone: ˇ, compose: {c: č, C: Č}}
+  ę: {standalone: ę, compose: {a: á}}
+  '~': {compose: {o: õ, O: Õ}}
+longPress: {a: á ä æ å, o: ó ö õ ø õ̭}
+hardware:
+  default:
+    form: iso
+    layers:
+      none: |
+        \d{ˇ} 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        q w e r t y u i o p ü õ
+        a s d f g h j k l ö ä '
+        < z x c v b n m , . -
+      shift: |
+        \d{~} ! " # € % & / ( ) = ? \u{301}
+        Q W E R T Y U I O P Ü Õ
+        A S D F G H J K L Ö Ä *
+        > Z X C V B N M ; : _
+      caps: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{ę}
+        Q W E R T Y U I O P Ü Õ
+        A S D F G H J K L Ö Ä '
+        < Z X C V B N M , . -
+      cmd: |
+        § 1 2 3 4 5 6 7 8 9 0 - =
+        q w e r t y u i o p å ¨
+        a s d f g h j k l ø æ '
+        ` z x c v b n m , . /
+    space: {caps: '\u{A0}'}
+  macOS:
+    inherits: default
+    layers:
+      alt: |
+        \u{0} ¡ @ £ $ ∞ § | [ ] ≈ ± \u{0}
+        œ ∑ é ® † ¥ ü ı ø π ‘ ’
+        æ ß ∂ ƒ ¸ ˛ √ ª ﬁ ö ä ¶
+        ≤ Ω ≈ ç ‹ › ‘ ’ ‚ … –
+      alt shift: |
+        \u{0} ¡ @ £ $ ∞ § | { } ≈ ± \u{0}
+        Œ ∑ É ® † ¥ Ü ı Ø ∏ “ ”
+        Æ ß ∂ ƒ ¸ ˛ √ ª ﬂ Ö Ä ¶
+        ≥ Ω ≈ Ç « » “ ” „ … —
+    space: {alt: '\u{A0}'}
+  windows:
+    inherits: default
+    layers:
+      altR: |
+        \u{0} \u{0} @ £ $ € \u{0} { [ ] } \ \d{´}
+        \u{0} š é ŕ t́ ý u̬ i̬ ó ṕ ü̬ õ̭
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        | \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+touch:
+  iOS:
+    sizes:
+      phone:
+        layers:
+          base: |
+            q w e r t y u i o p ü õ
+            a s d f g h j k l ö ä '
+            \s{shift:1.25} \s{spacer:0.25} z x c v b n m đ \s{spacer:0.25} \s{backspace:1.25}
+          shift: |
+            Q W E R T Y U I O P Ü Õ
+            A S D F G H J K L Ö Ä *
+            \s{shift:1.25} \s{spacer:0.25} Z X C V B N M Đ \s{spacer:0.25} \s{backspace:1.25}
+      tablet:
+        layers:
+          base:
+            rows: |
+              q w e r t y u i o p ü õ \s{backspace}
+              \s{spacer:0.25} a s d f g h j k l ö ä \s{return:1.25}
+              \s{shift:1.1} z x c v b n m , . \s{shift:2.4}
+            flicks:
+              s: |
+                1 2 3 4 5 6 7 8 9 0 ` ´ \s{backspace}
+                \s{spacer:0.25} % # € & * ( ) ' " + @ \s{return:1.25}
+                \s{shift:1.1} q _ - = / ; : ! ? \s{shift:2.4}
+          shift: |
+            Q W E R T Y U I O P Ü Õ \s{backspace}
+            \s{spacer:0.25} A S D F G H J K L Ö Ä \s{return:1.25}
+            \s{shift:1.1} Z X C V B N M ; : \s{shift:2.4}
+targets:
+  windows: {locale: vro-Latn}
