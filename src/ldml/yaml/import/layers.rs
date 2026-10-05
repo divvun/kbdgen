@@ -113,6 +113,10 @@ pub fn authored_layers(kb: &Keyboard, hw: &Hardware) -> (Vec<Grid<u16>>, bool) {
     (candidate, true)
 }
 
+/// The tokens of a hardware layer. A gap before the row's last other key,
+/// or a row that is one gap, is written `\u{0}`: lowering rebuilds the
+/// same row, and a `B00` bound by `extraModifiers` must be `\u{0}`
+/// (`ldml.yaml.native`).
 fn hardware_rows(
     kb: &Keyboard,
     classes: &[KeyTok],
@@ -129,7 +133,10 @@ fn hardware_rows(
             (0..codes.len())
                 .map(|c| match row.get(c) {
                     None => "\\u{0}".to_string(),
-                    Some(k) if Some(*k) == gap && last_key.is_some_and(|l| c < l) => {
+                    Some(k)
+                        if Some(*k) == gap
+                            && (row.len() == 1 || last_key.is_some_and(|l| c < l)) =>
+                    {
                         "\\u{0}".to_string()
                     }
                     Some(k) => token_of(kb, classes, *k),

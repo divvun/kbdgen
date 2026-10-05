@@ -73,6 +73,7 @@ fn altgr_reaches_ctrl_alt_and_other_layers() {
 }
 
 // [spec:kbdgen:sem:ldml.kbdl.layers/test]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
 #[test]
 fn extra_modifiers_select_their_own_columns() {
     let yaml = sme(&format!(
@@ -119,6 +120,7 @@ fn extra_modifiers_select_their_own_columns() {
 }
 
 // [spec:kbdgen:sem:ldml.kbdl.positions/test]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
 #[test]
 fn abnt2_form_fills_the_49th_key() {
     let rows = iso_rows("§").replace(". /\n", ". / ?\n");
@@ -316,6 +318,8 @@ fn classification_counts_what_only_the_service_does() {
 }
 
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
+// [spec:kbdgen:req:ldml.kbdl.metadata/test]
 #[test]
 fn windows_options_reach_the_input() {
     let yaml = sme(&format!(

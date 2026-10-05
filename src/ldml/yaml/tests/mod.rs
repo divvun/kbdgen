@@ -13,6 +13,7 @@ mod engine;
 mod import;
 mod load;
 mod lowering;
+mod windows;
 
 /// The Võro example of `docs/spec/ldml/yaml.md`, with the elided rows
 /// filled in and the flow-mapping escapes quoted.

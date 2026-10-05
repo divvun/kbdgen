@@ -125,6 +125,13 @@ children (
                         kind @blocker
                         text "Needs the LDML Keyboard 3.0-aligned bundle format (gap analysis option C+), which has no WBS node yet; its shape awaits operator sign-off. Implementing these inputs in the current YAML would be discarded. Generator support already exists in targets.windows.dll-gen against the kbdl.input model."
                     }
+
+                    {
+                        at 2026-10-05T21:58:37.209472Z
+                        author "brendan@necessary.nu"
+                        kind @unblock
+                        text "ldml.yaml-v4 (d4c19bc) and ldml.kbdl (e4b6abf) landed; the inputs now have their LDML-aligned home"
+                    }
                 )
             }
         )

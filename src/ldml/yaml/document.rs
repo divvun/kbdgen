@@ -298,6 +298,9 @@ fn rows(doc: &mut Document, layer: Element, name: &str, rows: &[Vec<String>]) {
     }
 }
 
+// [spec:kbdgen:def:ldml.yaml.native]
+/// The hardware layers; native-only layers and `extraModifiers` go in
+/// kbdgen's namespace.
 fn hardware(doc: &mut Document, root: Element, hw: &HardwareOut) {
     if hw.custom {
         let forms = add(doc, root, "forms", &[]);
@@ -469,6 +472,7 @@ fn transforms(doc: &mut Document, root: Element, parts: &Parts) {
     }
 }
 
+// [spec:kbdgen:def:ldml.yaml.targets]
 fn keyboard_special(doc: &mut Document, root: Element, parts: &Parts) {
     let layout = parts.layout;
     let special = add(doc, root, "special", &[]);
@@ -561,6 +565,7 @@ fn compose_elements(doc: &mut Document, parent: Element, compose: &[kbd_ldml::Co
     }
 }
 
+// [spec:kbdgen:def:ldml.yaml.targets]
 /// The layout-level kbdgen data every document of the layout shares.
 pub fn layout_data(parts: &Parts) -> LayoutData {
     let layout = parts.layout;

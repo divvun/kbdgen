@@ -652,6 +652,9 @@ const TARGET_FIELDS: [(&str, &[&str]); 4] = [
     ("android", &["spellerPackageKey", "spellerPath"]),
 ];
 
+// [spec:kbdgen:def:ldml.yaml.targets]
+/// `targets`: each host's fields, the `windows` flags, and `keyNames`
+/// entries, each naming an entry of `kbdl.key-names`.
 fn targets(value: &Value, at: &At) -> Result<Targets4> {
     let mut f = Fields::new(value, at)?;
     let mut out = Targets4::default();

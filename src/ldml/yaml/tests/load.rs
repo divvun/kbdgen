@@ -248,6 +248,7 @@ fn tokens_are_tried_in_table_order() {
 }
 
 // [spec:kbdgen:syn:ldml.yaml.modifier-names/test]
+// [spec:kbdgen:def:ldml.yaml.native/test]
 #[test]
 fn modifier_names_are_sets_in_any_order() {
     let err = error(&sme(&hardware(&[
@@ -324,13 +325,14 @@ fn inheritance_cycles_and_unknown_parents_fail() {
 }
 
 // [spec:kbdgen:req:ldml.yaml.hardware.rows/test]
+// [spec:kbdgen:def:ldml.yaml.native/test]
 #[test]
 fn a_49_token_row_is_caught() {
     let rows = QWERTY.replace("< z", "< > z");
     let err = lower_error(&sme(&hardware(&[("none", &rows)])));
     assert!(
         err.ends_with(
-            "hardware.default.layers.none, row 4: layer none row 4 has 12 tokens; form iso row 4 has 11 scan codes"
+            "hardware.default.layers.none, row 4: layer none row 4 has 12 tokens; form iso row 4 has 11 scan codes; the 49th key needs form: abnt2"
         ),
         "{err}"
     );

@@ -770,6 +770,7 @@ fn lowering_is_deterministic_export_form() {
 }
 
 // [spec:kbdgen:def:ldml.yaml.emoji/test]
+// [spec:kbdgen:def:ldml.yaml.targets/test]
 #[test]
 fn emoji_and_targets_reach_the_model() {
     let yaml = sme(&format!(

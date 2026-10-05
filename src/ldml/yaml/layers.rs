@@ -180,6 +180,40 @@ fn finish_rows(rows: Vec<Vec<Option<String>>>) -> Vec<Vec<String>> {
     out
 }
 
+/// The scan code of `B00`, which an `extraModifiers` entry can bind.
+const B00_SCAN_CODE: u8 = 0x56;
+
+// [spec:kbdgen:def:ldml.yaml.native]
+/// Fails when a token may not stand at a hardware position: a touch-only
+/// token anywhere, or anything but `\u{0}` at `B00` once `extraModifiers`
+/// binds it.
+fn check_position(token: &Token, code: u8, b00_bound: bool, at: &At) -> Result<()> {
+    check_hardware_token(token, at)?;
+    if b00_bound && code == B00_SCAN_CODE && *token != Token::NoKey {
+        return Err(at.error("extraModifiers binds B00, so every B00 position must be \\u{0}"));
+    }
+    Ok(())
+}
+
+// [spec:kbdgen:def:ldml.yaml.native]
+/// The note for a row of an `iso` layer with one token more than the form
+/// has: the same row of `abnt2`, which adds the 49th key (`B11`).
+fn abnt2_note(form: &Form, custom: bool, r: usize, tokens: usize, conforms_to: u8) -> &'static str {
+    let abnt2 = (!custom && form.id == "iso")
+        .then(|| kbd_ldml::implied_form(conforms_to, "abnt2"))
+        .flatten();
+    let fits = abnt2.is_some_and(|abnt2| {
+        let iso = character_rows(form).0.get(r).map(Vec::len);
+        let wide = character_rows(&abnt2).0.get(r).map(Vec::len);
+        wide == Some(tokens) && iso.is_some_and(|n| n + 1 == tokens)
+    });
+    if fits {
+        "; the 49th key needs form: abnt2"
+    } else {
+        ""
+    }
+}
+
 fn form(spec: &FormSpec, conforms_to: u8, at: &At) -> Result<(Form, bool)> {
     match spec {
         FormSpec::Implied(id) => kbd_ldml::implied_form(conforms_to, id)
@@ -204,6 +238,7 @@ pub fn hardware(
 ) -> Result<HardwareOut> {
     let (form, custom) = form(&variant.form, conforms_to, &variant.at)?;
     let (char_rows, has_space) = character_rows(&form);
+    let b00_bound = variant.extra_modifiers.contains(&ExtraModifierKey::B00);
     let ctx = Ctx {
         long_press,
         touch: None,
@@ -233,19 +268,20 @@ pub fn hardware(
         for (r, (row, codes)) in layer.rows.iter().zip(char_rows).enumerate() {
             if row.len() != codes.len() {
                 return Err(layer.at.row(r).error(format!(
-                    "layer {} row {} has {} tokens; form {} row {} has {} scan codes",
+                    "layer {} row {} has {} tokens; form {} row {} has {} scan codes{}",
                     layer.key,
                     r + 1,
                     row.len(),
                     form.id,
                     r + 1,
-                    codes.len()
+                    codes.len(),
+                    abnt2_note(&form, custom, r, row.len(), conforms_to)
                 )));
             }
             let mut ids = Vec::new();
-            for (c, token) in row.iter().enumerate() {
+            for (c, (token, code)) in row.iter().zip(codes).enumerate() {
                 let at = layer.at.row(r).token(c);
-                check_hardware_token(token, &at)?;
+                check_position(token, *code, b00_bound, &at)?;
                 ids.push(table.key(token, &ctx, &[], &at)?);
             }
             rows.push(ids);

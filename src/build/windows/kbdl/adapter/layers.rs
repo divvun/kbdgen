@@ -219,6 +219,7 @@ pub fn dead_identity(keyboard: &Keyboard, marker: MarkerIndex) -> Option<String>
 /// Derives every layer whose state some hardware layer serves.
 // [spec:kbdgen:sem:ldml.kbdl.layers]
 // [spec:kbdgen:sem:ldml.kbdl.caps]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs]
 pub fn derive(
     keyboard: &Keyboard,
     hardware: &Hardware,

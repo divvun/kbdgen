@@ -76,6 +76,9 @@ fn form(value: &Value, at: &At) -> Result<FormSpec> {
     Ok(FormSpec::Custom(Form { id, rows }))
 }
 
+// [spec:kbdgen:def:ldml.yaml.native]
+/// `extraModifiers`: up to three distinct keys from `rightCtrl`,
+/// `capsLock` and `B00`, in order, the *i*-th binding `extra`*i*.
 fn extra_modifiers(value: &Value, at: &At) -> Result<Vec<ExtraModifierKey>> {
     let mut out = Vec::new();
     for (v, a) in list(value, at)? {
@@ -212,6 +215,7 @@ fn resolve_hardware(
 }
 
 // [spec:kbdgen:syn:ldml.yaml.modifier-names]
+// [spec:kbdgen:def:ldml.yaml.native]
 /// Fails when two layer keys of a variant name equal or overlapping sets,
 /// other than native-only sets overlapping each other, when two layers use
 /// `other`, and when a `space` entry names sets that no layer has.
@@ -251,6 +255,30 @@ fn check_sets(variant: &HardwareVariant) -> Result<()> {
     Ok(())
 }
 
+// [spec:kbdgen:def:ldml.yaml.native]
+/// Fails when a layer of the resolved variant uses `extra`*n* and
+/// `extraModifiers` has fewer than *n* keys.
+fn check_extra(variant: &HardwareVariant) -> Result<()> {
+    let bound = variant.extra_modifiers.len();
+    for layer in &variant.layers {
+        let used = layer
+            .sets
+            .iter()
+            .filter_map(|set| match set {
+                ModifierSet::Set(m) => m.components().filter_map(|c| c.extra_number()).max(),
+                ModifierSet::Other => None,
+            })
+            .max();
+        if let Some(n) = used.filter(|n| usize::from(*n) > bound) {
+            return Err(layer.at.error(format!(
+                "layer {} uses extra{n}, but extraModifiers binds {bound} key(s), so nothing binds extra{n}",
+                layer.key
+            )));
+        }
+    }
+    Ok(())
+}
+
 // [spec:kbdgen:def:ldml.yaml.hardware]
 /// The hardware variants, each with `inherits` resolved: form,
 /// `impliedLayers` and `extraModifiers` replaced when given, and layers
@@ -270,6 +298,7 @@ pub fn hardware(value: &Value, at: &At, strings: &Strings) -> Result<Vec<Hardwar
     for i in 0..raws.len() {
         let variant = resolve_hardware(&raws, i, &mut Vec::new())?;
         check_sets(&variant)?;
+        check_extra(&variant)?;
         out.push(variant);
     }
     Ok(out)
