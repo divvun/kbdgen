@@ -131,7 +131,7 @@ fn runs(weights: &[Weights]) -> Vec<core::ops::Range<usize>> {
     runs
 }
 
-// [spec:kbdgen:sem:ldml.engine.reorder]
+// [spec:kbdgen:sem:ldml.engine.reorder+1]
 // [spec:kbdgen:req:ldml.scope.deferred]
 /// Runs a reorder group over the whole of `elems`: removes the markers,
 /// sorts each run of the plain text by its sort keys, and re-adds the
@@ -230,7 +230,7 @@ mod tests {
         ])
     }
 
-    // [spec:kbdgen:sem:ldml.engine.reorder/test]
+    // [spec:kbdgen:sem:ldml.engine.reorder+1/test]
     #[test]
     fn tai_tham_typing_orders_converge() {
         let rules = tai_tham();
@@ -284,7 +284,7 @@ mod tests {
         ])
     }
 
-    // [spec:kbdgen:sem:ldml.engine.reorder/test]
+    // [spec:kbdgen:sem:ldml.engine.reorder+1/test]
     #[test]
     fn myanmar_prebases_follow_their_base() {
         let rules = myanmar();
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(reorder(&typed, &rules), typed);
     }
 
-    // [spec:kbdgen:sem:ldml.engine.reorder/test]
+    // [spec:kbdgen:sem:ldml.engine.reorder+1/test]
     #[test]
     fn markers_move_with_their_characters() {
         let rules = myanmar();
@@ -341,7 +341,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:sem:ldml.engine.reorder/test]
+    // [spec:kbdgen:sem:ldml.engine.reorder+1/test]
     #[test]
     fn tertiary_sorts_after_its_base() {
         // Devanagari: a nukta typed after a vowel sign moves back to the

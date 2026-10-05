@@ -83,7 +83,7 @@ fn document(
     Ok(build(&parts, host))
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+1]
 fn referenced(
     layout: &Layout4,
     reference: &LdmlRef,

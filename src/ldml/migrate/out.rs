@@ -187,7 +187,7 @@ impl Emitter {
     }
 }
 
-// [spec:kbdgen:req:ldml.migrate.output]
+// [spec:kbdgen:req:ldml.migrate.output+1]
 /// The text of a migrated layout. Equal layouts give equal bytes.
 pub fn write(layout: &Out4) -> String {
     let mut e = Emitter::default();

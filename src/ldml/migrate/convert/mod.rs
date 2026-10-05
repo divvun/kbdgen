@@ -218,7 +218,7 @@ fn targets(src: &Source3) -> Vec<(String, Vec<(String, String)>)> {
     out
 }
 
-// [spec:kbdgen:sem:ldml.migrate.fields]
+// [spec:kbdgen:sem:ldml.migrate.fields+1]
 fn fields(src: &Source3, ctx: &mut Ctx, out: &mut Out4) {
     out.display_names = src.display_names.clone();
     out.decimal = src.decimal.as_ref().map(|d| ctx.output(d, "decimal"));

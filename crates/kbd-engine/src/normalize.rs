@@ -126,7 +126,7 @@ mod icu {
 #[cfg(feature = "normalization")]
 pub(crate) use icu::IcuNfd;
 
-// [spec:kbdgen:sem:ldml.engine.normalization]
+// [spec:kbdgen:sem:ldml.engine.normalization+1]
 /// `elems` in NFD with the marker algorithm. The engine normalizes the
 /// context (with [`nfd_chars`], as it has no markers until the state's are
 /// restored), C after appending an output, and C after each transform
@@ -188,7 +188,7 @@ mod tests {
     use kbd_model::NfdCheck;
     use kbd_model::TextElem::{Char, Marker};
 
-    // [spec:kbdgen:sem:ldml.engine.normalization/test]
+    // [spec:kbdgen:sem:ldml.engine.normalization+1/test]
     #[test]
     fn marker_glues_to_following_scalar() {
         // UTS #35 Part 7, Example 1b.
@@ -199,7 +199,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:sem:ldml.engine.normalization/test]
+    // [spec:kbdgen:sem:ldml.engine.normalization+1/test]
     #[test]
     fn trailing_marker_stays_at_end() {
         // UTS #35 Part 7, Example 2.
@@ -224,7 +224,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:sem:ldml.engine.normalization/test]
+    // [spec:kbdgen:sem:ldml.engine.normalization+1/test]
     #[test]
     fn markers_stay_in_their_segment() {
         // UTS #35 Part 7, Example 3.
@@ -253,7 +253,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:sem:ldml.engine.normalization/test]
+    // [spec:kbdgen:sem:ldml.engine.normalization+1/test]
     #[test]
     fn precomposed_decomposes_with_marker_first() {
         let input = [Marker(3), Char('\u{E8}'), Char('\u{320}')];

@@ -89,7 +89,7 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 
 ## Validation
 
-> [spec:kbdgen:req:ldml.xml.validate]
+> [spec:kbdgen:req:ldml.xml.validate+1]
 > After imports are resolved, a keyboard MUST satisfy:
 >
 > - the DTD content model, attribute enumerations and `@MATCH` patterns of
@@ -104,7 +104,11 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 > An unknown element or attribute outside `special` is an error. Content
 > inside `special` is kept as is, and only kbdgen's own namespace is
 > interpreted. Every error names the file, the element path
-> (`keyboard3/keys/key[id=e-acute]`) and the attribute.
+> (`keyboard3/keys/key[id=e-acute]`) and the attribute. `reorder@preBase`
+> and `@tertiaryBase` also accept `1` and `0`, as UTS #35's own examples
+> write them. Not errors, but warnings: a `display` whose string starts
+> with a combining mark (CLDR `bn.xml`), and a `display@keyId` naming no
+> key, which is dropped, since displays may be shared across keyboards.
 
 ## Imports and implied data
 
@@ -131,27 +135,30 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 > `base="cldr"` path whose version or file is not embedded is an error naming
 > the path. The files stay under Unicode-3.0, with their copyright headers.
 
-> [spec:kbdgen:sem:ldml.xml.implied]
+> [spec:kbdgen:sem:ldml.xml.implied+1]
 > Before the keyboard's own children are read, resolution behaves as if:
 >
-> - `<keys>` began with an import of `keys-Latn-implied.xml`, which defines
->   `0`–`9`, `A`–`Z` and `a`–`z` with output equal to the id
-> - `<keys>` also defined `<key id="gap" gap="true"/>` and
->   `<key id="space" output=" " stretch="true"/>`
+> - `<keys>` began with an import of `keys-Latn-implied.xml`, whose keys
+>   come first in the key table in that file's order: `gap` (a gap),
+>   `space` (output U+0020, stretch), then `0`–`9`, `A`–`Z` and `a`–`z`
+>   with output equal to the id
 > - `<forms>` began with an import of `scanCodes-implied.xml`, which defines
 >   `us`, `iso`, `jis`, `ks` and `abnt2`
 >
-> The version used is the keyboard's `conformsTo`. The keyboard's own
-> elements override these per `ldml.xml.import`. `formId="touch"` names no
-> form.
+> Both files are taken from the newest embedded CLDR release not above the
+> keyboard's `conformsTo` (`ldml.xml.cldr-data`), so `conformsTo="49"`
+> uses release 48. The keyboard's own elements override these per
+> `ldml.xml.import`. `formId="touch"` names no form.
 
 ## Syntax
 
-> [spec:kbdgen:syn:ldml.xml.escape]
+> [spec:kbdgen:syn:ldml.xml.escape+1]
 > A UTS 18 escape is `\u{` *h* (` ` *h*)* `}`. Each *h* is 1–6 hex digits
 > in either case, naming a Unicode scalar value. A surrogate, a value above
-> U+10FFFF or an empty brace is an error, not literal text. The escape is
-> decoded in:
+> U+10FFFF or an empty brace is an error, not literal text. A `\` or `$`
+> that starts no escape, marker or variable is literal, so a `\u` without
+> `{` is literal text, as CLDR `fr.xml` writes it (v4 YAML instead rejects
+> it, `ldml.yaml.escape`). The escape is decoded in:
 >
 > - `key@output`
 > - `transform@from` and `@to`
@@ -161,25 +168,30 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 > - `reorder@from` and `@before`
 > - keyboardTest3 `startContext@to`, `emit@to` and `check@result`
 >
-> `\m{name}` (NMTOKEN) is a marker in outputs, displays, string and set
-> values, and transforms. `${id}` substitutes a string variable in those
-> attributes, `display@display` included.
+> `\m{name}` (NMTOKEN) is a marker in outputs, display outputs, string and
+> set values, and transforms; `\m{.}` outside `transform@from` is an error.
+> `${id}` substitutes a string variable in those attributes,
+> `display@display` included.
 
-> [spec:kbdgen:syn:ldml.xml.from]
+> [spec:kbdgen:syn:ldml.xml.from+1]
 > `transform@from` MUST match `from-match` of §Transform From Grammar, and
 > `kbd-ldml` MUST parse it into a Pattern (`ldml.model.pattern`). The
 > grammar's well-formedness and validity constraints are errors:
 >
-> - at most nine captures, none nested
+> - at most nine captures; a capture holds a plain sequence, with no
+>   alternation and no group inside it
 > - referenced variables defined
 > - every disallowed feature of §Disallowed Regex Features
 > - a pattern that can match the empty text
 >
 > `${s}` is substituted textually before parsing; its value is parsed as
 > pattern syntax. `$[v]` names a `set` or `uset`. LDML is ambiguous on
-> whether a negated class can match a marker. Here a class matches markers
-> only through explicit `\m{…}` members, and a negated class never matches
-> a marker.
+> whether a class can match a marker. Here a class matches markers only
+> through `\m{…}` members: a positive class with `\m{.}` becomes
+> `(?:\m{.}|[rest])`, and a negated class never matches a marker, its
+> `\m{.}` dropped. With normalization enabled, each run of unquantified
+> literal characters is put in NFD, and a quantified non-NFD character
+> becomes a quantified group of its decomposition.
 
 > [spec:kbdgen:syn:ldml.xml.to]
 > `transform@to` MUST match `to-replacement` of §Transform To Grammar. It
@@ -195,11 +207,12 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 > only when capture *n* contains exactly one `set` reference and nothing
 > else, and *v* is a `set` with as many items. A `uset` is never mapped.
 
-> [spec:kbdgen:syn:ldml.xml.sets]
-> A `set` value is whitespace-separated items after `${…}` substitution;
-> `$[set]` references splice in an earlier set's items, and must be
-> whitespace-separated. A `uset` value is the UnicodeSet subset of §Element:
-> uset:
+> [spec:kbdgen:syn:ldml.xml.sets+1]
+> A `set` value is items separated by ASCII whitespace after `${…}`
+> substitution. Whitespace inside a `\u{…}` escape separates scalar values
+> of one item, not items. `$[set]` references splice in an earlier set's
+> items, and must be whitespace-separated. A `uset` value is the
+> UnicodeSet subset of §Element: uset:
 >
 > - brackets, ranges and `\u{…}` escapes
 > - `$[uset]` references, union, and the difference `[$[a]-[b]]`
@@ -207,16 +220,26 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 >
 > Both resolve to explicit item lists or scalar ranges at build time.
 
-> [spec:kbdgen:req:ldml.xml.nfd-classes]
-> With normalization enabled, a class, uset or reorder class that lists a
-> scalar value which is not NFD is an error naming the value. A range that
-> contains a non-NFD value without listing it, such as
-> `[\u{20}-\u{1FF}]`, warns (§Normalization and Character Classes). These
-> checks do not apply with normalization disabled.
+> [spec:kbdgen:req:ldml.xml.nfd-classes+1]
+> With normalization enabled, resolution MUST leave only NFD scalar values
+> in classes (§Normalization and Character Classes), as `ldml.model.nfd`
+> requires:
+>
+> - A `from` class or a `uset` that lists a non-NFD value is an error
+>   naming the value.
+> - A range that contains non-NFD values without listing them, such as
+>   `[\u{20}-\u{1FF}]`, warns, and those values are removed; they never
+>   occur in NFD text.
+> - In `reorder@from` and `@before`, a bare non-NFD character is an error.
+>   A bracketed class or `$[uset]` element warns and removes non-NFD
+>   values, listed ones included (CLDR `bn.xml` lists U+09CB). An element
+>   left with no value is an error.
+>
+> None of this applies with normalization disabled.
 
 ## Resolution
 
-> [spec:kbdgen:sem:ldml.xml.resolve]
+> [spec:kbdgen:sem:ldml.xml.resolve+1]
 > Resolving a source document to a model runs these steps in order:
 >
 > 1. imports, implied keys and forms, and overrides
@@ -227,13 +250,16 @@ Grammar, §Normalization, §Extensibility); `ldmlKeyboard3.dtd`;
 > 6. key, flick and display tables
 > 7. forms and layers, with modifier sets canonicalised
 > 8. patterns and replacements
-> 9. reorder split-and-merge and priority sort
+> 9. reorder split-and-merge, then a stable sort into priority: most
+>    `from` elements, then most `before` elements
 > 10. `context_len`
 > 11. extensions (`ldml.xml.special`)
 > 12. model invariants (`ldml.model.invariants`)
 >
-> Any error stops resolution. Warnings are collected and returned with the
-> model.
+> Markers are interned on first use in this order: display outputs, key
+> outputs, transforms, then extensions. A variable's markers are interned
+> where it is used. Any error stops resolution. Warnings are collected and
+> returned with the model.
 
 ## Extensions
 
@@ -242,7 +268,7 @@ in LDML's own extension point, `special`, under a kbdgen namespace. An
 exported file is therefore a valid LDML keyboard, and reading it back loses
 nothing.
 
-> [spec:kbdgen:def:ldml.xml.special]
+> [spec:kbdgen:def:ldml.xml.special+1]
 > Superset data lives in `special` elements in the namespace
 > `https://divvun.no/ns/kbdgen-ldml/1`, bound on `keyboard3` to the prefix
 > `kbdgen`. These elements carry attributes only, never text. Each row below
@@ -259,6 +285,7 @@ nothing.
 > | `keyboard3` | `kbdgen:target` | `host`, `name`, `value` | per-layout target config (`ldml.yaml.targets`) |
 > | `keyboard3` | `kbdgen:emojiKey` | `scanCode`, `modifiers` | `emoji.key` |
 > | `keyboard3` | `kbdgen:emoji` | `emoji`, `name`, `keywords` (`|`-separated) | `emoji.annotations` |
+> | `keyboard3` | `kbdgen:extraModifier` | `key` | `windows.extra_modifiers`, for a keyboard without hardware `layers` |
 > | `keyboard3` | `kbdgen:deadKey`, with nested `kbdgen:compose` children | `identity`, `marker`, `display`, `standalone`, `name`?; a compose has `input` plus either `output` or (`marker`, `standalone`, children) | authoring metadata: the v4 `deadKeys` table (`ldml.yaml.import`) |
 > | `transformGroup` | `kbdgen:generated` | `by` (`deadKeys-compose`, `deadKeys-fallback` or `deadKeys-backspace`) | marks a generated group; no model field |
 > | `keys` | `kbdgen:role` | `keyId`, `role` | key `role` |
@@ -268,19 +295,25 @@ nothing.
 >
 > `kbdgen:layer` holds every native-only layer (`ldml.model.native`), and
 > every layer whose sets use `cmd` or `extra`*n*. Its rows reference ordinary
-> `key` elements by id. Authoring metadata never changes the model.
-> Resolution ignores it, and import uses it only after checking it against
-> the semantic elements.
+> `key` elements by id. Resolution stores the LDML `layer`s first, then the
+> `kbdgen:layer`s, each in document order. A touch `layers` without
+> `kbdgen:touchSet` gets no name and `bottomRow` `authored`; a
+> `kbdgen:touchSet` without `bottomRow` means `host`. Authoring metadata
+> never changes the model. Resolution ignores it, and import uses it only
+> after checking it against the semantic elements.
 
-> [spec:kbdgen:sem:ldml.xml.ldml-view]
+> [spec:kbdgen:sem:ldml.xml.ldml-view+1]
 > A consumer that knows only LDML ignores kbdgen's `special` content, as
 > §Extensibility allows. It sees a keyboard that:
 >
 > - has every LDML layer, key, flick, display, variable and transform group,
 >   including the groups generated for dead keys. So dead keys compose, fall
 >   back and backspace as in kbdgen's engine.
-> - draws role keys as gaps
-> - has the `space` label as `<display keyId="space">`
+> - draws role keys as gaps, or as layer-switch keys for the roles that
+>   switch layers
+> - has the `space` label as `<display keyId="space">` when the model
+>   holds that display, which v4 lowering adds (`ldml.yaml.displays.auto`);
+>   export itself writes the label only as `kbdgen:keyboard@spaceLabel`
 > - lacks native-only and `extra`*n* layers, so it outputs nothing for those
 >   modifier states
 > - lacks the decimal key, flush outputs and the Windows options. A pending
@@ -295,7 +328,7 @@ nothing.
 
 ## Export
 
-> [spec:kbdgen:req:ldml.xml.export]
+> [spec:kbdgen:req:ldml.xml.export+1]
 > A generated keyboard document MUST:
 >
 > - order elements as the DTD sequence: `import`, `locales`, `version`,
@@ -303,7 +336,8 @@ nothing.
 >   `variables`, `transforms`, `special`
 > - order attributes as the DTD declares them
 > - set `xmlns` to `https://schemas.unicode.org/cldr/<conformsTo>/keyboard3`
-> - set `conformsTo` to 45, or to 47 when `info@attribution` is present
+> - set `conformsTo` to the greater of the model's `conforms_to` and the
+>   minimum the content needs: 45, or 47 when `info@attribution` is present
 > - omit implied keys and forms unless they are overridden
 > - write modifier sets canonically (`ldml.model.modifiers`), with
 >   components space-separated and sets separated by `", "`
@@ -325,9 +359,14 @@ nothing.
 > Everything else is literal. So `xmlem`'s own entity escaping only ever
 > touches `& < > " '`.
 
-> [spec:kbdgen:req:ldml.xml.ldml-ref]
+> [spec:kbdgen:req:ldml.xml.ldml-ref+1]
 > For a layout that references XML (`ldml.yaml.ldml-ref`), export MUST
 > re-serialize the read document, which preserves its structure per
-> `ldml.xml.roundtrip`. It replaces only the `kbdgen` elements in
-> `keyboard3`'s `special`, or appends a `special`, with the extension data
-> of the layout file. Other `special` content and comments are kept.
+> `ldml.xml.roundtrip`. In `keyboard3`'s `special` it replaces only the
+> layout-level elements `kbdgen:keyboard`, `kbdgen:displayName`,
+> `kbdgen:target`, `kbdgen:emojiKey` and `kbdgen:emoji` with the layout
+> file's data. They go into the `special` that held kbdgen elements, else
+> the first `special`, else an appended one. The file's
+> `kbdgen:keyboard@impliedLayers` is kept. Other kbdgen elements
+> (`flush`, `deadKeyName`, `windows`, …), other `special` content and
+> comments are kept.

@@ -88,7 +88,7 @@ fn pad4(out: &mut Vec<u8>) {
 }
 
 /// One resource entry: the 32-byte header, then the data padded to 4.
-// [spec:kbdgen:syn:kbdl.resources.format]
+// [spec:kbdgen:syn:kbdl.resources.format+1]
 fn entry(out: &mut Vec<u8>, kind: u16, name: u16, language: u16, flags: u16, data: &[u8]) {
     out.extend_from_slice(&(data.len() as u32).to_le_bytes());
     out.extend_from_slice(&32u32.to_le_bytes());
@@ -180,7 +180,7 @@ fn version_info(metadata: &Metadata, version: [u16; 4]) -> Vec<u8> {
 }
 
 /// One string-table block: 16 slots of unit count and unterminated units.
-// [spec:kbdgen:syn:kbdl.resources.format]
+// [spec:kbdgen:syn:kbdl.resources.format+1]
 fn string_block(slots: &[(u16, &str)]) -> Vec<u8> {
     let mut out = Vec::new();
     for index in 0..16 {
@@ -199,8 +199,8 @@ fn string_block(slots: &[(u16, &str)]) -> Vec<u8> {
 /// The complete `.res` file of a layout. `model`, the encoded engine model
 /// of the layout, goes in an `RT_RCDATA` entry before the string tables.
 // [spec:kbdgen:req:kbdl.resources]
-// [spec:kbdgen:syn:kbdl.resources.format]
-// [spec:kbdgen:req:ldml.kbdl.model-resource]
+// [spec:kbdgen:syn:kbdl.resources.format+1]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1]
 pub fn res_file(metadata: &Metadata, version: [u16; 4], model: Option<&[u8]>) -> Vec<u8> {
     let mut out = Vec::new();
     entry(&mut out, 0, 0, 0, 0, &[]);
@@ -300,7 +300,7 @@ pub(crate) mod tests {
     // The fixture is rc.exe 10.0.26100 output for the equivalent script:
     // VERSIONINFO with these fields and strings, then STRINGTABLEs 1000 and
     // 1100 under LANGUAGE 0, 8 and 1200 under LANGUAGE 9, 1.
-    // [spec:kbdgen:syn:kbdl.resources.format/test]
+    // [spec:kbdgen:syn:kbdl.resources.format+1/test]
     // [spec:kbdgen:syn:kbdl.resources.version/test]
     // [spec:kbdgen:def:kbdl.resources.fields/test]
     // [spec:kbdgen:req:kbdl.resources/test]
@@ -314,7 +314,7 @@ pub(crate) mod tests {
     }
 
     // [spec:kbdgen:req:kbdl.resources/test]
-    // [spec:kbdgen:syn:kbdl.resources.format/test]
+    // [spec:kbdgen:syn:kbdl.resources.format+1/test]
     #[test]
     fn string_tables_by_block_and_language() {
         let mut metadata = vro();
@@ -358,8 +358,8 @@ pub(crate) mod tests {
         );
     }
 
-    // [spec:kbdgen:req:ldml.kbdl.model-resource/test]
-    // [spec:kbdgen:syn:kbdl.resources.format/test]
+    // [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
+    // [spec:kbdgen:syn:kbdl.resources.format+1/test]
     #[test]
     fn model_resource_precedes_the_string_tables() {
         let model = b"DVKB\x01\x00\x00\x00\x07";

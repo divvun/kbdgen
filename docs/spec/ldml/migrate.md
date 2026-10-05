@@ -29,7 +29,7 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 > Desktop layers re-split their 48 tokens into rows of 13, 12, 12 and 11 on
 > `form: iso`. `macOS.space` entries become `space`.
 
-> [spec:kbdgen:sem:ldml.migrate.dead-keys]
+> [spec:kbdgen:sem:ldml.migrate.dead-keys+1]
 > Each top-level `transforms` entry becomes a `deadKeys` node with the same
 > identity. Its `' '` child becomes `standalone`, and its other children,
 > in order, become `compose`. Deeper branches become nested nodes. A token
@@ -40,34 +40,43 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 > | Windows, macOS, ChromeOS, iOS | the layer's `deadKeys` list contains the token |
 > | Android | the token equals any transform root, on every layer (`android.keys`) |
 >
-> Tokens are compared after escape decoding (`ldml.yaml.escape`).
-> Comparing the raw entries instead was a v3 defect (`kbdl.dead-keys`).
+> Entries, roots and tokens are compared after escape decoding
+> (`ldml.yaml.escape`). v3 compared them as written (Windows: the raw
+> entry against the decoded token; the others: raw against raw), which was
+> a defect (`kbdl.dead-keys`). A token that only the decoded comparison
+> makes dead becomes dead, reported as M17.
 
-> [spec:kbdgen:sem:ldml.migrate.fields]
+> [spec:kbdgen:sem:ldml.migrate.fields+1]
 > The following carry over:
 >
 > - `displayNames` and `decimal` unchanged
-> - `keyNames`, with escapes decoded
-> - `longpress`, renamed `longPress`
+> - `keyNames` `space` and `return`, keeping their `\u{…}` spelling, which
+>   v4 decodes
+> - `longpress`, renamed `longPress`; a later entry whose output decodes
+>   like an earlier one is dropped (M10)
 > - `windows.config` {`locale`, `id`} → `targets.windows`
 > - `chromeOS.config` → `targets.chromeOS`
 > - `iOS.config` and `android.config` → `targets.iOS` and `targets.android`
-> - `\s{…}` tokens unchanged; `\u{0}` stays `\u{0}`, which means no key
+> - `\s{…}` tokens unchanged; a desktop `\u{0}` stays `\u{0}`, which means
+>   no key, and a touch `\u{0}` becomes `\s{gap}` (M14)
 >
-> These are dropped and reported (M10): `windows.config.languageName` and
-> `legacyName`, `windows.space` and `android.deadKeys`, all of which v3
-> never read. A `config: null` is omitted silently. Every layout gets
+> Every field v3 never read is dropped and reported (M10), among them
+> `windows.config.languageName` and `legacyName`, `windows.space`,
+> `android.deadKeys`, other `keyNames`, and unknown fields at any level. A
+> `config: null` is omitted silently. Every layout gets
 > `impliedLayers: macOS` (default) and `normalization: disabled` (default),
 > so neither is written.
 
-> [spec:kbdgen:req:ldml.migrate.output]
+> [spec:kbdgen:req:ldml.migrate.output+1]
 > The migrator MUST write fresh v4 text, not round-trip the YAML through
 > serde:
 >
 > - top-level fields in `ldml.yaml.schema` order
 > - variants in `ldml.yaml.hosts` order, and layers in v3 order
 > - rows aligned with single spaces
-> - YAML strings quoted only where YAML requires
+> - YAML strings quoted only where YAML requires, and where a YAML 1.1
+>   reader would take them for a boolean or null (`yes`, `no`, `on`,
+>   `off`, `y`, `n`, `true`, `false`, `null`, `~`, the empty string)
 >
 > Its output for a given input is byte-for-byte deterministic, and loading
 > it gives no warnings beyond the reported defects. It writes each file in
@@ -76,9 +85,10 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 
 ## Defects
 
-> [spec:kbdgen:req:ldml.migrate.defects]
+> [spec:kbdgen:req:ldml.migrate.defects+1]
 > The migrator MUST detect and report each of these. A *block* leaves the
-> layout unwritten.
+> layout unwritten. An entry is checked for M01 before M04. M13, M14 and
+> M17 are reported once per layer and token.
 >
 > | Code | Defect | Action |
 > |---|---|---|
@@ -87,7 +97,7 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 > | M03 | transform root never dead on any layer | keep as unreferenced `deadKeys`, warn |
 > | M04 | dead key listed with no transform entry | block: plain key or empty dead key? |
 > | M05 | desktop layer with other than 48 tokens | block |
-> | M06 | `\u` without braces (`­`) | rewrite as `\u{00AD}`, warn |
+> | M06 | `\u` without braces (`\u00AD`); up to four hex digits follow it | rewrite as `\u{00AD}` (no digits: `\u{5C}u`), warn |
 > | M07 | v2-format layout (no v3 platform sections) | block |
 > | M08 | dead-key identity of more than one scalar | info: Windows cannot make it dead (`ldml.kbdl.values`) |
 > | M09 | caps behaviour changes (`ldml.migrate.caps-diff`) | warn, listing positions |
@@ -95,17 +105,20 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 > | M11 | comments dropped | warn, with line numbers |
 > | M12 | iOS and Android dead keys differ for one layout | info |
 > | M13 | macOS `\u{0}`, which output NUL and now means no key | warn |
-> | M14 | iOS, Android or ChromeOS token with `\u{…}`, which was emitted raw and is now decoded | warn |
+> | M14 | `\u{…}` that a platform emitted as written and v4 decodes: iOS, Android or ChromeOS tokens (a touch `\u{0}` becomes `\s{gap}`), `longpress` entries, and transform strings of dead keys used on Windows, ChromeOS or iOS | warn |
 > | M15 | iPad `alt` row not aligned with `default` | warn, drop the unaligned flicks |
 > | M16 | dead-key root whose standalone differs from the root | info: `standalone` holds the `' '` child |
+> | M17 | token that v3 never made dead because its dead-key entry is spelled otherwise, such as an escaped Windows `deadKeys` entry (`ldml.migrate.dead-keys`) | make it dead, warn |
 
-> [spec:kbdgen:req:ldml.migrate.caps-diff]
+> [spec:kbdgen:req:ldml.migrate.caps-diff+1]
 > For each desktop variant, the migrator MUST compare old and new output
-> for the states `caps`, `caps shift` and alt+`caps`, at every position.
+> for the states `caps`, `caps shift` and alt+`caps`, at each of the 48 ISO
+> positions.
 >
 > - The old output comes from the v3 platform's rule: Windows per
 >   `kbdl.caps` (CAPLOK, SGCAPS, CAPLOKALTGR); macOS per
->   `keylayout.keymaps`, where unmatched states use the first layer;
+>   `keylayout.keymaps`, taking the first layer in file order that matches
+>   (for `caps shift`, `shift` or `caps+shift`), else the first layer;
 >   ChromeOS by its runtime fallback (exact layer, then `caps`, then
 >   `shift`, then `default`).
 > - The new output comes from the v4 layers after `ldml.yaml.implied-layers`.
@@ -114,21 +127,27 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 > typical case is Windows Caps+Shift on letters, which was lowercase and is
 > now uppercase.
 
-> [spec:kbdgen:def:ldml.migrate.report]
-> The report goes to stdout as text, or with `--report <file>` as YAML. It
-> has one entry per defect: code, layout file, YAML path, row and token
-> where known, message, and action taken. A summary counts defects per code
-> and lists blocked layouts. The exit status is 0 when nothing is blocked
-> and 1 otherwise. Unblocked layouts are still written.
+> [spec:kbdgen:def:ldml.migrate.report+1]
+> The report goes to stdout as text, or with `--report <file>` as YAML,
+> with the summary still printed. It has one entry per defect: code,
+> layout file, YAML path, row and token where known, message, and action
+> taken. A summary counts defects per code, gives each layout's outcome
+> (written, dry run or blocked) and lists blocked layouts. The exit status
+> is 0 when nothing is blocked and 1 otherwise. Unblocked layouts are still
+> written.
 
-> [spec:kbdgen:req:ldml.migrate.equivalence]
-> For every layout it writes, the migrator MUST check the result by running
-> the engine. On each v4 host document, at each hardware position, it
-> presses every layer whose modifier state exists in v3 and is not
-> native-only. For each dead key and its compose inputs, it presses the
-> dead key and then the input key. Each result MUST equal the v3 platform's
-> documented output, unless a reported defect (M04–M16) explains the
-> difference. An unexplained difference is a bug in the migrator, reported
+> [spec:kbdgen:req:ldml.migrate.equivalence+1]
+> For every layout it writes, the migrator MUST load the result as a v4
+> layout and check it by running the engine. On each v4 host document it
+> presses, at each of the 48 ISO positions (`macOS.space` is honoured but
+> not pressed), every layer whose modifier state exists in v3 and is
+> neither native-only nor a caps state (`ldml.migrate.caps-diff`), and every
+> touch key and south flick. For each dead key it presses the dead key, then
+> each compose input that a key types (on macOS only keys of layers with a
+> `deadKeys` list), and on desktop then space. Each result MUST equal the
+> v3 platform's documented output, unless a reported defect (M04–M17)
+> explains the difference. An unexplained difference, a load warning no
+> defect explains, or a failure to load is a bug in the migrator, reported
 > as M99, and it blocks the layout.
 
 > [spec:kbdgen:req:ldml.migrate.survey]

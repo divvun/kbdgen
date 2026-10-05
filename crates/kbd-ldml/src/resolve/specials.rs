@@ -153,7 +153,7 @@ fn element(ctx: &mut Ctx, el: &El, prefix: &str) -> Result<()> {
     Ok(())
 }
 
-// [spec:kbdgen:def:ldml.xml.special]
+// [spec:kbdgen:def:ldml.xml.special+1]
 /// Reads kbdgen's elements of the keyboard's own `special`. Elements of
 /// other namespaces are kept in the document and ignored here.
 pub(super) fn keyboard(ctx: &mut Ctx, root: &El) -> Result<()> {

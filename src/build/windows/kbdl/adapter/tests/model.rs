@@ -27,7 +27,7 @@ fn model_entry(res: &[u8]) -> Option<(u16, u16, Vec<u8>)> {
 
 const SE_V3: &str = "displayNames: {se: Davvisámegiella}\nwindows:\n  primary:\n    layers:\n      default: a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 A B C D E F G H I J K L\n";
 
-// [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
 #[test]
 fn the_dll_embeds_the_windows_keyboard() {
     let fixture = fixture(&[("vro", VRO4)]);
@@ -50,7 +50,7 @@ fn the_dll_embeds_the_windows_keyboard() {
     );
 }
 
-// [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
 #[test]
 fn v3_and_v4_layouts_build_side_by_side() {
@@ -72,7 +72,7 @@ fn v3_and_v4_layouts_build_side_by_side() {
     assert!(model_entry(&generated[1].res).is_some());
 }
 
-// [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
 #[test]
 fn blocked_v3_migration_builds_without_model() {
     let extra = SE_V3.replace("K L\n", "K L M\n");
@@ -115,7 +115,7 @@ async fn build_and_check(bundle: &KbdgenBundle, out: &Path, model: &[u8]) {
 }
 
 /// Needs the three `*-pc-windows-msvc` targets (`kbdl.build.toolchain`).
-// [spec:kbdgen:req:ldml.kbdl.model-resource/test]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
 #[tokio::test]
 #[ignore = "builds DLLs with the Windows targets of the Rust toolchain"]
 async fn built_vro_dlls_verify_and_embed_the_model() {

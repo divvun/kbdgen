@@ -259,7 +259,7 @@ pub struct Labels {
     pub r#return: Option<String>,
 }
 
-// [spec:kbdgen:def:ldml.model.displays]
+// [spec:kbdgen:def:ldml.model.displays+1]
 /// LDML `displays` and `displayOptions`, plus the Extension labels.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Displays {
@@ -288,7 +288,7 @@ impl Displays {
     }
 }
 
-// [spec:kbdgen:def:ldml.model.keyboard]
+// [spec:kbdgen:def:ldml.model.keyboard+1]
 /// A keyboard: a resolved LDML `keyboard3` document plus kbdgen's
 /// Extensions. Every index refers to a table of the same keyboard.
 ///
@@ -326,7 +326,7 @@ pub struct Keyboard {
     pub context_len: u8,
     /// Extension: the numpad decimal key's output.
     pub decimal: Option<Text>,
-    // [spec:kbdgen:def:ldml.model.flush]
+    // [spec:kbdgen:def:ldml.model.flush+1]
     /// Extension: marker → the plain text a pending marker stands for when
     /// input is interrupted. The engine shows it as preedit and commits it.
     pub flush: BTreeMap<MarkerIndex, String>,

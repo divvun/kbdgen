@@ -123,7 +123,7 @@ fn engine(keyboard: Keyboard, label: &str) -> Result<Model, LdmlError> {
     })
 }
 
-// [spec:kbdgen:req:ldml.test.cldr]
+// [spec:kbdgen:req:ldml.test.cldr+1]
 // [spec:kbdgen:req:ldml.test.oracle]
 /// Resolves every vendored CLDR keyboard, then runs every vendored
 /// keyboardTest3 file with [`CLDR_OPTIONS`] on kbdgen's engine.

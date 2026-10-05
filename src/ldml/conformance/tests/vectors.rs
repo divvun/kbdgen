@@ -36,7 +36,7 @@ tests:
       - expect: {layer: shift}
 "#;
 
-// [spec:kbdgen:def:ldml.test.vectors/test]
+// [spec:kbdgen:def:ldml.test.vectors+1/test]
 #[test]
 fn every_step_kind_is_read() {
     let file = vector_file(EVERY_STEP).unwrap();
@@ -114,7 +114,7 @@ fn every_step_kind_is_read() {
     );
 }
 
-// [spec:kbdgen:def:ldml.test.vectors/test]
+// [spec:kbdgen:def:ldml.test.vectors+1/test]
 #[test]
 fn modifier_names_follow_the_rule() {
     let mods = |names: &str| {
@@ -149,7 +149,7 @@ fn modifier_names_follow_the_rule() {
     );
 }
 
-// [spec:kbdgen:def:ldml.test.vectors/test]
+// [spec:kbdgen:def:ldml.test.vectors+1/test]
 #[test]
 fn malformed_vector_files_name_the_path() {
     let cases = [
@@ -215,7 +215,7 @@ fn malformed_vector_files_name_the_path() {
     }
 }
 
-// [spec:kbdgen:def:ldml.test.vectors/test]
+// [spec:kbdgen:def:ldml.test.vectors+1/test]
 #[test]
 fn keyboards_load_for_the_named_host() {
     let (file, model) = golden_model("layout: layouts/vro.yaml\nhost: windows\ntests: []");
@@ -237,7 +237,7 @@ fn keyboards_load_for_the_named_host() {
     assert!(err.contains("has no iOS document"), "{err}");
 }
 
-// [spec:kbdgen:def:ldml.test.vectors/test]
+// [spec:kbdgen:def:ldml.test.vectors+1/test]
 #[test]
 fn xml_host_must_match_the_document() {
     let dir = tempfile::tempdir().unwrap();
@@ -258,7 +258,7 @@ fn xml_host_must_match_the_document() {
     );
 }
 
-// [spec:kbdgen:def:ldml.test.vectors/test]
+// [spec:kbdgen:def:ldml.test.vectors+1/test]
 #[test]
 fn v3_layouts_migrate_in_memory() {
     let dir = tempfile::tempdir().unwrap();

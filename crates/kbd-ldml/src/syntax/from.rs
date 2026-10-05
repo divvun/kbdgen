@@ -17,7 +17,7 @@ enum Context {
     Capture,
 }
 
-// [spec:kbdgen:syn:ldml.xml.from]
+// [spec:kbdgen:syn:ldml.xml.from+1]
 /// Parses a `from` value whose `${…}` references are already substituted
 /// (`super::substitute_strings`). Well-formedness errors of the grammar
 /// are errors here: nested captures, more than nine captures, empty

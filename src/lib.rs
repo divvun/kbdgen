@@ -6,7 +6,7 @@
 //! on all three by path. Layout crates generated for Windows declare their
 //! own empty `[workspace]`, so this workspace never captures them.
 
-// [spec:kbdgen:def:ldml.crate.layout]
+// [spec:kbdgen:def:ldml.crate.layout+1]
 // [spec:kbdgen:req:ldml.crate.kbdgen]
 pub mod build;
 pub mod bundle;

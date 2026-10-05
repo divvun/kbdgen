@@ -210,7 +210,7 @@ fn variants_follow_host_order_not_file_order() {
 
 const TRANSFORMS: &str = "transforms:\n  ´:\n    ' ': ´\n    a: á\n    e: é\n  ˆ:\n    ' ': '^'\n    a: â\n    ˇ:\n      e: ế\n";
 
-// [spec:kbdgen:sem:ldml.migrate.dead-keys/test]
+// [spec:kbdgen:sem:ldml.migrate.dead-keys+1/test]
 #[test]
 fn transforms_become_dead_keys_with_compose() {
     let keys = KEYS.replace("+ ´", "ˆ ´");
@@ -247,7 +247,7 @@ fn transforms_become_dead_keys_with_compose() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.migrate.dead-keys/test]
+// [spec:kbdgen:sem:ldml.migrate.dead-keys+1/test]
 #[test]
 fn dead_keys_follow_each_platform_rule() {
     let keys = KEYS.replace("+ ´", "´ ´");
@@ -285,7 +285,7 @@ fn dead_keys_follow_each_platform_rule() {
     assert_eq!(touch["tablet"]["layers"]["base"].as_str(), Some("\\d{´}\n"));
 }
 
-// [spec:kbdgen:sem:ldml.migrate.fields/test]
+// [spec:kbdgen:sem:ldml.migrate.fields+1/test]
 #[test]
 fn fields_carry_over_with_escapes_decoded() {
     let m = migrate(&format!(
@@ -307,7 +307,7 @@ fn fields_carry_over_with_escapes_decoded() {
     assert!(v.get("impliedLayers").is_none() && v.get("normalization").is_none());
 }
 
-// [spec:kbdgen:sem:ldml.migrate.fields/test]
+// [spec:kbdgen:sem:ldml.migrate.fields+1/test]
 #[test]
 fn null_config_is_omitted_silently() {
     let m = migrate(&format!(
@@ -322,7 +322,7 @@ fn null_config_is_omitted_silently() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.migrate.fields/test]
+// [spec:kbdgen:sem:ldml.migrate.fields+1/test]
 #[test]
 fn no_key_tokens_stay_no_key() {
     let keys = KEYS.replacen("§", "\\u{0}", 1);

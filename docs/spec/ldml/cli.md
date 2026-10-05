@@ -6,7 +6,7 @@ anything when loading fails.
 
 Sources: `docs/spec/cli.md`, `docs/spec/bundle.md`.
 
-> [spec:kbdgen:def:ldml.cli.commands]
+> [spec:kbdgen:def:ldml.cli.commands+1]
 > The commands are:
 >
 > - `kbdgen ldml export -b <BUNDLE> -o <OUT>`
@@ -16,9 +16,13 @@ Sources: `docs/spec/cli.md`, `docs/spec/bundle.md`.
 > - `kbdgen ldml test -b <BUNDLE> [--cldr]`
 >
 > `export` and `compile` also accept `[--layout <TAG>]… [--host <HOST>]…`,
-> which restrict the run to the named layouts and hosts. Without them, the
-> run covers every layout in bundle layout order and every host in
-> `ldml.yaml.hosts` order. Errors end the process with a non-zero exit.
+> which restrict the run to the named layouts and hosts. A `--layout` tag
+> that names no layout of the bundle is an error. Without them, the run
+> covers every layout in bundle layout order and every host in
+> `ldml.yaml.hosts` order. `export`, `import` and `compile` check all of
+> their output before writing the first file, so a failure writes nothing
+> (`migrate` writes each unblocked layout, `ldml.migrate.report`). Errors
+> end the process with a non-zero exit.
 
 > [spec:kbdgen:req:ldml.cli.export]
 > `export` MUST write `<OUT>/<tag>.<host>.xml` for each v4 layout and each
@@ -38,12 +42,14 @@ Sources: `docs/spec/cli.md`, `docs/spec/bundle.md`.
 > given. Two files claiming the same tag and host are an error. It prints
 > the count of dropped comments and every warning.
 
-> [spec:kbdgen:req:ldml.cli.compile]
+> [spec:kbdgen:req:ldml.cli.compile+1]
 > `compile` MUST write `<OUT>/<tag>.<host>.dvkb` (`ldml.model.encoding`)
 > for each v4 layout and host. Hosts that share a model get identical
-> files. These are the files that host packaging embeds: the Windows
-> resource of `ldml.kbdl.model-resource`, and the app bundles of the other
-> hosts.
+> files. Each host document must also load in the engine
+> (`Model::from_keyboard`), and each encoded file must decode
+> (`Model::from_bytes`), before anything is written. These are the files
+> that host packaging embeds: the Windows resource of
+> `ldml.kbdl.model-resource`, and the app bundles of the other hosts.
 
 > [spec:kbdgen:req:ldml.cli.test]
 > `test` MUST run every `tests/*.yaml` of the bundle (`ldml.test.bundle`).

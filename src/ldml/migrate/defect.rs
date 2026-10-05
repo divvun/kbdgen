@@ -23,11 +23,12 @@ pub enum Code {
     M14,
     M15,
     M16,
+    M17,
     M99,
 }
 
 impl Code {
-    pub const ALL: [Code; 17] = [
+    pub const ALL: [Code; 18] = [
         Code::M01,
         Code::M02,
         Code::M03,
@@ -44,6 +45,7 @@ impl Code {
         Code::M14,
         Code::M15,
         Code::M16,
+        Code::M17,
         Code::M99,
     ];
 
@@ -65,6 +67,7 @@ impl Code {
             Code::M14 => "M14",
             Code::M15 => "M15",
             Code::M16 => "M16",
+            Code::M17 => "M17",
             Code::M99 => "M99",
         }
     }
@@ -77,7 +80,7 @@ impl Code {
             Code::M04 | Code::M05 | Code::M07 | Code::M99 => Action::Blocked,
             Code::M06 => Action::Rewritten,
             Code::M08 | Code::M12 | Code::M16 => Action::Info,
-            Code::M09 | Code::M11 | Code::M13 | Code::M14 => Action::Warned,
+            Code::M09 | Code::M11 | Code::M13 | Code::M14 | Code::M17 => Action::Warned,
             Code::M10 => Action::Dropped,
         }
     }

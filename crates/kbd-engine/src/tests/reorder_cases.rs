@@ -49,7 +49,7 @@ fn rule_lower_vowels() -> Rule {
     rule(chars("\u{102F}\u{102F}"), vec![to_text("\u{102F}")])
 }
 
-// [spec:kbdgen:sem:ldml.engine.reorder/test]
+// [spec:kbdgen:sem:ldml.engine.reorder+1/test]
 // [spec:kbdgen:def:ldml.scope.v1/test]
 #[test]
 fn prebase_typed_first_is_stored_after_base() {
@@ -62,7 +62,7 @@ fn prebase_typed_first_is_stored_after_base() {
     assert_eq!(s.text, "\u{1000}\u{1031}\u{102F}");
 }
 
-// [spec:kbdgen:sem:ldml.engine.backspace/test]
+// [spec:kbdgen:sem:ldml.engine.backspace+1/test]
 #[test]
 fn burmese_backspace_leaves_prebase_marker() {
     let m = model(myanmar_keyboard());

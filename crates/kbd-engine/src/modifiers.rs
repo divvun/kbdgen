@@ -32,7 +32,7 @@ pub(crate) fn apply_extra_bindings(windows: &Windows, mut m: ModifierState) -> M
     m
 }
 
-// [spec:kbdgen:req:ldml.engine.shortcuts]
+// [spec:kbdgen:req:ldml.engine.shortcuts+1]
 /// Whether the event is a shortcut, which passes without matching any
 /// layer: `cmd`, ctrl without alt, or Left Alt on a Windows host, where
 /// Left Alt drives menus. Ctrl with AltGr is not a shortcut, so it reaches

@@ -38,7 +38,7 @@ fn simple_rules(r: &Resolved) -> &[kbd_model::Rule] {
     }
 }
 
-// [spec:kbdgen:sem:ldml.xml.implied/test]
+// [spec:kbdgen:sem:ldml.xml.implied+1/test]
 #[test]
 fn implied_keys_come_first_and_override_in_place() {
     let r = resolved(&with_layers(
@@ -55,7 +55,7 @@ fn implied_keys_come_first_and_override_in_place() {
     assert_eq!(r.keyboard.key(1).unwrap().output, Text::from(" "));
 }
 
-// [spec:kbdgen:sem:ldml.xml.implied/test]
+// [spec:kbdgen:sem:ldml.xml.implied+1/test]
 #[test]
 fn implied_and_custom_forms() {
     let iso = resolved(&with_layers(""));
@@ -150,7 +150,7 @@ fn import_errors_name_the_problem() {
     );
 }
 
-// [spec:kbdgen:req:ldml.xml.validate/test]
+// [spec:kbdgen:req:ldml.xml.validate+1/test]
 #[test]
 fn validation_errors_carry_element_paths() {
     let cases = [
@@ -227,7 +227,7 @@ fn validation_errors_carry_element_paths() {
     assert!(info.contains("exactly one info"), "{info}");
 }
 
-// [spec:kbdgen:req:ldml.xml.validate/test]
+// [spec:kbdgen:req:ldml.xml.validate+1/test]
 #[test]
 fn layer_constraints() {
     let two = resolve_error(&keyboard(
@@ -267,7 +267,7 @@ fn layer_constraints() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn modifier_sets_are_canonical() {
     let r = resolved(&keyboard(
@@ -311,7 +311,7 @@ fn modifier_sets_are_canonical() {
     }
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn touch_sets_sort_by_width_with_base() {
     let r = resolved(&keyboard(
@@ -334,7 +334,7 @@ fn touch_sets_sort_by_width_with_base() {
     assert!(r.keyboard.hardware.is_none());
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn key_references_resolve_forwards() {
     let r = resolved(&with_layers(
@@ -365,7 +365,7 @@ fn key_references_resolve_forwards() {
     assert!(flick.contains("no flick has id nope"), "{flick}");
 }
 
-// [spec:kbdgen:syn:ldml.xml.escape/test]
+// [spec:kbdgen:syn:ldml.xml.escape+1/test]
 #[test]
 fn variables_substitute_into_outputs_displays_and_to() {
     let r = resolved(&with_layers(&format!(
@@ -398,7 +398,7 @@ fn variables_substitute_into_outputs_displays_and_to() {
     assert!(error_of(r#"<keys><key id="q" output="${nope}"/></keys>"#).contains("not defined"));
 }
 
-// [spec:kbdgen:def:ldml.model.text/test]
+// [spec:kbdgen:def:ldml.model.text+1/test]
 #[test]
 fn markers_intern_in_document_order() {
     let r = resolved(&with_layers(
@@ -412,7 +412,7 @@ fn markers_intern_in_document_order() {
     assert_eq!(r.keyboard.markers, ["d", "k", "t", "unused", "s", "u"]);
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn mapped_sets_and_groups_resolve() {
     let r = resolved(&with_layers(
@@ -462,7 +462,7 @@ fn mapped_sets_and_groups_resolve() {
     }
 }
 
-// [spec:kbdgen:syn:ldml.xml.from/test]
+// [spec:kbdgen:syn:ldml.xml.from+1/test]
 #[test]
 fn any_marker_in_a_class_becomes_a_group() {
     let r = resolved(&with_layers(
@@ -477,7 +477,7 @@ fn any_marker_in_a_class_becomes_a_group() {
     assert_eq!(r.keyboard.context_len, 3);
 }
 
-// [spec:kbdgen:req:ldml.model.nfd/test]
+// [spec:kbdgen:req:ldml.model.nfd+1/test]
 #[test]
 fn enabled_normalization_decomposes_texts() {
     let body = r#"<displays><display output="é" display="é!"/></displays>
@@ -514,7 +514,7 @@ fn enabled_normalization_decomposes_texts() {
     );
 }
 
-// [spec:kbdgen:req:ldml.xml.nfd-classes/test]
+// [spec:kbdgen:req:ldml.xml.nfd-classes+1/test]
 #[test]
 fn non_nfd_class_members_error_or_warn() {
     let listed = error_of(
@@ -551,7 +551,7 @@ fn non_nfd_class_members_error_or_warn() {
     assert!(off.warnings.iter().all(|w| !w.message.contains("NFD")));
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn reorder_groups_merge_and_sort() {
     let r = resolved(&with_layers(
@@ -587,7 +587,7 @@ fn reorder_groups_merge_and_sort() {
     assert!(marker.contains("does not match markers"), "{marker}");
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn displays_override_by_target() {
     let r = resolved(&with_layers(
@@ -613,7 +613,7 @@ fn displays_override_by_target() {
     );
 }
 
-// [spec:kbdgen:req:ldml.model.context-len/test]
+// [spec:kbdgen:req:ldml.model.context-len+1/test]
 #[test]
 fn context_len_is_computed() {
     let r = resolved(&with_layers(

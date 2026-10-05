@@ -8,7 +8,7 @@ use super::cldr::run_cldr;
 use super::run::run_vector_file;
 use crate::ldml::LdmlError;
 
-// [spec:kbdgen:req:ldml.test.bundle]
+// [spec:kbdgen:req:ldml.test.bundle+1]
 /// The bundle's `tests/*.yaml`, regular files only, in byte-wise file-name
 /// order. A bundle without `tests/` has none. Bundle loading
 /// (`bundle.structure`) reads only `layouts/`, `targets/` and

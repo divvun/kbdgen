@@ -6,7 +6,7 @@ use super::{complement_ranges, intersect_ranges, is_variable_id, normalize_range
 use crate::escape::{Cursor, Piece, SyntaxError, decode_text, encode_text, hex_escape, push_hex};
 use crate::gencat::needs_escape;
 
-// [spec:kbdgen:syn:ldml.xml.sets]
+// [spec:kbdgen:syn:ldml.xml.sets+1]
 /// Parses a `set` value whose `${…}` references are already substituted:
 /// ASCII-whitespace-separated items, each a text value, where an item that
 /// is exactly `$[id]` splices in the items of an earlier set. `set`
@@ -94,7 +94,7 @@ pub fn encode_set_items(items: &[Vec<Piece>]) -> String {
     encoded.join(" ")
 }
 
-// [spec:kbdgen:syn:ldml.xml.sets]
+// [spec:kbdgen:syn:ldml.xml.sets+1]
 /// Parses a `uset` value whose `${…}` references are already substituted,
 /// in the UnicodeSet subset of §Element: uset: brackets, `^`, ranges,
 /// `\u{…}`, backslash-escaped characters, `$[id]` references to earlier

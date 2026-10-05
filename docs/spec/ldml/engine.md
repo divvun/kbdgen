@@ -21,31 +21,35 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 
 ## API
 
-> [spec:kbdgen:def:ldml.engine.api]
+> [spec:kbdgen:def:ldml.engine.api+1]
 > `kbd-engine` exposes:
 >
 > - `Model::from_bytes(&[u8]) -> Result<Model, Error>`, which decodes per
->   `ldml.model.encoding`
+>   `ldml.model.encoding` with the default `Options`, and
+>   `Model::with_options(self, Options) -> Model`
 > - `Model::from_keyboard(Keyboard, Options) -> Result<Model, Error>`
-> - `Model::context_len() -> usize`, which is at most 64
-> - `Model::preserved_keys()`, the model's `emoji` key (`ldml.model.emoji`)
-> - `Model::touch_set_for_width(u16) -> Option<usize>` and
->   `Model::touch_set_by_name(&str) -> Option<usize>`
-> - the value type `State`, whose `State::default()` is the reset state
-> - `Model::pending_markers(&State) -> Vec<&str>`, the names of the trailing
->   marker run, for tools such as `ldml.kbdl.dead-tree`
+> - `Model::keyboard()`, `Model::options()`, and `Model::context_len()`,
+>   which is at most 64
+> - `Model::preserved_keys() -> Option<EmojiKey>` (`ldml.model.emoji`)
+> - `Model::touch_set_for_width(u16)` and `Model::touch_set_by_name(&str)`,
+>   each `-> Option<usize>`
+> - `State`, whose `State::default()` is the reset state, and
+>   `Model::pending_markers(&State) -> Vec<&str>`, the names of the trailing
+>   marker run (`ldml.kbdl.dead-tree`)
 > - the pure function `Model::key(&self, &State, &Context, &KeyEvent) ->
 >   (Action, State)`
 >
-> `Context` holds `text`: at most `context_len` scalar values before the
-> caret, from the application or the host's cache. It also holds the flags
-> `authoritative` and `at_start`. `at_start` says that `text` begins at a
-> start of text, such as the document start or a paragraph boundary.
-> `Action` is `Pass`, or `Edit { delete, insert, preedit, layer }`.
+> `Options` holds `output_form`, `backspace` and `host`. `Error` is
+> `Decode`, `Invalid` or `NormalizationUnsupported`. `Context` holds
+> `text`, the scalar values before the caret, and the flags
+> `authoritative` and `at_start`, which says that `text` begins at a start
+> of text. `Action` is `Pass`, or `Edit { delete, insert, preedit, layer }`.
 
-> [spec:kbdgen:def:ldml.engine.event]
+> [spec:kbdgen:def:ldml.engine.event+1]
 > A `KeyEvent` is a key, modifiers and a `repeat` flag. The engine treats a
-> repeat like any other press.
+> repeat like any other press. A `Touch` key's `set` and `layer` are
+> indices; for a keyboard with no touch sets, set 0 is the hardware set
+> presented as touch, and `layer` indexes its layers.
 >
 > | Key | Meaning |
 > |---|---|
@@ -86,7 +90,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > `Context.text`. `insert` and `preedit` never contain markers. An edit may
 > be (0, "", *p*), which consumes a key with no text change.
 
-> [spec:kbdgen:req:ldml.engine.contract]
+> [spec:kbdgen:req:ldml.engine.contract+1]
 > The engine MUST:
 >
 > - be deterministic, so equal models, states, contexts and events give
@@ -97,15 +101,16 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > - satisfy the `delete` and `preedit` bounds of `ldml.engine.action`
 > - treat a non-authoritative context exactly like an authoritative one
 >
-> These meet `tsf.engine.contract`, with the divergences listed in
-> `ldml.engine.tsf`.
+> The text service relies on these (`tsf.engine.contract`).
 
 ## Context
 
-> [spec:kbdgen:sem:ldml.engine.context]
+> [spec:kbdgen:sem:ldml.engine.context+1]
 > Each event first builds the working context C:
 >
-> 1. Let X be `Context.text`, or its NFD when normalization is `Enabled`.
+> 1. Let T be the last `context_len` scalar values of `Context.text`. If
+>    that drops any, `at_start` is treated as false. Let X be T, or its NFD
+>    when normalization is `Enabled`.
 > 2. If X ends with the plain text of `State.tail`, then C is the part of X
 >    before that suffix followed by `tail`. This keeps `tail`'s markers.
 > 3. Otherwise C is X with no markers. This applies LDML's rule that a
@@ -160,19 +165,20 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > AltGr (`tsf.keys.altgr`). LDML is ambiguous about how AltGr relates to
 > `ctrl alt`.
 
-> [spec:kbdgen:req:ldml.engine.shortcuts]
+> [spec:kbdgen:req:ldml.engine.shortcuts+1]
 > The engine MUST pass, without matching any layer, an event that meets any
 > of:
 >
 > - `cmd` is set
 > - a ctrl modifier is set and no alt modifier is
-> - `alt_l` is set and the keyboard's host is `windows`, where Left Alt
->   drives menus
+> - `alt_l` is set and the host is `windows`, where Left Alt drives menus
 >
-> So shortcuts reach the application, and native-only layers are never
-> used for typing. Divergence from LDML: a `ctrl` layer that LDML would
-> select is ignored. Divergence from `tsf.engine.contract`: Ctrl with AltGr
-> reaches a layer that names both ctrl and alt.
+> The host is the keyboard's `host`, or for a keyboard without one (a
+> shared or foreign keyboard, `ldml.model.layout`) `Options.host`. So
+> shortcuts reach the application, and native-only layers are never used
+> for typing. Ctrl held with AltGr is not a shortcut, so it reaches a layer
+> that names both ctrl and alt. Divergence from LDML: a `ctrl` layer that
+> LDML would select is ignored.
 
 > [spec:kbdgen:sem:ldml.engine.extra]
 > Extension. Before matching, the bindings in `windows.extra_modifiers`
@@ -201,7 +207,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > keyboard has no touch sets, it returns the hardware set presented as touch
 > (`ldml.model.touch`).
 
-> [spec:kbdgen:sem:ldml.engine.touch.gestures]
+> [spec:kbdgen:sem:ldml.engine.touch.gestures+1]
 > A `Touch` event names its set, layer, row and column. A position with no
 > key, a gap or a role key passes; role keys are the host's own. Otherwise
 > the gesture resolves the key:
@@ -209,8 +215,9 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > - `Tap`: the key itself
 > - `LongPress(n)`: `long_press[n-1]` for *n* ≥ 1, or `long_press_default`
 >   for *n* = 0
-> - `MultiTap(n)`, for *n* ≥ 2: entry `(n-1) mod (len+1)` of
->   [key, `multi_tap`…]
+> - `MultiTap(n)`, for *n* ≥ 1: entry `(n-1) mod (len+1)` of
+>   [key, `multi_tap`…], so `MultiTap(1)` is the key itself; `MultiTap(0)`
+>   has no target
 > - `Flick(d)`: the flick segment whose directions equal `d`
 >
 > A gesture with no target consumes the key with no output. The resolved
@@ -220,10 +227,11 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > a multi-tap list. A host that shows each tap restores its pre-tap state
 > and context before sending the next `MultiTap`.
 
-> [spec:kbdgen:sem:ldml.engine.test-keys]
+> [spec:kbdgen:sem:ldml.engine.test-keys+1]
 > `Id { id, gesture }` resolves the key with that id from the key table,
-> whatever the layer, then applies the gesture as in `ldml.engine.touch`.
-> An unknown id consumes the event with no output, which matches
+> whatever the layer, then proceeds as `ldml.engine.touch.gestures` does
+> from that key: a gap or role key passes, otherwise the gesture resolves
+> the target. An unknown id consumes the event with no output, which matches
 > keyboardTest3's "as if the user attempted" rule. `Emit(text)` inserts
 > `text`, already escape-decoded, as a key output.
 
@@ -255,7 +263,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > one rule applies per group, and processing never loops back to an earlier
 > group.
 
-> [spec:kbdgen:sem:ldml.engine.match]
+> [spec:kbdgen:sem:ldml.engine.match+1]
 > A pattern P matches C when, for some start position s, P matches the
 > elements C[s..] exactly. The match used is the one an ECMAScript `u`-flag
 > search for `(?:P)$` finds: the smallest s, and at that s the first
@@ -266,7 +274,10 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > On element kinds:
 >
 > - Scalar atoms (`Char`, `Any`, `Fixed`, a class's ranges) never match a
->   marker.
+>   marker. `Any` matches every scalar value, line terminators included.
+>   `Fixed` classes have ECMAScript's fixed definitions: `\s` is WhiteSpace
+>   and LineTerminator (U+0020, U+00A0, U+FEFF and the Zs spaces among
+>   them), `\d` is `[0-9]` and `\w` is `[0-9A-Za-z_]`.
 > - `Marker(m)` matches marker m, and `AnyMarker` matches any marker.
 > - A negated class never matches a marker.
 >
@@ -286,23 +297,26 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 >
 > The result replaces exactly the matched elements.
 
-> [spec:kbdgen:sem:ldml.engine.reorder]
+> [spec:kbdgen:sem:ldml.engine.reorder+1]
 > A `Reorder` group runs the marker algorithm of §Normalization and
 > Markers over the whole of C:
 >
-> 1. Remove the markers.
+> 1. Remove the markers, each glued to the scalar value it precedes.
 > 2. Sort the plain text as §Element: reorder specifies: sort keys
 >    (primary, index, tertiary, quaternary), runs, prebase and
 >    tertiary-base handling.
-> 3. Re-add the markers.
+> 3. Re-add the markers with their scalar values.
 >
-> At each position the highest-priority rule applies whose `from` matches
-> there and whose `before` matches just before it. Positions no rule
-> matches are bases (order 0, tertiary 0). LDML is ambiguous about the
-> filler base it mentions for a lone prebase. v1 inserts none, which is
-> deferred (`ldml.scope.deferred`).
+> Scanning left to right, the highest-priority rule applies whose `from`
+> matches at the position and whose `before` matches just before it; it
+> weights all its `from` characters, and scanning resumes after them.
+> Unmatched characters are bases (order 0, tertiary 0). A tertiary
+> character with no tertiary base before it keeps order 0 and its own
+> index. Characters before the first base that are not its prebase prefix
+> form a run of their own. LDML is ambiguous about the filler base for a
+> lone prebase; v1 inserts none (`ldml.scope.deferred`).
 
-> [spec:kbdgen:sem:ldml.engine.normalization]
+> [spec:kbdgen:sem:ldml.engine.normalization+1]
 > With normalization `Enabled`, the engine converts text to NFD with the
 > marker algorithm of §Normalization and Markers at three points:
 >
@@ -310,22 +324,25 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > - after appending an output
 > - after each transform group
 >
-> Markers are glued to the following scalar value, or to the end. With
+> Markers are glued to the following scalar value, or to the end. The glue
+> is by position, not by value: a marker travels with that one occurrence
+> through decomposition (to the first scalar of its decomposition) and
+> canonical reordering, even where the same character occurs twice. With
 > `Disabled`, the engine changes no text: matching, replacement and output
 > use exactly the scalar values that the model and the context contain.
 > v4 keyboards default to `Disabled` (`ldml.yaml.normalization`).
 
-> [spec:kbdgen:def:ldml.engine.output.form]
+> [spec:kbdgen:def:ldml.engine.output.form+1]
 > `Options.output_form` is `Nfc` (the default) or `Nfd`. It applies only to
-> keyboards with normalization `Enabled`, whose inserted text is converted
-> to that form. LDML lets the calling platform choose the output form.
-> Divergence: `tsf.engine.contract` forbids normalization outright. That
-> holds for every `Disabled` keyboard, which includes every v4 default. Only
-> keyboards that keep LDML's default normalization, such as imported CLDR
-> keyboards, normalize.
+> keyboards with normalization `Enabled`, whose `insert` and `preedit` are
+> converted to that form. LDML lets the calling platform choose the output
+> form. `Disabled` keyboards, every v4 default among them, change no text;
+> only keyboards that keep LDML's default normalization, such as imported
+> CLDR keyboards, normalize.
 
-> [spec:kbdgen:sem:ldml.engine.output.segment]
-> The edit compares T (`Context.text`, as given) with the processed C′.
+> [spec:kbdgen:sem:ldml.engine.output.segment+1]
+> The edit compares T (the scalar values of `Context.text` that the engine
+> uses, `ldml.engine.context`) with the processed C′.
 >
 > - **`Disabled`:** let *i* be the length of the longest common prefix of T
 >   and plain(C′). Then `delete` is |T| − *i* and `insert` is plain(C′)[*i*..].
@@ -335,26 +352,29 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 >   - NFD(T[..*i*]) is a prefix of plain(C′);
 >   - the rest of plain(C′) is empty or starts with a class-0 scalar.
 >
->   Then `delete` is |T| − *i*, and `insert` is the rest converted to the
->   output form.
+>   If no *i* ≥ 1 qualifies, *i* is 0. Then `delete` is |T| − *i*, and
+>   `insert` is the rest converted to the output form.
 >
 > So normalization touches only text from the caret's segment onwards. The
 > new `tail` is the end of C′ covering `context_len` scalar values, plus any
-> markers among or after them.
+> markers among or after them; when C′ has no scalar values before those,
+> `tail` is all of C′, leading markers included.
 
 ## Backspace
 
-> [spec:kbdgen:sem:ldml.engine.backspace]
+> [spec:kbdgen:sem:ldml.engine.backspace+1]
 > For `Backspace`:
 >
 > 1. Extension: if `windows.lrm_rlm` is set and `shift_l` (or else
->    `shift_r`) is held, insert U+200E (or else U+200F) as a key output.
->    This is `kbdl.locale`'s `KLLF_LRM_RLM`.
+>    `shift_r`) is held, insert U+200E (or else U+200F) as a key output,
+>    whatever the other modifiers are. This is `kbdl.locale`'s
+>    `KLLF_LRM_RLM`.
 > 2. Otherwise, pass if the shortcut rule applies.
 > 3. Otherwise, run the `backspace` groups over C as
 >    `ldml.engine.transforms` does, with nothing appended.
-> 4. If any rule in any group matched, the edit is computed as usual.
-> 5. Otherwise the default applies (`ldml.engine.backspace.default`).
+> 4. If a rule of any `Rules` group matched, the edit is computed as usual.
+> 5. Otherwise the default applies (`ldml.engine.backspace.default`) to the
+>    unprocessed C. A `Reorder` group alone does not count as a match.
 >
 > The `simple` groups are not run afterwards. LDML is ambiguous: it says
 > simple transforms run "if processed". We read that as not running them,
@@ -377,18 +397,22 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 
 ## Pending markers
 
-> [spec:kbdgen:sem:ldml.engine.preedit]
-> Extension. After every event, `preedit` is the concatenation of
-> `flush[m]` for each marker m in the trailing marker run of C′, in order.
-> Markers without a flush output contribute nothing. Because the preedit
-> equals what `Commit` would insert, a host such as TSF that commits
-> preedit text on reset (`tsf.edit.reset`) gets the same result as an
-> explicit `Commit`. macOS likewise shows a pending dead key as marked text.
+> [spec:kbdgen:sem:ldml.engine.preedit+1]
+> Extension. After every event other than `Pass`, `preedit` is the
+> concatenation of `flush[m]` for each marker m in the trailing marker run
+> of C′ (of C when the event is consumed unchanged), in order, converted to
+> the output form when normalization is `Enabled`. Markers without a flush
+> output contribute nothing. Because the preedit equals what `Commit` would
+> insert, a host such as TSF that commits preedit text on reset
+> (`tsf.edit.reset`) gets the same result as an explicit `Commit`. macOS
+> likewise shows a pending dead key as marked text.
 
-> [spec:kbdgen:sem:ldml.engine.commit]
+> [spec:kbdgen:sem:ldml.engine.commit+1]
 > Extension. `Commit` replaces the trailing marker run of C with its flush
-> outputs, giving (0, *flush text*, ""). It removes every other marker, and
-> runs no transforms. With no trailing markers it gives (0, "", ""). Hosts
+> outputs and removes every other marker, giving C′, normalized when
+> normalization is `Enabled`. It runs no transforms. The edit is computed
+> from C′ as for any event (`ldml.engine.output.segment`), which typically
+> gives (0, *flush text*, ""), or (0, "", "") with no trailing markers. Hosts
 > without preedit send `Commit` before:
 >
 > - passing a frame key (Enter, Tab, arrows, Escape) to the application
@@ -406,17 +430,20 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 
 ## TSF boundary
 
-> [spec:kbdgen:req:ldml.engine.tsf]
-> `kbd-engine` is the engine crate of `tsf.engine.api`, and its API is a
-> superset of that boundary:
+> [spec:kbdgen:req:ldml.engine.tsf+1]
+> `kbd-engine` is the engine of `tsf.engine.api`, and its API is a superset
+> of what the text service uses:
 >
-> - `KeyEvent` adds touch, `Id`, `Emit` and `Commit` keys, and left/right
->   Shift. A TSF host sends AltGr as `alt_r` with `altgr` set.
-> - `Context` adds `at_start`; a host that cannot tell MUST pass `false`.
-> - `Edit` adds `layer`, which TSF ignores.
+> - `Model::key` takes the event by reference (`&KeyEvent`). A TSF host
+>   sends only `Scan`, `Decimal`, `Backspace` and `Commit` keys, and sends
+>   AltGr as `alt_r` with `altgr` set.
+> - `KeyEvent` adds touch, `Id` and `Emit` keys, and left/right Shift.
+> - `Context` has `at_start`; a host that cannot tell MUST pass `false`.
+> - `Edit` has `layer`, which TSF ignores.
 > - `preserved_keys()` reads `ldml.model.emoji`.
 >
-> The divergences are normalization of `Enabled` keyboards
-> (`ldml.engine.output.form`) and Ctrl with AltGr (`ldml.engine.shortcuts`).
-> `tsf.engine.interim` is superseded: this engine already does what it
-> lists, including caps through v4's implied layers.
+> Where `docs/spec/tsf.md` and this file differ on engine behaviour,
+> `ldml.engine.*` governs: `Enabled` keyboards normalize
+> (`ldml.engine.output.form`), Ctrl with AltGr reaches ctrl-and-alt layers
+> (`ldml.engine.shortcuts`), and a form key with no output is consumed
+> (`ldml.engine.hardware`).

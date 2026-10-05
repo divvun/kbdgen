@@ -22,7 +22,7 @@ fn vector_error(path: &Path, message: impl Into<String>) -> LdmlError {
     }
 }
 
-// [spec:kbdgen:def:ldml.test.vectors]
+// [spec:kbdgen:def:ldml.test.vectors+1]
 /// The v4 layout at `path`; a v3 layout is migrated in memory
 /// (`ldml.migrate.*`), and its blocking defects are an error naming their
 /// codes.
@@ -238,7 +238,7 @@ pub fn run_tests(model: &Model, file: &VectorFile, label: &str) -> Report {
     report
 }
 
-// [spec:kbdgen:def:ldml.test.vectors]
+// [spec:kbdgen:def:ldml.test.vectors+1]
 /// Reads and runs the vector file at `path`, whose `layout` and
 /// `keyboard` paths are relative to `root`; `label` names it in messages.
 pub fn run_vector_file(path: &Path, root: &Path, label: &str) -> Result<Report, LdmlError> {

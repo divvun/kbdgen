@@ -23,7 +23,7 @@ The parts are:
   edit operations. It is hosted on every operating system: Windows TSF
   (`docs/spec/tsf.md`, the same workspace), macOS IMKit, the iOS and Android
   keyboard apps, ChromeOS and the web through wasm, and Linux IBus and
-  Fcitx. There is no other engine, interim or otherwise.
+  Fcitx. There is no other engine.
 - **LDML XML** (`ldml.xml.*`): import and export through `xmlem`. It maps
   the LDML subset losslessly and carries the superset in a kbdgen namespace,
   which LDML-only consumers ignore.

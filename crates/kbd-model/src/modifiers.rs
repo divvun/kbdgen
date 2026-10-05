@@ -147,7 +147,7 @@ impl Modifiers {
             || self.contains(Component::CtrlR)
     }
 
-    // [spec:kbdgen:def:ldml.model.modifiers]
+    // [spec:kbdgen:def:ldml.model.modifiers+1]
     /// The first rejected combination in this set, if any:
     ///
     /// - `alt` with `altL` or `altR`
@@ -265,7 +265,7 @@ mod tests {
     use alloc::vec;
     use alloc::vec::Vec;
 
-    // [spec:kbdgen:def:ldml.model.modifiers/test]
+    // [spec:kbdgen:def:ldml.model.modifiers+1/test]
     #[test]
     fn sets_sort_by_size_then_component_order() {
         let mut sets = vec![
@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(with_other[1], ModifierSet::Other);
     }
 
-    // [spec:kbdgen:def:ldml.model.modifiers/test]
+    // [spec:kbdgen:def:ldml.model.modifiers+1/test]
     #[test]
     fn rejects_mixed_sides_and_generic_sides() {
         for bad in [

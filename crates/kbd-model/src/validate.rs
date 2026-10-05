@@ -290,7 +290,7 @@ fn check_ranges(ranges: &[ClassRange], site: Site) -> Check {
 }
 
 impl Keyboard {
-    // [spec:kbdgen:req:ldml.model.context-len]
+    // [spec:kbdgen:req:ldml.model.context-len+1]
     /// One more than the largest number of text elements that any pattern
     /// of `simple` or `backspace` can match. A reorder rule's pattern is
     /// its `before` followed by its `from`, so a reorder group sees the
@@ -332,7 +332,7 @@ impl Keyboard {
         Ok(longest.saturating_add(1))
     }
 
-    // [spec:kbdgen:req:ldml.model.invariants]
+    // [spec:kbdgen:req:ldml.model.invariants+1]
     /// Checks every invariant of `ldml.model.invariants`, together with
     /// the structural rules of the model's definitions, and returns the
     /// first violation. It never panics.
@@ -760,7 +760,7 @@ impl Keyboard {
         Ok(())
     }
 
-    // [spec:kbdgen:req:ldml.model.nfd]
+    // [spec:kbdgen:req:ldml.model.nfd+1]
     /// With `Enabled` normalization: key outputs, pattern `Char` runs and
     /// `Set` items, replacement texts, display targets, `decimal` and
     /// `flush` texts are NFD, and every class range and reorder class holds

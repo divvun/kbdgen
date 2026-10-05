@@ -22,8 +22,8 @@ fn vendored(dir: &str) -> Vec<(String, Vec<u8>)> {
     files
 }
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
-// [spec:kbdgen:def:ldml.test.harness/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
+// [spec:kbdgen:def:ldml.test.harness+1/test]
 #[test]
 fn cldr_vectors_pass_on_the_engine() {
     let report = run_cldr().unwrap_or_else(|e| panic!("{e}"));
@@ -48,7 +48,7 @@ fn repertoires_are_noted_and_skipped() {
     );
 }
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
 #[test]
 fn embedded_files_are_the_vendored_ones() {
     let embedded = |files: &[(&str, &[u8])]| -> Vec<(String, Vec<u8>)> {
@@ -86,7 +86,7 @@ fn one_test(steps: Vec<TestStep>) -> KeyboardTest {
     }
 }
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
 #[test]
 fn checks_compare_nfd_forms() {
     let model = pcm_model();
@@ -102,7 +102,7 @@ fn checks_compare_nfd_forms() {
     assert_eq!(report.checks, 2, "codePoint backspace deleted one scalar");
 }
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
 // [spec:kbdgen:req:ldml.cli.test/test]
 #[test]
 fn failing_checks_report_the_document() {

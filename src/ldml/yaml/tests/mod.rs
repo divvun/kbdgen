@@ -15,8 +15,7 @@ mod load;
 mod lowering;
 mod windows;
 
-/// The Võro example of `docs/spec/ldml/yaml.md`, with the elided rows
-/// filled in and the flow-mapping escapes quoted.
+/// The Võro layout that `docs/spec/ldml/yaml.md` shows as its example.
 const VRO: &str = include_str!("../../../../crates/kbd-engine/tests/golden/layouts/vro.yaml");
 
 /// A layout file `<tag>.yaml` in a fresh directory.

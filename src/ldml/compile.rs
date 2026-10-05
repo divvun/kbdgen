@@ -81,7 +81,7 @@ pub fn encode(
     Ok(files)
 }
 
-// [spec:kbdgen:req:ldml.cli.compile]
+// [spec:kbdgen:req:ldml.cli.compile+1]
 /// Writes `<out>/<tag>.<host>.dvkb` for each selected layout and host that
 /// has a keyboard, creating `out` with its parents. Every model is encoded
 /// and checked before the first file is written, so a failure writes
@@ -166,7 +166,7 @@ mod tests {
             .collect()
     }
 
-    // [spec:kbdgen:req:ldml.cli.compile/test]
+    // [spec:kbdgen:req:ldml.cli.compile+1/test]
     #[test]
     fn writes_one_model_per_layout_host() {
         let dir = tempfile::tempdir().unwrap();
@@ -190,7 +190,7 @@ mod tests {
         assert_eq!(model.keyboard().host, Some(Host::Ios));
     }
 
-    // [spec:kbdgen:req:ldml.cli.compile/test]
+    // [spec:kbdgen:req:ldml.cli.compile+1/test]
     #[test]
     fn selection_restricts_layouts_and_hosts() {
         let selection = Selection {
@@ -202,7 +202,7 @@ mod tests {
         assert_eq!(names, ["smj.windows.dvkb", "smj.iOS.dvkb"]);
     }
 
-    // [spec:kbdgen:req:ldml.cli.compile/test]
+    // [spec:kbdgen:req:ldml.cli.compile+1/test]
     #[test]
     fn failures_write_nothing() {
         let dir = tempfile::tempdir().unwrap();

@@ -63,7 +63,7 @@ pub enum BaseId {
     MarkerOutput,
 }
 
-// [spec:kbdgen:def:ldml.yaml.key-ids]
+// [spec:kbdgen:def:ldml.yaml.key-ids+1]
 /// The id a key gets before collisions. `dead` says whether a marker is a
 /// top-level dead key's.
 pub fn base_id(shape: &Shape, dead: &dyn Fn(&str) -> bool) -> BaseId {
@@ -143,7 +143,7 @@ pub struct KeyTable<'a> {
     marker_outputs: Vec<Vec<Piece>>,
 }
 
-// [spec:kbdgen:sem:ldml.yaml.touch.roles]
+// [spec:kbdgen:sem:ldml.yaml.touch.roles+1]
 /// The layer a switching role goes to from layer `from`
 /// (`ldml.yaml.touch.roles`); `None` for roles the host draws as gaps.
 pub fn role_target(role: Role, from: &str) -> Option<&'static str> {
@@ -322,7 +322,7 @@ impl<'a> KeyTable<'a> {
         Ok(def)
     }
 
-    // [spec:kbdgen:sem:ldml.yaml.key-ids.collisions]
+    // [spec:kbdgen:sem:ldml.yaml.key-ids.collisions+1]
     /// The id of the key a token makes or names, registering it on first
     /// use. A new definition whose id is taken by a different one gets the
     /// first free suffix `-2`, `-3`, …. Its long-press keys, then its flick

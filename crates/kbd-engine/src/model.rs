@@ -35,7 +35,7 @@ fn invariant_error(error: kbd_model::InvariantError) -> Error {
     }
 }
 
-// [spec:kbdgen:def:ldml.engine.api]
+// [spec:kbdgen:def:ldml.engine.api+1]
 // [spec:kbdgen:def:ldml.scope.v1]
 /// A validated keyboard ready to process events, with the options that the
 /// platform chooses. A `Model` is immutable: every event is a pure function
@@ -85,7 +85,7 @@ impl Model {
         Model { options, ..self }
     }
 
-    // [spec:kbdgen:req:ldml.crate.engine]
+    // [spec:kbdgen:req:ldml.crate.engine+1]
     /// Validates `keyboard` and prepares it. Without the `normalization`
     /// feature, a keyboard with normalization `Enabled` is refused with
     /// [`Error::NormalizationUnsupported`].
@@ -168,8 +168,8 @@ impl Model {
         self.keyboard.normalization == Normalization::Enabled
     }
 
-    // [spec:kbdgen:req:ldml.engine.contract]
-    // [spec:kbdgen:req:ldml.engine.tsf]
+    // [spec:kbdgen:req:ldml.engine.contract+1]
+    // [spec:kbdgen:req:ldml.engine.tsf+1]
     /// What `event` does in `context` from `state`: the action and the next
     /// state. On `Pass` the state is returned unchanged.
     ///
@@ -216,7 +216,7 @@ impl Model {
         }
     }
 
-    // [spec:kbdgen:sem:ldml.engine.context]
+    // [spec:kbdgen:sem:ldml.engine.context+1]
     /// The working context C. X is the last `context_len` scalar values of
     /// `Context.text`, in NFD when normalization is `Enabled`. If X ends
     /// with the plain text of the state's `tail`, C is X with that suffix
@@ -322,8 +322,8 @@ impl Model {
             .copied()
     }
 
-    // [spec:kbdgen:sem:ldml.engine.touch.gestures]
-    // [spec:kbdgen:sem:ldml.engine.test-keys]
+    // [spec:kbdgen:sem:ldml.engine.touch.gestures+1]
+    // [spec:kbdgen:sem:ldml.engine.test-keys+1]
     /// Resolves `gesture` on `key` and inserts the resolved key's output,
     /// returning its `layer_id` after output processing. A gap or a role
     /// key passes, since role keys are the host's own; a gesture with no
@@ -384,7 +384,7 @@ impl Model {
         Outcome::Changed(c, layer)
     }
 
-    // [spec:kbdgen:sem:ldml.engine.backspace]
+    // [spec:kbdgen:sem:ldml.engine.backspace+1]
     /// Backspace: Left or Right Shift insert LRM or RLM when
     /// `windows.lrm_rlm` is set; a shortcut passes; otherwise the
     /// `backspace` groups run over C with nothing appended, and if no rule
@@ -449,7 +449,7 @@ impl Model {
         }
     }
 
-    // [spec:kbdgen:sem:ldml.engine.commit]
+    // [spec:kbdgen:sem:ldml.engine.commit+1]
     /// `Commit` replaces the trailing marker run of C with the flush
     /// outputs of its markers and removes every other marker, running no
     /// transforms.
@@ -479,7 +479,7 @@ impl Model {
             .collect()
     }
 
-    // [spec:kbdgen:sem:ldml.engine.preedit]
+    // [spec:kbdgen:sem:ldml.engine.preedit+1]
     /// The preedit for context `c`: the flush outputs of its trailing
     /// marker run, which is exactly what `Commit` would insert, in the
     /// output form when normalization is `Enabled`.
@@ -497,7 +497,7 @@ impl Model {
         }
     }
 
-    // [spec:kbdgen:sem:ldml.engine.output.segment]
+    // [spec:kbdgen:sem:ldml.engine.output.segment+1]
     // [spec:kbdgen:thm:ldml.engine.no-markers-out]
     /// The edit from T to the processed C′, the preedit, and the new state.
     ///

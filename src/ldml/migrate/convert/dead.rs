@@ -120,7 +120,7 @@ fn node(defects: &mut Defects, children: &[(String, Node3)], identity: &str, pat
     }
 }
 
-// [spec:kbdgen:sem:ldml.migrate.dead-keys]
+// [spec:kbdgen:sem:ldml.migrate.dead-keys+1]
 /// The dead keys of the `transforms` tree in order, and the `deadKeys`
 /// table written for them. A top-level leaf, which v3 ignored, is not
 /// carried over; nor is a root that decodes like an earlier one.

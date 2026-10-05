@@ -15,21 +15,24 @@ Sources: CLDR `keyboards/test/README.md` (tech preview),
 
 ## CLDR vectors
 
-> [spec:kbdgen:req:ldml.test.cldr]
+> [spec:kbdgen:req:ldml.test.cldr+1]
 > `kbd-ldml` MUST vendor these files from CLDR release 48, under
-> `crates/kbd-ldml/testdata/cldr/48/`, and run them in `cargo test`:
+> `crates/kbd-ldml/testdata/cldr/48/`:
 >
 > - `keyboards/3.0/*.xml`
 > - `keyboards/test/*.xml`
 > - `keyboards/import/*.xml`
 >
-> Each keyboard MUST resolve without errors. For each `test`, the harness
-> runs `ldml.test.harness` with `Options { backspace: CodePoint,
-> output_form: Nfc }`:
+> Its `cargo test` MUST resolve each keyboard without errors and read each
+> test file. `kbd-ldml` cannot depend on `kbd-engine`, so `kbdgen`'s tests
+> run the vectors, from copies embedded for `kbdgen ldml test --cldr`. Each
+> `test` starts from an empty document in the reset state, and runs
+> `ldml.test.harness` with `Options { backspace: CodePoint, output_form:
+> Nfc, host: None }`:
 >
-> - `startContext` sets the document.
-> - `keystroke` sends `Id` with the gesture: `flick` → `Flick`,
->   `longPress` → `LongPress`, `tapCount` → `MultiTap`.
+> - `startContext`, only as the first step, sets the document.
+> - `keystroke` sends `Id` with the gesture: none → `Tap`, `flick` →
+>   `Flick`, `longPress` → `LongPress`, `tapCount` → `MultiTap`.
 > - `emit` sends `Emit`.
 > - `backspace` sends `Backspace`.
 > - `check` compares NFD(document) with NFD(`result`); expected results are
@@ -38,44 +41,58 @@ Sources: CLDR `keyboards/test/README.md` (tech preview),
 > A failing vector may be listed as an expected failure only with a reason
 > that cites the ambiguity it depends on.
 
-> [spec:kbdgen:def:ldml.test.harness]
-> The harness keeps a *document*, the text before the caret, and a `State`.
-> For each event it:
+> [spec:kbdgen:def:ldml.test.harness+1]
+> The harness keeps a *document*, the text before the caret, a `State`,
+> and whether the document begins at a start of text (default true). For
+> each event it:
 >
-> 1. passes the last `context_len` scalar values as `Context.text`, with
->    `at_start` true when that is the whole document
+> 1. passes the last `context_len` scalar values as an authoritative
+>    `Context.text`, with `at_start` true when that is the whole document
+>    and the document begins at a start of text
 > 2. applies an `Edit` by deleting `delete` scalar values, appending
 >    `insert`, and recording `preedit` and `layer`
 > 3. on `Pass`, changes nothing and records that the event passed
 >
-> A reset step sets `State::default()`. The harness has no Windows,
-> application or OS dependency (`tsf.test.engine`).
+> Setting the document keeps the state. A reset step sets
+> `State::default()`. The harness has no Windows, application or OS
+> dependency (`tsf.test.engine`).
 
 ## Golden vectors
 
-> [spec:kbdgen:def:ldml.test.vectors]
-> A golden vector file is YAML:
+> [spec:kbdgen:def:ldml.test.vectors+1]
+> A golden vector file is strict YAML with:
 >
-> - `layout`: a v4 or v3 layout path, or `keyboard`: an XML path
-> - `host`, which selects the host document
-> - optional `options`: `backspace` and `outputForm`
-> - `tests`: a list of `{name, context?, atStart?, steps}`
+> - exactly one of `layout`, a v4 or v3 layout path, or `keyboard`, an
+>   XML path. A v3 layout is migrated in memory; a blocked migration is an
+>   error naming its defect codes.
+> - `host`: required with `layout`, where it selects the host document;
+>   optional with `keyboard`, where it must equal the document's own host,
+>   or else supplies one. It is also `Options.host`.
+> - optional `options`: `backspace` (`cancelOrPass`, `codePoint`) and
+>   `outputForm` (`nfc`, `nfd`)
+> - `tests`: a list of `{name, context?, atStart?, steps}`. `context` is
+>   the starting document (default empty), `atStart` defaults to true, and
+>   each test starts in the reset state.
 >
-> A step is one of:
+> A step is a bare `backspace`, `decimal`, `commit` or `reset`, or one of:
 >
 > - `press: {key, mods?}`, where `key` is an ISO position name
 >   (`keys.iso-order`), `space`, or a hex scan code `0xNN`
-> - `touch: {size, layer, row, col, gesture?}`
-> - `id: <key id>` with optional `gesture`
-> - `emit: <text>`
-> - `backspace: {mods?}`
-> - `decimal`, `commit` or `reset`
-> - `expect: {text?, preedit?, pass?, layer?}`
+> - `touch: {size, layer, row, col, gesture?}`: a touch set by name, a
+>   layer by id, 0-based row and column
+> - `id: <key id>`, with an optional sibling `gesture`
+> - `emit: <text>`; `backspace: {mods?}`; `decimal: {mods?}`
+> - `context: <text>`, which replaces the document and keeps the state
+> - `expect: {text?, preedit?, pass?, layer?}`, naming at least one;
+>   `layer: null` expects that the last edit switched no layer
 >
-> `mods` uses `shift` `shiftL` `shiftR` `caps` `ctrl` `ctrlL` `ctrlR` `alt`
-> `altL` `altR` `altgr` `cmd` `extra1` `extra2` `extra3`. Here `shift`,
-> `ctrl` and `alt` mean the left key, and `altgr` sets `alt_r` and `altgr`.
-> `expect` compares exact scalar values, without normalization.
+> A gesture is `tap` (default), `{longPress: n}`, `{multiTap: n}` or
+> `{flick: <directions>}`, space-separated. `mods` is a space-separated
+> string of `shift` `shiftL` `shiftR` `caps` `ctrl` `ctrlL` `ctrlR` `alt`
+> `altL` `altR` `altgr` `cmd` `extra1` `extra2` `extra3`; `shift`, `ctrl`
+> and `alt` mean the left key, and `altgr` sets `alt_r` and `altgr`. Text
+> values decode `\u{…}`. `expect` compares exact scalar values, without
+> normalization.
 
 > [spec:kbdgen:req:ldml.test.golden]
 > `crates/kbd-engine/tests/golden/` MUST contain vectors covering each of
@@ -99,10 +116,13 @@ Sources: CLDR `keyboards/test/README.md` (tech preview),
 >
 > Each migrated fixture bundle needs vectors for its dead keys and caps.
 
-> [spec:kbdgen:req:ldml.test.bundle]
+> [spec:kbdgen:req:ldml.test.bundle+1]
 > A bundle MAY contain `tests/*.yaml` in the golden-vector format, with
-> paths relative to the bundle. `kbdgen ldml test` runs them
-> (`ldml.cli.test`). Bundle loading (`bundle.structure`) ignores `tests/`.
+> `layout` and `keyboard` paths relative to the bundle root.
+> `kbdgen ldml test` runs them in byte-wise file-name order
+> (`ldml.cli.test`). The golden vectors of `ldml.test.golden` run the same
+> way, with `crates/kbd-engine/tests/golden/` as the bundle root. Bundle
+> loading (`bundle.structure`) ignores `tests/`.
 
 ## Round trips and robustness
 
@@ -123,10 +143,14 @@ Sources: CLDR `keyboards/test/README.md` (tech preview),
 > fixture models, never panic. They MUST also check that every `Edit` keeps
 > to the bounds of `ldml.engine.action`.
 
-> [spec:kbdgen:req:ldml.test.kmc]
+> [spec:kbdgen:req:ldml.test.kmc+1]
 > CI SHOULD validate every exported fixture keyboard with Keyman's `kmc`
-> LDML compiler, the validator CLDR itself uses. LDML errors fail the run;
-> kbdgen's `special` content is out of `kmc`'s scope.
+> LDML compiler, the validator CLDR itself uses. The check is the ignored
+> test `tests/ldml_kmc.rs`, which CI runs with `cargo nextest run
+> --run-ignored all`; it needs Node.js (`npx @keymanapp/kmc@18`, or
+> `KBDGEN_KMC`). `kmc` sees each keyboard's LDML-only view
+> (`ldml.xml.ldml-view`), since kbdgen's namespace is out of its scope.
+> LDML errors fail the run; hints and warnings do not.
 
 > [spec:kbdgen:req:ldml.test.repertoire]
 > keyboardTest3 `repertoire` elements are parsed and skipped with an

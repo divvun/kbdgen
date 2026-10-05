@@ -1327,12 +1327,20 @@ children (
                 title "Fold implementation interpretations from ldml.model (and later nodes) back into docs/spec/ldml, bumping the affected rules"
                 kind @docs
                 deps (ldml.model)
+                sealed true
                 log (
                     {
                         at 2026-10-05T22:09:52.254886Z
                         author "brendan@necessary.nu"
                         kind @status
                         text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T22:34:39.32735Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
                     }
                 )
             }

@@ -16,7 +16,7 @@ fn backspace_cancels_pending_dead_key_only() {
     assert_eq!(s.text, "");
 }
 
-// [spec:kbdgen:sem:ldml.engine.backspace/test]
+// [spec:kbdgen:sem:ldml.engine.backspace+1/test]
 #[test]
 fn backspace_rule_runs_instead_of_default() {
     let m = model(dead_keys(Normalization::Disabled, true));
@@ -30,7 +30,7 @@ fn backspace_rule_runs_instead_of_default() {
     assert_eq!(s.backspace(), Action::Pass);
 }
 
-// [spec:kbdgen:sem:ldml.engine.backspace/test]
+// [spec:kbdgen:sem:ldml.engine.backspace+1/test]
 #[test]
 fn backspace_skips_simple_groups() {
     let mut k = keyboard(Normalization::Disabled);
@@ -51,7 +51,7 @@ fn backspace_skips_simple_groups() {
     assert_eq!(action, edit(1, "", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.backspace/test]
+// [spec:kbdgen:sem:ldml.engine.backspace+1/test]
 #[test]
 fn backspace_shortcut_passes() {
     let m = model(dead_keys(Normalization::Disabled, true));
@@ -64,7 +64,7 @@ fn backspace_shortcut_passes() {
     assert_eq!(s.press(KeyEvent::with(Key::Backspace, ctrl)), Action::Pass);
 }
 
-// [spec:kbdgen:sem:ldml.engine.backspace/test]
+// [spec:kbdgen:sem:ldml.engine.backspace+1/test]
 #[test]
 fn shift_backspace_inserts_lrm_or_rlm() {
     let mut k = keyboard(Normalization::Disabled);

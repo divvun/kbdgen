@@ -186,6 +186,19 @@ fn token(
     let written = match ctx.dead_def(&text) {
         Some(def) if v4_dead => {
             ctx.used.insert((rule.platform.name(), text.clone()));
+            if !v3_dead {
+                ctx.defects.add_at(
+                    Code::M17,
+                    path,
+                    None,
+                    Some(raw),
+                    format!(
+                        "{} never made this key dead, because its dead-key entry is spelled otherwise; it is now dead",
+                        rule.platform.name()
+                    ),
+                );
+                explained.push(Code::M17);
+            }
             dead_token(&def.spelling)
         }
         _ => ctx.literal(raw, path, row),

@@ -127,7 +127,7 @@ fn implied_caps_layers_give_macos_caps_shift() {
     );
 }
 
-// [spec:kbdgen:req:ldml.engine.shortcuts/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+1/test]
 #[test]
 fn shortcuts_pass_before_layer_matching() {
     let m = model(modifier_keyboard());
@@ -168,7 +168,7 @@ fn shortcuts_pass_before_layer_matching() {
     assert_eq!(out(&m, ctrl_alt), typed("o"));
 }
 
-// [spec:kbdgen:req:ldml.engine.shortcuts/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+1/test]
 #[test]
 fn left_alt_passes_only_on_windows() {
     let alt_l = ModifierState {
@@ -191,7 +191,7 @@ fn left_alt_passes_only_on_windows() {
 }
 
 // [spec:kbdgen:def:ldml.model.native/test]
-// [spec:kbdgen:req:ldml.engine.shortcuts/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+1/test]
 #[test]
 fn native_only_layers_are_never_selected() {
     // A layer whose sets include `ctrl` is native-only, even for `none`.
@@ -227,7 +227,7 @@ fn altgr_keyboard(alt_layer: Vec<ModifierSet>) -> Keyboard {
 }
 
 // [spec:kbdgen:sem:ldml.engine.altgr/test]
-// [spec:kbdgen:req:ldml.engine.tsf/test]
+// [spec:kbdgen:req:ldml.engine.tsf+1/test]
 #[test]
 fn altgr_reaches_ctrl_alt_and_alt_r_layers() {
     for sets in [vec![set(&[AltR])], vec![set(&[Alt, Ctrl])]] {

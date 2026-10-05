@@ -26,7 +26,7 @@ fn cldr_keyboards_resolve_and_load() {
     }
 }
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
 // [spec:kbdgen:req:ldml.test.repertoire/test]
 #[test]
 fn cldr_test_files_read_and_name_keyboards() {
@@ -71,7 +71,7 @@ const STEPS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </keyboardTest3>
 "#;
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
 // [spec:kbdgen:req:ldml.test.repertoire/test]
 #[test]
 fn steps_gestures_and_repertoires_are_read() {
@@ -112,7 +112,7 @@ fn steps_gestures_and_repertoires_are_read() {
     );
 }
 
-// [spec:kbdgen:req:ldml.test.cldr/test]
+// [spec:kbdgen:req:ldml.test.cldr+1/test]
 #[test]
 fn malformed_test_documents_are_refused() {
     let cases = [

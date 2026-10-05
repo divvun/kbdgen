@@ -734,8 +734,8 @@ fn needs_kbdgen(kb: &Keyboard, ext: &Extensions) -> bool {
         })
 }
 
-// [spec:kbdgen:req:ldml.xml.export]
-// [spec:kbdgen:sem:ldml.xml.ldml-view]
+// [spec:kbdgen:req:ldml.xml.export+1]
+// [spec:kbdgen:sem:ldml.xml.ldml-view+1]
 // [spec:kbdgen:thm:ldml.xml.superset-roundtrip]
 /// Builds the source document of `keyboard`: elements in the DTD's order,
 /// attributes in the order the DTD declares them, implied keys and forms
@@ -885,7 +885,7 @@ fn layout_elements(
 /// The kbdgen elements a layout file overrides in a referenced document.
 const LAYOUT_ELEMENTS: [&str; 5] = ["keyboard", "displayName", "target", "emojiKey", "emoji"];
 
-// [spec:kbdgen:req:ldml.xml.ldml-ref]
+// [spec:kbdgen:req:ldml.xml.ldml-ref+1]
 /// Puts a layout file's data into a referenced LDML document, which is
 /// otherwise kept exactly as read (`ldml.xml.roundtrip`). Only kbdgen's
 /// layout elements of `keyboard3`'s `special` are replaced: `keyboard`,

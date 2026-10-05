@@ -595,7 +595,7 @@ pub fn conforms_to(layout: &Layout4) -> u8 {
     }
 }
 
-// [spec:kbdgen:sem:ldml.yaml.lowering]
+// [spec:kbdgen:sem:ldml.yaml.lowering+1]
 /// Builds the source document: elements in the DTD's order, attributes in
 /// the order it declares them.
 pub fn build(parts: &Parts, host: Host) -> Document {

@@ -59,7 +59,7 @@ fn build_device_crates(triples: &[&str]) -> std::io::Result<()> {
 
 // [spec:kbdgen:req:ldml.crate.targets/test]
 // [spec:kbdgen:req:ldml.crate.model/test]
-// [spec:kbdgen:req:ldml.crate.engine/test]
+// [spec:kbdgen:req:ldml.crate.engine+1/test]
 #[test]
 fn device_crates_build_for_wasm_and_without_std() -> std::io::Result<()> {
     build_device_crates(&["wasm32-unknown-unknown", BARE_METAL_TRIPLE])

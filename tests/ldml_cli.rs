@@ -2,7 +2,7 @@
 
 use std::process::Command;
 
-// [spec:kbdgen:def:ldml.cli.commands/test]
+// [spec:kbdgen:def:ldml.cli.commands+1/test]
 #[test]
 fn errors_exit_non_zero_and_write_nothing() {
     let dir = tempfile::tempdir().unwrap();
@@ -50,9 +50,9 @@ fn names(dir: &std::path::Path) -> Vec<String> {
 }
 
 // [spec:kbdgen:req:ldml.cli.export/test]
-// [spec:kbdgen:req:ldml.cli.compile/test]
+// [spec:kbdgen:req:ldml.cli.compile+1/test]
 // [spec:kbdgen:req:ldml.cli.import/test]
-// [spec:kbdgen:thm:ldml.yaml.roundtrip/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
 #[test]
 fn v4_bundle_exports_compiles_and_imports_back() {
     let dir = tempfile::tempdir().unwrap();
@@ -220,7 +220,7 @@ fn vro_test_bundle(dir: &std::path::Path, steps: &str) -> std::path::PathBuf {
 }
 
 // [spec:kbdgen:req:ldml.cli.test/test]
-// [spec:kbdgen:req:ldml.test.bundle/test]
+// [spec:kbdgen:req:ldml.test.bundle+1/test]
 #[test]
 fn ldml_test_passes_on_matching_vectors() {
     let dir = tempfile::tempdir().unwrap();
@@ -322,8 +322,8 @@ fn ldml_test_runs_golden_and_cldr_vectors() {
 
 const SE_V3: &str = "displayNames:\n  se: Davvisámegiella\nwindows:\n  primary:\n    layers:\n      default: a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 + , . - ' ¨ < ´ § ½ å æ\n      shift: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z ! \" @ ¤ % & / ( ) = ? ; | _ * ^ > ` ° ¶ Å Æ\n";
 
-// [spec:kbdgen:def:ldml.cli.commands/test]
-// [spec:kbdgen:def:ldml.migrate.report/test]
+// [spec:kbdgen:def:ldml.cli.commands+1/test]
+// [spec:kbdgen:def:ldml.migrate.report+1/test]
 #[test]
 fn migrate_writes_unblocked_layouts_and_reports() {
     let dir = tempfile::tempdir().unwrap();

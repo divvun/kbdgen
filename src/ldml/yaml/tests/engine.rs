@@ -63,7 +63,7 @@ fn backspace_cancels_only_the_pending_dead_key() {
     assert_eq!(t.text, "ja");
 }
 
-// [spec:kbdgen:sem:ldml.yaml.implied-layers/test]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1/test]
 // [spec:kbdgen:sem:ldml.scope.macos-rules/test]
 #[test]
 fn caps_shift_letter_gives_uppercase() {
@@ -97,7 +97,7 @@ fn caps_shift_letter_gives_uppercase() {
     assert_eq!(t.text, "AAáØ");
 }
 
-// [spec:kbdgen:def:ldml.yaml.long-press/test]
+// [spec:kbdgen:def:ldml.yaml.long-press+1/test]
 #[test]
 fn long_press_offers_the_candidates() {
     let mut t = vro(Host::MacOs);
@@ -110,7 +110,7 @@ fn long_press_offers_the_candidates() {
     assert_eq!(t.text, "äõ\u{32D}");
 }
 
-// [spec:kbdgen:sem:ldml.yaml.touch.roles/test]
+// [spec:kbdgen:sem:ldml.yaml.touch.roles+1/test]
 #[test]
 fn role_keys_pass_and_layer_keys_switch() {
     let mut t = vro(Host::Ios);
@@ -146,7 +146,7 @@ fn tablet_flick_down_gives_the_digit() {
     assert_eq!(t.text, "1-");
 }
 
-// [spec:kbdgen:def:ldml.yaml.dead-keys/test]
+// [spec:kbdgen:def:ldml.yaml.dead-keys+1/test]
 #[test]
 fn chained_dead_keys_compose_through_nested_nodes() {
     let rows = QWERTY.replace("[ ]", "\\d{´} \\d{¨}");

@@ -51,8 +51,8 @@ fn remove_set(grids: &[Grid<u16>], m: Modifiers) -> Vec<Grid<u16>> {
         .collect()
 }
 
-// [spec:kbdgen:sem:ldml.yaml.import]
-// [spec:kbdgen:sem:ldml.yaml.implied-layers]
+// [spec:kbdgen:sem:ldml.yaml.import+1]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1]
 /// The authored layers of a hardware set and whether they use
 /// `impliedLayers: macOS`: the layers without every caps set that
 /// re-deriving recreates exactly, or all layers and `none` when re-deriving

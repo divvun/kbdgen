@@ -114,7 +114,7 @@ fn crate_dirs(root: &Path) -> BTreeSet<String> {
         .collect()
 }
 
-// [spec:kbdgen:def:ldml.crate.layout/test]
+// [spec:kbdgen:def:ldml.crate.layout+1/test]
 #[test]
 fn workspace_has_kbdgen_and_crate_members() {
     let workspace = Workspace::load();
@@ -181,7 +181,7 @@ fn model_depends_only_on_serde_and_postcard() {
     assert_no_default_features(dependency(model, "postcard"), &["alloc"]);
 }
 
-// [spec:kbdgen:req:ldml.crate.engine/test]
+// [spec:kbdgen:req:ldml.crate.engine+1/test]
 #[test]
 fn engine_depends_on_model_and_gated_icu_normalizer() {
     let workspace = Workspace::load();

@@ -107,8 +107,8 @@ fn fixture_views(dir: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-// [spec:kbdgen:req:ldml.test.kmc]
-// [spec:kbdgen:req:ldml.test.kmc/test]
+// [spec:kbdgen:req:ldml.test.kmc+1]
+// [spec:kbdgen:req:ldml.test.kmc+1/test]
 #[test]
 #[ignore = "needs Node.js and @keymanapp/kmc; run with `cargo nextest run --run-ignored all`"]
 fn exported_fixtures_pass_kmc() {

@@ -90,8 +90,8 @@ fn explained_warning(warning: &str, defects: &Defects) -> bool {
     warning.contains("no \\d{") && defects.has(Code::M03)
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects]
-// [spec:kbdgen:req:ldml.migrate.equivalence]
+// [spec:kbdgen:req:ldml.migrate.defects+1]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1]
 /// Migrates the v3 layout `text`, read from `path` and tagged `tag`. A
 /// file that is not v3 at all, such as one with a non-string value where
 /// v3 needs a string, is an error; everything else is a defect.
@@ -195,8 +195,8 @@ pub fn windows_model(migration: &Migration) -> Result<Option<Vec<u8>>, LdmlError
         })
 }
 
-// [spec:kbdgen:req:ldml.migrate.output]
-// [spec:kbdgen:def:ldml.migrate.report]
+// [spec:kbdgen:req:ldml.migrate.output+1]
+// [spec:kbdgen:def:ldml.migrate.report+1]
 /// Migrates every v3 layout of `bundle` in bundle layout order, then,
 /// unless `dry_run`, writes each unblocked one in place under its v3 name.
 /// Every layout is migrated before the first is written, so an error

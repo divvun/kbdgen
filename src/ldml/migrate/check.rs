@@ -172,7 +172,7 @@ pub struct CapsDiff {
     pub positions: Vec<&'static str>,
 }
 
-// [spec:kbdgen:req:ldml.migrate.caps-diff]
+// [spec:kbdgen:req:ldml.migrate.caps-diff+1]
 /// Lists, per caps state, every position where v4 types other than the v3
 /// platform did (M09).
 fn caps_diff(trace: &DesktopTrace, model: &Model, defects: &mut Defects) -> Vec<CapsDiff> {
@@ -333,7 +333,7 @@ fn desktop_keys(trace: &DesktopTrace, model: &Model) -> Vec<Press> {
     out
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1]
 fn desktop(trace: &DesktopTrace, model: &Model, dead: &[DeadDef], defects: &mut Defects) {
     for layer in &trace.layers {
         if layer.native || caps_layer(&layer.name) {
@@ -362,7 +362,7 @@ fn touch_event(set: usize, layer: usize, row: usize, col: usize, gesture: Gestur
     })
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1]
 fn touch(trace: &TouchTrace, model: &Model, dead: &[DeadDef], defects: &mut Defects) {
     let platform = trace.platform.name();
     for size in &trace.sizes {

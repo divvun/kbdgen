@@ -232,7 +232,7 @@ fn document(root: &El) -> Result<KeyboardTest> {
     Ok(out)
 }
 
-// [spec:kbdgen:req:ldml.test.cldr]
+// [spec:kbdgen:req:ldml.test.cldr+1]
 // [spec:kbdgen:req:ldml.test.repertoire]
 /// Reads a keyboardTest3 document per `ldml.xml.read`. Steps keep their
 /// order; `special` elements are skipped; `repertoire` elements are kept

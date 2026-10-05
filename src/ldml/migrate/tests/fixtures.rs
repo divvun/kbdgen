@@ -22,8 +22,8 @@ fn distinct(m: &Migration) -> Vec<Code> {
     c
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence/test]
-// [spec:kbdgen:req:ldml.migrate.output/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
+// [spec:kbdgen:req:ldml.migrate.output+1/test]
 #[test]
 fn fixtures_migrate_load_and_match_v3_dlls() {
     let cases = [
@@ -65,7 +65,7 @@ fn fixtures_migrate_load_and_match_v3_dlls() {
     }
 }
 
-// [spec:kbdgen:req:ldml.migrate.caps-diff/test]
+// [spec:kbdgen:req:ldml.migrate.caps-diff+1/test]
 #[test]
 fn sme_altgr_caps_differences_are_listed() {
     let m = migrate_as("se-NO", SE_NO);

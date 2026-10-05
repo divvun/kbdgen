@@ -30,7 +30,7 @@ struct Deriver<'a> {
 }
 
 /// The tree, keyed by each dead key's identity, in first-occurrence order.
-// [spec:kbdgen:sem:ldml.kbdl.dead-tree]
+// [spec:kbdgen:sem:ldml.kbdl.dead-tree+1]
 pub fn derive(
     keyboard: &Keyboard,
     layers: &DerivedLayers,
@@ -111,7 +111,7 @@ impl Deriver<'_> {
 
     /// The children of the dead-key state `state`, reached through the
     /// markers of `path`, the last of which is pending.
-    // [spec:kbdgen:sem:ldml.kbdl.dead-tree]
+    // [spec:kbdgen:sem:ldml.kbdl.dead-tree+1]
     fn branch(
         &self,
         state: &State,

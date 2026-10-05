@@ -130,7 +130,7 @@ fn sources(bundle: &KbdgenBundle) -> Vec<Source<'_>> {
     sources
 }
 
-// [spec:kbdgen:req:ldml.kbdl.model-resource]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1]
 /// The engine model of a v3 layout, by migrating its file in memory
 /// (`ldml.migrate.*`) with nothing written. When that is not possible the
 /// DLL has no model, which leaves the text service inert for the layout,
@@ -181,7 +181,7 @@ fn v3_model(bundle: &KbdgenBundle, tag: &LanguageTag, diag: &mut Diagnostics) ->
 
 /// The input of one v3 layout (`kbdl.input.bundle`) with the model of
 /// its in-memory migration.
-// [spec:kbdgen:req:ldml.kbdl.model-resource]
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1]
 fn v3_layout(
     bundle: &KbdgenBundle,
     tag: &LanguageTag,

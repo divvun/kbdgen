@@ -109,7 +109,7 @@ const DEAD_KEYS: &str = r#"<?xml version="1.0" encoding="utf-8"?>
 </keyboard3>
 "#;
 
-// [spec:kbdgen:def:ldml.xml.special/test]
+// [spec:kbdgen:def:ldml.xml.special+1/test]
 #[test]
 fn kbdgen_elements_resolve_to_the_superset() {
     let r = resolved(DEAD_KEYS);
@@ -170,7 +170,7 @@ fn kbdgen_elements_resolve_to_the_superset() {
     );
 }
 
-// [spec:kbdgen:def:ldml.xml.special/test]
+// [spec:kbdgen:def:ldml.xml.special+1/test]
 #[test]
 fn unknown_kbdgen_content_is_an_error() {
     let cases = [
@@ -243,7 +243,7 @@ fn ldml_only(xml: &str) -> String {
     write(&doc)
 }
 
-// [spec:kbdgen:sem:ldml.xml.ldml-view/test]
+// [spec:kbdgen:sem:ldml.xml.ldml-view+1/test]
 #[test]
 fn ldml_only_consumer_sees_plain_ldml() {
     let r = resolved(DEAD_KEYS);
@@ -273,7 +273,7 @@ fn ldml_only_consumer_sees_plain_ldml() {
     assert_eq!(view.touch[0].bottom_row, BottomRow::Authored);
 }
 
-// [spec:kbdgen:req:ldml.xml.export/test]
+// [spec:kbdgen:req:ldml.xml.export+1/test]
 #[test]
 fn export_follows_dtd_order_and_forms() {
     let xml = keyboard(
@@ -335,7 +335,7 @@ const REFERENCED: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </keyboard3>
 "#;
 
-// [spec:kbdgen:req:ldml.xml.ldml-ref/test]
+// [spec:kbdgen:req:ldml.xml.ldml-ref+1/test]
 #[test]
 fn layout_data_replaces_only_layout_elements() {
     let mut doc = read_keyboard("ref.xml", None, REFERENCED.as_bytes())
@@ -393,7 +393,7 @@ fn id(h: &mut Harness, id: &str, gesture: Gesture) -> bool {
     h.passed()
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn dead_keys_compose_fall_back_and_cancel() {
     let m = engine(resolved(DEAD_KEYS).keyboard);
@@ -427,7 +427,7 @@ fn dead_keys_compose_fall_back_and_cancel() {
     ));
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve/test]
+// [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn touch_roles_and_long_press_drive_engine() {
     let m = engine(resolved(DEAD_KEYS).keyboard);

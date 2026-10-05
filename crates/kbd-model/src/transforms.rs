@@ -125,7 +125,7 @@ pub struct Alternation {
     pub alternatives: Vec<Sequence>,
 }
 
-// [spec:kbdgen:def:ldml.model.pattern]
+// [spec:kbdgen:def:ldml.model.pattern+1]
 /// A pattern: an optional start anchor plus an alternation of sequences.
 ///
 /// Groups are stored flat, so no encoded type is recursive and decoding
@@ -507,7 +507,7 @@ impl ReorderRule {
     }
 }
 
-// [spec:kbdgen:def:ldml.model.transforms]
+// [spec:kbdgen:def:ldml.model.transforms+1]
 /// A transform group of `simple` or `backspace`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TransformGroup {
@@ -531,7 +531,7 @@ mod tests {
         p.analyze(&sets, 1, 1)
     }
 
-    // [spec:kbdgen:def:ldml.model.pattern/test]
+    // [spec:kbdgen:def:ldml.model.pattern+1/test]
     #[test]
     fn tree_flattens_in_opening_order() {
         // a((b)|(c(d)))
@@ -562,7 +562,7 @@ mod tests {
         assert_eq!(info.max_len, 3);
     }
 
-    // [spec:kbdgen:def:ldml.model.pattern/test]
+    // [spec:kbdgen:def:ldml.model.pattern+1/test]
     #[test]
     fn lengths_follow_quantifiers_and_sets() {
         // \m{.}$[0]{0,9}x?
@@ -588,7 +588,7 @@ mod tests {
         assert_eq!(info.min_len, None);
     }
 
-    // [spec:kbdgen:req:ldml.model.invariants/test]
+    // [spec:kbdgen:req:ldml.model.invariants+1/test]
     #[test]
     fn rejects_nested_and_excess_captures() {
         let nested = vec![vec![TreeItem::one(TreeAtom::Capture(vec![vec![
@@ -608,7 +608,7 @@ mod tests {
         assert_eq!(analyze(&p).unwrap_err().invariant, Invariant::Captures);
     }
 
-    // [spec:kbdgen:req:ldml.model.invariants/test]
+    // [spec:kbdgen:req:ldml.model.invariants+1/test]
     #[test]
     fn rejects_malformed_trees_and_quantifiers() {
         let mut p = Pattern::from_tree(false, vec![vec![ch('a')]]).unwrap();

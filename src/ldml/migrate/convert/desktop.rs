@@ -194,6 +194,19 @@ fn token(
             if platform == Desktop::Windows && def.identity.chars().count() > 1 {
                 explained.push(Code::M08);
             }
+            if !matches!(out, Out::Dead(_)) {
+                ctx.defects.add_at(
+                    Code::M17,
+                    &layer.path,
+                    None,
+                    Some(raw),
+                    format!(
+                        "{} never made this key dead, because its deadKeys entry is spelled otherwise; it is now dead",
+                        platform.name()
+                    ),
+                );
+                explained.push(Code::M17);
+            }
             dead_token(&def.spelling)
         }
         _ => ctx.literal(raw, &layer.path, row),

@@ -53,7 +53,7 @@ fn touch_yaml(layers: &str) -> String {
     ))
 }
 
-// [spec:kbdgen:def:ldml.yaml.key-ids/test]
+// [spec:kbdgen:def:ldml.yaml.key-ids+1/test]
 #[test]
 fn key_ids_follow_the_synthesis_rules() {
     let rows = QWERTY
@@ -93,7 +93,7 @@ fn key_ids_follow_the_synthesis_rules() {
     assert_eq!(rows("symbols-1"), ["symbols-base"]);
 }
 
-// [spec:kbdgen:sem:ldml.yaml.key-ids.collisions/test]
+// [spec:kbdgen:sem:ldml.yaml.key-ids.collisions+1/test]
 #[test]
 fn differing_definitions_get_numbered_suffixes() {
     let yaml = sme(&format!(
@@ -118,7 +118,7 @@ fn differing_definitions_get_numbered_suffixes() {
     assert_eq!(lp("u-0071-3"), "u-00F8");
 }
 
-// [spec:kbdgen:sem:ldml.yaml.key-ids.collisions/test]
+// [spec:kbdgen:sem:ldml.yaml.key-ids.collisions+1/test]
 #[test]
 fn explicit_keys_reserve_their_ids_first() {
     let rows = QWERTY
@@ -139,7 +139,7 @@ fn explicit_keys_reserve_their_ids_first() {
     assert_eq!(a.output.plain(), "á");
 }
 
-// [spec:kbdgen:req:ldml.yaml.hardware.rows/test]
+// [spec:kbdgen:req:ldml.yaml.hardware.rows+1/test]
 #[test]
 fn space_rows_entries_and_default_fill_space() {
     let yaml = sme(&format!(
@@ -165,7 +165,7 @@ fn space_rows_entries_and_default_fill_space() {
     );
 }
 
-// [spec:kbdgen:req:ldml.yaml.hardware.rows/test]
+// [spec:kbdgen:req:ldml.yaml.hardware.rows+1/test]
 #[test]
 fn trailing_no_key_positions_are_left_out() {
     let rows = format!(
@@ -187,7 +187,7 @@ fn trailing_no_key_positions_are_left_out() {
     assert!(out.contains("<row keys=\"gap\" />"), "{out}");
 }
 
-// [spec:kbdgen:sem:ldml.yaml.implied-layers/test]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1/test]
 // [spec:kbdgen:sem:ldml.scope.macos-rules/test]
 #[test]
 fn implied_rule_one_makes_caps_shift_uppercase() {
@@ -203,7 +203,7 @@ fn implied_rule_one_makes_caps_shift_uppercase() {
     assert_eq!(sets(&kb), ["none", "shift, caps shift", "caps"]);
 }
 
-// [spec:kbdgen:sem:ldml.yaml.implied-layers/test]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1/test]
 #[test]
 fn implied_rule_two_extends_layers_without_shift() {
     let kb = keyboard(
@@ -219,7 +219,7 @@ fn implied_rule_two_extends_layers_without_shift() {
     assert_eq!(sets(&kb), ["none, caps", "alt, alt caps", "other", "ctrl"]);
 }
 
-// [spec:kbdgen:sem:ldml.yaml.implied-layers/test]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1/test]
 #[test]
 fn implied_rule_three_creates_uppercase_caps() {
     let shifted = SHIFTED.replace("! @", "\\d{´} @");
@@ -264,7 +264,7 @@ fn implied_rule_three_creates_uppercase_caps() {
     assert_eq!(sets(&none), ["none", "shift"]);
 }
 
-// [spec:kbdgen:sem:ldml.yaml.touch.roles/test]
+// [spec:kbdgen:sem:ldml.yaml.touch.roles+1/test]
 #[test]
 fn roles_switch_layers_or_draw_gaps() {
     let yaml = touch_yaml(
@@ -314,7 +314,7 @@ fn roles_switch_layers_or_draw_gaps() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.yaml.touch.roles/test]
+// [spec:kbdgen:sem:ldml.yaml.touch.roles+1/test]
 #[test]
 fn switching_to_a_missing_layer_fails() {
     let err = lower_error(&touch_yaml("base: 'a \\s{shift}'\n"));
@@ -406,7 +406,7 @@ fn misaligned_flick_rows_fail() {
     }
 }
 
-// [spec:kbdgen:def:ldml.yaml.long-press/test]
+// [spec:kbdgen:def:ldml.yaml.long-press+1/test]
 #[test]
 fn long_press_reaches_every_matching_key() {
     let yaml = sme(&format!(
@@ -584,7 +584,7 @@ fn automatic_displays_unless_covered() {
     assert_eq!(kb.displays.labels.space.as_deref(), Some("rom"));
 }
 
-// [spec:kbdgen:def:ldml.yaml.verbatim/test]
+// [spec:kbdgen:def:ldml.yaml.verbatim+1/test]
 #[test]
 fn verbatim_fields_reach_the_document_as_written() {
     let rows = QWERTY.replace("[ ]", "\\k{e-acute} ]");
@@ -697,7 +697,7 @@ fn equal_documents_share_one_model() {
     assert_eq!(mac.replace("host=\"macOS\"", "host=\"linux\""), linux);
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref/test]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+1/test]
 #[test]
 fn ldml_ref_keeps_the_file_and_overrides_data() {
     let dir = tempfile::tempdir().unwrap();
@@ -736,7 +736,7 @@ fn ldml_ref_keeps_the_file_and_overrides_data() {
     assert_eq!(only, [Host::MacOs]);
 }
 
-// [spec:kbdgen:sem:ldml.yaml.lowering/test]
+// [spec:kbdgen:sem:ldml.yaml.lowering+1/test]
 #[test]
 fn lowering_is_deterministic_export_form() {
     let first: Vec<String> = documents("vro", VRO)

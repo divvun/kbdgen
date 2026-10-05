@@ -307,7 +307,7 @@ struct Parent<'a> {
     input: &'a str,
 }
 
-// [spec:kbdgen:def:ldml.yaml.dead-keys]
+// [spec:kbdgen:def:ldml.yaml.dead-keys+1]
 // [spec:kbdgen:sem:ldml.yaml.dead-keys.keys]
 fn dead_node(identity: String, value: &Value, at: &At, parent: Option<Parent>) -> Result<DeadNode> {
     let mut f = Fields::new(value, at)?;
@@ -409,7 +409,7 @@ fn dead_keys(value: &Value, at: &At) -> Result<Vec<DeadNode>> {
     Ok(nodes)
 }
 
-// [spec:kbdgen:def:ldml.yaml.verbatim]
+// [spec:kbdgen:def:ldml.yaml.verbatim+1]
 fn variables(value: &Value, at: &At, strings: &mut Strings) -> Result<Vec<Variable>> {
     let mut f = Fields::new(value, at)?;
     let mut out = Vec::new();
@@ -473,7 +473,7 @@ fn reorder(value: &Value, at: &At) -> Result<Reorder4> {
     Ok(r)
 }
 
-// [spec:kbdgen:def:ldml.yaml.verbatim]
+// [spec:kbdgen:def:ldml.yaml.verbatim+1]
 fn groups(value: &Value, at: &At) -> Result<Vec<Group>> {
     let mut out = Vec::new();
     for (group, ga) in list(value, at)? {
@@ -512,7 +512,7 @@ fn key_list_field(f: &mut Fields, name: &str) -> Result<Option<String>> {
         .transpose()
 }
 
-// [spec:kbdgen:def:ldml.yaml.verbatim]
+// [spec:kbdgen:def:ldml.yaml.verbatim+1]
 fn explicit_keys(value: &Value, at: &At, strings: &Strings) -> Result<Vec<ExplicitKey>> {
     let mut out = Vec::new();
     for (id, v, a) in entries(value, at)? {
@@ -612,7 +612,7 @@ fn displays(
     Ok((out, base))
 }
 
-// [spec:kbdgen:def:ldml.yaml.long-press]
+// [spec:kbdgen:def:ldml.yaml.long-press+1]
 /// `longPress`: decoded output → candidate tokens.
 pub fn long_press(value: &Value, at: &At, strings: &Strings) -> Result<Vec<LongPressEntry>> {
     let mut out: Vec<LongPressEntry> = Vec::new();
@@ -756,9 +756,9 @@ fn unused_dead_keys(layout: &Layout4) -> Vec<YamlProblem> {
         .collect()
 }
 
-// [spec:kbdgen:def:ldml.yaml.schema]
+// [spec:kbdgen:def:ldml.yaml.schema+1]
 // [spec:kbdgen:req:ldml.yaml.strict]
-// [spec:kbdgen:req:ldml.yaml.ldml-ref]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+1]
 /// Parses the top-level mapping of a v4 file, `format: 4` already
 /// detected. Unknown fields fail at any depth; a layout with `ldml:` may
 /// carry only the fields that override the LDML file's kbdgen data.

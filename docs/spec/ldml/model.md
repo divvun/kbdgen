@@ -34,26 +34,29 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 
 ## Text
 
-> [spec:kbdgen:def:ldml.model.text]
+> [spec:kbdgen:def:ldml.model.text+1]
 > A *text* is a sequence of elements. Each element is either a Unicode
-> scalar value or a *marker reference*, which is a `u16` index into the
-> keyboard's marker table. Markers are out of band: they are never mapped to
-> private-use characters, so application text may contain any scalar value.
-> The marker table lists marker names (NMTOKEN) in order of first appearance
-> in document order. `\m{.}` is not an entry; it occurs only in patterns.
-> The *plain text* of a text is its scalar values with every marker removed.
+> scalar value (`char`) or a *marker reference*, which is a `u16` index into
+> the keyboard's marker table. Markers are out of band: they are never mapped
+> to private-use characters, so application text may contain any scalar
+> value. The marker table lists distinct marker names (NMTOKEN) in order of
+> first appearance during resolution: display outputs, key outputs,
+> transforms (with variables where they are used), then kbdgen extension
+> data (`ldml.xml.special`). `\m{.}` is not an entry; it occurs only in
+> patterns. The *plain text* of a text is its scalar values with every
+> marker removed.
 
 ## Keyboard
 
-> [spec:kbdgen:def:ldml.model.keyboard]
+> [spec:kbdgen:def:ldml.model.keyboard+1]
 > A keyboard has these fields. Every index refers to a table of the same
 > keyboard.
 >
 > | Field | Content | Origin |
 > |---|---|---|
-> | `host` | `windows` `macOS` `chromeOS` `linux` `iOS` `android` `web`, or none for a keyboard read from foreign XML | Extension |
+> | `host` | `windows` `macOS` `chromeOS` `linux` `iOS` `android` `web`, or none for a keyboard read from foreign XML or shared by several hosts (`ldml.model.layout`) | Extension |
 > | `locale`, `locales` | BCP 47 tag; additional tags, in order | LDML |
-> | `conforms_to`, `version` | 45–49; optional semver | LDML |
+> | `conforms_to`, `version` | 45–49; optional Semantic Versioning 2.0.0 version | LDML |
 > | `info` | `name` (required), `author`, `layout`, `indicator`, `attribution` | LDML |
 > | `normalization` | `Enabled` (the LDML default) or `Disabled` | LDML |
 > | `markers` | `ldml.model.text` | LDML |
@@ -66,7 +69,7 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 > | `simple`, `backspace` | `ldml.model.transforms` | LDML |
 > | `context_len` | `ldml.model.context-len` | Extension |
 > | `decimal` | optional numpad decimal output text | Extension |
-> | `flush` | marker → text (`ldml.model.flush`) | Extension |
+> | `flush` | marker → plain string (`ldml.model.flush`) | Extension |
 > | `dead_key_names` | marker → name | Extension |
 > | `windows` | `ldml.model.windows` | Extension |
 > | `emoji` | `ldml.model.emoji` | Extension |
@@ -90,7 +93,7 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 >
 > Keys that no row references are kept, because tests press keys by id.
 
-> [spec:kbdgen:def:ldml.model.displays]
+> [spec:kbdgen:def:ldml.model.displays+1]
 > `displays` lists the `display` entries in order. Each pairs a target with
 > a display string. The target is either an output text, markers allowed, or
 > a key index (`keyId`). Display strings are decoded and have their
@@ -99,16 +102,18 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 >
 > `display_base` is `displayOptions@baseCharacter`. `labels` (Extension) has
 > optional `space` and `return` label strings, which hosts show on those
-> keys. The `space` label is also exported as LDML
-> `<display keyId="space">`.
+> keys. Export writes the labels only as kbdgen data (`ldml.xml.special`).
+> The LDML `<display keyId="space">` that carries the `space` label for
+> LDML-only consumers is an ordinary `displays` entry, added by the v4
+> lowering (`ldml.yaml.displays.auto`).
 
 ## Layers
 
-> [spec:kbdgen:def:ldml.model.hardware]
+> [spec:kbdgen:def:ldml.model.hardware+1]
 > The hardware layer set has:
 >
 > - `form`: an id and rows of scan codes (`u8`, PC/AT set 1 without the
->   `E0` prefix), implied or custom
+>   `E0` prefix), implied or custom; no scan code occurs twice in a form
 > - `min_device_width`: optional
 > - `layers`: each with an optional `id`, its modifier sets
 >   (`ldml.model.modifiers`), and rows of key indices
@@ -117,16 +122,18 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 > *c*) is scan code `form.rows[r][c]`. A position past a row's end, or in a
 > row the layer omits, has no key. A keyboard has at most one hardware set.
 
-> [spec:kbdgen:def:ldml.model.modifiers]
+> [spec:kbdgen:def:ldml.model.modifiers+1]
 > A modifier set is either `Other` or a set of components. The components
 > are LDML's `alt`, `altL`, `altR`, `caps`, `ctrl`, `ctrlL`, `ctrlR` and
 > `shift`, plus the Extension components `cmd` (Command, Windows or Super)
 > and `extra1`, `extra2`, `extra3` (`ldml.model.windows`). `none` is the
 > empty set.
 >
-> Each layer's sets are stored sorted by size, then by component order. The
-> component order is the list above, which is LDML's canonical order
-> followed by the extensions. These combinations are rejected:
+> Each layer's sets are distinct and stored sorted: component sets by size,
+> then by their components compared in component order, and `Other` after
+> all of them. The component order is the list above, which is LDML's
+> canonical order followed by the extensions. These combinations are
+> rejected:
 >
 > - `alt` with `altL` or `altR`, which LDML only warns about
 > - `ctrl` with `ctrlL` or `ctrlR`, likewise
@@ -142,14 +149,16 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 > namespace (`ldml.xml.special`). An LDML-only consumer never sees them, so
 > it never swallows Ctrl or Cmd shortcuts.
 
-> [spec:kbdgen:def:ldml.model.touch]
+> [spec:kbdgen:def:ldml.model.touch+1]
 > `touch` lists the touch layer sets in ascending `min_device_width`, with a
 > set that has none first. Widths are distinct whole millimetres from 1 to
 > 999. A set has:
 >
-> - Extension: a `name` (`phone`, `tablet`, …) and a `bottom_row` of `host`
->   or `authored`
-> - its layers, each an `id` with rows of key indices of any length
+> - Extension: an optional `name` (`phone`, `tablet`, …) and a
+>   `bottom_row` of `host` or `authored`. A set read from XML without
+>   `kbdgen:touchSet` has no name and `authored`.
+> - its layers, each an `id`, unique in the set, with rows of key indices
+>   of any length
 > - `base`, the index of the layer with id `base`
 >
 > A keyboard with no touch set may present its hardware set as touch
@@ -184,19 +193,22 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 
 ## Transforms
 
-> [spec:kbdgen:def:ldml.model.transforms]
+> [spec:kbdgen:def:ldml.model.transforms+1]
 > `simple` and `backspace` each hold an ordered list of groups. A group is
 > one of:
 >
 > - `Rules`: a non-empty ordered list of `{from: Pattern, to: Replacement}`;
 >   an absent `to` is the empty replacement
-> - `Reorder`: reorder rules after LDML's split-and-merge, sorted into match
->   priority (longest `from`, then the longest summed `before`). Each rule is
+> - `Reorder`: reorder rules after LDML's split-and-merge. Each rule is
 >   `{before: [Class], from: [Class], order: [i8], tertiary: [i8],
->   tertiary_base: [bool], pre_base: [bool]}`, with every list padded to the
->   length of `from`. A Class is a scalar value or a set of scalar ranges.
+>   tertiary_base: [bool], pre_base: [bool]}`. `from` is non-empty, and
+>   `order`, `tertiary`, `tertiary_base` and `pre_base` are padded to its
+>   length; `before` is not. Rules are sorted by the priority key
+>   (`from` length, `before` length), non-increasing, keeping document
+>   order among equal keys. A Class is a scalar value or a set of scalar
+>   ranges.
 
-> [spec:kbdgen:def:ldml.model.pattern]
+> [spec:kbdgen:def:ldml.model.pattern+1]
 > A Pattern is an optional start anchor plus an alternation of sequences.
 > Each item may carry a quantifier `{min,max}`, with `0 ≤ min ≤ max ≤ 9` and
 > `max ≥ 1`; `?` means `{0,1}`. Atoms are:
@@ -210,84 +222,105 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 > - `Marker(m)` or `AnyMarker`
 > - `Set(s)`: an entry of `sets`, a list of texts tried as alternatives in
 >   order
-> - `Group` (non-capturing) or `Capture(n)`, with `n` from 1 to 9
+> - `Group` (non-capturing) or `Capture(n)`, with `n` from 1 to 9,
+>   numbered in the order captures open
+>
+> Groups are stored flat: node 0 is the top-level alternation, and each
+> `Group` or `Capture` names the next node in opening order, so a pattern
+> has exactly one encoding.
 >
 > A Replacement is a sequence of `Text(text)`, `Group(n)` (0 is the whole
 > match) and `MapSet{group, from: s, to: t}`.
 
-> [spec:kbdgen:req:ldml.model.context-len]
-> `context_len` is one more than the largest number of text elements that
-> any pattern of `simple` or `backspace` can match. It also covers
-> `ldml.engine.output.segment`. A model whose `context_len` exceeds 64 MUST
-> be rejected, because `tsf.engine.api` bounds a host context at 64 scalar
-> values. Every pattern is bounded, since LDML forbids unbounded
-> quantifiers, so the maximum is computable. LDML is silent on any limit.
+> [spec:kbdgen:req:ldml.model.context-len+1]
+> `context_len` MUST equal one more than the largest number of text
+> elements that any rule of `simple` or `backspace` can match. A `Rules`
+> rule counts its pattern's longest match. A reorder rule counts
+> `before.len() + from.len()`, the cluster it inspects. The value also
+> covers `ldml.engine.output.segment`. A model whose `context_len` exceeds
+> 64 MUST be rejected, so a host never reads or caches more than 64 scalar
+> values (`ldml.engine.api`, `tsf.edit.cache`). Every pattern is bounded,
+> since LDML forbids unbounded quantifiers, so the maximum is computable.
+> LDML is silent on any limit.
 
-> [spec:kbdgen:def:ldml.model.flush]
-> Extension. `flush` maps a marker to the text that a pending marker stands
-> for when input is interrupted. The engine shows it as preedit
-> (`ldml.engine.preedit`) and commits it (`ldml.engine.commit`). v4 dead keys
-> set it to their standalone output. Keyboards read from foreign XML have
-> none, so their markers are dropped as LDML specifies for a context change.
+> [spec:kbdgen:def:ldml.model.flush+1]
+> Extension. `flush` maps a marker to the plain string, holding no markers,
+> that a pending marker stands for when input is interrupted. The engine
+> shows it as preedit (`ldml.engine.preedit`) and commits it
+> (`ldml.engine.commit`). v4 dead keys set it to their standalone output.
+> Keyboards read from foreign XML have none, so their markers are dropped
+> as LDML specifies for a context change.
 
 ## Compiled layouts
 
-> [spec:kbdgen:def:ldml.model.layout]
+> [spec:kbdgen:def:ldml.model.layout+1]
 > A *compiled layout* has:
 >
 > - `tag`, the layout's normalised language tag
 > - `display_names`, a map from tag to name
-> - `keyboards`, a list of distinct keyboards
+> - `keyboards`, a list of keyboards, distinct even ignoring `host`, each
+>   serving at least one host
 > - `hosts`, a map from each host to a keyboard index
 >
 > Hosts whose keyboards are equal in every field except `host` share one
-> entry, which then has no `host`. Its engine follows the rules for no host,
-> and each consumer supplies its own host. Native compilers and host
-> packaging read the keyboard of their host.
+> entry, which then has no `host`; each consumer supplies its own host
+> (the engine's `Options.host`, `ldml.engine.api`). A keyboard used by one
+> host keeps that host, and no host maps to another host's keyboard.
+> Native compilers and host packaging read the keyboard of their host.
 
 ## Invariants and encoding
 
-> [spec:kbdgen:req:ldml.model.invariants]
+> [spec:kbdgen:req:ldml.model.invariants+1]
 > Building or decoding a keyboard MUST check every invariant below, and on a
-> violation return an error naming it. Neither may panic.
+> violation return an error naming it and its site. Neither may panic.
+> Encoding does not check; keyboards come from a validating builder.
 >
-> - Indices are in range, and key ids are unique.
+> - `conforms_to` is 45–49; `version` is a semantic version.
+> - Indices are in range. Marker names, key ids and flick ids are unique
+>   NMTOKENs; flick segments have directions.
 > - `long_press_default` is in `long_press`, and no key lists itself in
 >   `multi_tap`.
 > - Gap keys have no output, `layer_id`, gestures or display.
-> - No two non-native hardware layer sets overlap (`ldml.engine.modifiers`),
->   and at most one layer has `Other`.
-> - `extra`*n* is used only if `windows.extra_modifiers` has an *n*-th entry.
-> - Rows fit the form. Every touch set has a `base` layer. Every `layer_id`
->   names a layer of some touch set.
-> - Patterns never match the empty text. They have at most nine captures,
->   none nested. A `MapSet` group captures exactly one `Set`, and both of its
->   sets have the same length.
+> - Form scan codes are distinct. Modifier sets are well formed and
+>   sorted; no set of one non-native hardware layer overlaps a set of
+>   another (`ldml.engine.modifiers`), and at most one layer has `Other`.
+> - `extra`*n* is used only if `windows.extra_modifiers` has an *n*-th
+>   entry; those keys are at most three and distinct. `windows.key_names`
+>   uses only `kbdl.key-names` English names.
+> - Rows fit the form. Touch widths follow `ldml.model.touch`, and every
+>   set has unique layer ids and a `base` layer. Every `layer_id` names a
+>   touch layer, or a hardware layer id when there is no touch set.
+> - `Rules` groups are non-empty. Patterns never match the empty text, and
+>   have at most nine captures, numbered 1… in opening order, none nested.
+>   A `MapSet` group captures exactly one `Set`, and both of its sets have
+>   the same length. Reorder rules follow `ldml.model.transforms`.
 > - With `Enabled` normalization, texts are NFD (`ldml.model.nfd`).
-> - `context_len` ≤ 64.
+> - `context_len` equals its computed value (`ldml.model.context-len`) and
+>   is ≤ 64.
 
-> [spec:kbdgen:req:ldml.model.nfd]
-> With `Enabled` normalization, the following MUST be in NFD after the marker
-> algorithm of §Normalization and Markers:
+> [spec:kbdgen:req:ldml.model.nfd+1]
+> With `Enabled` normalization, the plain text of the following MUST be NFD
+> (markers glue to the following scalar, so the marker algorithm of
+> §Normalization and Markers then leaves them unchanged):
 >
-> - key outputs
-> - pattern `Char` runs and `Set` items
-> - replacement texts
-> - display targets
-> - reorder classes
-> - `decimal` and `flush` texts
+> - key outputs, display targets, replacement texts and `Set` items
+> - pattern `Char` runs: each maximal run of unquantified `Char` items in
+>   one sequence, and each quantified `Char` alone
+> - `decimal` and `flush` strings
 >
-> Each class range MUST contain only NFD scalar values (`ldml.xml.nfd-classes`).
-> With `Disabled`, the same texts are the authored scalar values after
-> escape decoding, unchanged.
+> Every scalar value of a class range and of a reorder class MUST be NFD on
+> its own (`ldml.xml.nfd-classes`). `kbd-model` has no Unicode data: the
+> caller supplies the check (`NfdCheck`). Validating an `Enabled` keyboard
+> without one MUST fail (`NfdUnchecked`). With `Disabled`, the texts are the
+> authored scalar values after escape decoding, unchanged.
 
-> [spec:kbdgen:req:ldml.model.deterministic]
-> The model uses only `Vec`, `BTreeMap`, integers, `bool`, `String` and
-> enums. Widths are stored as integer thousandths. Equal resolved documents
-> MUST yield equal models. Equal models MUST encode to identical bytes on
-> every platform.
+> [spec:kbdgen:req:ldml.model.deterministic+1]
+> The model uses only `Vec`, `BTreeMap`, fixed-width integers, `bool`,
+> `char`, `String` and enums (`Option` included). Widths are stored as
+> integer thousandths. Equal resolved documents MUST yield equal models.
+> Equal models MUST encode to identical bytes on every platform.
 
-> [spec:kbdgen:syn:ldml.model.encoding]
+> [spec:kbdgen:syn:ldml.model.encoding+1]
 > A keyboard's binary form, the engine model of `tsf.data.resource`, is:
 >
 > 1. the ASCII magic `DVKB`
@@ -296,9 +329,8 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 > 3. the `postcard` encoding of the keyboard
 >
 > A minor version may only append fields at the end of the top-level
-> structure, and a reader ignores trailing bytes. Divergence:
-> `tsf.engine.model` reserves major 1 for an interim model. There is none,
-> so this model is major 1. Files are named `<tag>.<host>.dvkb`
+> structure, and a reader ignores trailing bytes. This is the model of
+> `tsf.engine.model`. Files are named `<tag>.<host>.dvkb`
 > (`ldml.cli.compile`).
 
 > [spec:kbdgen:req:ldml.model.decode]

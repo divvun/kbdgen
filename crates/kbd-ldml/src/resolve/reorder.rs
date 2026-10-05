@@ -258,7 +258,7 @@ fn draft(ctx: &mut Ctx, el: &El) -> Result<Draft> {
     Ok(draft)
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve]
+// [spec:kbdgen:sem:ldml.xml.resolve+1]
 /// A reorder group: rules parsed, split and merged, then sorted into match
 /// priority, longest `from` then longest `before`, keeping document order
 /// among equals.
@@ -292,7 +292,7 @@ mod tests {
         ReorderClass::Ranges(vec![ClassRange { lo, hi }])
     }
 
-    // [spec:kbdgen:sem:ldml.xml.resolve/test]
+    // [spec:kbdgen:sem:ldml.xml.resolve+1/test]
     #[test]
     fn later_rule_overrides_only_the_intersection() {
         // The Myanmar example of §Using <import> with <reorder>: an

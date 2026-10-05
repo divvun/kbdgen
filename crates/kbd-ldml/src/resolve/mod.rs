@@ -178,7 +178,7 @@ fn invariant(root: &El, e: kbd_model::InvariantError) -> Error {
     root.error(format!("invariant violated: {e}"))
 }
 
-// [spec:kbdgen:sem:ldml.xml.resolve]
+// [spec:kbdgen:sem:ldml.xml.resolve+1]
 /// Resolves a keyboard document to the model. The steps run in the order
 /// of `ldml.xml.resolve`: imports, implied data and overrides; validation;
 /// variables; escapes and markers; normalization; keys, flicks and

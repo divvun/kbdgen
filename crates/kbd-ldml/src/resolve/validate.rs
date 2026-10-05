@@ -606,7 +606,7 @@ fn variable_constraints(root: &El) -> Result<()> {
     Ok(())
 }
 
-// [spec:kbdgen:req:ldml.xml.validate]
+// [spec:kbdgen:req:ldml.xml.validate+1]
 /// Validates a keyboard after imports are resolved. An unknown element or
 /// attribute outside `special` is an error; `special` content is left to
 /// the extension reader, which interprets only kbdgen's namespace.

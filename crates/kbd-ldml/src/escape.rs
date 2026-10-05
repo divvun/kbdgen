@@ -103,7 +103,7 @@ impl<'a> Cursor<'a> {
     }
 }
 
-// [spec:kbdgen:syn:ldml.xml.escape]
+// [spec:kbdgen:syn:ldml.xml.escape+1]
 /// Decodes the body of `\u{…}`: one or more space-separated groups of 1–6
 /// hex digits, each a Unicode scalar value. `start` is the offset of the
 /// backslash, for errors.
@@ -149,7 +149,7 @@ pub(crate) fn marker_name(body: String, start: usize) -> Result<String, SyntaxEr
     Ok(body)
 }
 
-// [spec:kbdgen:syn:ldml.xml.escape]
+// [spec:kbdgen:syn:ldml.xml.escape+1]
 /// Decodes a text value. `string` returns the decoded value of a string
 /// variable, or none if it is not defined.
 pub fn decode_text(
@@ -261,7 +261,7 @@ mod tests {
         s.chars().map(Piece::Char).collect()
     }
 
-    // [spec:kbdgen:syn:ldml.xml.escape/test]
+    // [spec:kbdgen:syn:ldml.xml.escape+1/test]
     #[test]
     fn decodes_escapes_markers_and_variables() {
         assert_eq!(decode("a\\u{301 62}").unwrap(), chars("a\u{301}b"));
@@ -277,7 +277,7 @@ mod tests {
         assert_eq!(decode("\\u0300 $x \\n").unwrap(), chars("\\u0300 $x \\n"));
     }
 
-    // [spec:kbdgen:syn:ldml.xml.escape/test]
+    // [spec:kbdgen:syn:ldml.xml.escape+1/test]
     #[test]
     fn rejects_malformed_escapes() {
         for bad in [

@@ -17,7 +17,7 @@ use crate::syntax::{
 };
 use crate::tree::El;
 
-// [spec:kbdgen:req:ldml.xml.nfd-classes]
+// [spec:kbdgen:req:ldml.xml.nfd-classes+1]
 /// With normalization enabled, a class may list only NFD scalar values
 /// (`ldml.xml.nfd-classes`): a listed non-NFD value is an error. A range
 /// that merely contains non-NFD values warns, and those values are

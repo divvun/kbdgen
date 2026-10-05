@@ -17,7 +17,7 @@ fn vro_bundle(root: &Path) -> PathBuf {
     bundle
 }
 
-// [spec:kbdgen:req:ldml.test.bundle/test]
+// [spec:kbdgen:req:ldml.test.bundle+1/test]
 #[test]
 fn bundle_tests_are_sorted_yaml_files() {
     let root = tempfile::tempdir().unwrap();
@@ -33,7 +33,7 @@ fn bundle_tests_are_sorted_yaml_files() {
     assert!(report.failures.is_empty(), "{:?}", report.failures);
 }
 
-// [spec:kbdgen:req:ldml.test.bundle/test]
+// [spec:kbdgen:req:ldml.test.bundle+1/test]
 #[test]
 fn bundle_loading_ignores_the_tests_directory() {
     let root = tempfile::tempdir().unwrap();
@@ -45,7 +45,7 @@ fn bundle_loading_ignores_the_tests_directory() {
     assert!(err.contains("broken.yaml"), "{err}");
 }
 
-// [spec:kbdgen:req:ldml.test.bundle/test]
+// [spec:kbdgen:req:ldml.test.bundle+1/test]
 #[test]
 fn bundles_without_tests_run_nothing() {
     let root = tempfile::tempdir().unwrap();

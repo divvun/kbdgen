@@ -25,7 +25,7 @@ fn full(extra: &str) -> String {
 
 const ACUTE: &str = "transforms:\n  ´:\n    ' ': ´\n    a: á\n";
 
-// [spec:kbdgen:req:ldml.migrate.output/test]
+// [spec:kbdgen:req:ldml.migrate.output+1/test]
 #[test]
 fn output_is_deterministic_and_loads_cleanly() {
     let first = migrate_as("se", &full(""));
@@ -56,7 +56,7 @@ fn output_is_deterministic_and_loads_cleanly() {
     );
 }
 
-// [spec:kbdgen:req:ldml.migrate.output/test]
+// [spec:kbdgen:req:ldml.migrate.output+1/test]
 #[test]
 fn rows_are_literal_blocks_single_spaced() {
     let m = migrate_as("se", &full(""));
@@ -67,7 +67,7 @@ fn rows_are_literal_blocks_single_spaced() {
     );
 }
 
-// [spec:kbdgen:req:ldml.migrate.output/test]
+// [spec:kbdgen:req:ldml.migrate.output+1/test]
 #[test]
 fn scalars_are_quoted_only_where_needed() {
     for (s, written) in [
@@ -129,8 +129,8 @@ fn contents(bundle: &Path) -> Vec<(String, String)> {
     files
 }
 
-// [spec:kbdgen:req:ldml.migrate.output/test]
-// [spec:kbdgen:def:ldml.migrate.report/test]
+// [spec:kbdgen:req:ldml.migrate.output+1/test]
+// [spec:kbdgen:def:ldml.migrate.report+1/test]
 #[test]
 fn bundle_writes_unblocked_layouts_in_place() {
     let dir = tempfile::tempdir().unwrap();
@@ -160,7 +160,7 @@ fn bundle_writes_unblocked_layouts_in_place() {
     assert_eq!(report.blocked().len(), 1);
 }
 
-// [spec:kbdgen:def:ldml.migrate.report/test]
+// [spec:kbdgen:def:ldml.migrate.report+1/test]
 #[test]
 fn report_lists_defects_then_summary() {
     let dir = tempfile::tempdir().unwrap();
@@ -215,7 +215,7 @@ fn text(s: &str) -> Out {
     Out::Text(s.to_string())
 }
 
-// [spec:kbdgen:req:ldml.migrate.caps-diff/test]
+// [spec:kbdgen:req:ldml.migrate.caps-diff+1/test]
 #[test]
 fn windows_caps_follow_key_attributes() {
     let t = trace(
@@ -245,7 +245,7 @@ fn windows_caps_follow_key_attributes() {
     assert_eq!(at(CapsState::AltCaps, 0), text("Ä"), "CAPLOKALTGR");
 }
 
-// [spec:kbdgen:req:ldml.migrate.caps-diff/test]
+// [spec:kbdgen:req:ldml.migrate.caps-diff+1/test]
 #[test]
 fn macos_and_chromeos_caps_select_layers() {
     let mac = trace(
@@ -289,7 +289,7 @@ fn check_tampered(yaml: &str, tamper: impl Fn(&mut Trace)) -> Vec<Defect> {
     defects.into_list()
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
 #[test]
 fn equivalence_flags_unexplained_key_differences() {
     let clean = check_tampered(&full(""), |_| {});
@@ -312,7 +312,7 @@ fn equivalence_flags_unexplained_key_differences() {
     assert!(!explained.iter().any(|d| d.code == Code::M99));
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
 #[test]
 fn equivalence_presses_dead_keys_then_inputs() {
     let defects = check_tampered(&full(""), |t| {
@@ -331,7 +331,7 @@ fn equivalence_presses_dead_keys_then_inputs() {
     assert!(defects.iter().any(|d| d.message.contains("´ then space")));
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
 #[test]
 fn equivalence_taps_touch_keys_and_flicks() {
     let ios = "iOS:\n  iPad-9in:\n    layers:\n      default: |\n        q w\n      alt: |\n        1 2\n";
@@ -352,9 +352,9 @@ fn equivalence_taps_touch_keys_and_flicks() {
     assert!(messages[1].contains("row 1 key 2 flick s"));
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
 #[test]
-fn unloadable_or_unexplained_migration_blocks() {
+fn unloadable_migration_blocks_and_m17_explains_escaped_entries() {
     let m = migrate("iOS:\n  primary:\n    layers:\n      default: a \\s{symbols}\n");
     let m99 = with_code(&m, Code::M99);
     assert_eq!(m99.len(), 1, "{:?}", m.defects);
@@ -371,15 +371,14 @@ fn unloadable_or_unexplained_migration_blocks() {
         )
     ));
     assert!(
-        with_code(&m, Code::M99).iter().any(|d| d
-            .message
-            .contains("v3 typed \"´\", the migrated layout types dead")),
-        "an escaped Windows entry was never dead in v3: {:?}",
+        with_code(&m, Code::M99).is_empty() && !m.blocked(),
+        "an escaped Windows entry was never dead in v3, which M17 explains: {:?}",
         m.defects
     );
+    assert_eq!(with_code(&m, Code::M17).len(), 1, "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.equivalence/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
 #[test]
 fn in_memory_migration_writes_nothing() {
     let dir = tempfile::tempdir().unwrap();

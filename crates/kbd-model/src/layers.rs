@@ -54,7 +54,7 @@ impl HardwareLayer {
     }
 }
 
-// [spec:kbdgen:def:ldml.model.hardware]
+// [spec:kbdgen:def:ldml.model.hardware+1]
 /// The hardware layer set. A keyboard has at most one.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Hardware {
@@ -97,7 +97,7 @@ pub struct TouchLayer {
     pub rows: Vec<Vec<KeyIndex>>,
 }
 
-// [spec:kbdgen:def:ldml.model.touch]
+// [spec:kbdgen:def:ldml.model.touch+1]
 /// A touch layer set. `Keyboard::touch` lists them in ascending
 /// `min_device_width`, a set without one first; widths are distinct whole
 /// millimetres from 1 to 999.

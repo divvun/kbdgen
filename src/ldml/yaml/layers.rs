@@ -71,7 +71,7 @@ fn add_set<K>(layer: &mut Grid<K>, m: Modifiers) {
     }
 }
 
-// [spec:kbdgen:sem:ldml.yaml.implied-layers]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1]
 // [spec:kbdgen:sem:ldml.scope.macos-rules]
 /// `impliedLayers: macOS`: for each authored set S without `caps` or
 /// `shift` that is not native-only, with Sh = S + `shift`:
@@ -223,7 +223,7 @@ fn form(spec: &FormSpec, conforms_to: u8, at: &At) -> Result<(Form, bool)> {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.hardware.rows]
+// [spec:kbdgen:req:ldml.yaml.hardware.rows+1]
 /// The hardware set of a variant. Each layer has exactly the form's
 /// character rows, each with exactly its row's scan-code count, plus an
 /// optional row holding the space position alone; without it the layer
@@ -414,7 +414,7 @@ fn flicks_at(
     Ok(out)
 }
 
-// [spec:kbdgen:def:ldml.yaml.touch]
+// [spec:kbdgen:def:ldml.yaml.touch+1]
 /// The touch sets of a variant in ascending `minDeviceWidth`, the size
 /// without one first. A variant's `longPress` entries replace the global
 /// ones with the same output.

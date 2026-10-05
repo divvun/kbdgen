@@ -9,7 +9,7 @@ fn windows(layers: &[(&str, &str)], dead: &str) -> String {
 
 const ACUTE: &str = "transforms:\n  ´:\n    ' ': ´\n    a: á\n";
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m01_absent_dead_key_is_dropped() {
     let m = migrate(&format!(
@@ -27,7 +27,7 @@ fn m01_absent_dead_key_is_dropped() {
     assert!(yaml(&m).contains("\\d{´}") && !yaml(&m).contains("\\d{ˇ}"));
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m02_dead_keys_of_missing_layer_dropped() {
     let m = migrate(&format!(
@@ -43,7 +43,7 @@ fn m02_dead_keys_of_missing_layer_dropped() {
     assert!(!m.blocked());
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m03_orphan_root_is_kept_unreferenced() {
     let m = migrate(&format!(
@@ -59,7 +59,7 @@ fn m03_orphan_root_is_kept_unreferenced() {
     );
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m04_dead_key_without_transform_blocks() {
     let m = migrate(&windows(
@@ -73,7 +73,7 @@ fn m04_dead_key_without_transform_blocks() {
     assert_eq!(m.blocking_codes(), [Code::M04]);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m05_desktop_layer_miscount_blocks() {
     for keys in [format!("{KEYS} Š"), KEYS.replacen("§ ", "", 1)] {
@@ -85,7 +85,7 @@ fn m05_desktop_layer_miscount_blocks() {
     }
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m06_unbraced_escape_is_rewritten() {
     let keys = KEYS.replacen("§", "\\u00E1", 1);
@@ -106,7 +106,7 @@ fn m06_unbraced_escape_is_rewritten() {
     assert_eq!(label.as_deref(), Some("linnjá\u{AD}molsun"));
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m07_v2_layout_blocks_with_no_text() {
     let m = migrate("modes:\n  mobile-default: q w e\nstrings:\n  space: space\n");
@@ -114,7 +114,7 @@ fn m07_v2_layout_blocks_with_no_text() {
     assert!(m.blocked() && m.yaml.is_none());
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m08_multi_scalar_windows_dead_key_is_info() {
     let keys = KEYS.replacen("§", "\\u{A0}\\u{330}", 1);
@@ -135,8 +135,8 @@ fn m08_multi_scalar_windows_dead_key_is_info() {
     assert!(!m.blocked(), "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
-// [spec:kbdgen:req:ldml.migrate.caps-diff/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
+// [spec:kbdgen:req:ldml.migrate.caps-diff+1/test]
 #[test]
 fn m09_lists_caps_shift_letters_turning_uppercase() {
     let m = migrate(&windows(&[("default", KEYS), ("shift", SHIFTED)], ""));
@@ -163,7 +163,7 @@ fn m09_lists_caps_shift_letters_turning_uppercase() {
     assert!(!m.blocked());
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m10_names_every_unread_field() {
     let m = migrate(&format!(
@@ -187,7 +187,7 @@ fn m10_names_every_unread_field() {
     assert!(!m.blocked());
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m11_counts_comment_lines_outside_blocks() {
     let m = migrate(
@@ -198,7 +198,7 @@ fn m11_counts_comment_lines_outside_blocks() {
     assert!(m11[0].message.contains("lines 3, 10"), "{}", m11[0]);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m12_ios_and_android_dead_keys_differ() {
     let m = migrate(&format!(
@@ -214,7 +214,7 @@ fn m12_ios_and_android_dead_keys_differ() {
     assert!(!m.blocked(), "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m13_macos_nul_now_means_no_key() {
     let keys = KEYS.replacen("§", "\\u{0}", 1);
@@ -229,7 +229,7 @@ fn m13_macos_nul_now_means_no_key() {
     assert!(!m.blocked(), "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m14_escapes_shown_raw_are_now_decoded() {
     let keys = KEYS.replacen("§", "\\u{E1}", 1);
@@ -251,7 +251,7 @@ fn m14_escapes_shown_raw_are_now_decoded() {
     assert!(!m.blocked(), "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m15_unaligned_ipad_alt_rows_are_dropped() {
     let m = migrate(
@@ -265,7 +265,7 @@ fn m15_unaligned_ipad_alt_rows_are_dropped() {
     assert!(!m.blocked(), "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 #[test]
 fn m16_standalone_differing_from_root_is_info() {
     let keys = KEYS.replacen("§", "ˆ", 1);
@@ -282,7 +282,40 @@ fn m16_standalone_differing_from_root_is_info() {
     assert!(!m.blocked(), "{:?}", m.defects);
 }
 
-// [spec:kbdgen:req:ldml.migrate.defects/test]
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
+// [spec:kbdgen:req:ldml.migrate.equivalence+1/test]
+#[test]
+fn m17_escaped_dead_key_entry_is_now_dead() {
+    let m = migrate(&format!(
+        "{}{ACUTE}",
+        windows(
+            &[("default", KEYS), ("shift", SHIFTED)],
+            "  deadKeys:\n    default: ['\\u{B4}']\n"
+        )
+    ));
+    let m17 = with_code(&m, Code::M17);
+    assert_eq!(m17.len(), 1, "{:?}", m.defects);
+    assert_eq!(m17[0].path, "windows.primary.layers.default");
+    assert_eq!(m17[0].token.as_deref(), Some("´"));
+    assert!(yaml(&m).contains("+ \\d{´}"), "{}", yaml(&m));
+    assert!(!m.blocked(), "no M99: {:?}", m.defects);
+    assert!(!m.defects.iter().any(|d| d.code == Code::M99));
+
+    let plain = migrate(&format!(
+        "{}{ACUTE}",
+        windows(
+            &[("default", KEYS), ("shift", SHIFTED)],
+            "  deadKeys:\n    default: ['´']\n"
+        )
+    ));
+    assert!(
+        with_code(&plain, Code::M17).is_empty(),
+        "{:?}",
+        plain.defects
+    );
+}
+
+// [spec:kbdgen:req:ldml.migrate.defects+1/test]
 // [spec:kbdgen:req:ldml.migrate.survey/test]
 #[test]
 fn codes_are_those_the_spec_lists() {

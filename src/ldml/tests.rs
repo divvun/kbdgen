@@ -99,7 +99,7 @@ fn export_selection_and_failures() {
     assert!(!out.exists(), "a failure writes nothing");
 }
 
-// [spec:kbdgen:req:ldml.cli.compile/test]
+// [spec:kbdgen:req:ldml.cli.compile+1/test]
 #[test]
 fn shared_hosts_compile_to_identical_models() {
     let layouts = compiled_layouts(&documents()).unwrap();
@@ -131,7 +131,7 @@ fn bundle(layouts: &[(&str, &str)]) -> tempfile::TempDir {
     dir
 }
 
-// [spec:kbdgen:def:ldml.cli.commands/test]
+// [spec:kbdgen:def:ldml.cli.commands+1/test]
 // [spec:kbdgen:def:ldml.yaml.detect/test]
 // [spec:kbdgen:req:ldml.yaml.coexistence/test]
 #[test]
@@ -238,7 +238,7 @@ struct Wrapper {
     command: LdmlCommand,
 }
 
-// [spec:kbdgen:def:ldml.cli.commands/test]
+// [spec:kbdgen:def:ldml.cli.commands+1/test]
 #[test]
 fn command_line_shapes_parse() {
     let parse = |args: &[&str]| {

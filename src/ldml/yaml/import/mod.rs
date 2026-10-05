@@ -608,8 +608,8 @@ fn check(tag: &str, dest: &Path, layout: &Mapping, docs: &[Doc]) -> Result<Vec<S
     Ok(out)
 }
 
-// [spec:kbdgen:sem:ldml.yaml.import]
-// [spec:kbdgen:thm:ldml.yaml.roundtrip]
+// [spec:kbdgen:sem:ldml.yaml.import+1]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+1]
 /// Writes the documents of one layout tag as a v4 layout destined for
 /// `dest`. The sugared layout is chosen when every difference lowering it
 /// leaves is one the verbatim layout leaves too; otherwise the verbatim

@@ -11,7 +11,7 @@ fn range(lo: char, hi: char) -> ClassRange {
     ClassRange { lo, hi }
 }
 
-// [spec:kbdgen:syn:ldml.xml.from/test]
+// [spec:kbdgen:syn:ldml.xml.from+1/test]
 #[test]
 fn parses_the_from_grammar() {
     let p = pattern("^\\m{acute}($[vowel])x{0,2}.?[^a-c\\-\\m{m}]\\s(?:ab|\\u{63 64})");
@@ -63,7 +63,7 @@ fn parses_the_from_grammar() {
     );
 }
 
-// [spec:kbdgen:syn:ldml.xml.from/test]
+// [spec:kbdgen:syn:ldml.xml.from+1/test]
 #[test]
 fn rejects_disallowed_regex_features() {
     for bad in [
@@ -115,7 +115,7 @@ fn rejects_disallowed_regex_features() {
     );
 }
 
-// [spec:kbdgen:syn:ldml.xml.from/test]
+// [spec:kbdgen:syn:ldml.xml.from+1/test]
 #[test]
 fn quantified_multi_codepoint_escape_is_grouped() {
     let p = pattern("\\u{61 62}?");
@@ -158,7 +158,7 @@ fn encoded_patterns_parse_back() {
     assert_eq!(encode_pattern(&marks), "\\u{0301}\\. ");
 }
 
-// [spec:kbdgen:syn:ldml.xml.from/test]
+// [spec:kbdgen:syn:ldml.xml.from+1/test]
 #[test]
 fn string_variables_substitute_textually() {
     let strings = |id: &str| match id {
@@ -215,7 +215,7 @@ fn parses_the_to_grammar() {
     assert_eq!(parse_replacement(&encoded, &|_| None).unwrap(), items);
 }
 
-// [spec:kbdgen:syn:ldml.xml.sets/test]
+// [spec:kbdgen:syn:ldml.xml.sets+1/test]
 #[test]
 fn set_values_split_and_splice() {
     let earlier =
@@ -237,7 +237,7 @@ fn set_values_split_and_splice() {
     assert_eq!(parse_set(&encoded, &|_| None).unwrap()[1], items[1]);
 }
 
-// [spec:kbdgen:syn:ldml.xml.sets/test]
+// [spec:kbdgen:syn:ldml.xml.sets+1/test]
 #[test]
 fn uset_subset_resolves_to_ranges() {
     let earlier = |id: &str| (id == "range").then(|| vec![range('a', 'z'), range('D', 'G')]);

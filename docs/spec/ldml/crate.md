@@ -21,7 +21,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 
 ## Workspace
 
-> [spec:kbdgen:def:ldml.crate.layout]
+> [spec:kbdgen:def:ldml.crate.layout+1]
 > The root `Cargo.toml` keeps the `kbdgen` package and adds a `[workspace]`
 > with:
 >
@@ -34,7 +34,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > | Path | Package | Kind | Holds |
 > |---|---|---|---|
 > | `crates/kbd-model` | `kbd-model` | `no_std` + `alloc` lib | the superset model, its invariants and its binary encoding (`ldml.model.*`) |
-> | `crates/kbd-engine` | `kbd-engine` | `no_std` + `alloc` lib | the engine (`ldml.engine.*`), which `tsf.engine.api` calls "the engine crate" |
+> | `crates/kbd-engine` | `kbd-engine` | `no_std` + `alloc` lib | the engine (`ldml.engine.*`), which the text service runs (`tsf.engine.api`) |
 > | `crates/kbd-ldml` | `kbd-ldml` | std lib | LDML keyboard3 source documents through `xmlem`, the embedded CLDR imports, parsers for LDML's syntaxes, resolution to the model, and export (`ldml.xml.*`) |
 > | `crates/kbd-tsf` | `kbd-tsf` | `cdylib` | the Windows text service (`docs/spec/tsf.md`), built only per `tsf.arch.builds` |
 >
@@ -55,7 +55,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > whose iteration order or encoding varies by platform
 > (`ldml.model.deterministic`).
 
-> [spec:kbdgen:req:ldml.crate.engine]
+> [spec:kbdgen:req:ldml.crate.engine+1]
 > `kbd-engine` MUST be `#![no_std]` with `extern crate alloc`. Its only
 > dependencies are:
 >
@@ -66,9 +66,9 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > Without `normalization` it MUST refuse a model whose normalization is
 > enabled, returning an error. It MUST NOT use `unsafe`, I/O, clocks,
 > randomness, threads or global mutable state, and its public types MUST be
-> `Send` and `Sync`. The engine is the only one. There is no interim engine
-> or interim model, so `tsf.engine.interim` and major version 1 of
-> `tsf.engine.model` are replaced by `ldml.engine.*` and `ldml.model.encoding`.
+> `Send` and `Sync`. It is the only engine: every host, the text service
+> included (`tsf.engine.api`), runs it on the model of
+> `ldml.model.encoding`.
 
 > [spec:kbdgen:req:ldml.crate.ldml]
 > `kbd-ldml` MUST read and write XML only through the `xmlem` crate, at the
@@ -84,15 +84,15 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > parser for the regex-like syntax, because the `regex` crate can express
 > neither markers, mapped sets nor LDML's restrictions.
 
-> [spec:kbdgen:req:ldml.crate.tsf]
+> [spec:kbdgen:req:ldml.crate.tsf+1]
 > `kbd-tsf` is the text service of `tsf.component.crate`. It depends on
 > `kbd-engine` and `kbd-model`, and on `windows` and `windows-core`
 > 0.62.x. It calls `kbd_engine::Model::from_bytes` on the resource of
 > `tsf.data.resource`. It is excluded from `default-members` and is built
 > only for the triples of `tsf.arch.builds`. So a plain `cargo build` on
-> macOS or Linux never compiles it. `tsf.component` describes the text
-> service as a product separate from kbdgen. It stays separately versioned
-> and installed, but its source is this crate.
+> macOS or Linux never compiles it. The text service is released,
+> versioned and installed separately from keyboards (`tsf.component`), but
+> its source is this crate.
 
 > [spec:kbdgen:req:ldml.crate.targets]
 > `kbd-model` and `kbd-engine`, with default features, MUST build without std

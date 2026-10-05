@@ -36,8 +36,12 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >
 > A bundle may mix v3 and v4 files.
 
-> [spec:kbdgen:def:ldml.yaml.schema]
-> A v4 layout has these top-level fields. Every string is a YAML string.
+> [spec:kbdgen:def:ldml.yaml.schema+1]
+> A v4 layout has these top-level fields. A value given as a string MUST
+> be a YAML string; any other scalar there is an error asking to quote it,
+> so `1.10` never becomes `1.1`. Whole numbers are accepted only for
+> `format` and `minDeviceWidth`; a number or a string for `width` and the
+> `reorder` lists; booleans for `gap`, `stretch`, `shiftLock` and `lrmRlm`.
 >
 > | Field | Type | Default | Lowers to |
 > |---|---|---|---|
@@ -72,7 +76,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > output. A layout should opt in only if its transforms must match
 > canonically equivalent text that came from outside the keyboard.
 
-> [spec:kbdgen:req:ldml.yaml.ldml-ref]
+> [spec:kbdgen:req:ldml.yaml.ldml-ref+1]
 > `ldml: <path>` names an LDML keyboard3 file that defines the keyboard for
 > every host. The path is relative to the layout file. The map form `ldml:
 > {<host or default>: <path>}` names one file per host, with `default`
@@ -83,21 +87,25 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > - `hardware`, `touch`
 > - `normalization`, `info`, `version`, `locales`
 >
-> Its `displayNames`, `decimal`, `keyNames`, `emoji` and `targets` override
-> the file's kbdgen data. Export re-serializes the file as written
-> (`ldml.xml.ldml-ref`).
+> Its `displayNames`, `decimal`, `keyNames`, `emoji` and `targets` replace
+> the file's `kbdgen:keyboard`, `kbdgen:displayName`, `kbdgen:target`,
+> `kbdgen:emojiKey` and `kbdgen:emoji` whole: a `decimal` or label that the
+> layout lacks is dropped, not taken from the file. The file's
+> `impliedLayers` and its other kbdgen data are kept. Export re-serializes
+> the file as written (`ldml.xml.ldml-ref`).
 
 ## Text and tokens
 
-> [spec:kbdgen:syn:ldml.yaml.escape]
+> [spec:kbdgen:syn:ldml.yaml.escape+1]
 > Every v4 string that LDML would escape-decode is decoded with LDML's
 > grammar (`ldml.xml.escape`):
 >
-> - outputs and row tokens
-> - `deadKeys` identities, inputs and values
-> - displays and labels
-> - `decimal`
-> - verbatim LDML strings
+> - outputs, row tokens, `longPress` outputs and `decimal`, which also
+>   take `\m{…}` and `${…}`
+> - verbatim LDML strings, `displays` included
+> - `deadKeys` identities, inputs and values, `\d{X}` identities,
+>   `keyNames` labels and `displayBase`, which take only `\u{…}`: a marker
+>   or variable there is an error
 >
 > A `\u` not followed by `{` is an error; the migrator rewrites these
 > (`ldml.migrate.defects`). Escapes are decoded once, at load. Every
@@ -129,46 +137,52 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >
 > A `\` not starting one of these escapes is a literal backslash.
 
-> [spec:kbdgen:def:ldml.yaml.key-ids]
-> Keys come from tokens, and each distinct key definition gets an id:
+> [spec:kbdgen:def:ldml.yaml.key-ids+1]
+> Keys come from tokens, and each distinct key definition gets an id from
+> the first of these that applies:
 >
-> - A single scalar in `0-9A-Za-z` with no other attribute keeps that
->   character, which is the implied key.
-> - `\s{space}` is `space`, and a gap is `gap`.
-> - A dead key is `dk-<marker>`.
 > - A role key is `<role>`, or `<role>-<target layer>` when it switches
->   layers.
-> - `\l{L}` is `layer-<L>`.
-> - Other outputs are `u-` followed by the hex scalar values, uppercase, at
->   least four digits each, joined by `-` (`u-00F5`, `u-0061-0301`). If the
->   output contains a marker, the id is `o-<n>`, with *n* counted from 1 in
->   order of first use.
+>   layers. A gap is `gap`, and `\l{L}` is `layer-<L>`.
+> - A key whose output is a top-level dead key's marker is `dk-<marker>`.
+> - `\s{space}` (output U+0020, stretched) is `space`.
+> - A single scalar in `0-9A-Za-z` keeps that character, the implied key,
+>   only when the key has nothing else: default width, no long press, no
+>   flicks. So `a` with long-press candidates is `u-0061`.
+> - An output containing a marker is `o-<n>`: each distinct such output
+>   gets the next *n*, from 1, in order of first use.
+> - Any other output is `u-` followed by its scalar values as uppercase
+>   hex of at least four digits, joined by `-` (`u-00F5`, `u-0061-0301`).
 
-> [spec:kbdgen:sem:ldml.yaml.key-ids.collisions]
+> [spec:kbdgen:sem:ldml.yaml.key-ids.collisions+1]
 > If two definitions differ in any attribute (width, long press, flick,
 > layer, role) but would get the same id, the later one in document order
-> gets the suffix `-2`, `-3` and so on. Document order is hardware layers,
-> then touch sizes by width, then layers, rows and tokens. Ids from `keys`
-> are reserved first.
+> gets the first free suffix `-2`, `-3` and so on. Document order is the
+> hardware layers, those LDML can express in authored order before those
+> only `kbdgen:layer` holds (`ldml.xml.special`), then touch sizes by
+> ascending width, then layers, rows and tokens. A key's long-press
+> candidates, then its flick targets, follow it directly. The ids of `keys`
+> entries and of implied keys are reserved first.
 
 ## Hardware
 
-> [spec:kbdgen:def:ldml.yaml.hardware]
+> [spec:kbdgen:def:ldml.yaml.hardware+1]
 > `hardware` maps variant names (`default`, `windows`, `macOS`, `chromeOS`,
 > `linux`, `android`) to variants. A variant has:
 >
 > - `form`: `iso` (default), `us`, `jis`, `ks` or `abnt2`, or a custom
->   `{id, rows: [scan-code strings]}`
+>   `{id, rows}`, whose rows are strings of two-digit hex scan codes and
+>   whose id is neither an implied form's nor `touch`
 > - `inherits`: another variant
 > - `impliedLayers`: `macOS` (default) or `none`
 > - `layers`: modifier set → rows
-> - `space`: modifier set → token, the space position of that layer
+> - `space`: modifier set → token, the space position of the layer with
+>   exactly those sets; a key naming no layer's sets is an error
 > - `extraModifiers` (`ldml.yaml.native`)
 >
 > With `inherits`, the variant starts from the named variant, fully
 > resolved, then replaces `form`, `impliedLayers` and `extraModifiers` when
-> it gives them. It replaces `layers` and `space` entries key by key.
-> Inheritance cycles are errors.
+> it gives them. It replaces `layers` and `space` entries key by key, keys
+> compared as sets. Inheritance cycles are errors.
 
 > [spec:kbdgen:syn:ldml.yaml.modifier-names]
 > A `layers` key is one or more LDML modifier sets separated by `,`. Each
@@ -180,21 +194,27 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > error (`ldml.model.invariants`). The exception is native-only sets
 > (`ldml.model.native`), which may overlap only each other.
 
-> [spec:kbdgen:req:ldml.yaml.hardware.rows]
-> A hardware layer has exactly as many rows as its form has character
-> rows: 4 for every implied form. Row *r* has exactly as many tokens as form
-> row *r* has scan codes. For `iso` that is 13, 12, 12 and 11; for
-> `abnt2` 13, 12, 12 and 12, the last being `B11`. An optional final row
-> holds the space position, one token. Without it, the layer gets `space`,
-> or the `space` entry for its set. A count mismatch is an error naming the
-> layer, the row and both counts, so a 49-token row is caught. `\u{0}`
-> marks a position with no key. Trailing positions with no key are left
-> out of the exported LDML row.
+> [spec:kbdgen:req:ldml.yaml.hardware.rows+1]
+> A form's *character rows* are its rows except a final row that is
+> exactly `39`, its space row; every implied form has four and a space
+> row. A hardware layer has exactly as many rows as its form has character
+> rows, and row *r* exactly as many tokens as character row *r* has scan
+> codes: 13, 12, 12 and 11 for `iso`; 13, 12, 12 and 12 for `abnt2`, the
+> last being `B11`. If the form has a space row, an optional final row of
+> one token holds the space position; without it the layer gets its
+> `space` entry, else `\s{space}`. A count mismatch is an error naming the
+> layer, the row and both counts; an `iso` row one token too long points at
+> `form: abnt2`. `\u{0}` marks a position with no key. In the exported
+> LDML row, trailing positions with no key are left out and the others
+> become the `gap` key.
 
-> [spec:kbdgen:sem:ldml.yaml.implied-layers]
+> [spec:kbdgen:sem:ldml.yaml.implied-layers+1]
 > With `impliedLayers: macOS`, the compiler adds caps states for each
 > authored set S that has neither `caps` nor `shift` and is not native-only.
-> Let Sh be S with `shift`.
+> Let Sh be S with `shift`; Sh is authored when a layer names exactly Sh.
+> S+`caps` or S+`caps`+`shift` is *not authored* when no authored set that
+> is not native-only overlaps it, so an added set never overlaps an
+> authored one.
 >
 > 1. If Sh is authored and S+`caps`+`shift` is not, the Sh layer also gets
 >    that set. Caps+Shift is then uppercase, without inversion.
@@ -204,9 +224,11 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >    Each position takes the Sh key when both keys' outputs are plain text
 >    and Sh's output is the `str::to_uppercase` of S's and differs from it.
 >    Otherwise it takes the S key. A created layer identical to an existing
->    one becomes an extra set of that layer instead.
+>    one becomes an extra set of that layer; otherwise it follows the
+>    authored layers.
 >
-> `none` adds nothing, which is LDML's exact matching.
+> `none` adds nothing, which is LDML's exact matching. Import re-derives
+> with the same procedure (`ldml.yaml.import`).
 
 > [spec:kbdgen:def:ldml.yaml.native]
 > Extension. A layer whose key contains `cmd`, or `ctrl`/`ctrlL`/`ctrlR`
@@ -220,28 +242,32 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 
 ## Touch
 
-> [spec:kbdgen:def:ldml.yaml.touch]
+> [spec:kbdgen:def:ldml.yaml.touch+1]
 > `touch` maps variant names (`default`, `iOS`, `android`) to `{inherits?,
 > longPress?, sizes}`. `sizes` maps a size name to:
 >
-> - `minDeviceWidth`, defaulting to none for `phone`, 95 for `tablet` and
->   190 for `tablet-large`, and required for other names
+> - `minDeviceWidth`, a whole number from 1 to 999, defaulting to none for
+>   `phone`, 95 for `tablet` and 190 for `tablet-large`, and required for
+>   other names
 > - `bottomRow`: `host` (default) or `authored`
 > - `layers`: layer id → rows, or → `{rows, flicks}`
 >
 > Every size MUST have a `base` layer, and the sizes' widths MUST be
-> distinct. `inherits` copies another variant's sizes and replaces them
-> size by size. With `bottomRow: host` the host draws the symbols, globe,
-> space and return row, so the authored rows exclude it.
+> distinct. `inherits` copies another variant's sizes and `longPress`,
+> replacing sizes size by size and `longPress` entries output by output;
+> an entry `''` removes the inherited candidates. With `bottomRow: host`
+> the host draws the symbols, globe, space and return row, so the authored
+> rows exclude it.
 
-> [spec:kbdgen:sem:ldml.yaml.touch.roles]
+> [spec:kbdgen:sem:ldml.yaml.touch.roles+1]
 > Role tokens lower to keys with a `role` (`ldml.model.keys`):
 >
 > - `shift` switches to `shift` from `base`, and to `base` from any other
 >   layer.
 > - `symbols` switches to `symbols-1` from `base` or `shift`, and to `base`
 >   otherwise.
-> - `shiftSymbols` switches between `symbols-1` and `symbols-2`.
+> - `shiftSymbols` switches to `symbols-1` from `symbols-2`, and to
+>   `symbols-2` from any other layer.
 > - `backspace`, `return`, `tab`, `caps` and `keyboard` are gaps that the
 >   host draws and handles.
 >
@@ -258,31 +284,36 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > flicks gets flick id `flick-<key id>`. Migrated iPad `alt` layers are
 > `flicks: {s: …}`.
 
-> [spec:kbdgen:def:ldml.yaml.long-press]
+> [spec:kbdgen:def:ldml.yaml.long-press+1]
 > `longPress` maps an output to a string of candidate tokens. The
-> `ldml.yaml.tokens` grammar applies, and the first candidate is not
-> special. Every key in the document whose output equals the decoded
+> `ldml.yaml.tokens` grammar applies; each candidate is a key with output,
+> not `\u{0}`, a gap, a role or `\l{}`; and the first candidate is not
+> special. Every key made from a token whose output equals the decoded
 > output gets those candidates as `longPressKeyIds`, hardware keys
-> included, since LDML ignores long press on hardware. A touch variant's
-> `longPress` replaces global entries with the same output. Default
-> candidates and multi-tap need explicit `keys`.
+> included, since LDML ignores long press on hardware. `keys` entries and
+> implied keys are untouched. A touch variant's `longPress` replaces global
+> entries with the same output (`ldml.yaml.touch`). Default candidates and
+> multi-tap need explicit `keys`.
 
 ## Dead keys
 
-> [spec:kbdgen:def:ldml.yaml.dead-keys]
-> `deadKeys` maps an *identity*, the decoded string authors associate with
-> the dead key, to a node. A node has:
+> [spec:kbdgen:def:ldml.yaml.dead-keys+1]
+> `deadKeys` maps an *identity*, the non-empty decoded string authors
+> associate with the dead key, to a node. A node has:
 >
-> - `marker`: an NMTOKEN, by default derived as in
->   `ldml.yaml.dead-keys.keys`
+> - `marker`: ASCII letters, digits, `_` and `-`, since it also names the
+>   key `dk-<marker>`; by default derived as in `ldml.yaml.dead-keys.keys`
 > - `display`: default the identity
 > - `standalone`: default the identity, and may be `""`
 > - `name`: a Windows dead-key name (top level only)
-> - `compose`: an ordered map from input (a key output) to either an output
->   string or a nested node, which is a chained dead key
+> - `compose`: an ordered map from input (a non-empty key output) to either
+>   an output string or a nested node, which is a chained dead key whose
+>   identity is its parent's identity followed by the input
 >
-> An input `" "` is an error; that is what `standalone` is for. Identities
-> and markers MUST be unique.
+> An input `" "` is an error; that is what `standalone` is for. Top-level
+> identities, the inputs of one node, and all markers MUST be unique.
+> These strings take `\u{…}` but no marker or variable
+> (`ldml.yaml.escape`).
 
 > [spec:kbdgen:sem:ldml.yaml.dead-keys.keys]
 > The default marker of a top-level node is `dk_` followed by the identity's
@@ -334,7 +365,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 
 ## Verbatim LDML
 
-> [spec:kbdgen:def:ldml.yaml.verbatim]
+> [spec:kbdgen:def:ldml.yaml.verbatim+1]
 > These fields are LDML as written, with LDML syntax inside the strings:
 >
 > - `variables`: `{strings: {id: value}, sets: {id: value}, usets: {id: value}}`
@@ -345,7 +376,8 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >   longPressDefault?, multiTap?, flick?, role?}`, where key lists are
 >   space-separated ids
 > - `flicks`: `id → [{directions, key}]`
-> - `displays`: `[{output | keyId, display}]` and `displayBase`
+> - `displays`: a list of `{output | keyId, display}`, which may also hold
+>   one `{displayBase}` item
 >
 > Ids and marker names are kept as written. LDML's own validation applies
 > after lowering (`ldml.xml.validate`).
@@ -402,7 +434,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > document shares the layout-level fields. Equal documents share a model
 > (`ldml.model.layout`).
 
-> [spec:kbdgen:sem:ldml.yaml.lowering]
+> [spec:kbdgen:sem:ldml.yaml.lowering+1]
 > For each host document, the compiler:
 >
 > 1. resolves `inherits`
@@ -410,45 +442,66 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > 3. applies implied layers
 > 4. generates the dead-key keys, displays and groups
 > 5. builds an `xmlem` source document in `ldml.xml.export` form, with
->    kbdgen data per `ldml.xml.special`, marking generated groups and
->    recording `deadKeys` (`ldml.yaml.import`)
+>    `locale` the layout tag and `conformsTo` 45, or 47 with
+>    `info.attribution`, whose CLDR data gives the implied keys and forms.
+>    It carries kbdgen data per `ldml.xml.special`, marks generated groups,
+>    and records the whole `deadKeys` table, reachable or not
+>    (`ldml.yaml.import`).
 > 6. resolves that document to a model (`ldml.xml.resolve`)
 >
 > `kbdgen ldml export` writes the same document, so the export is exactly
 > what the model was built from.
 
-> [spec:kbdgen:sem:ldml.yaml.import]
-> Import (XML → v4) writes the following:
+> [spec:kbdgen:sem:ldml.yaml.import+1]
+> Import (XML → v4) writes the documents of one layout tag as one layout:
 >
-> - **Layers:** the document's hardware layers become a variant named by
->   `kbdgen:keyboard@host`, or `default` without it, and touch sets become
->   sizes.
-> - **Tokens:** a key is written as a literal or `\s{…}` token when
->   `ldml.yaml.key-ids` would recreate it with the same id and attributes.
->   Otherwise it goes in `keys` and is written as `\k{id}`.
-> - **Generated groups:** groups marked with `kbdgen:generated`, and caps
->   sets that `impliedLayers` would recreate, are replaced by `deadKeys`
->   and `impliedLayers: macOS` when re-deriving them reproduces them
->   exactly. Otherwise they stay verbatim, with a warning.
+> - **Variants:** by `kbdgen:keyboard@host`, `web` or none writes
+>   `default`; `windows`, `macOS`, `chromeOS` and `linux` write hardware
+>   only, `iOS` touch only, `android` both. Layers a host cannot take are
+>   dropped with a warning, and a host variant equal to `default` is left
+>   out. A touch set becomes a size named by `kbdgen:touchSet`, else
+>   `phone`, `tablet` or `tablet-large` by default width, else `w<width>`.
+> - **Tokens:** a key is written as a token when `ldml.yaml.key-ids` would
+>   recreate it with the same id and attributes, else in `keys` as `\k{id}`.
+> - **Shared fields:** documents that disagree on a layout-level field, a
+>   `keys` entry or a flick are an error.
+> - **Sugar:** import writes the layout with sugar (tokens, `deadKeys` from
+>   the `kbdgen:deadKey` table every document carries, caps sets that
+>   `impliedLayers: macOS` re-derives, automatic displays left out) and
+>   fully verbatim. It lowers and resolves both and compares them with the
+>   documents' models. It keeps the sugared layout when every difference
+>   left is also left verbatim, else writes the verbatim one with a
+>   warning. Each remaining difference is reported as a field v4 cannot
+>   write.
 > - **Normalization:** `normalization` follows `settings`, so an absent
 >   `settings` gives `enabled`.
 >
 > Imports are spliced in. Comments are dropped, and their count is
 > reported.
 
-> [spec:kbdgen:thm:ldml.yaml.roundtrip]
-> For every valid keyboard3 document X:
+> [spec:kbdgen:thm:ldml.yaml.roundtrip+1]
+> For every valid keyboard3 document X that import accepts,
+> resolve(export(import(X))) equals resolve(X) in every model field that
+> import does not report as one v4 cannot write. Fields differ, and are
+> reported, for:
 >
-> > resolve(export(import(X))) = resolve(X)
+> - a key output of only marks with no display, which lowering gives one
+> - a touch set without `kbdgen:touchSet`, which import names
+> - a `locale` other than the layout tag, or another `conformsTo` than
+>   lowering's 45 or 47
+> - emoji annotations, whose file import does not write
+> - flush outputs or dead-key names without a `kbdgen:deadKey` table
+> - documents of one tag with different keys, since every lowered
+>   document carries the layout's whole `keys` table
 >
-> For every v4 layout Y, the models of import(export(Y)) equal those of Y.
+> For every v4 layout Y without emoji annotations, the models of
+> import(export(Y)) equal those of Y.
 >
-> Proof sketch: import writes every model field into a v4 construct. That
-> construct is either a verbatim LDML field, an explicit key, or sugar
-> whose lowering is checked against the original during import. Lowering
-> then rebuilds that field. Comments and import structure are not
-> preserved through YAML, but neither reaches the model. XML-to-XML keeps
-> both (`ldml.xml.roundtrip`).
+> Proof sketch: import writes every other model field into a verbatim LDML
+> field, an explicit key, or sugar, and checks the result by lowering and
+> resolving it, so a difference is reported, never silent. Comments and
+> import structure do not reach the model. XML-to-XML keeps both
+> (`ldml.xml.roundtrip`).
 
 > [spec:kbdgen:req:ldml.yaml.coexistence]
 > Until each target generator is ported to the model:
@@ -463,7 +516,10 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 
 ## Example
 
-An illustration based on the Võro layout (`keyboard-vro`), abbreviated. Rows marked `…` are elided. The migrator itself writes every variant in full, without `inherits`.
+The Võro layout (`keyboard-vro`) as the golden vectors use it,
+`crates/kbd-engine/tests/golden/layouts/vro.yaml`, which the tests load,
+lower and type with. The migrator itself writes every variant in full,
+without `inherits`.
 
 ```yaml
 format: 4
@@ -471,12 +527,13 @@ displayNames: {vro: Võro, en: Võro}
 keyNames: {space: vaih, return: sisse}
 decimal: ','
 deadKeys:
-  ´: {standalone: ´, compose: {a: á, A: Á, b: b́, B: B́}}   # marker dk_00B4
+  ´: {standalone: ´, compose: {a: á, A: Á, b: b́, B: B́}}
   ˇ: {standalone: ˇ, compose: {c: č, C: Č}}
   ę: {standalone: ę, compose: {a: á}}
+  '~': {compose: {o: õ, O: Õ}}
 longPress: {a: á ä æ å, o: ó ö õ ø õ̭}
 hardware:
-  macOS:
+  default:
     form: iso
     layers:
       none: |
@@ -499,14 +556,29 @@ hardware:
         q w e r t y u i o p å ¨
         a s d f g h j k l ø æ '
         ` z x c v b n m , . /
-    space: {caps: \u{A0}, alt: \u{A0}}
+    space: {caps: '\u{A0}'}
+  macOS:
+    inherits: default
+    layers:
+      alt: |
+        \u{0} ¡ @ £ $ ∞ § | [ ] ≈ ± \u{0}
+        œ ∑ é ® † ¥ ü ı ø π ‘ ’
+        æ ß ∂ ƒ ¸ ˛ √ ª ﬁ ö ä ¶
+        ≤ Ω ≈ ç ‹ › ‘ ’ ‚ … –
+      alt shift: |
+        \u{0} ¡ @ £ $ ∞ § | { } ≈ ± \u{0}
+        Œ ∑ É ® † ¥ Ü ı Ø ∏ “ ”
+        Æ ß ∂ ƒ ¸ ˛ √ ª ﬂ Ö Ä ¶
+        ≥ Ω ≈ Ç « » “ ” „ … —
+    space: {alt: '\u{A0}'}
   windows:
-    inherits: macOS
+    inherits: default
     layers:
       altR: |
         \u{0} \u{0} @ £ $ € \u{0} { [ ] } \ \d{´}
         \u{0} š é ŕ t́ ý u̬ i̬ ó ṕ ü̬ õ̭
-        …
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        | \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
 touch:
   iOS:
     sizes:
@@ -516,6 +588,10 @@ touch:
             q w e r t y u i o p ü õ
             a s d f g h j k l ö ä '
             \s{shift:1.25} \s{spacer:0.25} z x c v b n m đ \s{spacer:0.25} \s{backspace:1.25}
+          shift: |
+            Q W E R T Y U I O P Ü Õ
+            A S D F G H J K L Ö Ä *
+            \s{shift:1.25} \s{spacer:0.25} Z X C V B N M Đ \s{spacer:0.25} \s{backspace:1.25}
       tablet:
         layers:
           base:
@@ -528,10 +604,17 @@ touch:
                 1 2 3 4 5 6 7 8 9 0 ` ´ \s{backspace}
                 \s{spacer:0.25} % # € & * ( ) ' " + @ \s{return:1.25}
                 \s{shift:1.1} q _ - = / ; : ! ? \s{shift:2.4}
+          shift: |
+            Q W E R T Y U I O P Ü Õ \s{backspace}
+            \s{spacer:0.25} A S D F G H J K L Ö Ä \s{return:1.25}
+            \s{shift:1.1} Z X C V B N M ; : \s{shift:2.4}
 targets:
   windows: {locale: vro-Latn}
 ```
 
-The macOS `caps` layer above is authored. Its `caps shift` state is implied
-from `shift`. With `impliedLayers: macOS`, the `alt caps` state is derived
-from `alt` and `alt shift`, which are not shown here.
+The `default` `caps` layer above is authored; its `caps shift` state is
+implied from `shift` (rule 1 of `ldml.yaml.implied-layers`). On macOS,
+`alt shift` also gets `alt caps shift`, and an `alt caps` layer is created
+from `alt` and `alt shift` (rule 3). On Windows, `altR` has no shifted
+layer, so it also gets `altR caps` (rule 2). `cmd` is native-only and gets
+nothing.

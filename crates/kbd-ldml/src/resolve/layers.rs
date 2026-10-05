@@ -118,7 +118,7 @@ fn form(ctx: &Ctx, root: &El, layers: &El, id: &str) -> Result<Form> {
         .ok_or_else(|| layers.attr_error("formId", format!("no form has id {id}")))
 }
 
-// [spec:kbdgen:sem:ldml.xml.implied]
+// [spec:kbdgen:sem:ldml.xml.implied+1]
 /// The implied form `id` from `scanCodes-implied.xml` at the version a
 /// keyboard conforming to `version` uses.
 pub fn implied_form(version: u8, id: &str) -> Option<Form> {

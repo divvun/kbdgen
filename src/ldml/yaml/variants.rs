@@ -279,7 +279,7 @@ fn check_extra(variant: &HardwareVariant) -> Result<()> {
     Ok(())
 }
 
-// [spec:kbdgen:def:ldml.yaml.hardware]
+// [spec:kbdgen:def:ldml.yaml.hardware+1]
 /// The hardware variants, each with `inherits` resolved: form,
 /// `impliedLayers` and `extraModifiers` replaced when given, and layers
 /// and `space` entries replaced key by key, keys compared as sets.
@@ -465,7 +465,7 @@ fn resolve_touch(raws: &[RawTouch], index: usize, stack: &mut Vec<usize>) -> Res
     Ok(variant)
 }
 
-// [spec:kbdgen:def:ldml.yaml.touch]
+// [spec:kbdgen:def:ldml.yaml.touch+1]
 /// The touch variants, each with `inherits` resolved: the parent's sizes
 /// replaced size by size and its `longPress` entries output by output.
 /// Every size has a `base` layer, and a variant's sizes have distinct

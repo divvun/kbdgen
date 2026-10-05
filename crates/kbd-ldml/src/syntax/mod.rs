@@ -118,7 +118,7 @@ pub fn is_variable_id(id: &str) -> bool {
     (1..=32).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
-// [spec:kbdgen:syn:ldml.xml.from]
+// [spec:kbdgen:syn:ldml.xml.from+1]
 /// Replaces each `${id}` of `value` by the raw value of string variable
 /// `id`, textually, skipping backslash escapes so that `\$` stays literal.
 /// `string` returns a variable's raw value, already substituted itself.

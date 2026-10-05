@@ -89,7 +89,7 @@ fn splice(
     Ok(())
 }
 
-// [spec:kbdgen:sem:ldml.xml.implied]
+// [spec:kbdgen:sem:ldml.xml.implied+1]
 /// Prepends the implied keys of `keys-Latn-implied.xml`, at the version
 /// the keyboard conforms to, to the keyboard's `keys`.
 fn implied_keys(root: &mut El) -> Result<()> {

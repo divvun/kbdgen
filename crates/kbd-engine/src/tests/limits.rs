@@ -2,7 +2,7 @@
 
 use super::*;
 
-// [spec:kbdgen:def:ldml.engine.api/test]
+// [spec:kbdgen:def:ldml.engine.api+1/test]
 #[test]
 fn model_round_trips_through_bytes() {
     let mut k = dead_keys(Normalization::Disabled, true);
@@ -40,7 +40,7 @@ fn model_round_trips_through_bytes() {
     );
 }
 
-// [spec:kbdgen:def:ldml.engine.api/test]
+// [spec:kbdgen:def:ldml.engine.api+1/test]
 #[test]
 fn invalid_keyboard_is_an_error() {
     let mut k = dead_keys(Normalization::Disabled, false);
@@ -66,7 +66,7 @@ fn state_resets_to_default() {
     assert!(m.pending_markers(&State::default()).is_empty());
 }
 
-// [spec:kbdgen:req:ldml.engine.contract/test]
+// [spec:kbdgen:req:ldml.engine.contract+1/test]
 #[test]
 fn equal_inputs_give_equal_results() {
     let a = model(dead_keys(Normalization::Disabled, true));
@@ -89,8 +89,8 @@ fn equal_inputs_give_equal_results() {
     assert_eq!(sa.text, "á´A");
 }
 
-// [spec:kbdgen:req:ldml.engine.contract/test]
-// [spec:kbdgen:req:ldml.engine.tsf/test]
+// [spec:kbdgen:req:ldml.engine.contract+1/test]
+// [spec:kbdgen:req:ldml.engine.tsf+1/test]
 #[test]
 fn authoritative_flag_changes_nothing() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -130,7 +130,7 @@ fn long_rule_keyboard() -> Keyboard {
     k
 }
 
-// [spec:kbdgen:req:ldml.engine.contract/test]
+// [spec:kbdgen:req:ldml.engine.contract+1/test]
 // [spec:kbdgen:def:ldml.engine.action/test]
 #[test]
 fn context_limit_bounds_delete_and_tail() {
@@ -155,7 +155,7 @@ fn context_limit_bounds_delete_and_tail() {
     assert_eq!(state.tail().plain(), "b".repeat(63) + "c");
 }
 
-// [spec:kbdgen:sem:ldml.engine.output.segment/test]
+// [spec:kbdgen:sem:ldml.engine.output.segment+1/test]
 #[test]
 fn tail_keeps_markers_among_last_scalars() {
     let mut k = dead_keys(Normalization::Disabled, false);
@@ -195,7 +195,7 @@ fn markers_never_reach_the_application() {
 }
 
 // [spec:kbdgen:req:ldml.crate.ffi/test]
-// [spec:kbdgen:req:ldml.crate.engine/test]
+// [spec:kbdgen:req:ldml.crate.engine+1/test]
 #[test]
 fn public_types_are_send_and_sync() {
     fn assert_send_sync<T: Send + Sync>() {}

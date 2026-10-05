@@ -34,8 +34,8 @@ fn import_file(path: &Path) -> (String, Imported, ImportedFile) {
     (g.tag, imported, g.files.into_iter().next().unwrap())
 }
 
-// [spec:kbdgen:thm:ldml.yaml.roundtrip/test]
-// [spec:kbdgen:sem:ldml.yaml.import/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
+// [spec:kbdgen:sem:ldml.yaml.import+1/test]
 #[test]
 fn vro_export_import_export_is_identical() {
     let original = documents("vro", VRO);
@@ -61,8 +61,8 @@ fn vro_export_import_export_is_identical() {
     assert_eq!(twice.yaml, imported.yaml, "import is deterministic");
 }
 
-// [spec:kbdgen:sem:ldml.yaml.import/test]
-// [spec:kbdgen:sem:ldml.yaml.implied-layers/test]
+// [spec:kbdgen:sem:ldml.yaml.import+1/test]
+// [spec:kbdgen:sem:ldml.yaml.implied-layers+1/test]
 #[test]
 fn import_rederives_sugar_from_metadata() {
     let (imported, _) = import_documents("vro", &documents("vro", VRO));
@@ -90,7 +90,7 @@ fn import_rederives_sugar_from_metadata() {
     }
 }
 
-// [spec:kbdgen:thm:ldml.yaml.roundtrip/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
 // [spec:kbdgen:req:ldml.test.roundtrip/test]
 #[test]
 fn cldr_keyboards_survive_import_where_expressible() {
@@ -131,7 +131,7 @@ fn cldr_keyboards_survive_import_where_expressible() {
     }
 }
 
-// [spec:kbdgen:sem:ldml.yaml.import/test]
+// [spec:kbdgen:sem:ldml.yaml.import+1/test]
 #[test]
 fn normalization_follows_settings() {
     let paths = cldr_keyboards();
@@ -146,7 +146,7 @@ fn normalization_follows_settings() {
     assert!(!vro.yaml.contains("normalization"));
 }
 
-// [spec:kbdgen:sem:ldml.yaml.import/test]
+// [spec:kbdgen:sem:ldml.yaml.import+1/test]
 #[test]
 fn unreproducible_generated_groups_stay_verbatim() {
     let docs = documents("vro", VRO);
@@ -179,7 +179,7 @@ fn unreproducible_generated_groups_stay_verbatim() {
     assert_eq!(again.simple, file.resolved.keyboard.simple);
 }
 
-// [spec:kbdgen:sem:ldml.yaml.import/test]
+// [spec:kbdgen:sem:ldml.yaml.import+1/test]
 #[test]
 fn foreign_touch_sets_get_size_names() {
     let paths = cldr_keyboards();

@@ -36,7 +36,7 @@ fn press_id(m: &Model, state: &State, context: &str, id: &str) -> (Action, State
     )
 }
 
-// [spec:kbdgen:sem:ldml.engine.normalization/test]
+// [spec:kbdgen:sem:ldml.engine.normalization+1/test]
 #[cfg(feature = "normalization")]
 #[test]
 fn context_is_normalized_before_matching() {
@@ -52,7 +52,7 @@ fn context_is_normalized_before_matching() {
     }
 }
 
-// [spec:kbdgen:sem:ldml.engine.normalization/test]
+// [spec:kbdgen:sem:ldml.engine.normalization+1/test]
 #[test]
 fn disabled_normalization_keeps_scalars() {
     let m = model(nfd_keyboard(Normalization::Disabled));
@@ -65,7 +65,7 @@ fn disabled_normalization_keeps_scalars() {
     assert_eq!(action, typed("\u{301}"));
 }
 
-// [spec:kbdgen:sem:ldml.engine.normalization/test]
+// [spec:kbdgen:sem:ldml.engine.normalization+1/test]
 #[cfg(feature = "normalization")]
 #[test]
 fn markers_survive_normalization_steps() {
@@ -77,8 +77,8 @@ fn markers_survive_normalization_steps() {
     assert_eq!(action, edit(1, "eY", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.output.segment/test]
-// [spec:kbdgen:def:ldml.engine.output.form/test]
+// [spec:kbdgen:sem:ldml.engine.output.segment+1/test]
+// [spec:kbdgen:def:ldml.engine.output.form+1/test]
 #[cfg(feature = "normalization")]
 #[test]
 fn output_form_applies_to_caret_segment() {
@@ -103,7 +103,7 @@ fn output_form_applies_to_caret_segment() {
     assert_eq!(action, edit(1, "\u{E9}", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.output.segment/test]
+// [spec:kbdgen:sem:ldml.engine.output.segment+1/test]
 #[test]
 fn disabled_edit_keeps_common_prefix() {
     let mut k = keyboard(Normalization::Disabled);
@@ -127,7 +127,7 @@ fn disabled_edit_keeps_common_prefix() {
     assert_eq!(action, edit(1, "Xc", ""));
 }
 
-// [spec:kbdgen:req:ldml.crate.engine/test]
+// [spec:kbdgen:req:ldml.crate.engine+1/test]
 #[cfg(feature = "normalization")]
 #[test]
 fn enabled_model_loads_with_feature() {
@@ -144,7 +144,7 @@ fn enabled_model_loads_with_feature() {
     assert_eq!(Model::from_bytes(&bytes).unwrap(), m);
 }
 
-// [spec:kbdgen:req:ldml.crate.engine/test]
+// [spec:kbdgen:req:ldml.crate.engine+1/test]
 #[cfg(not(feature = "normalization"))]
 #[test]
 fn enabled_model_refused_without_feature() {

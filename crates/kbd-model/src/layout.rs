@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::keyboard::{Host, Keyboard};
 use crate::validate::{InvariantError, NfdCheck};
 
-// [spec:kbdgen:def:ldml.model.layout]
+// [spec:kbdgen:def:ldml.model.layout+1]
 /// A compiled layout.
 ///
 /// Hosts whose keyboards are equal in every field except `host` share one

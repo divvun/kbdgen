@@ -17,7 +17,7 @@ pub enum Syntax {
     Regex,
 }
 
-// [spec:kbdgen:syn:ldml.yaml.escape]
+// [spec:kbdgen:syn:ldml.yaml.escape+1]
 /// Fails on a `\u` that is not followed by `{`.
 pub fn check_escapes(s: &str, syntax: Syntax, at: &At) -> Result<()> {
     let chars: Vec<char> = s.chars().collect();
@@ -57,14 +57,14 @@ impl Strings {
     }
 }
 
-// [spec:kbdgen:syn:ldml.yaml.escape]
+// [spec:kbdgen:syn:ldml.yaml.escape+1]
 /// Decodes a value in `key@output` syntax: `\u{…}`, `\m{…}` and `${…}`.
 pub fn output(s: &str, strings: &Strings, at: &At) -> Result<Vec<Piece>> {
     check_escapes(s, Syntax::Text, at)?;
     decode_text(s, &|id| strings.get(id)).map_err(|e| at.error(e.to_string()))
 }
 
-// [spec:kbdgen:syn:ldml.yaml.escape]
+// [spec:kbdgen:syn:ldml.yaml.escape+1]
 /// Decodes a value that may hold `\u{…}` but no markers or variables:
 /// dead-key strings, displays and labels.
 pub fn plain(s: &str, at: &At) -> Result<String> {

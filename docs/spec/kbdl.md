@@ -508,17 +508,20 @@ Sources:
 > build; when the version is absent or a component is not a decimal 0–65535,
 > it warns and uses `1.0.0.0`.
 
-> [spec:kbdgen:syn:kbdl.resources.format]
+> [spec:kbdgen:syn:kbdl.resources.format+1]
 > A `.res` file is a sequence of entries, integers little-endian, each a
 > 32-byte header — `DataSize` u32 (unpadded), `HeaderSize` u32 `32`, type
 > u16 `0xffff` + u16 id, name u16 `0xffff` + u16 id, `DataVersion` u32 `0`,
 > `MemoryFlags` u16, `LanguageId` u16, `Version` u32 `0`, `Characteristics`
 > u32 `0` — then the data zero-padded to a multiple of 4. kbdgen MUST write:
 > an empty entry (`DataSize`, ids, flags and language 0); `RT_VERSION` (16),
-> name 1, language `0x0409`, flags `0x0030`; then each `RT_STRING` (6) block
-> in ascending (block, language) order with flags `0x1030`. String `s` lives
-> in block `(s >> 4) + 1` at index `s & 15`; block data is 16 × (u16 unit
-> count, units without terminator), empty slots having count 0.
+> name 1, language `0x0409`, flags `0x0030`; when the layout has an engine
+> model, the `RT_RCDATA` (10) entry of `tsf.data.resource` and
+> `ldml.kbdl.model-resource`, name 1, language 0, flags `0x0030`, holding
+> the model bytes; then each `RT_STRING` (6) block in ascending (block,
+> language) order with flags `0x1030`. String `s` lives in block
+> `(s >> 4) + 1` at index `s & 15`; block data is 16 × (u16 unit count,
+> units without terminator), empty slots having count 0.
 
 > [spec:kbdgen:syn:kbdl.resources.version]
 > A version node is `wLength` u16, `wValueLength` u16, `wType` u16 (`0`

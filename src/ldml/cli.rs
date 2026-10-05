@@ -13,7 +13,7 @@ use super::import::{destinations, group, report, write};
 use super::layouts::{compiled_layouts, host_documents, layout_files};
 use super::migrate::migrate_bundle;
 
-// [spec:kbdgen:def:ldml.cli.commands]
+// [spec:kbdgen:def:ldml.cli.commands+1]
 /// `kbdgen ldml <command>`.
 #[derive(Debug, Subcommand)]
 pub enum LdmlCommand {
@@ -131,7 +131,7 @@ pub fn run(command: &LdmlCommand) -> Result<(), LdmlError> {
                 println!("{}", path.display());
             }
         }
-        // [spec:kbdgen:def:ldml.migrate.report]
+        // [spec:kbdgen:def:ldml.migrate.report+1]
         // [spec:kbdgen:req:ldml.migrate.survey]
         LdmlCommand::Migrate(args) => {
             let report = migrate_bundle(&args.bundle, args.dry_run)?;

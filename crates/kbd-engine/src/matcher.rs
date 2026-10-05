@@ -498,7 +498,7 @@ impl<'a> Tables<'a> {
     }
 }
 
-// [spec:kbdgen:sem:ldml.engine.match]
+// [spec:kbdgen:sem:ldml.engine.match+1]
 /// The match of `pattern` against the end of `c`, if any: the smallest
 /// start, and at it the first success in backtracking order. `^` matches
 /// only at start 0, and only when `at_start` says C begins at a start of
@@ -588,7 +588,7 @@ mod tests {
         find(k, &p, &info, c, at_start)
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn match_must_end_at_context_end() {
         let k = kb();
@@ -614,7 +614,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn smallest_start_wins_over_priority() {
         // (a|ab)?b? on "xab": no match can start at the `x`.
@@ -633,7 +633,7 @@ mod tests {
         assert_eq!(m.groups[1], Some((1, 2)));
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn greedy_quantifier_backtracks_in_order() {
         // (a{0,3})(a{1,2}) on "aaaa": greedy first group takes 3, second 1.
@@ -649,7 +649,7 @@ mod tests {
         assert_eq!(m.groups[0], Some((0, 4)));
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn alternatives_and_set_items_try_in_order() {
         let k = kb();
@@ -674,7 +674,7 @@ mod tests {
         assert_eq!(m.groups[1], Some((0, 2)));
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn anchor_needs_start_of_text() {
         let k = kb();
@@ -684,7 +684,7 @@ mod tests {
         assert!(run(&k, true, alts(), &text("ba"), true).is_none());
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn scalar_atoms_never_match_markers() {
         let k = kb();
@@ -727,7 +727,7 @@ mod tests {
         assert!(one(TreeAtom::Class(1)).is_none());
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn negated_class_and_fixed_classes() {
         let k = kb();
@@ -749,7 +749,7 @@ mod tests {
         assert!(one(TreeAtom::Any, "\u{104B5}"));
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn empty_iteration_ends_quantifier() {
         // (?:a?){2,3}b: the empty iteration check stops extra empty loops,
@@ -772,7 +772,7 @@ mod tests {
         assert_eq!(run(&k, false, alts, &text("aab"), false).unwrap().start, 0);
     }
 
-    // [spec:kbdgen:sem:ldml.engine.match/test]
+    // [spec:kbdgen:sem:ldml.engine.match+1/test]
     #[test]
     fn quantified_capture_keeps_last_iteration() {
         // (?:(a)|b){2}: the second iteration takes `b` and resets group 1,
@@ -789,7 +789,7 @@ mod tests {
         assert_eq!(m.groups[1], Some((1, 2)));
     }
 
-    // [spec:kbdgen:req:ldml.engine.contract/test]
+    // [spec:kbdgen:req:ldml.engine.contract+1/test]
     #[test]
     fn deep_nesting_matches_without_recursion() {
         let k = kb();
@@ -800,7 +800,7 @@ mod tests {
         assert!(run(&k, false, alts, &text("ba"), false).is_some());
     }
 
-    // [spec:kbdgen:req:ldml.engine.contract/test]
+    // [spec:kbdgen:req:ldml.engine.contract+1/test]
     #[test]
     fn nested_quantifiers_stay_polynomial() {
         // ((?:(?:a?){9}){7})b over 63 `a`s would take exponential time in

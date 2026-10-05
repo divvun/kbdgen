@@ -22,7 +22,7 @@
 //! `unwrap`, `expect`, `unreachable!` and slice indexing, so every failure
 //! is returned as an error.
 
-// [spec:kbdgen:req:ldml.crate.engine]
+// [spec:kbdgen:req:ldml.crate.engine+1]
 // [spec:kbdgen:req:ldml.crate.targets]
 // [spec:kbdgen:req:ldml.crate.ffi]
 #![no_std]

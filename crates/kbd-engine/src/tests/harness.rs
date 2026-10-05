@@ -8,7 +8,7 @@ fn scan_event(code: u8) -> KeyEvent {
     KeyEvent::new(Key::Scan(code))
 }
 
-// [spec:kbdgen:def:ldml.test.harness/test]
+// [spec:kbdgen:def:ldml.test.harness+1/test]
 #[test]
 fn edits_delete_scalars_then_append() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -22,7 +22,7 @@ fn edits_delete_scalars_then_append() {
     assert_eq!(h.last_action(), Some(&edit(0, "´x", "")));
 }
 
-// [spec:kbdgen:def:ldml.test.harness/test]
+// [spec:kbdgen:def:ldml.test.harness+1/test]
 #[test]
 fn pass_changes_nothing_but_the_record() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -36,7 +36,7 @@ fn pass_changes_nothing_but_the_record() {
     assert_eq!(h.state(), &before);
 }
 
-// [spec:kbdgen:def:ldml.test.harness/test]
+// [spec:kbdgen:def:ldml.test.harness+1/test]
 #[test]
 fn context_is_the_document_tail() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -63,7 +63,7 @@ fn context_is_the_document_tail() {
     assert!(!h.context().at_start);
 }
 
-// [spec:kbdgen:def:ldml.test.harness/test]
+// [spec:kbdgen:def:ldml.test.harness+1/test]
 #[test]
 fn reset_and_new_document_drop_markers() {
     let m = model(dead_keys(Normalization::Disabled, false));

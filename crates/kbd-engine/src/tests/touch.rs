@@ -136,7 +136,7 @@ fn hardware_set_presented_as_touch() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.engine.touch.gestures/test]
+// [spec:kbdgen:sem:ldml.engine.touch.gestures+1/test]
 #[test]
 fn tap_long_press_and_flick_resolve_keys() {
     let m = model(touch_keyboard());
@@ -151,7 +151,7 @@ fn tap_long_press_and_flick_resolve_keys() {
     assert_eq!(flick(vec![Direction::S]), edit(0, "", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.touch.gestures/test]
+// [spec:kbdgen:sem:ldml.engine.touch.gestures+1/test]
 #[test]
 fn multi_tap_cycles_through_key_list() {
     let m = model(touch_keyboard());
@@ -164,7 +164,7 @@ fn multi_tap_cycles_through_key_list() {
     assert_eq!(tap(0), edit(0, "", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.touch.gestures/test]
+// [spec:kbdgen:sem:ldml.engine.touch.gestures+1/test]
 #[test]
 fn roles_gaps_and_holes_pass() {
     let m = model(touch_keyboard());
@@ -174,7 +174,7 @@ fn roles_gaps_and_holes_pass() {
     assert_eq!(touch(&m, 7, 0, Gesture::Tap), Action::Pass);
 }
 
-// [spec:kbdgen:sem:ldml.engine.touch.gestures/test]
+// [spec:kbdgen:sem:ldml.engine.touch.gestures+1/test]
 // [spec:kbdgen:def:ldml.engine.action/test]
 #[test]
 fn layer_switch_follows_output() {
@@ -216,7 +216,7 @@ fn layer_switch_runs_no_transforms() {
     assert_eq!(action, edit(0, "!", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.test-keys/test]
+// [spec:kbdgen:sem:ldml.engine.test-keys+1/test]
 #[test]
 fn id_and_emit_keys_for_tests() {
     let m = model(touch_keyboard());

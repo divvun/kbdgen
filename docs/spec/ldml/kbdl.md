@@ -38,16 +38,21 @@ Sources: `docs/spec/kbdl.md` (`kbdl.input`, `kbdl.layers`, `kbdl.caps`,
 >
 > A state that no layer serves is absent.
 
-> [spec:kbdgen:sem:ldml.kbdl.positions]
-> A `kbdl.input` position takes the key at the hardware position whose
-> scan code equals that position's scan code in `kbdl.scancodes.iso`.
-> `B11` is filled only when the form has scan code `73`, as `abnt2` does.
-> Keys at scan codes outside the 49 warn and are dropped: `jis` `7D`, and a
-> `us` form missing `56`. The space row is fixed by `kbdl.vk-chars`, so a
-> space position whose output is not U+0020 warns. One example is the
-> NBSP of `space: {caps: \u{A0}}`.
+`kbd-engine` exposes no layer-selection API, so the adapter repeats the
+engine's selection for these states; a test checks that both agree.
 
-> [spec:kbdgen:sem:ldml.kbdl.values]
+> [spec:kbdgen:sem:ldml.kbdl.positions+1]
+> A `kbdl.input` position takes the key at the hardware position whose
+> scan code equals that position's scan code in `kbdl.scancodes.iso`. A
+> position whose scan code the form lacks is "no key": `B11` is filled
+> only when the form has `73`, as `abnt2` and `jis` do, and `B00` is "no
+> key" on a form without `56`, such as `us`, `jis` or `ks`. Keys with
+> output at scan codes outside the 49 warn and are dropped, such as `jis`
+> `7D`. The space row is fixed by `kbdl.vk-chars`, so a space position
+> whose output is not U+0020 warns. One example is the NBSP of `space:
+> {caps: \u{A0}}`.
+
+> [spec:kbdgen:sem:ldml.kbdl.values+1]
 > A key's value is set as follows:
 >
 > - no key, a gap, or an empty output: "no key"
@@ -57,26 +62,32 @@ Sources: `docs/spec/kbdl.md` (`kbdl.input`, `kbdl.layers`, `kbdl.caps`,
 > - plain text output: that text, not dead
 > - text and markers mixed, or several markers: warn, "no key"
 >
-> The dead identity is the display of `\m{m}`. Without one, it is `flush[m]`.
-> If both are missing or empty, the adapter fails fatally.
+> The dead identity is the display of `\m{m}` if non-empty, else
+> `flush[m]`. If both are missing or empty, or two markers have the same
+> dead identity, the adapter fails fatally. The layers' *distinct values*
+> are listed in first-occurrence order: `kbdl` layers in `kbdl.layers`
+> order, then positions.
 
-> [spec:kbdgen:sem:ldml.kbdl.dead-tree]
+> [spec:kbdgen:sem:ldml.kbdl.dead-tree+1]
 > The adapter derives each dead-key tree by running the engine
-> (`ldml.engine.api`) with the options `CancelOrPass` and `Nfc`. For a dead
-> key with marker m it takes one key for each distinct value of K's `kbdl`
-> layers, in first-occurrence order. Starting from `State::default()` and an
-> empty context each time, it presses the dead key, then that key, both by
-> `Id`. The result decides that value's entry:
+> (`ldml.engine.api`) with `CancelOrPass`, `Nfc` and host `windows`, on an
+> empty context, pressing keys by `Id`. Pressing a dead key with marker m
+> from `State::default()` MUST commit nothing and leave exactly m pending,
+> else it is fatal. From that state, each distinct value (`ldml.kbdl.values`)
+> other than `" "` is pressed through its first key. Let U be `flush[m]`,
+> followed by the value's text unless it is dead. The entry is:
 >
-> - The trailing markers (`Model::pending_markers`) are exactly one new
->   marker n: the entry is a branch, built the same way. A cycle is fatal.
-> - The committed text equals `flush[m]` followed by the value's text, or
->   just `flush[m]` when the key is a dead key: there is no entry, because
->   Windows' own unmatched behaviour does the same.
-> - Any other plain committed text: the entry is a leaf.
+> - a branch, built the same way, when nothing is committed and the
+>   trailing markers (`Model::pending_markers`) are exactly one marker n
+>   not already on the path
+> - none, when the committed text equals U; Windows' unmatched behaviour
+>   does the same. This includes re-pressing a pending marker whose
+>   standalone is empty.
+> - otherwise fatal, when n is already on the path: a cycle
+> - a leaf, for other committed text with no marker pending; with markers
+>   pending, it warns and is omitted
 >
-> The standalone child `" "` is the text committed by pressing the dead key
-> and then `space`.
+> The standalone child `" "` is the text committed by `Emit(" ")`.
 
 > [spec:kbdgen:sem:ldml.kbdl.caps]
 > The DLL keeps Windows' caps convention (`kbdl.caps`). It computes
@@ -124,12 +135,14 @@ Sources: `docs/spec/kbdl.md` (`kbdl.input`, `kbdl.layers`, `kbdl.caps`,
 > Each message lists counts and up to ten examples, so authors know what
 > users get without the text service, for example at the sign-in screen.
 
-> [spec:kbdgen:req:ldml.kbdl.model-resource]
+> [spec:kbdgen:req:ldml.kbdl.model-resource+1]
 > For each layout, the `RT_RCDATA` resource of `tsf.data.resource` MUST hold
 > the `ldml.model.encoding` of the layout's `windows` keyboard K. This is
 > the same model the adapter reads, so the text service and the DLL derive
 > from one source. A v3 layout first gets its model by in-memory migration
-> (`ldml.migrate.*`), with nothing written to disk. If that migration
-> blocks, the DLL is built without the resource, which leaves the text
-> service inert for the layout (`tsf.data.locate`), and kbdgen warns with
-> the defect codes.
+> (`ldml.migrate.*`), with nothing written to disk; its DLL tables still
+> come from `kbdl.input.bundle`. If that migration fails, blocks, has no
+> `windows` document or does not compile, the DLL is built without the
+> resource, which leaves the text service inert for the layout
+> (`tsf.data.locate`), and kbdgen warns with the reason, naming the
+> blocking defect codes.

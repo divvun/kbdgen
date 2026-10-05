@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
 
             kbdgen::bundle::fetch(&bundle.path, &bundle.project).await?;
         }
-        // [spec:kbdgen:def:ldml.cli.commands]
+        // [spec:kbdgen:def:ldml.cli.commands+1]
         Command::Ldml { command } => kbdgen::ldml::cli::run(command)?,
         // [spec:kbdgen:def:cli.commands]
         Command::Target(target_command_struct) => {

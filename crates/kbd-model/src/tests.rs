@@ -307,8 +307,8 @@ fn reorder_rules(k: &mut Keyboard) -> &mut Vec<ReorderRule> {
     }
 }
 
-// [spec:kbdgen:def:ldml.model.keyboard/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:def:ldml.model.keyboard+1/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn fixture_satisfies_every_invariant() {
     let k = fixture();
@@ -321,7 +321,7 @@ fn fixture_satisfies_every_invariant() {
 }
 
 // [spec:kbdgen:def:ldml.model.keys/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn key_table_invariants_are_enforced() {
     assert_eq!(
@@ -360,7 +360,7 @@ fn key_table_invariants_are_enforced() {
 }
 
 // [spec:kbdgen:def:ldml.model.keys/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn gap_keys_have_no_output_or_gestures() {
     assert_eq!(
@@ -424,7 +424,7 @@ fn flick_and_marker_tables_are_checked() {
     );
 }
 
-// [spec:kbdgen:def:ldml.model.displays/test]
+// [spec:kbdgen:def:ldml.model.displays+1/test]
 #[test]
 fn displays_last_entry_wins() {
     let k = fixture();
@@ -446,7 +446,7 @@ fn displays_last_entry_wins() {
     assert_eq!(k.validate(NFD), Ok(()));
 }
 
-// [spec:kbdgen:def:ldml.model.hardware/test]
+// [spec:kbdgen:def:ldml.model.hardware+1/test]
 #[test]
 fn hardware_positions_follow_the_form() {
     let k = fixture();
@@ -480,8 +480,8 @@ fn hardware_positions_follow_the_form() {
     );
 }
 
-// [spec:kbdgen:def:ldml.model.modifiers/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:def:ldml.model.modifiers+1/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn layer_modifier_sets_are_canonical() {
     assert_eq!(
@@ -509,7 +509,7 @@ fn layer_modifier_sets_are_canonical() {
 }
 
 // [spec:kbdgen:def:ldml.model.native/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn only_non_native_layers_may_not_overlap() {
     // `alt` overlaps the `altR` layer.
@@ -535,7 +535,7 @@ fn only_non_native_layers_may_not_overlap() {
     assert!(!hw.layers[6].is_native());
 }
 
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn at_most_one_layer_has_other() {
     let second = |k: &mut Keyboard| hardware(k).layers[5].modifiers = vec![ModifierSet::Other];
@@ -543,7 +543,7 @@ fn at_most_one_layer_has_other() {
 }
 
 // [spec:kbdgen:def:ldml.model.windows/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn extra_components_need_their_binding() {
     assert_eq!(
@@ -592,8 +592,8 @@ fn windows_options_are_checked() {
     assert_eq!(ExtraModifierKey::B00.name(), "B00");
 }
 
-// [spec:kbdgen:def:ldml.model.touch/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:def:ldml.model.touch+1/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn touch_sets_order_widths_and_bases() {
     let k = fixture();
@@ -642,8 +642,8 @@ fn touch_sets_order_widths_and_bases() {
     assert_eq!(k.validate(NFD), Ok(()));
 }
 
-// [spec:kbdgen:def:ldml.model.touch/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:def:ldml.model.touch+1/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn layer_ids_name_touch_layers() {
     assert_eq!(
@@ -667,8 +667,8 @@ fn layer_ids_name_touch_layers() {
     assert_eq!(k.hardware.as_ref().unwrap().touch_base(), Some(0));
 }
 
-// [spec:kbdgen:def:ldml.model.transforms/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:def:ldml.model.transforms+1/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn rules_groups_and_patterns_are_checked() {
     assert_eq!(violation(|k| first_rules(k).clear()), Invariant::EmptyRules);
@@ -699,8 +699,8 @@ fn rules_groups_and_patterns_are_checked() {
     assert_eq!(violation(in_backspace), Invariant::EmptyRules);
 }
 
-// [spec:kbdgen:def:ldml.model.pattern/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:def:ldml.model.pattern+1/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn replacements_reference_existing_groups_and_sets() {
     assert_eq!(
@@ -762,7 +762,7 @@ fn replacements_reference_existing_groups_and_sets() {
     );
 }
 
-// [spec:kbdgen:def:ldml.model.transforms/test]
+// [spec:kbdgen:def:ldml.model.transforms+1/test]
 #[test]
 fn reorder_rules_are_padded_and_sorted() {
     let unpadded = |k: &mut Keyboard| {
@@ -808,7 +808,7 @@ fn reorder_rules_are_padded_and_sorted() {
     assert!(ReorderClass::Ranges(vec![ClassRange::single('q')]).contains('q'));
 }
 
-// [spec:kbdgen:req:ldml.model.context-len/test]
+// [spec:kbdgen:req:ldml.model.context-len+1/test]
 #[test]
 fn reorder_rules_count_toward_context_len() {
     let mut k = fixture();
@@ -824,7 +824,7 @@ fn reorder_rules_count_toward_context_len() {
     assert_eq!(k.computed_context_len(), Ok(8), "before and from together");
 }
 
-// [spec:kbdgen:req:ldml.model.context-len/test]
+// [spec:kbdgen:req:ldml.model.context-len+1/test]
 #[test]
 fn context_len_is_longest_match_plus_one() {
     assert_eq!(violation(|k| k.context_len = 3), Invariant::ContextLen);
@@ -855,7 +855,8 @@ fn context_len_is_longest_match_plus_one() {
         Invariant::ContextTooLong
     );
 
-    // Patterns in `backspace` count, and reorder groups do not.
+    // Patterns in `backspace` count, and an empty reorder group adds
+    // nothing.
     let mut k = fixture();
     k.backspace = vec![TransformGroup::Rules(vec![Rule {
         from: Pattern::from_tree(
@@ -878,7 +879,7 @@ fn context_len_is_longest_match_plus_one() {
     assert_eq!(k.validate(NFD), Ok(()));
 }
 
-// [spec:kbdgen:req:ldml.model.nfd/test]
+// [spec:kbdgen:req:ldml.model.nfd+1/test]
 #[test]
 fn enabled_normalization_requires_nfd_texts() {
     let nfd = |change: fn(&mut Keyboard)| violation(change);
@@ -954,7 +955,7 @@ fn enabled_normalization_requires_nfd_texts() {
     assert_eq!(k.validate(NFD), Ok(()));
 }
 
-// [spec:kbdgen:req:ldml.model.nfd/test]
+// [spec:kbdgen:req:ldml.model.nfd+1/test]
 #[test]
 fn disabled_normalization_keeps_authored_texts() {
     let mut k = fixture();
@@ -1044,7 +1045,7 @@ fn emoji_key_is_the_preserved_key() {
     assert_eq!(violation(rejected), Invariant::ModifierCombination);
 }
 
-// [spec:kbdgen:def:ldml.model.flush/test]
+// [spec:kbdgen:def:ldml.model.flush+1/test]
 #[test]
 fn flush_and_dead_key_names_survive_encoding() {
     let k = fixture();
@@ -1062,7 +1063,7 @@ fn flush_and_dead_key_names_survive_encoding() {
     assert_eq!(foreign.validate(NFD), Ok(()));
 }
 
-// [spec:kbdgen:syn:ldml.model.encoding/test]
+// [spec:kbdgen:syn:ldml.model.encoding+1/test]
 #[test]
 fn encoding_starts_with_magic_and_version() {
     let bytes = fixture().to_bytes().unwrap();
@@ -1073,7 +1074,7 @@ fn encoding_starts_with_magic_and_version() {
     assert_eq!(body, postcard::to_allocvec(&fixture()).unwrap().as_slice());
 }
 
-// [spec:kbdgen:syn:ldml.model.encoding/test]
+// [spec:kbdgen:syn:ldml.model.encoding+1/test]
 // [spec:kbdgen:req:ldml.model.decode/test]
 #[test]
 fn decode_round_trips_the_fixture() {
@@ -1087,7 +1088,7 @@ fn decode_round_trips_the_fixture() {
     assert_eq!(Keyboard::from_bytes(&bytes, None), Ok(disabled));
 }
 
-// [spec:kbdgen:req:ldml.model.deterministic/test]
+// [spec:kbdgen:req:ldml.model.deterministic+1/test]
 #[test]
 fn equal_models_encode_to_identical_bytes() {
     let a = fixture().to_bytes().unwrap();
@@ -1108,7 +1109,7 @@ fn equal_models_encode_to_identical_bytes() {
     assert_eq!(x.to_bytes().unwrap(), y.to_bytes().unwrap());
 }
 
-// [spec:kbdgen:req:ldml.model.deterministic/test]
+// [spec:kbdgen:req:ldml.model.deterministic+1/test]
 #[test]
 fn encoding_matches_a_pinned_byte_sequence() {
     // Pinned so that any platform, or a change of field order, that
@@ -1253,7 +1254,7 @@ fn decode_rejects_lengths_beyond_the_input() {
 }
 
 // [spec:kbdgen:req:ldml.model.decode/test]
-// [spec:kbdgen:req:ldml.model.invariants/test]
+// [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn decode_rejects_a_violated_invariant() {
     let mut k = fixture();
@@ -1303,7 +1304,7 @@ fn host_document(host: Host) -> Keyboard {
     k
 }
 
-// [spec:kbdgen:def:ldml.model.layout/test]
+// [spec:kbdgen:def:ldml.model.layout+1/test]
 #[test]
 fn equal_host_documents_share_one_keyboard() {
     let mut android = host_document(Host::Android);
@@ -1336,7 +1337,7 @@ fn equal_host_documents_share_one_keyboard() {
     assert_eq!(layout.validate(NFD), Ok(()));
 }
 
-// [spec:kbdgen:def:ldml.model.layout/test]
+// [spec:kbdgen:def:ldml.model.layout+1/test]
 #[test]
 fn malformed_layouts_are_rejected() {
     let make = || {

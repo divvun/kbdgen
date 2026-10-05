@@ -17,7 +17,7 @@ pub enum TextElem {
     Marker(MarkerIndex),
 }
 
-// [spec:kbdgen:def:ldml.model.text]
+// [spec:kbdgen:def:ldml.model.text+1]
 /// A sequence of scalar values and marker references.
 ///
 /// The marker table lists marker names in order of first appearance in
@@ -117,7 +117,7 @@ pub fn is_nmtoken(s: &str) -> bool {
 mod tests {
     use super::*;
 
-    // [spec:kbdgen:def:ldml.model.text/test]
+    // [spec:kbdgen:def:ldml.model.text+1/test]
     #[test]
     fn plain_text_drops_markers() {
         let mut t = Text::plain_from("a");

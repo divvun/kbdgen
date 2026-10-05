@@ -100,7 +100,7 @@ impl ModifierState {
     }
 }
 
-// [spec:kbdgen:def:ldml.engine.event]
+// [spec:kbdgen:def:ldml.engine.event+1]
 /// A key event: a key, its modifiers and whether it is an auto-repeat. A
 /// repeat is handled exactly like any other press.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -211,7 +211,7 @@ pub enum Action {
     },
 }
 
-// [spec:kbdgen:def:ldml.engine.output.form]
+// [spec:kbdgen:def:ldml.engine.output.form+1]
 /// The form of inserted text for keyboards with normalization `Enabled`.
 /// Keyboards with `Disabled` normalization insert exactly what is authored.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]

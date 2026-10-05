@@ -2,7 +2,7 @@
 
 use super::*;
 
-// [spec:kbdgen:sem:ldml.engine.preedit/test]
+// [spec:kbdgen:sem:ldml.engine.preedit+1/test]
 // [spec:kbdgen:sem:ldml.engine.insert/test]
 #[test]
 fn dead_key_composes_with_next_key() {
@@ -28,7 +28,7 @@ fn unmatched_dead_key_emits_standalone_then_key() {
     assert_eq!(s.text, "´x´");
 }
 
-// [spec:kbdgen:sem:ldml.engine.commit/test]
+// [spec:kbdgen:sem:ldml.engine.commit+1/test]
 #[test]
 fn commit_inserts_flush_of_pending_marker() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -41,7 +41,7 @@ fn commit_inserts_flush_of_pending_marker() {
     assert_eq!(s.press(KeyEvent::new(Key::Commit)), edit(0, "", ""));
 }
 
-// [spec:kbdgen:sem:ldml.engine.commit/test]
+// [spec:kbdgen:sem:ldml.engine.commit+1/test]
 #[test]
 fn commit_drops_markers_without_flush() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -55,7 +55,7 @@ fn commit_drops_markers_without_flush() {
     assert!(s.state.tail().is_plain());
 }
 
-// [spec:kbdgen:sem:ldml.engine.preedit/test]
+// [spec:kbdgen:sem:ldml.engine.preedit+1/test]
 #[test]
 fn preedit_concatenates_trailing_flush_outputs() {
     let mut k = dead_keys(Normalization::Disabled, false);
@@ -86,7 +86,7 @@ fn shortcut_pass_keeps_state_and_host_commits() {
     assert_eq!(s.state, State::default());
 }
 
-// [spec:kbdgen:sem:ldml.engine.context/test]
+// [spec:kbdgen:sem:ldml.engine.context+1/test]
 #[test]
 fn changed_context_drops_markers() {
     let m = model(dead_keys(Normalization::Disabled, false));
@@ -137,7 +137,7 @@ fn keyboard_without_hardware_passes_scan_codes() {
     assert_eq!(action, Action::Pass);
 }
 
-// [spec:kbdgen:def:ldml.engine.event/test]
+// [spec:kbdgen:def:ldml.engine.event+1/test]
 #[test]
 fn repeat_is_handled_like_a_press() {
     let m = model(dead_keys(Normalization::Disabled, false));

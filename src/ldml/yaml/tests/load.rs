@@ -40,7 +40,7 @@ fn format_four_is_v4_and_others_fail() {
 }
 
 // [spec:kbdgen:def:ldml.yaml.detect/test]
-// [spec:kbdgen:def:ldml.yaml.schema/test]
+// [spec:kbdgen:def:ldml.yaml.schema+1/test]
 #[test]
 fn autonym_and_display_names_are_required() {
     let err = error("format: 4\n");
@@ -55,7 +55,7 @@ fn autonym_and_display_names_are_required() {
 }
 
 // [spec:kbdgen:req:ldml.yaml.strict/test]
-// [spec:kbdgen:def:ldml.yaml.schema/test]
+// [spec:kbdgen:def:ldml.yaml.schema+1/test]
 #[test]
 fn unknown_fields_fail_with_their_path() {
     let cases = [
@@ -137,7 +137,7 @@ fn odd_yaml_is_an_error_not_a_panic() {
     assert!(err.contains("quote it"), "{err}");
 }
 
-// [spec:kbdgen:syn:ldml.yaml.escape/test]
+// [spec:kbdgen:syn:ldml.yaml.escape+1/test]
 #[test]
 fn bare_backslash_u_is_an_error() {
     for body in [
@@ -161,7 +161,7 @@ fn bare_backslash_u_is_an_error() {
     .unwrap();
 }
 
-// [spec:kbdgen:syn:ldml.yaml.escape/test]
+// [spec:kbdgen:syn:ldml.yaml.escape+1/test]
 #[test]
 fn escapes_are_decoded_once_for_comparison() {
     let err = error(&sme("deadKeys: {´: {}, '\\u{B4}': {}}\n"));
@@ -285,7 +285,7 @@ fn modifier_names_are_sets_in_any_order() {
     assert_eq!(keys, ["ctrl", "ctrlL", "none"]);
 }
 
-// [spec:kbdgen:def:ldml.yaml.hardware/test]
+// [spec:kbdgen:def:ldml.yaml.hardware+1/test]
 #[test]
 fn inherits_replaces_layers_key_by_key() {
     let yaml = sme(&format!(
@@ -306,7 +306,7 @@ fn inherits_replaces_layers_key_by_key() {
     assert_eq!(layout.hardware[0].space.len(), 0);
 }
 
-// [spec:kbdgen:def:ldml.yaml.hardware/test]
+// [spec:kbdgen:def:ldml.yaml.hardware+1/test]
 #[test]
 fn inheritance_cycles_and_unknown_parents_fail() {
     let err = error(&sme(
@@ -324,7 +324,7 @@ fn inheritance_cycles_and_unknown_parents_fail() {
     assert!(err.contains("amiga is not a hardware variant"), "{err}");
 }
 
-// [spec:kbdgen:req:ldml.yaml.hardware.rows/test]
+// [spec:kbdgen:req:ldml.yaml.hardware.rows+1/test]
 // [spec:kbdgen:def:ldml.yaml.native/test]
 #[test]
 fn a_49_token_row_is_caught() {
@@ -357,7 +357,7 @@ fn a_49_token_row_is_caught() {
     );
 }
 
-// [spec:kbdgen:def:ldml.yaml.touch/test]
+// [spec:kbdgen:def:ldml.yaml.touch+1/test]
 #[test]
 fn sizes_have_widths_base_layers_and_distinct_widths() {
     let yaml = sme(
@@ -399,7 +399,7 @@ fn sizes_have_widths_base_layers_and_distinct_widths() {
     assert!(err.contains("not a width from 1 to 999"), "{err}");
 }
 
-// [spec:kbdgen:def:ldml.yaml.touch/test]
+// [spec:kbdgen:def:ldml.yaml.touch+1/test]
 #[test]
 fn touch_inherits_sizes_and_long_press() {
     let yaml = sme(
@@ -426,7 +426,7 @@ fn touch_inherits_sizes_and_long_press() {
     );
 }
 
-// [spec:kbdgen:def:ldml.yaml.dead-keys/test]
+// [spec:kbdgen:def:ldml.yaml.dead-keys+1/test]
 // [spec:kbdgen:sem:ldml.yaml.dead-keys.keys/test]
 #[test]
 fn dead_keys_default_markers_and_strings() {
@@ -464,7 +464,7 @@ fn dead_keys_default_markers_and_strings() {
     assert_eq!(layout.dead_keys[2].marker, "caron");
 }
 
-// [spec:kbdgen:def:ldml.yaml.dead-keys/test]
+// [spec:kbdgen:def:ldml.yaml.dead-keys+1/test]
 #[test]
 fn dead_key_errors_are_addressed() {
     let cases = [
@@ -495,7 +495,7 @@ fn dead_key_errors_are_addressed() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref/test]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+1/test]
 #[test]
 fn ldml_ref_excludes_what_the_file_defines() {
     for field in [
@@ -523,7 +523,7 @@ fn ldml_ref_excludes_what_the_file_defines() {
     .unwrap();
 }
 
-// [spec:kbdgen:def:ldml.yaml.verbatim/test]
+// [spec:kbdgen:def:ldml.yaml.verbatim+1/test]
 #[test]
 fn verbatim_fields_parse_strictly() {
     let yaml = sme(
@@ -561,7 +561,7 @@ fn verbatim_fields_parse_strictly() {
     }
 }
 
-// [spec:kbdgen:def:ldml.yaml.long-press/test]
+// [spec:kbdgen:def:ldml.yaml.long-press+1/test]
 #[test]
 fn long_press_candidates_are_tokens() {
     let layout = load_as(
