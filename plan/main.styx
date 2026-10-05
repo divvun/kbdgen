@@ -127,12 +127,61 @@ children (
                         title "Specify KBDTABLES C emission (kbdc.* rules): structs, modifiers, VK_TO_WCHARS, DEADKEY, LIGATURE, key names, scancode->VK, locale flags, .rc/.def"
                         kind @docs
                         deps (input.layout)
+                        sealed true
+                        log (
+                            {
+                                at 2026-10-05T13:08:07.317986Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-05T13:31:07.076183Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Doing → Done (nplan complete)"
+                            }
+                        )
                     }
 
                     {
                         id targets.windows.kbd-c
                         title "Emit self-contained keyboard layout .c/.rc/.def directly; remove KLC generation, klc.* rules and targets.windows.klc"
                         kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:kbdc.source]
+                                [spec:kbdgen:syn:kbdc.escaping]
+                                [spec:kbdgen:def:kbdc.structs]
+                                [spec:kbdgen:req:kbdc.structs.pointers]
+                                [spec:kbdgen:thm:kbdc.structs.layout]
+                                [spec:kbdgen:def:kbdc.tables]
+                                [spec:kbdgen:req:kbdc.export]
+                                [spec:kbdgen:thm:kbdc.tables.invariants]
+                                [spec:kbdgen:req:kbdc.modifiers]
+                                [spec:kbdgen:def:kbdc.layers]
+                                [spec:kbdgen:sem:kbdc.vk-chars.tokens]
+                                [spec:kbdgen:req:kbdc.vk-chars]
+                                [spec:kbdgen:def:kbdc.vk-chars.fixed]
+                                [spec:kbdgen:req:kbdc.vk-chars.decimal]
+                                [spec:kbdgen:sem:kbdc.caps]
+                                [spec:kbdgen:req:kbdc.caps.sgcaps]
+                                [spec:kbdgen:req:kbdc.dead-keys]
+                                [spec:kbdgen:req:kbdc.dead-keys.table]
+                                [spec:kbdgen:req:kbdc.dead-keys.diagnostics]
+                                [spec:kbdgen:req:kbdc.ligatures]
+                                [spec:kbdgen:def:kbdc.scancodes]
+                                [spec:kbdgen:def:kbdc.scancodes.extended]
+                                [spec:kbdgen:req:kbdc.scancodes.iso]
+                                [spec:kbdgen:req:kbdc.key-names]
+                                [spec:kbdgen:req:kbdc.locale]
+                                [spec:kbdgen:req:kbdc.metadata]
+                                [spec:kbdgen:req:kbdc.metadata.locale]
+                                [spec:kbdgen:req:kbdc.resources]
+                                [spec:kbdgen:syn:kbdc.resources.strings]
+                            )
+                        }
                         deps (targets.windows.kbd-spec input.layout input.bundle)
                         log (
                             {
@@ -148,6 +197,9 @@ children (
                         id targets.windows.build-from-c
                         title "Compile generated C with cl/rc/link or clang-cl/lld-link (x86, x64, arm64); drop kbdutool and MSKLC/pahkat"
                         kind @feat
+                        implements {
+                            main ([spec:kbdgen:req:kbdc.build] [spec:kbdgen:req:kbdc.image])
+                        }
                         deps (targets.windows.kbd-c)
                     }
 
@@ -163,6 +215,13 @@ children (
                                 author "brendan@necessary.nu"
                                 kind @note
                                 text "Evidence (Windows 11 x64, dev-latest outto installer, 2026-10-05): kbdvro.dll present in System32 (8704 B) and SysWOW64 (7680 B); registry Keyboard Layouts\\a0002000 -> kbdvro.dll, Layout Id 00d8, display name @kbdvro.dll,-1000 resolves to 'Võro'; DLL loads as datafile; but LoadKeyboardLayout('a0002000') returns 0, so the layout never appears in the selector, for vro-Latn and en-SE alike. kbdsjd.dll (a0003800) from the same pipeline loads fine. Võro is the only bundle combining dead keys (6 DEADKEY blocks, 00b4 emitted twice) with ligatures (20); sjd has ligatures only, sme dead keys only."
+                            }
+
+                            {
+                                at 2026-10-05T13:28:03.692362Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Correction to the evidence note above. Root cause found on jaheira-win11 using an interactive-session LoadKeyboardLayout harness: the installed kbdvro.dll (8704 B, from the dev-latest outto installer) has the pre-47ad789 PE layout (.text RX + .data RW) and fails LoadKeyboardLayout; kbdvro.dll rebuilt from current kbdgen main (single .data RX, 8192 B) loads (HKL f0ff0409). Installed kbdsjd.dll was built 2026-09-15 00:18, after the 47ad789 fix, which is why it loads. The dead-keys+ligatures hypothesis is wrong: Võro's tables load fine; CI built it with a kbdgen predating 47ad789. Immediate remedy: rebuild keyboard-vro with current kbdgen. This node still verifies the generated-C DLL loads."
                             }
                         )
                     }

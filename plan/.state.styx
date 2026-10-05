@@ -122,6 +122,10 @@ derived_priorities (
     {id targets.windows.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
 )
 
+assertions (
+    {id targets.windows.kbd-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-05T13:31:07.076183Z}
+)
+
 impl_evidence (
     {id input.bundle, covered_rules (
         bundle.fetch
@@ -340,4 +344,4 @@ impl_evidence (
     )}
 )
 
-onboarding {kind @adopt, phase 6}
+onboarding {kind @adopt, phase 11}
