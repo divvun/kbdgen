@@ -70,6 +70,13 @@ children (
                 kind @fix
                 deps (input.bundle)
             }
+
+            {
+                id input.windows-layers
+                title "Bundle format for Windows extra modifiers/layers, shiftLock/lrmRlm flags, dead-key names and the 49th key"
+                kind @feat
+                deps (targets.windows.dll-spec)
+            }
         )
     }
 
@@ -102,7 +109,7 @@ children (
                                 [spec:kbdgen:syn:klc.layout.key-rendering]
                             )
                         }
-                        deps (targets.windows.kbd-c)
+                        deps (targets.windows.dll-gen)
                     }
 
                     {
@@ -119,7 +126,7 @@ children (
                         id targets.windows.test-golden
                         title "Golden tests for generated KBDTABLES C output"
                         kind @test
-                        deps (targets.windows.kbd-c input.layout-order)
+                        deps (targets.windows.dll-gen input.layout-order)
                     }
 
                     {
@@ -146,8 +153,38 @@ children (
                     }
 
                     {
-                        id targets.windows.kbd-c
-                        title "Emit self-contained keyboard layout .c/.rc/.def directly; remove KLC generation, klc.* rules and targets.windows.klc"
+                        id targets.windows.vro-loads
+                        title "Regression: Võro layout DLL passes LoadKeyboardLayout on Windows"
+                        priority 0
+                        kind @test
+                        deps (targets.windows.dll-build)
+                        log (
+                            {
+                                at 2026-10-05T13:06:42.808865Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Evidence (Windows 11 x64, dev-latest outto installer, 2026-10-05): kbdvro.dll present in System32 (8704 B) and SysWOW64 (7680 B); registry Keyboard Layouts\\a0002000 -> kbdvro.dll, Layout Id 00d8, display name @kbdvro.dll,-1000 resolves to 'Võro'; DLL loads as datafile; but LoadKeyboardLayout('a0002000') returns 0, so the layout never appears in the selector, for vro-Latn and en-SE alike. kbdsjd.dll (a0003800) from the same pipeline loads fine. Võro is the only bundle combining dead keys (6 DEADKEY blocks, 00b4 emitted twice) with ligatures (20); sjd has ligatures only, sme dead keys only."
+                            }
+
+                            {
+                                at 2026-10-05T13:28:03.692362Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Correction to the evidence note above. Root cause found on jaheira-win11 using an interactive-session LoadKeyboardLayout harness: the installed kbdvro.dll (8704 B, from the dev-latest outto installer) has the pre-47ad789 PE layout (.text RX + .data RW) and fails LoadKeyboardLayout; kbdvro.dll rebuilt from current kbdgen main (single .data RX, 8192 B) loads (HKL f0ff0409). Installed kbdsjd.dll was built 2026-09-15 00:18, after the 47ad789 fix, which is why it loads. The dead-keys+ligatures hypothesis is wrong: Võro's tables load fine; CI built it with a kbdgen predating 47ad789. Immediate remedy: rebuild keyboard-vro with current kbdgen. This node still verifies the generated-C DLL loads."
+                            }
+                        )
+                    }
+
+                    {
+                        id targets.windows.dll-spec
+                        title "Specify the Windows layout DLL as a no_std Rust crate (kbdl.*): .res writer, chained dead keys, 49th key, extra modifiers/layers, locale flags, names; VM proof of concept"
+                        kind @docs
+                        deps (input.layout)
+                    }
+
+                    {
+                        id targets.windows.dll-gen
+                        title "Generate the no_std Rust layout crate, .res and .def; remove KLC generation, klc.* rules and targets.windows.klc"
                         kind @feat
                         implements {
                             main (
@@ -182,46 +219,64 @@ children (
                                 [spec:kbdgen:syn:kbdc.resources.strings]
                             )
                         }
-                        deps (targets.windows.kbd-spec input.layout input.bundle)
+                        deps (
+                            targets.windows.dll-spec
+                            input.windows-layers
+                            input.layout
+                            input.bundle
+                        )
                         log (
                             {
-                                at 2026-10-05T13:06:42.770479Z
+                                at 2026-10-05T13:56:44.101262Z
                                 author "brendan@necessary.nu"
                                 kind @decision
-                                text "Replace KLC + kbdutool with directly generated KBDTABLES C (operator decision 2026-10-05). KLC is deprecated upstream and opaque: we cannot see or control the tables kbdutool emits. Generated .c is self-contained (own struct definitions, no kbd.h/WDK dependency) so it can be cross-compiled with clang-cl/lld-link and golden-tested off Windows. KLC generation, klc.* rules and targets.windows.klc are deleted (not deprecated) when this lands."
+                                text "Operator decisions 2026-10-05: (1) KLC/kbdutool are dropped; the Windows layout DLL is generated as a no_std Rust crate (repr(C) mirrors of kbd.h, Sync pointer wrapper, WOW64 {ptr32,0} slots), linked with rust-lld and the single read+execute .data image flags, with kbdgen writing the .res itself, so builds need only rustup targets on any host. Chosen over generated C (needs MSVC or clang-cl) and over hand-written PE bytes. (2) In scope for the table generator: chained dead keys via DKF_DEAD, the 49th ISO key (B11 -> VK_ABNT_C1), extra modifiers/layers, KLLF_SHIFTLOCK/KLLF_LRM_RLM flags, dead-key and key names. The partial generated-C emitter from the abandoned kbd-c node is saved outside the repo for reference only."
                             }
                         )
                     }
 
                     {
-                        id targets.windows.build-from-c
-                        title "Compile generated C with cl/rc/link or clang-cl/lld-link (x86, x64, arm64); drop kbdutool and MSKLC/pahkat"
+                        id targets.windows.dll-build
+                        title "Build layout DLLs with cargo + rust-lld for x86, x64, arm64 and WOW64; verify the image; drop kbdutool and MSKLC/pahkat"
                         kind @feat
                         implements {
                             main ([spec:kbdgen:req:kbdc.build] [spec:kbdgen:req:kbdc.image])
                         }
-                        deps (targets.windows.kbd-c)
+                        deps (targets.windows.dll-gen)
                     }
 
                     {
-                        id targets.windows.vro-loads
-                        title "Regression: Võro layout DLL passes LoadKeyboardLayout on Windows"
-                        priority 0
-                        kind @test
-                        deps (targets.windows.build-from-c)
-                        log (
+                        id targets.windows.tsf
+                        title "TSF text input processor"
+                        kind @feat
+                        children (
                             {
-                                at 2026-10-05T13:06:42.808865Z
-                                author "brendan@necessary.nu"
-                                kind @note
-                                text "Evidence (Windows 11 x64, dev-latest outto installer, 2026-10-05): kbdvro.dll present in System32 (8704 B) and SysWOW64 (7680 B); registry Keyboard Layouts\\a0002000 -> kbdvro.dll, Layout Id 00d8, display name @kbdvro.dll,-1000 resolves to 'Võro'; DLL loads as datafile; but LoadKeyboardLayout('a0002000') returns 0, so the layout never appears in the selector, for vro-Latn and en-SE alike. kbdsjd.dll (a0003800) from the same pipeline loads fine. Võro is the only bundle combining dead keys (6 DEADKEY blocks, 00b4 emitted twice) with ligatures (20); sjd has ligatures only, sme dead keys only."
+                                id targets.windows.tsf.design
+                                title "TIP architecture: Rust windows crate, substitute-HKL pairing with the layout DLL, x86/x64/arm64 (+ARM64X), registration"
+                                kind @docs
+                                deps (targets.windows.dll-spec)
                             }
 
                             {
-                                at 2026-10-05T13:28:03.692362Z
+                                id targets.windows.tsf.compose
+                                title "Ligature and dead-key layering beyond what KBDTABLES can express"
+                                kind @feat
+                                deps (targets.windows.tsf.design targets.windows.dll-build)
+                            }
+
+                            {
+                                id targets.windows.tsf.emoji
+                                title "Emoji keyboard"
+                                kind @feat
+                                deps (targets.windows.tsf.design)
+                            }
+                        )
+                        log (
+                            {
+                                at 2026-10-05T13:56:44.140131Z
                                 author "brendan@necessary.nu"
-                                kind @note
-                                text "Correction to the evidence note above. Root cause found on jaheira-win11 using an interactive-session LoadKeyboardLayout harness: the installed kbdvro.dll (8704 B, from the dev-latest outto installer) has the pre-47ad789 PE layout (.text RX + .data RW) and fails LoadKeyboardLayout; kbdvro.dll rebuilt from current kbdgen main (single .data RX, 8192 B) loads (HKL f0ff0409). Installed kbdsjd.dll was built 2026-09-15 00:18, after the 47ad789 fix, which is why it loads. The dead-keys+ligatures hypothesis is wrong: Võro's tables load fine; CI built it with a kbdgen predating 47ad789. Immediate remedy: rebuild keyboard-vro with current kbdgen. This node still verifies the generated-C DLL loads."
+                                kind @decision
+                                text "Operator decision 2026-10-05: Windows keyboards are layered. The KBDTABLES layout DLL stays the universal base (works on the sign-in screen, secure desktop, elevated apps, consoles, games). A TSF text input processor, paired with the layout DLL as its substitute HKL, adds what tables cannot express: multi-unit dead-key/ligature layering and deep transforms, plus an emoji keyboard. Keyboard installers already bundle divvun-wind; check whether it is the right home for the TIP during tsf.design."
                             }
                         )
                     }
@@ -476,15 +531,13 @@ children (
 
             {
                 id targets.nested-transforms
-                title "Recursive transform trees (replace todo! sites in Windows, keylayout, iOS, Android)"
+                title "Recursive transform trees on macOS, iOS and Android (replace todo! sites)"
                 kind @feat
                 deps (
                     input.layout
-                    targets.windows.kbd-c
                     targets.macos.keylayout
                     targets.ios.keyboard-json
                     targets.android.layout
-                    targets.windows.test-golden
                     targets.ios.test-golden
                     targets.android.test-golden
                     targets.macos.test-golden
@@ -506,7 +559,7 @@ children (
                     input.layout
                     input.bundle
                     input.cli
-                    targets.windows.kbd-c
+                    targets.windows.dll-gen
                     targets.windows.dll
                     targets.macos.package
                     targets.ios.keyboard-json
@@ -528,7 +581,7 @@ children (
                 id quality.robustness
                 title "Robustness: Windows DLL name collisions on 5-char tag prefix, unchecked subprocess exit codes, Android name sanitiser turning _ into x"
                 kind @fix
-                deps (targets.windows.kbd-c targets.android.layout)
+                deps (targets.windows.dll-gen targets.android.layout)
             }
         )
     }
