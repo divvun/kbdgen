@@ -69,6 +69,22 @@ children (
                 title "Deterministic layout ordering (HashMap) across method.xml, descriptor, Info.plist, KeyboardDefinitions.json"
                 kind @fix
                 deps (input.bundle)
+                sealed true
+                log (
+                    {
+                        at 2026-10-05T16:19:24.276993Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T16:26:01.211967Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
             }
 
             {

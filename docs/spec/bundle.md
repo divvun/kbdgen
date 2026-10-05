@@ -61,15 +61,18 @@ dependency bundles.
 
 ## Layouts
 
-> [spec:kbdgen:req:bundle.layouts]
+> [spec:kbdgen:req:bundle.layouts+1]
 > Each `layouts/*.yaml` stem MUST be a well-formed BCP 47 tag (normalised,
 > `se-fi` → `se-FI`), else loading fails with `InvalidLanguageTag`. The file's
 > top level MUST be a mapping (else, empty files included, a panic: "top level
 > yaml type must be a mapping"); the tag is inserted as `languageTag` and the
 > value deserialised as a layout. A `decimal` other than `.` or `,` is logged
-> as an error and replaced by `.`. The first failing layout aborts loading.
-> Layouts are held in a hash map keyed by tag, so layout iteration order
-> ("bundle layout order") is unspecified and MUST NOT be relied upon.
+> as an error and replaced by `.`. Files are loaded in ascending byte-wise
+> file-name order; the first failing layout aborts loading, and when two
+> stems normalise to the same tag the later file replaces the earlier.
+> Layouts MUST be iterated in "bundle layout order": ascending by the
+> normalised tag's string form, compared byte-wise (`se` < `se-FI` < `sma` <
+> `sme`), identically on every run.
 
 > [spec:kbdgen:req:bundle.layouts.autonym]
 > A layout's `displayNames` MUST contain the autonym: an entry keyed by the

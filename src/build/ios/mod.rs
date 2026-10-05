@@ -4,6 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use once_cell::sync::Lazy;
 
@@ -72,7 +73,7 @@ impl BuildSteps for IosBuild {
 pub trait IosProjectExt {
     fn pkg_id(&self, layout: &Layout) -> String;
     fn all_pkg_ids(&self) -> Vec<String>;
-    fn supported_layouts(&self) -> HashMap<&LanguageTag, &Layout>;
+    fn supported_layouts(&self) -> IndexMap<&LanguageTag, &Layout>;
 }
 
 // [spec:kbdgen:req:ios.pkg-ids]
@@ -120,7 +121,7 @@ impl IosProjectExt for KbdgenBundle {
         v
     }
 
-    fn supported_layouts(&self) -> HashMap<&LanguageTag, &Layout> {
+    fn supported_layouts(&self) -> IndexMap<&LanguageTag, &Layout> {
         self.layouts
             .iter()
             .filter(|(_, layout)| layout.i_os.is_some())

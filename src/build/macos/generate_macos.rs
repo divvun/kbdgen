@@ -1246,4 +1246,93 @@ mod tests {
         assert_eq!(action.code, 15);
         assert_eq!(action.states.len(), 2);
     }
+
+    const KEYS_48: &str = "a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 A B C D E F G H I J K L";
+
+    fn read(path: &std::path::Path) -> String {
+        std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    }
+
+    /// Generates the macOS bundle for a fixture whose layout files are
+    /// written in a scrambled order and returns its `Contents` directory.
+    async fn generate_ordered_bundle(out: &std::path::Path) -> std::path::PathBuf {
+        let layout = |tag: &str, primary: &str, name: &str| {
+            let name = format!("{name}-{tag}");
+            let english = if primary == "en" {
+                String::new()
+            } else {
+                format!("  en: {name} (en)\n")
+            };
+            format!(
+                "displayNames:\n  {primary}: {name}\n{english}macOS:\n  primary:\n    layers:\n      default: {KEYS_48}\n"
+            )
+        };
+        let layouts = [
+            ("sme", layout("sme", "sme", "Sme")),
+            ("se-FI", layout("se-FI", "se", "Se")),
+            ("sma", layout("sma", "sma", "Sma")),
+            ("se", layout("se", "se", "Se")),
+            ("en", layout("en", "en", "En")),
+        ];
+        let layouts: Vec<(&str, &str)> = layouts.iter().map(|(t, y)| (*t, y.as_str())).collect();
+        let fixture = tempfile::tempdir().unwrap();
+        let path = crate::bundle::fixture::write_bundle(
+            fixture.path(),
+            "ordered",
+            &layouts,
+            &[(
+                "macos",
+                "codeSignId: X\npackageId: com.example\nbundleName: Ordered\nversion: 1.0.0\nbuild: \"1\"\n",
+            )],
+            &["macos"],
+        );
+        let bundle = crate::bundle::read_kbdgen_bundle(&path).unwrap();
+        GenerateMacOs.build(&bundle, out).await.unwrap();
+        out.join("com.example.keyboardlayout.ordered.bundle")
+            .join("Contents")
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:macbundle.plist+1/test]
+    // [spec:kbdgen:req:macbundle.plist.strings/test]
+    #[tokio::test]
+    async fn info_plist_and_strings_follow_bundle_layout_order() {
+        let first = tempfile::tempdir().unwrap();
+        let second = tempfile::tempdir().unwrap();
+        let contents = generate_ordered_bundle(first.path()).await;
+        let again = generate_ordered_bundle(second.path()).await;
+
+        let plist = read(&contents.join("Info.plist"));
+        let positions: Vec<usize> = ["en", "se", "seFI", "sma", "sme"]
+            .iter()
+            .map(|name| {
+                plist
+                    .find(&format!("<key>KLInfo_{name}</key>"))
+                    .unwrap_or_else(|| panic!("KLInfo_{name} missing from {plist}"))
+            })
+            .collect();
+        assert!(positions.is_sorted(), "{plist}");
+        assert!(plist.find("<key>CFBundleShortVersionString</key>").unwrap() < positions[0]);
+
+        let strings = read(&contents.join("Resources/en.lproj/InfoPlist.strings"));
+        assert_eq!(
+            strings,
+            [
+                "\"en\" = \"En-en\";",
+                "\"se\" = \"Se-se (en)\";",
+                "\"seFI\" = \"Se-se-FI (en)\";",
+                "\"sma\" = \"Sma-sma (en)\";",
+                "\"sme\" = \"Sme-sme (en)\";",
+            ]
+            .join("\n")
+        );
+
+        for file in ["Info.plist", "Resources/en.lproj/InfoPlist.strings"] {
+            assert_eq!(
+                read(&contents.join(file)),
+                read(&again.join(file)),
+                "{file}"
+            );
+        }
+    }
 }

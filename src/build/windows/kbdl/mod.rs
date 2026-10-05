@@ -83,14 +83,11 @@ pub fn generate(input: &LayoutInput, diag: &mut Diagnostics) -> Result<Generated
 }
 
 /// Generates every layout of a bundle that has a `windows` section, in
-/// language-tag order. Any fatal condition fails the whole bundle.
+/// bundle layout order. Any fatal condition fails the whole bundle.
 // [spec:kbdgen:req:kbdl.metadata]
 pub fn generate_bundle(bundle: &KbdgenBundle) -> Result<Vec<GeneratedLayout>> {
-    let mut layouts: Vec<_> = bundle.layouts.iter().collect();
-    layouts.sort_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
-
     let mut generated: Vec<GeneratedLayout> = Vec::new();
-    for (language_tag, layout) in layouts {
+    for (language_tag, layout) in &bundle.layouts {
         let Some(target) = &layout.windows else {
             continue;
         };
@@ -149,10 +146,9 @@ pub fn write(output_path: &Path, layouts: &[GeneratedLayout]) -> Result<()> {
 /// The keyboard names of the bundle's Windows layouts, in the order
 /// [`generate_bundle`] produces them.
 pub fn layout_names(bundle: &KbdgenBundle) -> Vec<String> {
-    let mut layouts: Vec<_> = bundle.layouts.iter().collect();
-    layouts.sort_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
-    layouts
-        .into_iter()
+    bundle
+        .layouts
+        .iter()
         .filter_map(|(language_tag, layout)| {
             let target = layout.windows.as_ref()?;
             Some(bundle::keyboard_name(language_tag, target))

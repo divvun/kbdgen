@@ -3,7 +3,6 @@ use std::fs;
 use std::fs::{canonicalize, read_dir};
 use std::path::{Path, PathBuf};
 
-#[cfg(test)]
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 
@@ -36,9 +35,68 @@ const COMMA_DECIMAL: &str = ",";
 pub struct KbdgenBundle {
     pub path: PathBuf,
     pub project: Project,
-    pub layouts: HashMap<LanguageTag, Layout>,
+    pub layouts: Layouts,
     pub targets: Targets,
     pub resources: Resources,
+}
+
+/// A bundle's layouts keyed by language tag, always iterated in bundle layout
+/// order: ascending by the tag's string form (`LanguageTag::as_str`), compared
+/// byte-wise. The order is established on construction and no method can
+/// insert or re-key an entry, so every iteration visits the layouts in the
+/// same order on every run.
+// [spec:kbdgen:req:bundle.layouts+1]
+#[derive(Debug, Default)]
+pub struct Layouts(IndexMap<LanguageTag, Layout>);
+
+impl Layouts {
+    pub fn iter(&self) -> indexmap::map::Iter<'_, LanguageTag, Layout> {
+        self.0.iter()
+    }
+
+    pub fn keys(&self) -> indexmap::map::Keys<'_, LanguageTag, Layout> {
+        self.0.keys()
+    }
+
+    pub fn values(&self) -> indexmap::map::Values<'_, LanguageTag, Layout> {
+        self.0.values()
+    }
+
+    pub fn get(&self, tag: &LanguageTag) -> Option<&Layout> {
+        self.0.get(tag)
+    }
+
+    pub fn get_mut(&mut self, tag: &LanguageTag) -> Option<&mut Layout> {
+        self.0.get_mut(tag)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+/// Collects into bundle layout order. A tag seen twice keeps the value of
+/// its last occurrence.
+// [spec:kbdgen:req:bundle.layouts+1]
+impl FromIterator<(LanguageTag, Layout)> for Layouts {
+    fn from_iter<I: IntoIterator<Item = (LanguageTag, Layout)>>(iter: I) -> Self {
+        let mut map: IndexMap<LanguageTag, Layout> = iter.into_iter().collect();
+        map.sort_unstable_by(|a, _, b, _| a.as_str().cmp(b.as_str()));
+        Layouts(map)
+    }
+}
+
+impl<'a> IntoIterator for &'a Layouts {
+    type Item = (&'a LanguageTag, &'a Layout);
+    type IntoIter = indexmap::map::Iter<'a, LanguageTag, Layout>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
 }
 
 impl KbdgenBundle {
@@ -100,10 +158,10 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     })
 }
 
-// [spec:kbdgen:req:bundle.layouts]
-fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
+// [spec:kbdgen:req:bundle.layouts+1]
+fn read_layouts(path: &Path) -> Result<Layouts, Error> {
     tracing::debug!("Reading layouts");
-    read_dir(path)
+    let mut paths: Vec<PathBuf> = read_dir(path)
         .map_err(|e| Error::Io(path.to_path_buf(), e))?
         .filter_map(Result::ok)
         .map(|file| file.path())
@@ -112,6 +170,18 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
             Some(ext) => ext == YAML_EXT,
             None => false,
         })
+        .collect();
+    // Files are loaded in byte-wise file-name order, which fixes both the
+    // reported error when several layouts fail and the survivor when two
+    // stems normalise to the same tag.
+    paths.sort_by(|a, b| {
+        a.file_name()
+            .map(|n| n.as_encoded_bytes())
+            .cmp(&b.file_name().map(|n| n.as_encoded_bytes()))
+    });
+
+    paths
+        .into_iter()
         .map(|path| {
             tracing::debug!("Loading {}", path.display());
             let tag = path
@@ -151,7 +221,7 @@ fn read_layouts(path: &Path) -> Result<HashMap<LanguageTag, Layout>, Error> {
                 }
             };
 
-            // [spec:kbdgen:req:bundle.layouts]
+            // [spec:kbdgen:req:bundle.layouts+1]
             if let Some(decimal) = layout.decimal.as_ref() {
                 if decimal != COMMA_DECIMAL && decimal != DEFAULT_DECIMAL {
                     tracing::error!(
@@ -345,4 +415,152 @@ pub enum Error {
 
     #[error("Missing mandatory display name for language tag: `{}`", tag)]
     MissingMandatoryDisplayName { tag: String },
+}
+
+/// Builds bundle directories on disk for tests that exercise loading.
+#[cfg(test)]
+pub(crate) mod fixture {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    /// Writes `<root>/<name>.kbdgen` with a minimal `project.yaml`, one
+    /// `layouts/<stem>.yaml` per `layouts` entry, one `targets/<stem>.yaml`
+    /// per `targets` entry and an empty `resources/<dir>` per `resources`
+    /// entry, written in the given order. Returns the bundle path.
+    pub(crate) fn write_bundle(
+        root: &Path,
+        name: &str,
+        layouts: &[(&str, &str)],
+        targets: &[(&str, &str)],
+        resources: &[&str],
+    ) -> PathBuf {
+        let bundle = root.join(format!("{name}.kbdgen"));
+        for dir in ["layouts", "targets", "resources"] {
+            fs::create_dir_all(bundle.join(dir)).unwrap();
+        }
+        fs::write(
+            bundle.join("project.yaml"),
+            "locales:\n  en:\n    name: Test\n    description: Test\nauthor: Test\ncopyright: Test\nemail: test@example.com\norganisation: Test\n",
+        )
+        .unwrap();
+        for (stem, yaml) in layouts {
+            fs::write(bundle.join("layouts").join(format!("{stem}.yaml")), yaml).unwrap();
+        }
+        for (stem, yaml) in targets {
+            fs::write(bundle.join("targets").join(format!("{stem}.yaml")), yaml).unwrap();
+        }
+        for dir in resources {
+            fs::create_dir_all(bundle.join("resources").join(dir)).unwrap();
+        }
+        bundle
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn layout_yaml(tag: &str, autonym: &str) -> String {
+        let primary = tag.split('-').next().unwrap();
+        format!("languageTag: {tag}\ndisplayNames:\n  {primary}: {autonym}\n")
+    }
+
+    fn tags(layouts: &Layouts) -> Vec<&str> {
+        layouts.keys().map(LanguageTag::as_str).collect()
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn loaded_layouts_iterate_in_ascending_tag_order() {
+        let root = tempfile::tempdir().unwrap();
+        let path = fixture::write_bundle(
+            root.path(),
+            "ordered",
+            &[
+                ("sme", "displayNames:\n  sme: Davvisámegiella\n"),
+                ("se-fi", "displayNames:\n  se: Davvisámegiella\n"),
+                ("sma", "displayNames:\n  sma: Åarjelsaemien\n"),
+                ("se", "displayNames:\n  se: Davvisámegiella\n"),
+                ("en", "displayNames:\n  en: English\n"),
+                ("smj-Latn", "displayNames:\n  smj: Julevsámegiella\n"),
+            ],
+            &[],
+            &[],
+        );
+
+        let bundle = read_kbdgen_bundle(&path).unwrap();
+
+        assert_eq!(
+            tags(&bundle.layouts),
+            ["en", "se", "se-FI", "sma", "sme", "smj-Latn"]
+        );
+        let iterated: Vec<&str> = (&bundle.layouts)
+            .into_iter()
+            .map(|(tag, layout)| {
+                assert_eq!(tag, &layout.language_tag);
+                tag.as_str()
+            })
+            .collect();
+        assert_eq!(iterated, tags(&bundle.layouts));
+        let values: Vec<&str> = bundle
+            .layouts
+            .values()
+            .map(|layout| layout.language_tag.as_str())
+            .collect();
+        assert_eq!(values, tags(&bundle.layouts));
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn layout_order_ignores_insertion_order() {
+        let entries = ["sme", "se-FI", "en", "sma", "se", "fkv", "en-GB"];
+        let collect = |order: &[usize]| -> Layouts {
+            order
+                .iter()
+                .map(|&i| {
+                    let tag: LanguageTag = entries[i].parse().unwrap();
+                    let layout: Layout =
+                        serde_yaml::from_str(&layout_yaml(entries[i], "Autonym")).unwrap();
+                    (tag, layout)
+                })
+                .collect()
+        };
+
+        let expected = ["en", "en-GB", "fkv", "se", "se-FI", "sma", "sme"];
+        for order in [
+            [0, 1, 2, 3, 4, 5, 6],
+            [6, 5, 4, 3, 2, 1, 0],
+            [3, 0, 6, 1, 5, 2, 4],
+        ] {
+            assert_eq!(tags(&collect(&order)), expected, "{order:?}");
+        }
+    }
+
+    // [spec:kbdgen:req:bundle.layouts+1/test]
+    #[test]
+    fn duplicate_tags_keep_the_last_file_by_name() {
+        let root = tempfile::tempdir().unwrap();
+        let path = fixture::write_bundle(
+            root.path(),
+            "duplicates",
+            &[
+                ("se-fi", "displayNames:\n  se: lower\n"),
+                ("se-FI", "displayNames:\n  se: upper\n"),
+            ],
+            &[],
+            &[],
+        );
+        let case_sensitive = std::fs::read_dir(path.join("layouts")).unwrap().count() == 2;
+
+        let bundle = read_kbdgen_bundle(&path).unwrap();
+
+        assert_eq!(tags(&bundle.layouts), ["se-FI"]);
+        let tag: LanguageTag = "se-FI".parse().unwrap();
+        let se: LanguageTag = "se".parse().unwrap();
+        let autonym = &bundle.layouts.get(&tag).unwrap().display_names[&se];
+        if case_sensitive {
+            // `se-fi.yaml` sorts after `se-FI.yaml` byte-wise ('f' > 'F').
+            assert_eq!(autonym, "lower");
+        }
+    }
 }

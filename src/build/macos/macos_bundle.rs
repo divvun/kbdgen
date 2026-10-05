@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
@@ -11,7 +11,7 @@ const KEY_LAYOUT_EXT: &str = "keylayout";
 const LPROJ_EXT: &str = "lproj";
 
 #[derive(Serialize, Deserialize)]
-// [spec:kbdgen:req:macbundle.plist]
+// [spec:kbdgen:req:macbundle.plist+1]
 pub struct InfoPlist {
     #[serde(rename = "CFBundleIdentifier")]
     pub cf_bundle_identifier: String,
@@ -21,8 +21,10 @@ pub struct InfoPlist {
     pub cf_bundle_version: String,
     #[serde(rename = "CFBundleShortVersionString")]
     pub cf_bundle_short_version_string: String,
+    /// Serialised after the CFBundle keys in insertion order, which is bundle
+    /// layout order because keylayouts are added in that order.
     #[serde(flatten)]
-    pub kl_info_map: HashMap<String, KlInfo>,
+    pub kl_info_map: IndexMap<String, KlInfo>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,7 +45,7 @@ pub struct MacOsBundle {
 }
 
 impl MacOsBundle {
-    // [spec:kbdgen:req:macbundle.plist]
+    // [spec:kbdgen:req:macbundle.plist+1]
     pub fn new(
         path: PathBuf,
         name: &str,
@@ -82,7 +84,7 @@ impl MacOsBundle {
         })
     }
 
-    // [spec:kbdgen:req:macbundle.plist]
+    // [spec:kbdgen:req:macbundle.plist+1]
     // [spec:kbdgen:req:macbundle.plist.bundle-resources]
     // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn add_key_layout(
@@ -188,7 +190,7 @@ impl MacOsBundle {
         Ok(())
     }
 
-    // [spec:kbdgen:req:macbundle.plist]
+    // [spec:kbdgen:req:macbundle.plist+1]
     // [spec:kbdgen:req:macbundle.plist.bundle-resources]
     // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn write_all(self) -> Result<(), std::io::Error> {

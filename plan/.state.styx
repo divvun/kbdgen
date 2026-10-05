@@ -161,6 +161,7 @@ assertions (
     {id targets.windows.kbd-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-05T13:31:07.076183Z}
     {id targets.windows.dll-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-05T14:29:43.623005Z}
     {id targets.windows.vro-loads, kind @complete, author "brendan@necessary.nu", at 2026-10-05T15:24:23.845116Z}
+    {id input.layout-order, kind @complete, author "brendan@necessary.nu", at 2026-10-05T16:26:01.211967Z}
 )
 
 impl_evidence (

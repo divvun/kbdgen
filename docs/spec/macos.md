@@ -116,7 +116,7 @@
 
 ## Bundle and installer
 
-> [spec:kbdgen:req:macbundle.plist]
+> [spec:kbdgen:req:macbundle.plist+1]
 > `macos generate` MUST create `<out>/<bundleId>.bundle/Contents/Resources`
 > with `bundleId` = `{packageId}.keyboardlayout.{stem}`, `stem` being the
 > `.kbdgen` directory's file stem (not `bundleName`). A missing
@@ -125,8 +125,8 @@
 > `CFBundleIdentifier` (bundleId), `CFBundleName` (`bundleName`),
 > `CFBundleVersion` (`build`), `CFBundleShortVersionString` (`version`), and
 > per keylayout `KLInfo_<name>` → {`TISInputSourceID` `<bundleId>.<name>`,
-> `TISIntendedLanguage` language tag}; `KLInfo_*` order is unspecified
-> (hash map). `codeSignId` is required but unused.
+> `TISIntendedLanguage` language tag}; the `KLInfo_*` entries follow the
+> CFBundle keys in bundle layout order. `codeSignId` is required but unused.
 
 > [spec:kbdgen:req:macbundle.plist.bundle-resources]
 > Each document MUST be written to `Contents/Resources/<name>.keylayout` as
