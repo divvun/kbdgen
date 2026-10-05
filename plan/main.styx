@@ -108,6 +108,21 @@ children (
                 title "Bundle format for Windows extra modifiers/layers, shiftLock/lrmRlm flags, dead-key names and the 49th key (to be expressed in the LDML-aligned format)"
                 kind @feat
                 deps (targets.windows.dll-gen)
+                log (
+                    {
+                        at 2026-10-05T16:33:05.908819Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T16:33:10.77617Z
+                        author "brendan@necessary.nu"
+                        kind @blocker
+                        text "Needs the LDML Keyboard 3.0-aligned bundle format (gap analysis option C+), which has no WBS node yet; its shape awaits operator sign-off. Implementing these inputs in the current YAML would be discarded. Generator support already exists in targets.windows.dll-gen against the kbdl.input model."
+                    }
+                )
             }
         )
     }
