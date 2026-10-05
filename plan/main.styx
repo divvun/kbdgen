@@ -854,6 +854,21 @@ children (
                     )
                 }
                 deps (ldml.spec ldml.workspace)
+                log (
+                    {
+                        at 2026-10-05T17:38:50.657826Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-05T17:57:26.299037Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Implementation interpretations to fold back into docs/spec/ldml (see node ldml.spec-errata): (1) NFD checking is pluggable via NfdCheck; Enabled + no checker -> NfdUnchecked. (2) Class ranges are strictly NFD in the model; ldml.xml.nfd-classes must say resolution strips non-NFD members after warning. (3) layer_id may name a hardware layer when there are no touch sets. (4) Reorder padding applies to order/tertiary/tertiary_base/pre_base, not before; priority = (from.len, before.len) non-increasing. (5) Overlap is checked between distinct non-native layers only. (6) Other sorts after all component sets. (7) flush is marker -> plain String. (8) The model also uses char. (9) Extra enforced checks: semver version, NMTOKEN flick ids, windows.key_names restricted to kbdl.key-names English names, unique form scan codes, capture numbering 1..k in opening order. (10) Encoding major 1 per ldml.model.encoding (tsf.engine.model text is stale). (11) to_bytes does not validate; builders and decode do. (12) A single-host keyboard keeps its host in Layout."
+                    }
+                )
             }
 
             {
@@ -1105,6 +1120,13 @@ children (
                         deps (ldml.yaml-v4)
                     }
                 )
+            }
+
+            {
+                id ldml.spec-errata
+                title "Fold implementation interpretations from ldml.model (and later nodes) back into docs/spec/ldml, bumping the affected rules"
+                kind @docs
+                deps (ldml.model)
             }
         )
         log (

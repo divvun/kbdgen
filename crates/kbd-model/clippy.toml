@@ -1,3 +1,8 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+
 disallowed-types = [
     { path = "f32", reason = "the model stores no floating point; widths are integer thousandths (ldml.model.deterministic)" },
     { path = "f64", reason = "the model stores no floating point; widths are integer thousandths (ldml.model.deterministic)" },

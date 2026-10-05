@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-05T17:22:19.365369Z
+last_sync_at 2026-10-05T17:38:35.079565Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -404,6 +404,28 @@ impl_evidence (
         {id layout.transforms.dead-key-entries, version 0}
     )}
     {id ldml.parser}
+    {id ldml.workspace, covered_rules (
+        ldml.crate.engine
+        ldml.crate.ffi
+        ldml.crate.kbdgen
+        ldml.crate.layout
+        ldml.crate.model
+        ldml.crate.targets
+    ), covered_claims (
+        {impl_name main, rule ldml.crate.engine}
+        {impl_name main, rule ldml.crate.ffi}
+        {impl_name main, rule ldml.crate.kbdgen}
+        {impl_name main, rule ldml.crate.layout}
+        {impl_name main, rule ldml.crate.model}
+        {impl_name main, rule ldml.crate.targets}
+    ), rule_versions_seen (
+        {id ldml.crate.engine, version 0}
+        {id ldml.crate.ffi, version 0}
+        {id ldml.crate.kbdgen, version 0}
+        {id ldml.crate.layout, version 0}
+        {id ldml.crate.model, version 0}
+        {id ldml.crate.targets, version 0}
+    )}
     {id targets.android.layout, rule_versions_seen (
         {id android.gradle, version 0}
         {id android.keys, version 0}
@@ -676,20 +698,48 @@ impl_evidence (
         {id kbdl.vk-chars.fixed, version 0}
         {id kbdl.vk-chars.values, version 0}
     )}
-    {id ldml.workspace, covered_rules (
-        ldml.crate.engine
-        ldml.crate.ffi
-        ldml.crate.kbdgen
-        ldml.crate.layout
-        ldml.crate.model
-        ldml.crate.targets
+    {id ldml.model, covered_rules (
+        ldml.model.context-len
+        ldml.model.decode
+        ldml.model.deterministic
+        ldml.model.displays
+        ldml.model.emoji
+        ldml.model.encoding
+        ldml.model.flush
+        ldml.model.hardware
+        ldml.model.invariants
+        ldml.model.keyboard
+        ldml.model.keys
+        ldml.model.layout
+        ldml.model.modifiers
+        ldml.model.native
+        ldml.model.nfd
+        ldml.model.pattern
+        ldml.model.text
+        ldml.model.touch
+        ldml.model.transforms
+        ldml.model.windows
     ), covered_claims (
-        {impl_name main, rule ldml.crate.engine}
-        {impl_name main, rule ldml.crate.ffi}
-        {impl_name main, rule ldml.crate.kbdgen}
-        {impl_name main, rule ldml.crate.layout}
-        {impl_name main, rule ldml.crate.model}
-        {impl_name main, rule ldml.crate.targets}
+        {impl_name main, rule ldml.model.context-len}
+        {impl_name main, rule ldml.model.decode}
+        {impl_name main, rule ldml.model.deterministic}
+        {impl_name main, rule ldml.model.displays}
+        {impl_name main, rule ldml.model.emoji}
+        {impl_name main, rule ldml.model.encoding}
+        {impl_name main, rule ldml.model.flush}
+        {impl_name main, rule ldml.model.hardware}
+        {impl_name main, rule ldml.model.invariants}
+        {impl_name main, rule ldml.model.keyboard}
+        {impl_name main, rule ldml.model.keys}
+        {impl_name main, rule ldml.model.layout}
+        {impl_name main, rule ldml.model.modifiers}
+        {impl_name main, rule ldml.model.native}
+        {impl_name main, rule ldml.model.nfd}
+        {impl_name main, rule ldml.model.pattern}
+        {impl_name main, rule ldml.model.text}
+        {impl_name main, rule ldml.model.touch}
+        {impl_name main, rule ldml.model.transforms}
+        {impl_name main, rule ldml.model.windows}
     )}
 )
 
