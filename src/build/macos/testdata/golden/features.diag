@@ -1,0 +1,3 @@
+warning: layer altL, altL caps: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart
+warning: the .keylayout cannot express 1 key(s) with long-press, multi-tap or flick gestures (e.g. u-0061)
+warning: the .keylayout cannot express 2 key display(s) and label(s) (e.g. Å; ¨)

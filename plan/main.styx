@@ -1540,7 +1540,37 @@ children (
                         id ldml.port.macos
                         title "Generate macos output from the v4 model"
                         kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:ldml.macos.adapter]
+                                [spec:kbdgen:def:ldml.macos.input]
+                                [spec:kbdgen:req:ldml.macos.classify]
+                                [spec:kbdgen:req:ldml.macos.target]
+                                [spec:kbdgen:req:ldml.macos.test.differential]
+                                [spec:kbdgen:req:ldml.macos.test.golden]
+                                [spec:kbdgen:req:ldml.macos.test.typing]
+                                [spec:kbdgen:sem:ldml.macos.dead-keys]
+                                [spec:kbdgen:sem:ldml.macos.keys]
+                                [spec:kbdgen:sem:ldml.macos.modifiers]
+                                [spec:kbdgen:sem:ldml.macos.semantics]
+                            )
+                        }
                         deps (ldml.yaml-v4 ldml.spec-errata)
+                        log (
+                            {
+                                at 2026-10-06T18:08:17.722683Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-06T18:08:17.780392Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Operator 2026-10-06: macOS next. Output stays a static .keylayout for every layout; features a keylayout cannot express (transforms on committed text, reorder, backspace rules, non-dead markers, long-press) are diagnosed per layout, not silently dropped. An IMK input method on the engine (via ldml.ffi) is built only when a real keyboard needs it."
+                            }
+                        )
                     }
 
                     {

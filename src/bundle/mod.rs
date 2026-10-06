@@ -38,7 +38,7 @@ pub struct KbdgenBundle {
     pub project: Project,
     pub layouts: Layouts,
     /// The `format: 4` layouts, by tag in bundle layout order, which only
-    /// the windows target builds yet (`ldml.yaml.coexistence`).
+    /// the windows and macos targets build yet (`ldml.yaml.coexistence`).
     pub v4_layouts: Vec<(LanguageTag, PathBuf)>,
     pub targets: Targets,
     pub resources: Resources,
@@ -104,14 +104,14 @@ impl<'a> IntoIterator for &'a Layouts {
 }
 
 impl KbdgenBundle {
-    // [spec:kbdgen:req:ldml.yaml.coexistence]
+    // [spec:kbdgen:req:ldml.yaml.coexistence+1]
     /// Fails, naming the first v4 layout and `target`, when the bundle has
-    /// v4 layouts and `target` cannot build them. Only `windows` can, through
-    /// the kbdl adapter (`ldml.kbdl.adapter`). A generator never skips a v4
-    /// layout silently.
+    /// v4 layouts and `target` cannot build them. Only `windows` and `macos`
+    /// can, through their adapters (`ldml.kbdl.adapter`,
+    /// `ldml.macos.adapter`). A generator never skips a v4 layout silently.
     pub fn reject_v4_layouts(&self, target: &'static str) -> Result<(), Error> {
         match self.v4_layouts.first() {
-            Some((tag, _)) if target != "windows" => Err(Error::V4Layout {
+            Some((tag, _)) if !matches!(target, "windows" | "macos") => Err(Error::V4Layout {
                 tag: tag.to_string(),
                 target,
             }),

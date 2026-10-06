@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Serialize};
-use xmlem::{Document, display::Config, display::EntityMode};
+
+use super::input::KeylayoutInput;
 
 const TOP_FOLDER: &str = "Contents";
 const RESOURCES_FOLDER: &str = "Resources";
@@ -87,16 +88,10 @@ impl MacOsBundle {
     // [spec:kbdgen:req:macbundle.plist+1]
     // [spec:kbdgen:req:macbundle.plist.bundle-resources]
     // [spec:kbdgen:req:macbundle.plist.strings]
-    pub fn add_key_layout(
-        &mut self,
-        language_tag: LanguageTag,
-        kbd_layout_doc: Document,
-        layout_names: &IndexMap<LanguageTag, String>,
-    ) {
-        let name = kbd_layout_doc
-            .root()
-            .attribute(&kbd_layout_doc, "name")
-            .expect("name attr must exist");
+    pub fn add_key_layout(&mut self, input: &KeylayoutInput, layout_xml: String) {
+        let name = input.name.as_str();
+        let language_tag = input.tag.clone();
+        let layout_names = &input.display_names;
 
         let tis_input_source_id = format!("{}.{}", self.info_plist.cf_bundle_identifier, name);
         self.info_plist.kl_info_map.insert(
@@ -120,15 +115,8 @@ impl MacOsBundle {
                 });
         }
 
-        let config: Config = Config::default_pretty().entity_mode(EntityMode::Hex);
-
-        self.macos_layouts.insert(
-            language_tag,
-            (
-                name.to_string(),
-                kbd_layout_doc.to_string_pretty_with_config(&config),
-            ),
-        );
+        self.macos_layouts
+            .insert(language_tag, (name.to_string(), layout_xml));
     }
 
     // [spec:kbdgen:req:macbundle.plist.bundle-resources]
@@ -165,7 +153,7 @@ impl MacOsBundle {
             std::process::Command::new("convert")
                 .arg("-resize")
                 .arg(format!("{d}x{d}"))
-                .args(&[
+                .args([
                     "-background",
                     "transparent",
                     "-gravity",
@@ -181,7 +169,7 @@ impl MacOsBundle {
 
         let resources = self.path.join(TOP_FOLDER).join(RESOURCES_FOLDER);
         std::process::Command::new("iconutil")
-            .args(&["--convert", "icns", "--output"])
+            .args(["--convert", "icns", "--output"])
             .arg(resources.join(format!("{file_name}.icns")))
             .arg(iconset_path)
             .output()
@@ -207,11 +195,11 @@ impl MacOsBundle {
             std::fs::write(key_layout_path, layout_xml)?;
 
             tracing::debug!("Writing icons for {name}...");
-            self.write_icons(language_tag.clone(), &name)?;
+            self.write_icons(language_tag.clone(), name)?;
         }
 
         for (lang, text) in self.translation_strings {
-            let lproj_path = resources.join(format!("{}.{LPROJ_EXT}", lang.to_string()));
+            let lproj_path = resources.join(format!("{}.{LPROJ_EXT}", lang));
             std::fs::create_dir_all(&lproj_path)?;
 
             let output = text

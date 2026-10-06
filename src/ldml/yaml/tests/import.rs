@@ -198,7 +198,7 @@ fn foreign_touch_sets_get_size_names() {
     assert!(yaml.contains("normalization: enabled"));
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+1/test]
 #[test]
 fn target_generators_refuse_v4_layouts() {
     let root = tempfile::tempdir().unwrap();
@@ -215,7 +215,7 @@ fn target_generators_refuse_v4_layouts() {
     let bundle = read_kbdgen_bundle(&path).unwrap();
     assert_eq!(bundle.layouts.len(), 1);
     assert_eq!(bundle.v4_layouts.len(), 1);
-    for target in ["macos", "ios", "android", "chromeos"] {
+    for target in ["ios", "android", "chromeos"] {
         let err = bundle.reject_v4_layouts(target).unwrap_err().to_string();
         assert_eq!(
             err,
@@ -225,6 +225,7 @@ fn target_generators_refuse_v4_layouts() {
         );
     }
     bundle.reject_v4_layouts("windows").unwrap();
+    bundle.reject_v4_layouts("macos").unwrap();
     let v3 = fixture::write_bundle(
         root.path(),
         "v3",
@@ -234,7 +235,7 @@ fn target_generators_refuse_v4_layouts() {
     );
     read_kbdgen_bundle(&v3)
         .unwrap()
-        .reject_v4_layouts("macos")
+        .reject_v4_layouts("ios")
         .unwrap();
     let bad = fixture::write_bundle(root.path(), "bad", &[("se", "format: 5\n")], &[], &[]);
     assert!(matches!(
@@ -243,7 +244,7 @@ fn target_generators_refuse_v4_layouts() {
     ));
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+1/test]
 #[test]
 fn ldml_commands_take_only_v4_layouts() {
     let dir = bundle(&[("se", "displayNames: {se: x}\n"), ("vro", VRO)]);

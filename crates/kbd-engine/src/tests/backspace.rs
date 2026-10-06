@@ -87,7 +87,7 @@ fn shift_backspace_inserts_lrm_or_rlm() {
 }
 
 // [spec:kbdgen:sem:ldml.engine.backspace.default/test]
-// [spec:kbdgen:req:ldml.scope.deferred/test]
+// [spec:kbdgen:req:ldml.scope.deferred+1/test]
 #[test]
 fn code_point_backspace_deletes_one_scalar() {
     let options = Options {

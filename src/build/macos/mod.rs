@@ -1,9 +1,15 @@
-mod generate_macos;
+pub mod adapter;
+#[cfg(test)]
+mod differential;
+pub mod generate_macos;
+pub mod input;
 mod keymap;
 mod layers;
 mod macos_bundle;
 mod package_macos;
 mod util;
+mod v3;
+pub mod writer;
 
 use std::path::{Path, PathBuf};
 

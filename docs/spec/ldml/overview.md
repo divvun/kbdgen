@@ -44,6 +44,7 @@ LDML-only.
 | `migrate.md` | `ldml.migrate.*` | v3 to v4 conversion and the defect report |
 | `kbdl.md` | `ldml.kbdl.*` | the model to `kbdl.input` adapter |
 | `android.md` | `ldml.android.*` | the model to Android layout resources adapter |
+| `macos.md` | `ldml.macos.*` | the model to macOS `.keylayout` adapter |
 | `cli.md` | `ldml.cli.*` | `kbdgen ldml` subcommands |
 
 Rule bodies flag LDML gaps and kbdgen additions with fixed phrases:
@@ -89,7 +90,7 @@ Sources:
 > | Extension: per-host documents; the modifier components `cmd` and `extra1`–`extra3`; native-only layers; numpad decimal; dead-key flush output; touch roles, labels and bottom-row policy; dead-key names; Windows key-name overrides, Shift Lock, LRM/RLM, and extra-modifier bindings | yes |
 > | LDML keyboardTest3 `startContext`, `keystroke` (`flick`, `longPress`, `tapCount`), `emit`, `backspace`, `check` | n/a |
 
-> [spec:kbdgen:req:ldml.scope.deferred]
+> [spec:kbdgen:req:ldml.scope.deferred+1]
 > The following are out of scope for v1. A keyboard that uses one still
 > loads.
 >
@@ -101,9 +102,10 @@ Sources:
 >   element for one.
 > - Emoji-cluster-aware default backspace is not done. The `codePoint`
 >   policy deletes one scalar value (`ldml.engine.backspace.default`).
-> - The model is not compiled to macOS `.keylayout` or XKB, and the iOS,
->   Android and ChromeOS generators are not ported to v4
->   (`ldml.yaml.coexistence`).
+> - The model is not compiled to XKB, and the iOS, Android and ChromeOS
+>   generators are not ported to v4 (`ldml.yaml.coexistence`). macOS gets
+>   a static `.keylayout` (`ldml.macos.adapter`); there is no Input Method
+>   Kit host.
 > - There are no C ABI, JNI or wasm-bindgen host bindings (`ldml.crate.ffi`).
 > - There is no differential testing against Keyman Core (`ldml.test.oracle`).
 > - No filler base is inserted for a lone prebase character in `reorder`

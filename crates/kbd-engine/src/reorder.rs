@@ -132,7 +132,7 @@ fn runs(weights: &[Weights]) -> Vec<core::ops::Range<usize>> {
 }
 
 // [spec:kbdgen:sem:ldml.engine.reorder+1]
-// [spec:kbdgen:req:ldml.scope.deferred]
+// [spec:kbdgen:req:ldml.scope.deferred+1]
 /// Runs a reorder group over the whole of `elems`: removes the markers,
 /// sorts each run of the plain text by its sort keys, and re-adds the
 /// markers, each glued to the scalar value it preceded.
@@ -310,7 +310,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:req:ldml.scope.deferred/test]
+    // [spec:kbdgen:req:ldml.scope.deferred+1/test]
     #[test]
     fn lone_prebase_gets_no_filler_base() {
         let rules = myanmar();

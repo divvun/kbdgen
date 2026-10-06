@@ -1,0 +1,2 @@
+warning: the .keylayout cannot express 2 key(s) with long-press, multi-tap or flick gestures (e.g. u-006F; u-0061)
+warning: the .keylayout cannot express 2 key display(s) and label(s) (e.g. vaih; sisse)

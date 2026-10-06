@@ -1,0 +1,39 @@
+# A macOS layout exercising the keylayout adapter: a chained dead key, a
+# dead key that drops its standalone, an `other` layer as the default key
+# map, a left-Option layer, a native Command layer, long press, a display
+# and a key with no output.
+format: 4
+displayNames: {sme: Davvisámegiella}
+deadKeys:
+  ´: {compose: {a: á, ´: ´, ¨: {compose: {a: ǟ}}}}
+  ¨: {standalone: '', compose: {a: ä, o: ö}}
+longPress: {a: á ä}
+displays: [{output: å, display: Å}]
+hardware:
+  macOS:
+    layers:
+      none: |
+        \d{´} 1 2 3 4 5 6 7 8 9 0 - =
+        q w e r t y u i o p å \d{¨}
+        a s d f g h j k l ö æ '
+        < z x c v b n m , . \u{0}
+      shift: |
+        ~ ! " # $ % & / ( ) = _ +
+        Q W E R T Y U I O P Å ^
+        A S D F G H J K L Ö Æ *
+        > Z X C V B N M ; : ?
+      altL: |
+        \u{0} ¡ @ £ $ ∞ § | [ ] ≈ ± \u{0}
+        œ ∑ é ® † ¥ ü ı ø π \d{´} \d{¨}
+        æ ß ∂ ƒ © ˙ ∆ ˚ ¬ … ‘ ’
+        ≤ Ω ≈ ç √ ∫ ˜ µ ‚ · –
+      other: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        o \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+      cmd: |
+        § 1 2 3 4 5 6 7 8 9 0 - =
+        q w e r t y u i o p å ¨
+        a s d f g h j k l ö æ '
+        < z x c v b n m , . /

@@ -72,11 +72,11 @@ fn generate_distribution_xml(
 
 // [spec:kbdgen:req:macbundle.installer]
 fn create_component_pkg(working_path: &Path, bundle_path: &Path, version: &str) -> PathBuf {
-    let pkg_path = working_path.join(format!("inner.pkg"));
+    let pkg_path = working_path.join("inner.pkg");
     std::process::Command::new("pkgbuild")
         .arg("--component")
         .arg(bundle_path)
-        .args(&[
+        .args([
             "--ownership",
             "recommended",
             "--install-location",
@@ -112,7 +112,7 @@ fn run_productbuild(
     let output = std::process::Command::new("productbuild")
         .arg("--distribution")
         .arg(dist_xml_path)
-        .args(&["--version", version, "--package-path"])
+        .args(["--version", version, "--package-path"])
         .arg(working_path)
         .arg(output_path.join(format!("{bundle_id}.pkg")))
         .status()

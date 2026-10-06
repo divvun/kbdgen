@@ -89,7 +89,7 @@ pub fn host_documents(
         .iter()
         .filter(|f| layouts.is_empty() || layouts.contains(&f.tag))
         .collect();
-    // [spec:kbdgen:req:ldml.yaml.coexistence]
+    // [spec:kbdgen:req:ldml.yaml.coexistence+1]
     if let Some(v3) = selected.iter().find(|f| f.format == LayoutFormat::V3) {
         return Err(LdmlError::V3Layout {
             tag: v3.tag.clone(),

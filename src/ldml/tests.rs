@@ -133,7 +133,7 @@ fn bundle(layouts: &[(&str, &str)]) -> tempfile::TempDir {
 
 // [spec:kbdgen:def:ldml.cli.commands+1/test]
 // [spec:kbdgen:def:ldml.yaml.detect/test]
-// [spec:kbdgen:req:ldml.yaml.coexistence/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+1/test]
 #[test]
 fn layouts_load_in_bundle_order_by_format() {
     let dir = bundle(&[

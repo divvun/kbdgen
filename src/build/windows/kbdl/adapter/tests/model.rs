@@ -59,7 +59,7 @@ fn the_dll_embeds_the_windows_keyboard() {
 fn v3_and_v4_layouts_build_side_by_side() {
     let fixture = fixture(&[("vro", VRO4), ("se", SE_V3)]);
     assert!(fixture.bundle.reject_v4_layouts("windows").is_ok());
-    assert!(fixture.bundle.reject_v4_layouts("macos").is_err());
+    assert!(fixture.bundle.reject_v4_layouts("ios").is_err());
     let generated = generate_bundle(&fixture.bundle).unwrap();
     let names: Vec<&str> = generated.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["kbdse", "kbdvro"], "bundle layout order");

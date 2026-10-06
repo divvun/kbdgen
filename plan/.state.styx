@@ -1390,6 +1390,31 @@ impl_evidence (
     ), covered_claims (
         {impl_name main, rule tsf.keys.ctrl-alt}
     )}
+    {id ldml.port.macos, covered_rules (
+        ldml.macos.adapter
+        ldml.macos.classify
+        ldml.macos.dead-keys
+        ldml.macos.input
+        ldml.macos.keys
+        ldml.macos.modifiers
+        ldml.macos.semantics
+        ldml.macos.target
+        ldml.macos.test.differential
+        ldml.macos.test.golden
+        ldml.macos.test.typing
+    ), covered_claims (
+        {impl_name main, rule ldml.macos.adapter}
+        {impl_name main, rule ldml.macos.classify}
+        {impl_name main, rule ldml.macos.dead-keys}
+        {impl_name main, rule ldml.macos.input}
+        {impl_name main, rule ldml.macos.keys}
+        {impl_name main, rule ldml.macos.modifiers}
+        {impl_name main, rule ldml.macos.semantics}
+        {impl_name main, rule ldml.macos.target}
+        {impl_name main, rule ldml.macos.test.differential}
+        {impl_name main, rule ldml.macos.test.golden}
+        {impl_name main, rule ldml.macos.test.typing}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

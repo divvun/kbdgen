@@ -121,10 +121,11 @@ fn v4_bundle_exports_compiles_and_imports_back() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+1/test]
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
+// [spec:kbdgen:req:ldml.macos.target/test]
 #[test]
-fn only_the_windows_target_builds_v4_layouts() {
+fn windows_and_macos_targets_build_v4_layouts() {
     let dir = tempfile::tempdir().unwrap();
     let bundle = dir.path().join("vro.kbdgen");
     for sub in ["layouts", "targets", "resources"] {
@@ -138,11 +139,6 @@ fn only_the_windows_target_builds_v4_layouts() {
     std::fs::write(bundle.join("layouts/vro.yaml"), VRO).unwrap();
     let out = dir.path().join("out");
     for (target, sub, expected) in [
-        (
-            "macos",
-            Some("generate"),
-            "the macos target cannot build v4 layouts yet",
-        ),
         (
             "ios",
             Some("build"),
@@ -192,6 +188,36 @@ fn only_the_windows_target_builds_v4_layouts() {
         out.join("build/kbdvro/lib.rs").is_file(),
         "the windows target generates the v4 layout's crate: {stderr}"
     );
+    std::fs::create_dir_all(bundle.join("resources/macos")).unwrap();
+    std::fs::write(
+        bundle.join("targets/macos.yaml"),
+        "codeSignId: X\npackageId: com.example\nbundleName: Võro\nversion: 1.0.0\nbuild: \"1\"\n",
+    )
+    .unwrap();
+    let mac = dir.path().join("mac");
+    let output = kbdgen(&[
+        "target".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+        "-o".as_ref(),
+        mac.as_os_str(),
+        "macos".as_ref(),
+        "generate".as_ref(),
+    ]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    let contents = mac.join("com.example.keyboardlayout.vro.bundle/Contents");
+    let keylayout = std::fs::read_to_string(contents.join("Resources/vro.keylayout")).unwrap();
+    assert!(
+        keylayout.contains("<keyboard group=\"126\" id=\"-19693\" name=\"vro\">"),
+        "{keylayout}"
+    );
+    assert!(keylayout.contains("<terminators>"), "{keylayout}");
+    let plist = std::fs::read_to_string(contents.join("Info.plist")).unwrap();
+    assert!(plist.contains("<key>KLInfo_vro</key>"), "{plist}");
+    let strings =
+        std::fs::read_to_string(contents.join("Resources/vro.lproj/InfoPlist.strings")).unwrap();
+    assert_eq!(strings, "\"vro\" = \"Võro\";");
 }
 
 /// Standard output without the log lines `tracing` writes there.

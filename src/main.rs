@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
     match &cli.command {
         Command::Fetch(options) => {
             let bundle_path = &options.bundle_path;
-            let bundle = read_kbdgen_bundle(&bundle_path)?;
+            let bundle = read_kbdgen_bundle(bundle_path)?;
 
             kbdgen::bundle::fetch(&bundle.path, &bundle.project).await?;
         }
@@ -93,12 +93,12 @@ async fn main() -> anyhow::Result<()> {
         // [spec:kbdgen:def:cli.commands+1]
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
-            let bundle = read_kbdgen_bundle(&bundle_path)?;
-            // [spec:kbdgen:req:ldml.yaml.coexistence]
+            let bundle = read_kbdgen_bundle(bundle_path)?;
+            // [spec:kbdgen:req:ldml.yaml.coexistence+1]
             bundle.reject_v4_layouts(target_command_struct.target_command.name())?;
 
             let output_path = &target_command_struct.output_path;
-            std::fs::create_dir_all(&output_path)?;
+            std::fs::create_dir_all(output_path)?;
             let output_path = dunce::canonicalize(output_path).unwrap();
             tracing::debug!("Output Path: {:?}", &output_path);
 

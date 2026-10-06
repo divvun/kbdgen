@@ -24,7 +24,7 @@ const CRCTAB_HQX: [u16; 256] = [
 ];
 
 // [spec:kbdgen:def:keylayout.document.name]
-pub fn crc_hqx(input: &[u8]) -> u16 {
+fn crc_hqx(input: &[u8]) -> u16 {
     let mut crc: u16 = 0;
 
     for byte in input {
@@ -32,4 +32,41 @@ pub fn crc_hqx(input: &[u8]) -> u16 {
     }
 
     crc
+}
+
+/// The keyboard name of a layout: its language tag without `-` and `_`.
+// [spec:kbdgen:def:keylayout.document.name]
+pub fn keyboard_name(tag: &str) -> String {
+    tag.replace(['-', '_'], "")
+}
+
+/// The keyboard id of `name`: minus half the CRC-HQX of its UTF-8 bytes,
+/// clamped to [1, 32768].
+// [spec:kbdgen:def:keylayout.document.name]
+// [spec:kbdgen:thm:keylayout.document.id-range]
+pub fn keyboard_id(name: &str) -> String {
+    let crc = crc_hqx(name.as_bytes()) / 2;
+    format!("-{}", crc.clamp(1, 32768))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // [spec:kbdgen:def:keylayout.document.name/test]
+    #[test]
+    fn names_drop_separators_and_ids_follow_crc() {
+        assert_eq!(keyboard_name("se-SE"), "seSE");
+        assert_eq!(keyboard_name("en_US"), "enUS");
+        assert_eq!(keyboard_id("seSE"), "-30047");
+    }
+
+    // [spec:kbdgen:thm:keylayout.document.id-range/test]
+    #[test]
+    fn ids_stay_within_the_negative_range() {
+        for name in ["", "a", "seSE", "vro", "\u{0}"] {
+            let id: i32 = keyboard_id(name).parse().unwrap();
+            assert!((-32768..=-1).contains(&id), "{name}: {id}");
+        }
+    }
 }
