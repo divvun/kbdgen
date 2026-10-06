@@ -451,13 +451,18 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > third-party TIPs. The installer keeps the layout DLL as the welcome-screen
 > input method in any case: `tsf.register.welcome`.)
 
-> [spec:kbdgen:req:tsf.security.appcontainer+1]
+> [spec:kbdgen:req:tsf.security.appcontainer+2]
 > The text service MUST register `GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT`. Store
 > apps and AppContainer processes load it, so every file it reads (its DLLs)
-> MUST lie under `%ProgramFiles%`. Each such file MUST grant read and
-> execute to `ALL APPLICATION PACKAGES` (`S-1-15-2-1`) and `ALL RESTRICTED
-> APPLICATION PACKAGES` (`S-1-15-2-2`), and its installer MUST verify that
-> after copying. (Unverified: loading in an AppContainer process.)
+> MUST lie under the 64-bit `%ProgramFiles%`, also for the x86 DLL. Each
+> such file MUST grant read and execute to `ALL APPLICATION PACKAGES`
+> (`S-1-15-2-1`) and `ALL RESTRICTED APPLICATION PACKAGES` (`S-1-15-2-2`).
+> `DllRegisterServer` MUST verify both, from the file's DACL, for every
+> file the registration loads (`tsf.arch.registration`), and otherwise fail
+> and register nothing. The installer's check after copying is that
+> registration succeeds. (Verified on x64: files inheriting the
+> `%ProgramFiles%` ACL pass, a file without the restricted packages' entry
+> fails. Unverified: loading in an AppContainer process.)
 
 > [spec:kbdgen:sem:tsf.security.integrity]
 > The text service runs inside each host process at that process's
@@ -538,7 +543,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > `kbdgen tsf` on Windows x64 links the same bytes. Unverified: loading on
 > Windows on Arm.)
 
-> [spec:kbdgen:req:tsf.arch.registration]
+> [spec:kbdgen:req:tsf.arch.registration+1]
 > `InprocServer32` of the CLSID MUST name:
 >
 > | Windows | 64-bit registry view | `WOW6432Node` view |
@@ -550,8 +555,16 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > `ThreadingModel` is `Apartment`. On Arm64, native and x64 processes share
 > one 64-bit `Classes` view, so one path must load in both. `CLSID` keys are
 > redirected for 32-bit processes, but `SOFTWARE\Microsoft\CTF\TIP` is
-> shared, so profiles and categories are registered once. (Verified on x64,
-> including the shared `CTF\TIP` key.)
+> shared, so profiles and categories are registered once.
+>
+> `DllRegisterServer` of each DLL writes the row of its process's view: the
+> x86 DLL its own path, the x64 DLL on x64 its own path, and the Arm64 or
+> x64 DLL on Arm64 `divvun_tip.dll` in its own directory. Only the DLL that
+> writes the 64-bit view, or the x86 DLL on x86 Windows, registers the
+> categories (`tsf.register.server`). It MUST fail, registering nothing, if
+> its file is not named as in `tsf.arch.builds` or a file that path loads is
+> missing. (Verified on x64, including the shared `CTF\TIP` key: the x86
+> DLL registers no category.)
 
 ## Registration
 
@@ -634,7 +647,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > remains under its CLSID in `CTF\TIP`. Removing one keyboard therefore never
 > breaks another.
 
-> [spec:kbdgen:req:tsf.register.upgrade]
+> [spec:kbdgen:req:tsf.register.upgrade+1]
 > Every running process that has typed text keeps the text service loaded,
 > Explorer and consoles included. Its installer MUST therefore:
 >
@@ -645,9 +658,16 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > 3. delete older directories only when no file in them is in use, otherwise
 >    at the next install or reboot
 >
-> It MUST NOT overwrite a DLL in place. (Verified: a loaded TIP DLL cannot be
+> It MUST NOT overwrite a DLL in place. `DllRegisterServer` MUST fail,
+> registering nothing, unless its DLL lies in a directory named for its own
+> `kbd-tsf` version, so registering a version's DLLs points
+> `InprocServer32` at that version. `DllUnregisterServer` MUST remove
+> nothing while `InprocServer32` names another path than its
+> `DllRegisterServer` would write, so an older version's removal leaves a
+> newer registration intact. (Verified: a loaded TIP DLL cannot be
 > overwritten but can be renamed. Its `ActivateEx` ran in `explorer.exe` and
-> `conhost.exe`.)
+> `conhost.exe`. On x64, a DLL outside a version directory is refused, and
+> another directory's `DllUnregisterServer` leaves the registration.)
 
 ## Installer
 

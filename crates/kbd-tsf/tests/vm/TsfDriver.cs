@@ -1,7 +1,7 @@
-// The VM test's driver (tsf.test.vm): registers the test profiles, and
-// types scan codes with SendInput into a Win32 EDIT, a RichEdit or a WPF
-// TextBox with a text service profile active in this process, printing
-// what each control then holds.
+// The VM test's driver (tsf.test.vm): calls the registration exports,
+// registers the test profiles, and types scan codes with SendInput into a
+// Win32 EDIT, a RichEdit or a WPF TextBox with a text service profile
+// active in this process, printing what each control then holds.
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -71,6 +71,26 @@ public static class TsfDriver {
   public static int Unregister(string clsid, ushort langid, string profile) {
     var c = new Guid(clsid); var p = new Guid(profile);
     return Profiles().UnregisterProfile(ref c, langid, ref p, 0);
+  }
+
+  [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr LoadLibraryW(string path);
+  [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] static extern IntPtr GetProcAddress(IntPtr module, string name);
+  [DllImport("kernel32.dll")] static extern bool FreeLibrary(IntPtr module);
+  [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int Export();
+
+  // Calls DllRegisterServer or DllUnregisterServer of the DLL at path in
+  // this process, for the HRESULT that regsvr32 /s hides, and unloads it
+  // again so that the file can be deleted.
+  public static int CallExport(string path, string name) {
+    var module = LoadLibraryW(path);
+    if (module == IntPtr.Zero) { return Marshal.GetHRForLastWin32Error(); }
+    try {
+      var export = GetProcAddress(module, name);
+      if (export == IntPtr.Zero) { return unchecked((int)0x8007007F); }
+      return ((Export)Marshal.GetDelegateForFunctionPointer(export, typeof(Export)))();
+    } finally {
+      FreeLibrary(module);
+    }
   }
 
   static void Pump() {

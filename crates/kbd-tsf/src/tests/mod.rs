@@ -6,6 +6,7 @@ pub mod fixture;
 
 mod document;
 mod keys;
+mod registration;
 
 use kbd_engine::{Key, KeyEvent, Model, ModifierState};
 

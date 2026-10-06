@@ -8,6 +8,7 @@ mod data;
 mod display;
 mod events;
 mod exports;
+mod facts;
 mod input;
 mod register;
 mod session;

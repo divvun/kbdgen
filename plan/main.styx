@@ -567,6 +567,21 @@ children (
                                     )
                                 }
                                 deps (targets.windows.tsf.arch)
+                                log (
+                                    {
+                                        at 2026-10-06T12:50:25.128098Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T13:09:13.99936Z
+                                        author "brendan@necessary.nu"
+                                        kind @note
+                                        text "DllRegisterServer now enforces tsf.arch.registration/upgrade/appcontainer itself (version directory under 64-bit %ProgramFiles%, package-SID DACL grants, per-arch InprocServer32 row; x64/arm64 DLL owns categories) so an installer only copies files and runs regsvr32. Verified on jaheira-win11 (x64 + WOW64 x86): four refusals with distinct HRESULTs, registry views, category ownership, stale-directory unregister is a no-op; typing tests still pass with +crt-static builds. Unverified: Arm64, x86 Windows, AppContainer loading, real two-version upgrade. Consequence: registering kbd_tsf.dll straight from target\\ is refused."
+                                    }
+                                )
                             }
 
                             {

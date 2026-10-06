@@ -7,10 +7,11 @@
 //! cargo test -p kbd-tsf --test vm -- --ignored --nocapture
 //! ```
 //!
-//! `tests/vm/run-vm.ps1` registers a test build and a profile per fixture
-//! layout, types each case below with `SendInput` scan codes in the
-//! signed-in session, and removes everything again; these tests check what
-//! each control holds. Both tests share one run.
+//! `tests/vm/run-vm.ps1` checks where `DllRegisterServer` refuses to
+//! register, registers a test build and a profile per fixture layout, types
+//! each case below with `SendInput` scan codes in the signed-in session,
+//! and removes everything again; these tests check what registration wrote
+//! and what each control holds. All tests share one run.
 
 #![cfg(windows)]
 
@@ -80,6 +81,27 @@ const CONTROLS: &[(&str, &str)] = &[
 
 const EXPORTS: &str = "DllCanUnloadNow,DllGetClassObject,DllRegisterServer,DllUnregisterServer";
 
+/// The categories of `tsf.register.server`, as `run-vm.ps1` lists them.
+const CATEGORIES: &str = "{046B8C80-1647-40F7-9B21-B93B81AABC1B},\
+                          {13A016DF-560B-46CD-947A-4C3AF1E0E35D},\
+                          {25504FB4-7BAB-4BC1-9C69-CF81890F0EF5},\
+                          {34745C63-B2F0-4784-8B67-5E12C8701A31},\
+                          {49D2F9CE-1F5E-11D7-A6D3-00065B84435C},\
+                          {49D2F9CF-1F5E-11D7-A6D3-00065B84435C}";
+
+/// How `DllRegisterServer` refuses each misplaced copy of the x64 DLL:
+/// `ERROR_INVALID_NAME`, `ERROR_DIRECTORY`, `ERROR_BAD_PATHNAME` and
+/// `ERROR_INVALID_ACL` as `HRESULT`s.
+const REFUSALS: &[(&str, &str)] = &[
+    ("name", "0x8007007b"),
+    ("version", "0x8007010b"),
+    ("location", "0x800700a1"),
+    ("acl", "0x80070538"),
+];
+
+/// C runtime DLLs, which a `+crt-static` build does not import.
+const CRT: &[&str] = &["vcruntime", "msvcp", "ucrtbase", "api-ms-win-crt-"];
+
 /// What the controls held: (kind, bits, case name) → UTF-16 units.
 type Results = BTreeMap<(String, String, String), String>;
 
@@ -137,6 +159,14 @@ fn run() -> Result<&'static (String, Results), &'static str> {
         Ok((stdout, results))
     });
     run.as_ref().map_err(String::as_str)
+}
+
+/// The rest of the output line that starts with `prefix`.
+fn line<'a>(stdout: &'a str, prefix: &str) -> &'a str {
+    stdout
+        .lines()
+        .find_map(|line| line.trim().strip_prefix(prefix))
+        .map_or("missing", str::trim)
 }
 
 fn result<'a>(results: &'a Results, kind: &str, bits: &str, name: &str) -> &'a str {
@@ -229,6 +259,61 @@ fn types_emoji_through_text_service() {
             failures.push(format!(
                 "the layout DLL alone typed {key} as [{got}], want [{want}]"
             ));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+// [spec:kbdgen:req:tsf.arch.registration+1/test]
+// [spec:kbdgen:req:tsf.arch.builds+1/test]
+// [spec:kbdgen:req:tsf.register.server/test]
+// [spec:kbdgen:req:tsf.register.upgrade+1/test]
+// [spec:kbdgen:req:tsf.security.appcontainer+2/test]
+#[test]
+#[ignore = "needs the Windows 11 VM with a signed-in session and KBD_TSF_VM_LAYOUT"]
+fn registers_and_refuses_text_service_dlls() {
+    let (stdout, _) = run().unwrap();
+    assert!(!stdout.contains("SKIPPED"), "nobody is signed in");
+
+    let install = line(stdout, "INSTALL ");
+    let x64 = format!("{install}\\divvun_tip_x64.dll Apartment");
+    let x86 = format!("{install}\\divvun_tip_x86.dll Apartment");
+    let mut expected: Vec<(String, String)> = REFUSALS
+        .iter()
+        .map(|(name, hresult)| {
+            (
+                format!("REFUSE {name} "),
+                format!("{hresult} registered=False"),
+            )
+        })
+        .collect();
+    for (prefix, want) in [
+        ("REGISTER x86 ", "0"),
+        ("CATEGORIES x86 ", "none"),
+        ("REGISTER x64 ", "0"),
+        ("SERVER 64 ", &x64),
+        ("SERVER 32 ", &x86),
+        ("CATEGORIES both ", CATEGORIES),
+        ("STALE ", &format!("0x00000000 {x64}")),
+        ("CATEGORIES x86-removed ", CATEGORIES),
+        ("UNREGISTERED ", "64=False 32=False tip=False"),
+    ] {
+        expected.push((prefix.to_owned(), want.to_owned()));
+    }
+    let mut failures = Vec::new();
+    for (prefix, want) in &expected {
+        let got = line(stdout, prefix);
+        if got != want {
+            failures.push(format!("{prefix}: got [{got}], want [{want}]"));
+        }
+    }
+    for arch in ["x64", "x86"] {
+        let depends = line(stdout, &format!("DEPENDS {arch} "));
+        let crt = depends
+            .split(',')
+            .any(|dll| CRT.iter().any(|prefix| dll.starts_with(prefix)));
+        if depends == "missing" || crt {
+            failures.push(format!("{arch} imports [{depends}]"));
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));

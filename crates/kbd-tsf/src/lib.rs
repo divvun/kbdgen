@@ -29,6 +29,7 @@ pub mod keys;
 pub mod locate;
 // [spec:kbdgen:req:tsf.test.host]
 pub mod planner;
+pub mod registration;
 pub mod server;
 pub mod text;
 
