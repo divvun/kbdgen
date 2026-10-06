@@ -2,13 +2,15 @@
 # console, while the same user is signed in interactively:
 #
 #   1. builds kbd-tsf for x64 and x86 under a test CLSID and registers both
-#      builds, installs the fixture layout DLLs under a test KLID whose
-#      Layout Product Code is the test profile, and registers the profile
+#      builds; for each fixture layout (Võro, and the emoji layout of
+#      tsf.test.emoji) installs its layout DLLs under a test KLID whose
+#      Layout Product Code is its test profile, and registers the profile
 #      under a test LANGID
-#   2. in the signed-in session, through a scheduled task, types the cases
-#      into a Win32 EDIT, a RichEdit and a WPF TextBox from 64-bit
-#      PowerShell, into an EDIT and a WPF TextBox from 32-bit PowerShell,
-#      and into an EDIT with the layout DLL alone, for comparison
+#   2. in the signed-in session, through a scheduled task, types each
+#      layout's cases into a Win32 EDIT, a RichEdit and a WPF TextBox from
+#      64-bit PowerShell, into an EDIT and a WPF TextBox from 32-bit
+#      PowerShell, and into an EDIT with the layout DLL alone, for
+#      comparison
 #   3. removes every registration, file and task, and reports what is left
 #
 # Output lines: EXPORTS, SETUP and RESULT lines from the driver, LEFT lines
@@ -16,20 +18,21 @@
 param(
   [Parameter(Mandatory)][string]$LayoutDir,
   [Parameter(Mandatory)][string]$CasesFile,
+  [Parameter(Mandatory)][string]$EmojiCasesFile,
   [string]$Repo = ''
 )
 $ErrorActionPreference = 'Continue'
 if (-not $Repo) { $Repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path }
 
 $Clsid = '{569BD944-16EA-4CE6-817F-DFEEFD1D5F92}'
-$ProfileGuid = '{94C71262-EE9D-489B-926C-159381558D90}'
 $LangId = 0x0409
-$Klid = 'a0f10409'
-$LayoutId = '00f1'
-$LayoutFile = 'kbdtsft.dll'
+$Layouts = @(
+  @{ Profile = '{94C71262-EE9D-489B-926C-159381558D90}'; Klid = 'a0f10409'; Id = '00f1'; File = 'kbdtsft.dll'; Text = 'kbd-tsf VM test layout'; Cases = $CasesFile },
+  @{ Profile = '{2EF56555-902F-4B4A-AE5E-7103C1569BB6}'; Klid = 'a0f20409'; Id = '00f2'; File = 'kbdtsfe.dll'; Text = 'kbd-tsf VM emoji layout'; Cases = $EmojiCasesFile }
+)
 $Install = Join-Path $env:ProgramFiles 'DivvunTsfVmTest'
 $Task = 'kbd-tsf-vm'
-$LayoutKey = "HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\$Klid"
+$LayoutKeys = 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layouts'
 $System32 = Join-Path $env:SystemRoot 'System32'
 $SysWow64 = Join-Path $env:SystemRoot 'SysWOW64'
 
@@ -107,38 +110,45 @@ try {
   'REGISTER x64 ' + (Invoke-Regsvr32 "$System32\regsvr32.exe" "$Install\x64\kbd_tsf.dll")
   'REGISTER x86 ' + (Invoke-Regsvr32 "$SysWow64\regsvr32.exe" "$Install\x86\kbd_tsf.dll")
 
-  Copy-Item -Force (Join-Path $LayoutDir "x64\$LayoutFile") (Join-Path $System32 $LayoutFile)
-  Copy-Item -Force (Join-Path $LayoutDir "wow64\$LayoutFile") (Join-Path $SysWow64 $LayoutFile)
-  New-Item -Force $LayoutKey | Out-Null
-  Set-ItemProperty $LayoutKey 'Layout File' $LayoutFile
-  Set-ItemProperty $LayoutKey 'Layout Text' 'kbd-tsf VM test layout'
-  Set-ItemProperty $LayoutKey 'Layout Id' $LayoutId
-  Set-ItemProperty $LayoutKey 'Layout Product Code' $ProfileGuid
-  Set-ItemProperty $LayoutKey 'Layout Display Name' "@%SystemRoot%\system32\$LayoutFile,-1000"
-
   Add-Type -Path "$PSScriptRoot\TsfDriver.cs" -ReferencedAssemblies System.Windows.Forms, PresentationFramework, PresentationCore, WindowsBase, System.Xaml
-  'PROFILE register 0x{0:x}' -f [TsfDriver]::Register($Clsid, $LangId, $ProfileGuid, 'kbd-tsf VM test', (Join-Path $System32 $LayoutFile))
-
   $typer = Join-Path $PSScriptRoot 'type.ps1'
   $ps64 = "$System32\WindowsPowerShell\v1.0\powershell.exe"
   $ps32 = "$SysWow64\WindowsPowerShell\v1.0\powershell.exe"
-  $common = "-Clsid '$Clsid' -ProfileGuid '$ProfileGuid' -LangId $LangId -CasesFile '$CasesFile'"
-  Invoke-Interactive @"
-& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit $common -Klid $Klid
-& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,rich,wpf $common
-& '$ps32' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,wpf $common
-"@
+  $runs = foreach ($layout in $Layouts) {
+    $file = $layout.File
+    Copy-Item -Force (Join-Path $LayoutDir "x64\$file") (Join-Path $System32 $file)
+    Copy-Item -Force (Join-Path $LayoutDir "wow64\$file") (Join-Path $SysWow64 $file)
+    $key = Join-Path $LayoutKeys $layout.Klid
+    New-Item -Force $key | Out-Null
+    Set-ItemProperty $key 'Layout File' $file
+    Set-ItemProperty $key 'Layout Text' $layout.Text
+    Set-ItemProperty $key 'Layout Id' $layout.Id
+    Set-ItemProperty $key 'Layout Product Code' $layout.Profile
+    Set-ItemProperty $key 'Layout Display Name' "@%SystemRoot%\system32\$file,-1000"
+    'PROFILE register {0} 0x{1:x}' -f $layout.Profile, [TsfDriver]::Register($Clsid, $LangId, $layout.Profile, $layout.Text, (Join-Path $System32 $file))
+
+    $common = "-Clsid '$Clsid' -ProfileGuid '$($layout.Profile)' -LangId $LangId -CasesFile '$($layout.Cases)'"
+    "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit $common -Klid $($layout.Klid)"
+    "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,rich,wpf $common"
+    "& '$ps32' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,wpf $common"
+  }
+  $runs | Where-Object { $_ -like 'PROFILE *' }
+  Invoke-Interactive (($runs | Where-Object { $_ -like '& *' }) -join "`n")
 }
 finally {
   if ('TsfDriver' -as [type]) {
-    'PROFILE unregister 0x{0:x}' -f [TsfDriver]::Unregister($Clsid, $LangId, $ProfileGuid)
+    foreach ($layout in $Layouts) {
+      'PROFILE unregister {0} 0x{1:x}' -f $layout.Profile, [TsfDriver]::Unregister($Clsid, $LangId, $layout.Profile)
+    }
   }
   if (Test-Path "$Install\x64\kbd_tsf.dll") { 'UNREGISTER x64 ' + (Invoke-Regsvr32 "$System32\regsvr32.exe" "$Install\x64\kbd_tsf.dll" '/u') }
   if (Test-Path "$Install\x86\kbd_tsf.dll") { 'UNREGISTER x86 ' + (Invoke-Regsvr32 "$SysWow64\regsvr32.exe" "$Install\x86\kbd_tsf.dll" '/u') }
   Remove-Item -Recurse -Force "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$Clsid" -ErrorAction SilentlyContinue
-  Remove-Item -Recurse -Force $LayoutKey -ErrorAction SilentlyContinue
-  foreach ($file in (Join-Path $System32 $LayoutFile), (Join-Path $SysWow64 $LayoutFile)) {
-    Remove-Item -Force $file -ErrorAction SilentlyContinue
+  foreach ($layout in $Layouts) {
+    Remove-Item -Recurse -Force (Join-Path $LayoutKeys $layout.Klid) -ErrorAction SilentlyContinue
+    foreach ($file in (Join-Path $System32 $layout.File), (Join-Path $SysWow64 $layout.File)) {
+      Remove-Item -Force $file -ErrorAction SilentlyContinue
+    }
   }
   foreach ($arch in 'x64', 'x86') { Remove-Locked "$Install\$arch\kbd_tsf.dll" }
   Remove-Item -Recurse -Force $Install -ErrorAction SilentlyContinue
@@ -149,11 +159,12 @@ finally {
     "HKLM:\SOFTWARE\Classes\CLSID\$Clsid",
     "HKLM:\SOFTWARE\WOW6432Node\Classes\CLSID\$Clsid",
     "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$Clsid",
-    $LayoutKey,
-    (Join-Path $System32 $LayoutFile),
-    (Join-Path $SysWow64 $LayoutFile),
     $Install
-  ) | Where-Object { Test-Path $_ }
+  ) + @(foreach ($layout in $Layouts) {
+    (Join-Path $LayoutKeys $layout.Klid)
+    (Join-Path $System32 $layout.File)
+    (Join-Path $SysWow64 $layout.File)
+  }) | Where-Object { Test-Path $_ }
   foreach ($item in $left) { "LEFT $item" }
   'CLEANUP done'
 }

@@ -1,7 +1,7 @@
-// The VM test's driver (tsf.test.vm): registers the test profile, and types
-// scan codes with SendInput into a Win32 EDIT, a RichEdit or a WPF TextBox
-// with the text service's profile active in this process, printing what
-// each control then holds.
+// The VM test's driver (tsf.test.vm): registers the test profiles, and
+// types scan codes with SendInput into a Win32 EDIT, a RichEdit or a WPF
+// TextBox with a text service profile active in this process, printing
+// what each control then holds.
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -120,14 +120,22 @@ public static class TsfDriver {
     return string.Join(" ", units.ToArray());
   }
 
+  static string Unhex(string units) {
+    var text = new StringBuilder();
+    foreach (var unit in units.Split(',')) text.Append((char)Convert.ToInt32(unit, 16));
+    return text.ToString();
+  }
+
   // Types every case ("name=chord chord ...") into a fresh control of kind
-  // `kind` (edit, rich or wpf). With `klid` set, the layout DLL alone is
-  // active instead of the text service.
+  // `kind` (edit, rich or wpf). A chord "set:d83d,de00" instead puts those
+  // UTF-16 units into the control without typing, caret at the end. With
+  // `klid` set, the layout DLL alone is active instead of the text service.
   public static string TypeCases(string kind, string clsid, string profile, ushort langid, string klid, string[] cases) {
     wpf = kind == "wpf";
     var log = new StringBuilder();
     IntPtr handle = IntPtr.Zero;
     Func<string> read;
+    Action<string> put;
     Action clear;
     Action focus;
     if (wpf) {
@@ -136,6 +144,7 @@ public static class TsfDriver {
       window.Content = box;
       window.Show();
       read = () => box.Text;
+      put = text => { box.Text = text; box.CaretIndex = text.Length; };
       clear = () => box.Clear();
       focus = () => {
         handle = new System.Windows.Interop.WindowInteropHelper(window).Handle;
@@ -150,6 +159,7 @@ public static class TsfDriver {
       form.Controls.Add(box);
       form.Show();
       read = () => box.Text;
+      put = text => { box.Text = text; box.SelectionStart = box.TextLength; };
       clear = () => box.Clear();
       focus = () => { handle = form.Handle; Foreground(handle); form.Activate(); box.Focus(); };
     }
@@ -183,7 +193,9 @@ public static class TsfDriver {
       Pump();
       if (GetForegroundWindow() != handle) { focus(); Pump(); }
       Chord("e04f");
-      foreach (var chord in parts[1].Split(' ')) Chord(chord);
+      foreach (var chord in parts[1].Split(' ')) {
+        if (chord.StartsWith("set:")) { put(Unhex(chord.Substring(4))); Pump(); } else Chord(chord);
+      }
       Pump();
       log.AppendFormat("RESULT {0} {1} {2} => {3}\n", kind + (klid != "" ? "-dll" : ""), IntPtr.Size * 8, parts[0], Hex(read()));
     }

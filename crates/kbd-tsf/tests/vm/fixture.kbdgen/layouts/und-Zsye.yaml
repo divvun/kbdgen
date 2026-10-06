@@ -1,0 +1,17 @@
+# Keys that type emoji, for the text service's VM test (tsf.test.emoji):
+# Q a character outside the BMP, W a ZWJ sequence with a skin-tone
+# modifier, and E one output of 17 UTF-16 units, more than a layout DLL
+# ligature holds (kbdl.ligatures.limit).
+format: 4
+displayNames: {und: Emoji, en: Emoji}
+hardware:
+  default:
+    form: iso
+    layers:
+      none: |
+        \u{0} 1 2 3 4 5 6 7 8 9 0 \u{0} \u{0}
+        \u{1F600} \u{1F469}\u{1F3FD}\u{200D}\u{1F4BB} \u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466}\u{1F3F3}\u{FE0F}\u{200D}\u{1F308} r t y u i o p \u{0} \u{0}
+        a s d f g h j k l \u{0} \u{0} \u{0}
+        \u{0} z x c v b n m \u{0} \u{0} \u{0}
+targets:
+  windows: {locale: und-Zsye, id: tsfe}

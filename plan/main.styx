@@ -408,6 +408,14 @@ children (
                                         kind @decision
                                         text "Operator correction 2026-10-06: 'emoji keyboard' means a keyboard layout whose keys type emoji (e.g. q → 😀), proving the TIP is not limited to UCS-2 — not an emoji picker. The picker spec (tsf.emoji.*), ldml.model.emoji, the emojiKey/emoji LDML extensions and Model::preserved_keys() are removed; the node now implements tsf.test.emoji (VM acceptance with astral, skin-tone ZWJ and >16-unit outputs in Win32 EDIT and WPF). The uncommitted picker implementation was discarded."
                                     }
+
+                                    {
+                                        at 2026-10-06T12:14:40.607856Z
+                                        author "brendan@necessary.nu"
+                                        kind @note
+                                        text "VM 2026-10-06 (jaheira-win11), EDIT/RichEdit/WPF 64- and 32-bit: q→😀 (2 units), w→👩🏽‍💻 (7), e→👨‍👩‍👧‍👦🏳️‍🌈 (17) all committed exactly through the TIP. Backspace passes through (CancelOrPass, nothing pending) and matches each control's own: EDIT/RichEdit delete one code point, WPF one grapheme. The layout DLL fallback warns and maps the 17-unit key to WCH_NONE (kbdl.ligatures.limit); q and w work from the DLL alone. Test profile shares LANGID 0x0409 with the Võro test profile to avoid touching the user's language list."
+                                        after_done true
+                                    }
                                 )
                             }
 

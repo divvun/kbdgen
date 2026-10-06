@@ -7,14 +7,16 @@
 //! cargo test -p kbd-tsf --test vm -- --ignored --nocapture
 //! ```
 //!
-//! `tests/vm/run-vm.ps1` registers a test build and profile, types each
-//! case below with `SendInput` scan codes in the signed-in session, and
-//! removes everything again; this test checks what each control holds.
+//! `tests/vm/run-vm.ps1` registers a test build and a profile per fixture
+//! layout, types each case below with `SendInput` scan codes in the
+//! signed-in session, and removes everything again; these tests check what
+//! each control holds. Both tests share one run.
 
 #![cfg(windows)]
 
 use std::collections::BTreeMap;
 use std::process::Command;
+use std::sync::OnceLock;
 
 /// Name, scan-code chords (`e0` prefixes extended keys, `+` holds keys
 /// together), and the UTF-16 units the control must then hold.
@@ -35,6 +37,37 @@ const CASES: &[(&str, &str, &str)] = &[
     ("z apostrophe twice", "2c 2b 2b", "0290"),
 ];
 
+const GRINNING: &str = "d83d de00";
+const TECHNOLOGIST: &str = "d83d dc69 d83c dffd 200d d83d dcbb";
+const FAMILY_RAINBOW: &str =
+    "d83d dc68 200d d83d dc69 200d d83d dc67 200d d83d dc66 d83c dff3 fe0f 200d d83c df08";
+
+/// The emoji fixture layout's keys (`und-Zsye.yaml`) and their outputs, as
+/// UTF-16 units: a surrogate pair, a skin-toned ZWJ sequence, and one
+/// output of 17 units, more than a layout DLL ligature delivers.
+// [spec:kbdgen:req:tsf.test.emoji]
+const EMOJI_KEYS: &[(&str, &str, &str)] = &[
+    ("q", "10", GRINNING),
+    ("w", "11", TECHNOLOGIST),
+    ("e", "12", FAMILY_RAINBOW),
+];
+
+/// The emoji layout's cases: each key typed; then Backspace after it; and
+/// Backspace after the same text put into the control without typing.
+/// The text service then holds no pending state, so by
+/// `ldml.engine.backspace.default` (`CancelOrPass`) Backspace passes and
+/// both must leave what the control's own Backspace leaves.
+fn emoji_cases() -> Vec<String> {
+    let mut cases = Vec::new();
+    for (key, scan, units) in EMOJI_KEYS {
+        let set = units.replace(' ', ",");
+        cases.push(format!("emoji {key}={scan}"));
+        cases.push(format!("emoji {key} backspace={scan} 0e"));
+        cases.push(format!("emoji {key} put backspace=set:{set} 0e"));
+    }
+    cases
+}
+
 /// The controls typed into through the text service, with the bitness of
 /// the process.
 const CONTROLS: &[(&str, &str)] = &[
@@ -46,6 +79,70 @@ const CONTROLS: &[(&str, &str)] = &[
 ];
 
 const EXPORTS: &str = "DllCanUnloadNow,DllGetClassObject,DllRegisterServer,DllUnregisterServer";
+
+/// What the controls held: (kind, bits, case name) → UTF-16 units.
+type Results = BTreeMap<(String, String, String), String>;
+
+/// Runs `tests/vm/run-vm.ps1` once for every test of this file, giving its
+/// output and the results it reports.
+fn run() -> Result<&'static (String, Results), &'static str> {
+    static RUN: OnceLock<Result<(String, Results), String>> = OnceLock::new();
+    let run = RUN.get_or_init(|| {
+        let layout = std::env::var("KBD_TSF_VM_LAYOUT").map_err(
+            |_| "KBD_TSF_VM_LAYOUT must name the kbdgen output of tests/vm/fixture.kbdgen",
+        )?;
+        let temp = std::env::temp_dir();
+        let cases_file = temp.join("kbd-tsf-vm-cases.txt");
+        let emoji_file = temp.join("kbd-tsf-vm-emoji-cases.txt");
+        let cases: Vec<String> = CASES
+            .iter()
+            .map(|(name, chords, _)| format!("{name}={chords}"))
+            .collect();
+        std::fs::write(&cases_file, cases.join("\n")).map_err(|e| e.to_string())?;
+        std::fs::write(&emoji_file, emoji_cases().join("\n")).map_err(|e| e.to_string())?;
+        let script = concat!(env!("CARGO_MANIFEST_DIR"), "\\tests\\vm\\run-vm.ps1");
+        let output = Command::new("powershell.exe")
+            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script])
+            .arg("-LayoutDir")
+            .arg(&layout)
+            .arg("-CasesFile")
+            .arg(&cases_file)
+            .arg("-EmojiCasesFile")
+            .arg(&emoji_file)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let _ = std::fs::remove_file(&cases_file);
+        let _ = std::fs::remove_file(&emoji_file);
+        let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+        println!("{stdout}");
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+
+        let mut results = Results::new();
+        for line in stdout.lines() {
+            let Some(rest) = line.trim().strip_prefix("RESULT ") else {
+                continue;
+            };
+            let (key, units) = rest.split_once("=>").unwrap_or((rest, ""));
+            let mut words = key.trim().splitn(3, ' ');
+            let (kind, bits, name) = (
+                words.next().unwrap_or_default(),
+                words.next().unwrap_or_default(),
+                words.next().unwrap_or_default(),
+            );
+            results.insert(
+                (kind.to_owned(), bits.to_owned(), name.to_owned()),
+                units.trim().to_owned(),
+            );
+        }
+        Ok((stdout, results))
+    });
+    run.as_ref().map_err(String::as_str)
+}
+
+fn result<'a>(results: &'a Results, kind: &str, bits: &str, name: &str) -> &'a str {
+    let key = (kind.to_owned(), bits.to_owned(), name.to_owned());
+    results.get(&key).map_or("missing", String::as_str)
+}
 
 // [spec:kbdgen:req:tsf.test.vm/test]
 // [spec:kbdgen:req:tsf.component.crate/test]
@@ -61,52 +158,13 @@ const EXPORTS: &str = "DllCanUnloadNow,DllGetClassObject,DllRegisterServer,DllUn
 #[test]
 #[ignore = "needs the Windows 11 VM with a signed-in session and KBD_TSF_VM_LAYOUT"]
 fn types_through_text_service_in_apps() {
-    let layout = std::env::var("KBD_TSF_VM_LAYOUT")
-        .expect("KBD_TSF_VM_LAYOUT names the kbdgen output of tests/vm/fixture.kbdgen");
-    let cases_file = std::env::temp_dir().join("kbd-tsf-vm-cases.txt");
-    let cases: Vec<String> = CASES
-        .iter()
-        .map(|(name, chords, _)| format!("{name}={chords}"))
-        .collect();
-    std::fs::write(&cases_file, cases.join("\n")).unwrap();
-    let script = concat!(env!("CARGO_MANIFEST_DIR"), "\\tests\\vm\\run-vm.ps1");
-    let output = Command::new("powershell.exe")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script])
-        .arg("-LayoutDir")
-        .arg(&layout)
-        .arg("-CasesFile")
-        .arg(&cases_file)
-        .output()
-        .unwrap();
-    let _ = std::fs::remove_file(&cases_file);
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    println!("{stdout}");
-    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+    let (stdout, results) = run().unwrap();
     assert!(!stdout.contains("SKIPPED"), "nobody is signed in");
-
-    let mut results = BTreeMap::new();
-    for line in stdout.lines() {
-        let Some(rest) = line.trim().strip_prefix("RESULT ") else {
-            continue;
-        };
-        let (key, units) = rest.split_once(" => ").unwrap_or((rest, ""));
-        let mut words = key.splitn(3, ' ');
-        let (kind, bits, name) = (
-            words.next().unwrap_or_default(),
-            words.next().unwrap_or_default(),
-            words.next().unwrap_or_default(),
-        );
-        results.insert(
-            (kind.to_owned(), bits.to_owned(), name.to_owned()),
-            units.trim().to_owned(),
-        );
-    }
 
     let mut failures = Vec::new();
     for (kind, bits) in CONTROLS {
         for (name, _, expected) in CASES {
-            let key = ((*kind).to_owned(), (*bits).to_owned(), (*name).to_owned());
-            let got = results.get(&key).map_or("missing", String::as_str);
+            let got = result(results, kind, bits, name);
             if got != *expected {
                 failures.push(format!(
                     "{kind} {bits}-bit {name}: got [{got}], want [{expected}]"
@@ -114,9 +172,7 @@ fn types_through_text_service_in_apps() {
             }
         }
     }
-    let dll_only = results
-        .get(&("edit-dll".to_owned(), "64".to_owned(), "acute b".to_owned()))
-        .map_or("missing", String::as_str);
+    let dll_only = result(results, "edit-dll", "64", "acute b");
     if dll_only == "missing" || dll_only == "0062 0301" {
         failures.push(format!(
             "the layout DLL alone typed acute b as [{dll_only}]"
@@ -129,6 +185,51 @@ fn types_through_text_service_in_apps() {
     }
     if stdout.contains("LEFT ") || !stdout.contains("CLEANUP done") {
         failures.push("cleanup left registrations or files behind".to_owned());
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+// [spec:kbdgen:req:tsf.test.emoji/test]
+#[test]
+#[ignore = "needs the Windows 11 VM with a signed-in session and KBD_TSF_VM_LAYOUT"]
+fn types_emoji_through_text_service() {
+    let (stdout, results) = run().unwrap();
+    assert!(!stdout.contains("SKIPPED"), "nobody is signed in");
+
+    let mut failures = Vec::new();
+    for (kind, bits) in CONTROLS {
+        for (key, _, units) in EMOJI_KEYS {
+            let typed = result(results, kind, bits, &format!("emoji {key}"));
+            if typed != *units {
+                failures.push(format!(
+                    "{kind} {bits}-bit {key}: got [{typed}], want [{units}]"
+                ));
+            }
+            let erased = result(results, kind, bits, &format!("emoji {key} backspace"));
+            let native = result(results, kind, bits, &format!("emoji {key} put backspace"));
+            let shorter = erased.len() < units.len() && units.starts_with(erased);
+            if erased != native || !shorter {
+                failures.push(format!(
+                    "{kind} {bits}-bit {key} backspace: got [{erased}], the control's own \
+                     backspace gives [{native}] of [{units}]"
+                ));
+            }
+        }
+    }
+    // The layout DLL alone delivers ligatures of up to 16 units and has
+    // no key for a longer output (`kbdl.vk-chars.values`).
+    for (key, _, units) in EMOJI_KEYS {
+        let want = if units.split(' ').count() > 16 {
+            ""
+        } else {
+            units
+        };
+        let got = result(results, "edit-dll", "64", &format!("emoji {key}"));
+        if got != want {
+            failures.push(format!(
+                "the layout DLL alone typed {key} as [{got}], want [{want}]"
+            ));
+        }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
