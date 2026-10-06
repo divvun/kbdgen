@@ -27,11 +27,15 @@ dependency bundles.
 
 ### Target files
 
-> [spec:kbdgen:req:bundle.structure.targets]
+> [spec:kbdgen:req:bundle.structure.targets+1]
 > A file in `targets/` is recognised by its stem, exactly `windows`, `ios`,
 > `macos`, `chromeos` or `android`; other stems are warned about and ignored.
 > An absent file leaves the target unconfigured; a parse failure aborts
-> loading; unknown fields are ignored.
+> loading; unknown fields are ignored. The exception is `windows` with a
+> top-level `shiftLock`, `lrmRlm` or `keyNames`: these are keyboard options
+> of each layout (`ldml.yaml.targets`), not build settings, so loading
+> fails with an error naming the field and `targets.windows.<field>` of a
+> v4 layout file.
 >
 > | File | Required | Optional |
 > |---|---|---|

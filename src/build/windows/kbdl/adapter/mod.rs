@@ -194,7 +194,7 @@ fn key_name_entry(name: &str) -> Option<KeyNameEntry> {
     find(&KEY_NAMES, KeyNameTable::Normal).or_else(|| find(&KEY_NAMES_EXT, KeyNameTable::Extended))
 }
 
-// [spec:kbdgen:req:ldml.kbdl.windows-inputs]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1]
 /// The Windows-only parts of the input: extra modifiers, flags, dead-key
 /// names by dead identity, key-name overrides and the decimal separator.
 fn windows_inputs(

@@ -1724,6 +1724,22 @@ children (
                 title "ldml: layouts silently ignore targets.windows shiftLock/lrmRlm/keyNames; apply or reject them"
                 kind @fix
                 deps (ldml.yaml-v4 input.windows-layers)
+                sealed true
+                log (
+                    {
+                        at 2026-10-06T23:40:07.72578Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-06T23:46:23.672504Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
             }
 
             {

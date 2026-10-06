@@ -381,7 +381,31 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
     Ok(resources)
 }
 
-// [spec:kbdgen:req:bundle.structure.targets]
+/// Keyboard options that a layout's own `targets.windows` holds, never
+/// the bundle's Windows target.
+const WINDOWS_LAYOUT_OPTIONS: [&str; 3] = ["shiftLock", "lrmRlm", "keyNames"];
+
+// [spec:kbdgen:req:bundle.structure.targets+1]
+/// Fails when `targets/windows.yaml` sets a keyboard option, which would
+/// otherwise be ignored like an unknown field.
+fn reject_windows_options(path: &Path) -> Result<(), Error> {
+    let value: serde_yaml::Value = load_yaml(path)?;
+    let Some(mapping) = value.as_mapping() else {
+        return Ok(());
+    };
+    match WINDOWS_LAYOUT_OPTIONS
+        .into_iter()
+        .find(|field| mapping.contains_key(*field))
+    {
+        Some(field) => Err(Error::WindowsTargetOption {
+            path: path.to_path_buf(),
+            field,
+        }),
+        None => Ok(()),
+    }
+}
+
+// [spec:kbdgen:req:bundle.structure.targets+1]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets");
     let mut targets = Targets::default();
@@ -404,6 +428,7 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
 
         match target_name.as_ref() {
             "windows" => {
+                reject_windows_options(&path)?;
                 targets.windows = load_yaml(&path)?;
             }
             "ios" => {
@@ -472,6 +497,12 @@ pub enum Error {
 
     #[error("{}: format {value} is not a layout format; v4 layouts have `format: 4`", path.display())]
     LayoutFormat { path: PathBuf, value: String },
+
+    #[error(
+        "{}: {field} is a keyboard option, not a Windows target setting; set targets.windows.{field} in each v4 layout file instead",
+        path.display()
+    )]
+    WindowsTargetOption { path: PathBuf, field: &'static str },
 
     #[error(
         "layout {tag} is a v4 layout (`format: 4`); the {target} target cannot build v4 layouts yet"

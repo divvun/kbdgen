@@ -73,7 +73,7 @@ fn altgr_reaches_ctrl_alt_and_other_layers() {
 }
 
 // [spec:kbdgen:sem:ldml.kbdl.layers/test]
-// [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1/test]
 #[test]
 fn extra_modifiers_select_their_own_columns() {
     let yaml = sme(&format!(
@@ -120,7 +120,7 @@ fn extra_modifiers_select_their_own_columns() {
 }
 
 // [spec:kbdgen:sem:ldml.kbdl.positions+2/test]
-// [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1/test]
 #[test]
 fn abnt2_form_fills_the_49th_key() {
     let rows = iso_rows("§").replace(". /\n", ". / ?\n");
@@ -318,7 +318,7 @@ fn classification_counts_what_only_the_service_does() {
 }
 
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
-// [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1/test]
 // [spec:kbdgen:req:ldml.kbdl.metadata/test]
 #[test]
 fn windows_options_reach_the_input() {
@@ -340,6 +340,31 @@ fn windows_options_reach_the_input() {
     );
     let (tables, _) = tables_of(&input);
     assert_eq!(tables.dead_key_names.len(), 1);
+}
+
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1/test]
+#[test]
+fn referenced_file_windows_options_reach_the_input() {
+    let fixture = fixture(&[(
+        "sme",
+        &sme("ldml: sme.xml\ntargets: {windows: {id: sme-x}}\n"),
+    )]);
+    let (_, path) = &fixture.bundle.v4_layouts[0];
+    std::fs::write(
+        path.with_file_name("sme.xml"),
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<keyboard3 xmlns=\"https://schemas.unicode.org/cldr/45/keyboard3\" xmlns:kbdgen=\"https://divvun.no/ns/kbdgen-ldml/1\" locale=\"sme\" conformsTo=\"45\">\n  <info name=\"File\" />\n  <layers formId=\"iso\"><layer modifiers=\"none\"><row keys=\"a b\" /></layer></layers>\n  <special>\n    <kbdgen:windows shiftLock=\"true\" lrmRlm=\"true\" />\n    <kbdgen:windowsKeyName key=\"Caps Lock\" name=\"Stuorrabustávat\" />\n  </special>\n</keyboard3>\n",
+    )
+    .unwrap();
+    let input = fixture.adapt("sme").unwrap().input;
+    assert_eq!(input.metadata.name, "kbdsme-x");
+    assert!(input.shift_lock && input.lrm_rlm);
+    assert_eq!(
+        input.key_name_overrides[&KeyNameEntry {
+            table: KeyNameTable::Normal,
+            scan_code: 0x3a
+        }],
+        "Stuorrabustávat"
+    );
 }
 
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]

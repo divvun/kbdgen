@@ -103,7 +103,7 @@ engine's selection for these states; a test checks that both agree.
 > express "Caps+Shift equals Shift" on a `CAPLOK` key. This is a documented
 > exception of `tsf.test.differential`.
 
-> [spec:kbdgen:req:ldml.kbdl.windows-inputs]
+> [spec:kbdgen:req:ldml.kbdl.windows-inputs+1]
 > The adapter MUST fill the Windows-only parts of `kbdl.input` from the
 > model:
 >
@@ -118,7 +118,10 @@ engine's selection for these states; a test checks that both agree.
 >
 > In v4 these come from `hardware.<variant>.extraModifiers`,
 > `targets.windows.{shiftLock, lrmRlm, keyNames}` and `deadKeys.*.name`
-> (`ldml.yaml.*`). The 49th key comes from `form: abnt2`.
+> (`ldml.yaml.*`); in a layout with `ldml:`, from the file's
+> `kbdgen:windows`, `kbdgen:windowsKeyName` and `kbdgen:deadKeyName`
+> (`ldml.yaml.ldml-ref`). The bundle's `windows` target never holds them
+> (`bundle.structure.targets`). The 49th key comes from `form: abnt2`.
 
 > [spec:kbdgen:req:ldml.kbdl.metadata]
 > Metadata follows `kbdl.metadata.bundle` and `kbdl.metadata.locale`. The

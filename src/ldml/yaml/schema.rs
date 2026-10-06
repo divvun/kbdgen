@@ -655,10 +655,20 @@ const TARGET_FIELDS: [(&str, &[&str]); 4] = [
     ("android", &["spellerPackageKey", "spellerPath"]),
 ];
 
+/// The `targets.windows` keyboard options and the LDML file's element
+/// that holds each one instead in a layout with `ldml:`.
+const WINDOWS_OPTIONS: [(&str, &str); 3] = [
+    ("shiftLock", "the shiftLock attribute of kbdgen:windows"),
+    ("lrmRlm", "the lrmRlm attribute of kbdgen:windows"),
+    ("keyNames", "kbdgen:windowsKeyName elements"),
+];
+
 // [spec:kbdgen:def:ldml.yaml.targets]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+3]
 /// `targets`: each host's fields, the `windows` flags, and `keyNames`
-/// entries, each naming an entry of `kbdl.key-names`.
-fn targets(value: &Value, at: &At) -> Result<Targets4> {
+/// entries, each naming an entry of `kbdl.key-names`. A layout with
+/// `ldml:` takes the `windows` keyboard options from its file only.
+fn targets(value: &Value, at: &At, with_ldml: bool) -> Result<Targets4> {
     let mut f = Fields::new(value, at)?;
     let mut out = Targets4::default();
     for (host, names) in TARGET_FIELDS {
@@ -673,6 +683,15 @@ fn targets(value: &Value, at: &At) -> Result<Targets4> {
                     name: name.to_string(),
                     value,
                 });
+            }
+        }
+        if host == "windows" && with_ldml {
+            let present = t.names();
+            if let Some((name, element)) = WINDOWS_OPTIONS.iter().find(|(n, _)| present.contains(n))
+            {
+                return Err(a.key(name).error(format!(
+                    "a layout with ldml: may not have targets.windows.{name}; set it in the LDML file as {element}"
+                )));
             }
         }
         if host == "windows" {
@@ -761,7 +780,7 @@ fn unused_dead_keys(layout: &Layout4) -> Vec<YamlProblem> {
 
 // [spec:kbdgen:def:ldml.yaml.schema+3]
 // [spec:kbdgen:req:ldml.yaml.strict]
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+2]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+3]
 /// Parses the top-level mapping of a v4 file, `format: 4` already
 /// detected. Unknown fields fail at any depth; a layout with `ldml:` may
 /// carry only the fields that override the LDML file's kbdgen data.
@@ -782,6 +801,7 @@ pub fn parse(file: &str, path: &Path, tag: &str, value: &Value) -> Result<Layout
         }
         None => None,
     };
+    let with_ldml = ldml.is_some();
     let (names, names_at) = f.require("displayNames")?;
     let display_names = display_names(names, &names_at)?;
     check_autonym(&display_names, tag, &names_at)?;
@@ -863,7 +883,7 @@ pub fn parse(file: &str, path: &Path, tag: &str, value: &Value) -> Result<Layout
             None => Vec::new(),
         },
         targets: match f.take("targets") {
-            Some((v, a)) => targets(v, &a)?,
+            Some((v, a)) => targets(v, &a, with_ldml)?,
             None => Targets4::default(),
         },
         warnings: Vec::new(),

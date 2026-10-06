@@ -491,7 +491,7 @@ fn dead_key_errors_are_addressed() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+2/test]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+3/test]
 #[test]
 fn ldml_ref_excludes_what_the_file_defines() {
     for field in [
@@ -517,6 +517,27 @@ fn ldml_ref_excludes_what_the_file_defines() {
         &sme("ldml: {default: kb.xml, iOS: ios.xml}\ndecimal: ','\nkeyNames: {space: x}\ntargets: {windows: {locale: se}}\n"),
     )
     .unwrap();
+}
+
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+3/test]
+#[test]
+fn ldml_ref_rejects_windows_keyboard_options() {
+    for (field, value, element) in [
+        ("shiftLock", "true", "shiftLock attribute of kbdgen:windows"),
+        ("lrmRlm", "false", "lrmRlm attribute of kbdgen:windows"),
+        ("keyNames", "{Esc: Échap}", "kbdgen:windowsKeyName"),
+    ] {
+        let yaml = sme(&format!(
+            "ldml: kb.xml\ntargets: {{windows: {{id: x, {field}: {value}}}}}\n"
+        ));
+        let err = error(&yaml);
+        assert!(
+            err.contains(&format!("targets.windows.{field}"))
+                && err.contains("a layout with ldml: may not have")
+                && err.contains(element),
+            "{field}: {err}"
+        );
+    }
 }
 
 // [spec:kbdgen:def:ldml.yaml.verbatim+1/test]

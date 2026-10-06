@@ -690,7 +690,7 @@ fn equal_documents_share_one_model() {
     assert_eq!(mac.replace("host=\"macOS\"", "host=\"linux\""), linux);
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+2/test]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+3/test]
 #[test]
 fn ldml_ref_keeps_the_file_and_overrides_data() {
     let dir = tempfile::tempdir().unwrap();

@@ -77,7 +77,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > output. A layout should opt in only if its transforms must match
 > canonically equivalent text that came from outside the keyboard.
 
-> [spec:kbdgen:req:ldml.yaml.ldml-ref+2]
+> [spec:kbdgen:req:ldml.yaml.ldml-ref+3]
 > `ldml: <path>` names an LDML keyboard3 file that defines the keyboard for
 > every host. The path is relative to the layout file. The map form `ldml:
 > {<host or default>: <path>}` names one file per host, with `default`
@@ -87,6 +87,10 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >   `displays`, `longPress`
 > - `hardware`, `touch`
 > - `normalization`, `info`, `version`, `locales`
+> - `targets.windows` `shiftLock`, `lrmRlm` or `keyNames`: these keyboard
+>   options come only from the file's `kbdgen:windows` and
+>   `kbdgen:windowsKeyName` (`ldml.xml.special`), and the error names the
+>   field and that element
 >
 > Its `displayNames`, `decimal`, `keyNames` and `targets` replace the
 > file's `kbdgen:keyboard`, `kbdgen:displayName` and `kbdgen:target`

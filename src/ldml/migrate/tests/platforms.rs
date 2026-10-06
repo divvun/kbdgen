@@ -309,6 +309,32 @@ fn fields_carry_over_with_escapes_decoded() {
 
 // [spec:kbdgen:sem:ldml.migrate.fields+1/test]
 #[test]
+fn windows_keyboard_options_v3_never_read_are_dropped() {
+    let m = migrate(&format!(
+        "{}  config:\n    id: SE01\n    shiftLock: true\n    lrmRlm: true\n    keyNames:\n      Esc: Échap\n",
+        desktop("windows", &[("default", KEYS)], "")
+    ));
+    assert!(!m.blocked(), "{:?}", m.defects);
+    let v = value(&m);
+    let windows = v["targets"]["windows"].as_mapping().unwrap();
+    assert_eq!(windows.len(), 1, "{windows:?}");
+    assert_eq!(v["targets"]["windows"]["id"].as_str(), Some("SE01"));
+    let paths: Vec<&str> = with_code(&m, Code::M10)
+        .iter()
+        .map(|d| d.path.as_str())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "windows.config.shiftLock",
+            "windows.config.lrmRlm",
+            "windows.config.keyNames"
+        ]
+    );
+}
+
+// [spec:kbdgen:sem:ldml.migrate.fields+1/test]
+#[test]
 fn null_config_is_omitted_silently() {
     let m = migrate(&format!(
         "{}  config:\n#    locale: se\n",
