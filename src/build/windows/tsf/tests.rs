@@ -213,7 +213,7 @@ fn tip_verifier_checks_exports_and_machine() {
     assert!(error.contains("KbdLayerDescriptor"), "{error}");
 }
 
-// [spec:kbdgen:req:tsf.security.signing+1/test]
+// [spec:kbdgen:req:tsf.security.signing+2/test]
 #[test]
 fn release_writes_exactly_the_files_to_sign() {
     let dir = tempfile::tempdir().unwrap();

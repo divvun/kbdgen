@@ -583,7 +583,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > therefore never blocks it, and it gives a lower-integrity process no
 > channel into a higher one.
 
-> [spec:kbdgen:req:tsf.security.signing+1]
+> [spec:kbdgen:req:tsf.security.signing+2]
 > Every PE file of the text service MUST carry an Authenticode signature
 > with Divvun's code-signing certificate before release. That covers the
 > three DLLs and the Arm64X forwarder. Microsoft requires third-party IMEs to
@@ -591,7 +591,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > pipeline (divvun-actions) signs. `kbdgen tsf` MUST write exactly these
 > four files to its output directory, unsigned, and only once all four pass
 > their checks (`tsf.arch.builds`, `tsf.arch.arm64x`). It MUST print each
-> one's absolute path on its own line to stdout: the list of files to sign.
+> one's absolute path on its own line to stdout, and nothing else: the list
+> of files to sign. Its log goes to stderr.
 > (Unverified: whether Windows 11 refuses to load an unsigned TIP.)
 
 ## Architectures

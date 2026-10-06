@@ -427,6 +427,7 @@ assertions (
     {id targets.windows.tsf.kbdi, kind @complete, author "brendan@necessary.nu", at 2026-10-06T14:12:47.50211Z}
     {id targets.windows.tsf.installer, kind @complete, author "brendan@necessary.nu", at 2026-10-06T14:37:35.7022Z}
     {id targets.windows.v4-actions, kind @complete, author "brendan@necessary.nu", at 2026-10-06T16:06:33.982478Z}
+    {id targets.windows.tsf.stdout-logs, kind @complete, author "brendan@necessary.nu", at 2026-10-06T19:38:05.146881Z}
 )
 
 impl_evidence (

@@ -269,6 +269,32 @@ fn ldml_test_passes_on_matching_vectors() {
     assert_eq!(stdout, "files: 1, tests: 1, checks: 1, failing steps: 0\n");
 }
 
+// [spec:kbdgen:req:tsf.security.signing+2/test]
+#[test]
+fn logs_go_to_stderr_not_stdout() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundle = vro_test_bundle(
+        dir.path(),
+        "      - press: {key: E12}\n      - press: {key: C01}\n      - expect: {text: á}\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_kbdgen"))
+        .args([
+            "ldml".as_ref(),
+            "test".as_ref(),
+            "-b".as_ref(),
+            bundle.as_os_str(),
+        ])
+        .env("RUST_LOG", "info")
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("kbdgen "), "{stderr}");
+    assert_eq!(
+        report(&output),
+        "files: 1, tests: 1, checks: 1, failing steps: 0\n"
+    );
+}
+
 // [spec:kbdgen:req:ldml.cli.test/test]
 #[test]
 fn ldml_test_fails_with_a_diff() {

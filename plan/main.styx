@@ -738,6 +738,22 @@ children (
                                 title "kbdgen tsf logs to stdout, mixing logs into the list of files to sign: send logs to stderr"
                                 kind @fix
                                 deps (targets.windows.tsf.arch)
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-10-06T19:37:21.14926Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T19:38:05.146881Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
+                                    }
+                                )
                             }
 
                             {

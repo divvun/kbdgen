@@ -66,7 +66,10 @@ async fn macos_target(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    // [spec:kbdgen:req:tsf.security.signing+2]
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .init();
 
     let cli = Cli::parse();
 
@@ -82,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
         // [spec:kbdgen:def:ldml.cli.commands+1]
         Command::Ldml { command } => kbdgen::ldml::cli::run(command)?,
         // [spec:kbdgen:def:cli.commands+1]
-        // [spec:kbdgen:req:tsf.security.signing+1]
+        // [spec:kbdgen:req:tsf.security.signing+2]
         Command::Tsf(options) => {
             for path in
                 kbdgen::build::windows::tsf::build(&options.workspace, &options.output_path)?

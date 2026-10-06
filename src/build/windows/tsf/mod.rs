@@ -150,7 +150,7 @@ pub fn link_forwarder(lld: &Path) -> Result<Vec<u8>> {
 /// with [`write_release`]. Nothing is written unless all four pass.
 // [spec:kbdgen:req:tsf.arch.builds+1]
 // [spec:kbdgen:req:tsf.arch.arm64x+1]
-// [spec:kbdgen:req:tsf.security.signing+1]
+// [spec:kbdgen:req:tsf.security.signing+2]
 pub fn build(workspace: &Path, output_path: &Path) -> Result<Vec<PathBuf>> {
     let workspace = dunce::canonicalize(workspace)
         .with_context(|| format!("workspace {} is missing", workspace.display()))?;
@@ -193,7 +193,7 @@ pub fn build(workspace: &Path, output_path: &Path) -> Result<Vec<PathBuf>> {
 /// Writes the release's PE files, which must be exactly the three DLLs
 /// and the forwarder, to `output_path` and returns their absolute paths,
 /// the list of files to sign.
-// [spec:kbdgen:req:tsf.security.signing+1]
+// [spec:kbdgen:req:tsf.security.signing+2]
 pub fn write_release(output_path: &Path, files: Vec<(String, Vec<u8>)>) -> Result<Vec<PathBuf>> {
     let mut expected: Vec<String> = ARCHITECTURES
         .iter()
