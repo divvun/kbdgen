@@ -81,7 +81,16 @@ async fn main() -> anyhow::Result<()> {
         }
         // [spec:kbdgen:def:ldml.cli.commands+1]
         Command::Ldml { command } => kbdgen::ldml::cli::run(command)?,
-        // [spec:kbdgen:def:cli.commands]
+        // [spec:kbdgen:def:cli.commands+1]
+        // [spec:kbdgen:req:tsf.security.signing+1]
+        Command::Tsf(options) => {
+            for path in
+                kbdgen::build::windows::tsf::build(&options.workspace, &options.output_path)?
+            {
+                println!("{}", path.display());
+            }
+        }
+        // [spec:kbdgen:def:cli.commands+1]
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(&bundle_path)?;
@@ -146,7 +155,7 @@ struct Cli {
     command: Command,
 }
 
-// [spec:kbdgen:def:cli.commands]
+// [spec:kbdgen:def:cli.commands+1]
 #[derive(Subcommand)]
 enum Command {
     #[clap(about = "Functionality relating to specific targets")]
@@ -155,11 +164,25 @@ enum Command {
     #[clap(about = "Fetch dependencies for provided project")]
     Fetch(FetchCommand),
 
+    #[clap(about = "Build the Windows text service's DLLs and Arm64X forwarder for release")]
+    Tsf(TsfCommand),
+
     #[clap(about = "LDML keyboard3 export, import and engine model compilation")]
     Ldml {
         #[clap(subcommand)]
         command: LdmlCommand,
     },
+}
+
+#[derive(Args)]
+struct TsfCommand {
+    #[clap(short, long)]
+    /// The kbdgen workspace, which holds crates/kbd-tsf
+    workspace: PathBuf,
+
+    #[clap(short, long)]
+    /// The directory to place the four PE files in; their absolute paths are printed
+    output_path: PathBuf,
 }
 
 #[derive(Args)]

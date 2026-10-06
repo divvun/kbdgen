@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-06T12:14:55.497423Z
+last_sync_at 2026-10-06T12:15:17.647675Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -1325,6 +1325,15 @@ impl_evidence (
         {id tsf.security.secure-mode, version 0}
         {id tsf.test.host, version 0}
         {id tsf.test.vm, version 0}
+    )}
+    {id targets.windows.tsf.arch, covered_rules (
+        tsf.arch.arm64x
+        tsf.arch.builds
+        tsf.security.signing
+    ), covered_claims (
+        {impl_name main, rule tsf.arch.arm64x}
+        {impl_name main, rule tsf.arch.builds}
+        {impl_name main, rule tsf.security.signing}
     )}
 )
 

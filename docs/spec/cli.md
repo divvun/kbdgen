@@ -5,9 +5,12 @@ more build steps against it.
 
 ## Commands
 
-> [spec:kbdgen:def:cli.commands]
+> [spec:kbdgen:def:cli.commands+1]
 > The commands are `kbdgen fetch -b|--bundle-path <BUNDLE>` (see
-> `bundle.fetch`) and `kbdgen target -b|--bundle-path <BUNDLE>
+> `bundle.fetch`), `kbdgen tsf -w|--workspace <WORKSPACE> -o|--output-path
+> <OUT>`, both options required, which builds the Windows text service from
+> the kbdgen workspace without a bundle (`tsf.arch.builds`,
+> `tsf.security.signing`), and `kbdgen target -b|--bundle-path <BUNDLE>
 > -o|--output-path <OUT> <PLATFORM>`, both options required and given before
 > `<PLATFORM>`: `windows`, `chromeos`, `svg`,
 > `macos {build [--no-installer] | generate | installer}`,

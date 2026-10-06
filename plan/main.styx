@@ -537,6 +537,21 @@ children (
                                     main ([spec:kbdgen:req:tsf.arch.arm64x] [spec:kbdgen:req:tsf.arch.builds] [spec:kbdgen:req:tsf.security.signing])
                                 }
                                 deps (targets.windows.tsf.host)
+                                log (
+                                    {
+                                        at 2026-10-06T12:15:30.339211Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T12:50:09.701092Z
+                                        author "brendan@necessary.nu"
+                                        kind @note
+                                        text "kbdgen tsf command (not a keyboard pipeline step; the TIP releases separately). DLLs built with +crt-static (VM showed VCRUNTIME140/api-ms-win-crt imports otherwise) and must build on Windows (std needs MSVC/SDK libs). Arm64X forwarder linked from kbdgen-written load-config COFF objects matching LLD's test inputs; byte-identical on Mac and VM. Signing stays in divvun-actions: kbdgen prints the four unsigned PE paths. x64/x86 load verified on VM; Arm64 and forwarder loading unverified (no WoA machine). Follow-up: run-vm.ps1 still builds without +crt-static."
+                                    }
+                                )
                             }
 
                             {

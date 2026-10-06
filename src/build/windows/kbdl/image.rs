@@ -44,22 +44,22 @@ pub struct Image {
 }
 
 /// Bounds-checked little-endian reads; every out-of-range read is an error.
-struct Reader<'a>(&'a [u8]);
+pub(crate) struct Reader<'a>(pub(crate) &'a [u8]);
 
 impl Reader<'_> {
-    fn bytes(&self, at: usize, len: usize) -> Result<&[u8]> {
+    pub(crate) fn bytes(&self, at: usize, len: usize) -> Result<&[u8]> {
         match at.checked_add(len).and_then(|end| self.0.get(at..end)) {
             Some(bytes) => Ok(bytes),
             None => bail!("truncated image: {len} bytes at offset 0x{at:x} are past the end"),
         }
     }
 
-    fn u16(&self, at: usize) -> Result<u16> {
+    pub(crate) fn u16(&self, at: usize) -> Result<u16> {
         let bytes = self.bytes(at, 2)?;
         Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
     }
 
-    fn u32(&self, at: usize) -> Result<u32> {
+    pub(crate) fn u32(&self, at: usize) -> Result<u32> {
         let bytes = self.bytes(at, 4)?;
         Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
     }
@@ -132,7 +132,7 @@ impl Image {
         })
     }
 
-    fn directory(&self, index: usize) -> (u32, u32) {
+    pub(crate) fn directory(&self, index: usize) -> (u32, u32) {
         self.directories.get(index).copied().unwrap_or((0, 0))
     }
 
@@ -144,7 +144,7 @@ impl Image {
     }
 
     /// The file offset of an RVA, if a section's raw data holds it.
-    fn offset_of(&self, rva: u32) -> Result<usize> {
+    pub(crate) fn offset_of(&self, rva: u32) -> Result<usize> {
         let Some(section) = self.section_of(rva) else {
             bail!("RVA 0x{rva:x} lies in no section");
         };
@@ -197,8 +197,19 @@ impl Image {
         ))
     }
 
+    /// The NUL-terminated string at an RVA.
+    fn string_at(&self, bytes: &[u8], rva: u32) -> Result<String> {
+        let at = self.offset_of(rva)?;
+        let tail = bytes.get(at..).unwrap_or_default();
+        let end = tail
+            .iter()
+            .position(|byte| *byte == 0)
+            .unwrap_or(tail.len());
+        Ok(String::from_utf8_lossy(&tail[..end]).into_owned())
+    }
+
     /// The exported names, the number of exported functions, the ordinal
-    /// base, and the RVA of the first function.
+    /// base, the RVA of the first function, and the forwarders.
     pub fn exports(&self, bytes: &[u8]) -> Result<Exports> {
         let (rva, size) = self.directory(DIRECTORY_EXPORT);
         if rva == 0 || size == 0 {
@@ -213,16 +224,16 @@ impl Image {
         let names_at = reader.u32(at + 32)?;
         let ordinals_at = reader.u32(at + 36)?;
         let mut names = Vec::new();
+        let mut forwards = Vec::new();
         for i in 0..name_count.min(64) as usize {
             let name_rva = reader.u32(self.offset_of(names_at)? + 4 * i)?;
             let ordinal = reader.u16(self.offset_of(ordinals_at)? + 2 * i)?;
-            let name_at = self.offset_of(name_rva)?;
-            let tail = reader.bytes(name_at, bytes.len() - name_at)?;
-            let end = tail
-                .iter()
-                .position(|byte| *byte == 0)
-                .unwrap_or(tail.len());
-            names.push((String::from_utf8_lossy(&tail[..end]).into_owned(), ordinal));
+            let name = self.string_at(bytes, name_rva)?;
+            let function = reader.u32(self.offset_of(functions_at)? + 4 * usize::from(ordinal))?;
+            if function >= rva && function - rva < size {
+                forwards.push((name.clone(), self.string_at(bytes, function)?));
+            }
+            names.push((name, ordinal));
         }
         let first_function = if function_count > 0 {
             Some(reader.u32(self.offset_of(functions_at)?)?)
@@ -234,7 +245,27 @@ impl Image {
             function_count,
             names,
             first_function,
+            forwards,
         })
+    }
+
+    /// The names of the DLLs the import directory names, in order.
+    pub fn imports(&self, bytes: &[u8]) -> Result<Vec<String>> {
+        let (rva, size) = self.directory(DIRECTORY_IMPORT);
+        if rva == 0 || size == 0 {
+            return Ok(Vec::new());
+        }
+        let reader = Reader(bytes);
+        let at = self.offset_of(rva)?;
+        let mut names = Vec::new();
+        for i in 0..256 {
+            let name = reader.u32(at + 20 * i + 12)?;
+            if name == 0 {
+                return Ok(names);
+            }
+            names.push(self.string_at(bytes, name)?);
+        }
+        bail!("the import directory has no terminating entry in its first 256")
     }
 }
 
@@ -246,6 +277,8 @@ pub struct Exports {
     /// Each name with its index into the function table.
     pub names: Vec<(String, u16)>,
     pub first_function: Option<u32>,
+    /// Each forwarded name with its target, `<module>.<name>`.
+    pub forwards: Vec<(String, String)>,
 }
 
 /// Checks a built layout DLL: machine, DLL flag, no entry point, native

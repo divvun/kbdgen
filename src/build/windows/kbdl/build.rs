@@ -114,7 +114,7 @@ pub fn is_scrubbed(key: &str) -> bool {
 /// Removes every scrubbed variable of the current environment from
 /// `command`'s environment.
 // [spec:kbdgen:req:kbdl.build.environment]
-fn scrub(command: &mut Command) {
+pub fn scrub(command: &mut Command) {
     for (key, _) in std::env::vars_os() {
         if key.to_str().is_some_and(is_scrubbed) {
             command.env_remove(key);
@@ -195,9 +195,9 @@ fn rust_version(line: &str) -> Option<(u32, u32)> {
 
 /// Checks that `cargo` and `rustc` start, that rustc supports edition
 /// 2024, that every Windows target's standard library is installed, and
-/// that the toolchain ships `rust-lld`.
+/// that the toolchain ships `rust-lld`, whose path it returns.
 // [spec:kbdgen:req:kbdl.build.toolchain+1]
-fn check_toolchain_with(probe: &Probe) -> Result<()> {
+fn check_toolchain_with(probe: &Probe) -> Result<PathBuf> {
     probe_stdout(probe, "cargo", &["--version"])?;
     let version = probe_stdout(probe, "rustc", &["--version"])?;
     match rust_version(&version) {
@@ -236,20 +236,24 @@ fn check_toolchain_with(probe: &Probe) -> Result<()> {
         .join("rustlib")
         .join(&host)
         .join("bin");
-    if !bin.join("rust-lld").is_file() && !bin.join("rust-lld.exe").is_file() {
-        bail!(
+    match ["rust-lld", "rust-lld.exe"]
+        .map(|name| bin.join(name))
+        .into_iter()
+        .find(|path| path.is_file())
+    {
+        Some(lld) => Ok(lld),
+        None => bail!(
             "the toolchain has no rust-lld in {}; use a rustup-installed toolchain, which ships it",
             bin.display()
-        );
+        ),
     }
-    Ok(())
 }
 
 /// [`check_toolchain_with`] against the real `cargo` and `rustc`, run in
 /// `dir` so that the same rustup toolchain override applies as to the
 /// builds.
 // [spec:kbdgen:req:kbdl.build.toolchain+1]
-pub fn check_toolchain(dir: &Path) -> Result<()> {
+pub fn check_toolchain(dir: &Path) -> Result<PathBuf> {
     check_toolchain_with(&|program, args| {
         let mut command = Command::new(program);
         command.args(args).current_dir(dir);
@@ -479,7 +483,9 @@ mod tests {
         assert!(error.contains("rust-lld"), "{error}");
 
         std::fs::write(bin.join("rust-lld"), "").unwrap();
-        check_toolchain_with(&fake("rustc 1.99.0 (x)", all, sysroot.path().into())).unwrap();
+        let lld =
+            check_toolchain_with(&fake("rustc 1.99.0 (x)", all, sysroot.path().into())).unwrap();
+        assert_eq!(lld, bin.join("rust-lld"));
         check_toolchain_with(&fake("rustc 1.85.0", all, sysroot.path().into())).unwrap();
 
         let error = check_toolchain_with(&fake(

@@ -7,6 +7,7 @@ use crate::bundle::KbdgenBundle;
 use super::{BuildStep, BuildSteps};
 
 pub mod kbdl;
+pub mod tsf;
 
 pub struct WindowsBuild {
     pub bundle: KbdgenBundle,

@@ -87,6 +87,9 @@ Sources:
   <https://learn.microsoft.com/en-us/windows/arm/arm64x-pe>,
   <https://learn.microsoft.com/en-us/windows/arm/arm64x-build> (pure
   forwarders) and <https://learn.microsoft.com/en-us/windows/arm/arm64ec>
+- LLVM 21 `lld/test/COFF/Inputs/loadconfig-arm64.s` and
+  `loadconfig-arm64ec.s`, the load configuration and CHPE metadata an
+  Arm64X image needs from its objects
 - rustc platform support for `arm64ec-pc-windows-msvc` (Tier 2 since 1.81),
   and rust-lang/rust#145154, the broken merged Arm64X Rust DLLs
 - windows-rs 0.62.2 (`Win32_UI_TextServices`, `windows_core::implement`)
@@ -464,16 +467,20 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > therefore never blocks it, and it gives a lower-integrity process no
 > channel into a higher one.
 
-> [spec:kbdgen:req:tsf.security.signing]
+> [spec:kbdgen:req:tsf.security.signing+1]
 > Every PE file of the text service MUST carry an Authenticode signature
 > with Divvun's code-signing certificate before release. That covers the
 > three DLLs and the Arm64X forwarder. Microsoft requires third-party IMEs to
-> be signed for Store apps. (Unverified: whether Windows 11 refuses to load
-> an unsigned TIP.)
+> be signed for Store apps. kbdgen holds no certificate: the release
+> pipeline (divvun-actions) signs. `kbdgen tsf` MUST write exactly these
+> four files to its output directory, unsigned, and only once all four pass
+> their checks (`tsf.arch.builds`, `tsf.arch.arm64x`). It MUST print each
+> one's absolute path on its own line to stdout: the list of files to sign.
+> (Unverified: whether Windows 11 refuses to load an unsigned TIP.)
 
 ## Architectures
 
-> [spec:kbdgen:req:tsf.arch.builds]
+> [spec:kbdgen:req:tsf.arch.builds+1]
 > The text service MUST be built as three DLLs, each the `kbd_tsf.dll` that
 > cargo builds from `crates/kbd-tsf` for one target, renamed:
 >
@@ -483,21 +490,53 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > | `divvun_tip_x64.dll` | `x86_64-pc-windows-msvc` | x64, including emulated x64 on Arm |
 > | `divvun_tip_arm64.dll` | `aarch64-pc-windows-msvc` | native Arm64 |
 >
+> `kbdgen tsf` builds them (`cli.commands`). After the checks of
+> `kbdl.build.toolchain`, it runs for each target, in the workspace and with
+> the environment of `kbdl.build.environment`, `cargo rustc --package
+> kbd-tsf --release --lib --target <triple> --target-dir <workspace>/target
+> -- -C target-feature=+crt-static`. The C runtime is linked statically
+> because the text service loads into every process, also on machines
+> without the Visual C++ runtime. kbdgen MUST check each DLL: its machine,
+> the DLL flag, exactly the four exports of `tsf.component.crate` with none
+> forwarded, and no C runtime DLL (`vcruntime*`, `msvcp*`, `ucrtbase*`,
+> `api-ms-win-crt-*`) among its imports. Unlike a layout DLL, the DLL links
+> `std`, which needs the MSVC and Windows SDK libraries. It is therefore
+> built on Windows. (Verified on Windows 11 x64 with rustc 1.98.1 and MSVC:
+> all three build and pass the checks. Without `+crt-static` the x64 DLL
+> imports `VCRUNTIME140.dll` and `api-ms-win-crt-*`; with it, only system
+> DLLs. The x64 and x86 DLLs load in 64- and 32-bit processes, where
+> `DllCanUnloadNow` returns `S_OK`. Unverified: loading the arm64 DLL.)
+>
 > On Windows on Arm, x64 processes MAY load plain x64 DLLs. An
 > `arm64ec-pc-windows-msvc` build is therefore not needed. A merged Arm64X
 > image from Rust is not used: such images crash in x64 processes
 > (rust-lang/rust#145154).
 
-> [spec:kbdgen:req:tsf.arch.arm64x]
+> [spec:kbdgen:req:tsf.arch.arm64x+1]
 > For Windows on Arm, the text service MUST also ship `divvun_tip.dll`, an
 > Arm64X pure forwarder in the same directory as the three DLLs. Its native
 > exports forward to `divvun_tip_arm64` and its EC exports to
-> `divvun_tip_x64`. It is linked with `rust-lld -flavor link -dll -noentry
-> -machine:arm64x -defarm64native:<native.def> -def:<ec.def>` plus a native
-> and an Arm64EC `_load_config_used` object. Without those objects the
-> output is plain ARM64. (Verified on macOS: `llvm-readobj` shows
+> `divvun_tip_x64`, each export to its own name. `kbdgen tsf` links it with
+> the toolchain's `rust-lld` (`kbdl.build.toolchain`): `rust-lld -flavor
+> link -dll -noentry -machine:arm64x -defarm64native:<native.def>
+> -def:<ec.def> <native.obj> <ec.obj> -out:divvun_tip.dll -brepro`. The
+> objects are a native and an Arm64EC `_load_config_used`; the Arm64EC one
+> also defines `__chpe_metadata`. kbdgen writes both objects itself, with
+> the data, symbols and relocations of LLD's test inputs
+> `lld/test/COFF/Inputs/loadconfig-arm64.s` and `loadconfig-arm64ec.s`, so
+> no C compiler or assembler is needed. Without those objects the output is
+> plain ARM64. kbdgen MUST check the forwarder:
+>
+> - an ARM64 DLL with no entry point and no imports
+> - its native view forwards the four exports to `divvun_tip_arm64`
+> - its ARM64X dynamic relocations give an x64 view with CHPE metadata
+>   whose exports forward to `divvun_tip_x64`
+>
+> (Verified on macOS: the forwarder is byte-identical to one linked from
+> the LLD inputs assembled by `llvm-mc`, and `llvm-readobj` shows
 > `COFF-ARM64X`, CHPE metadata, Arm64X relocations and both forward tables.
-> Unverified: loading on Windows on Arm.)
+> `kbdgen tsf` on Windows x64 links the same bytes. Unverified: loading on
+> Windows on Arm.)
 
 > [spec:kbdgen:req:tsf.arch.registration]
 > `InprocServer32` of the CLSID MUST name:
