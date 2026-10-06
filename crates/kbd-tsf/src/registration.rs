@@ -136,7 +136,7 @@ pub fn plan(module: &str, own: Machine, native: Machine) -> Result<Plan, Refusal
 /// Checks that `module` lies in a directory named `version` under
 /// `program_files`, the 64-bit `%ProgramFiles%`, with no `.` or `..`
 /// component. Comparisons ignore ASCII case, as Windows paths do.
-// [spec:kbdgen:req:tsf.register.upgrade+1]
+// [spec:kbdgen:req:tsf.register.upgrade+2]
 // [spec:kbdgen:req:tsf.security.appcontainer+2]
 pub fn place(module: &str, program_files: &str, version: &str) -> Result<(), Refusal> {
     let (dir, _) = split(module);

@@ -8,8 +8,9 @@ engine, `kbd-engine` (`ldml.engine.*`), on the layout's model, so it does
 what tables cannot: dead-key and transform output of any length, deep
 chains, rules on visible text, and a visible pending state.
 The layout DLL is the fallback wherever Windows reads keyboard layouts
-without TSF: the sign-in screen, the secure desktop, consoles and games, and
-any machine without the text service. It also carries the text service's
+without TSF: the sign-in screen, the secure desktop and games, and any
+machine without the text service. Windows 11's console host is not such a
+place: it runs the text service (`tsf.test.acceptance`). It also carries the text service's
 data (`tsf.data.resource`). Keyboard semantics are those of
 `ldml.engine.*`; these rules cover only what is specific to TSF.
 
@@ -718,19 +719,26 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > LANGID; the removal restores both exactly. `C:\Users\Default\NTUSER.DAT`
 > is unchanged. Unverified: typing at the welcome screen.)
 
-> [spec:kbdgen:req:tsf.register.uninstall]
+> [spec:kbdgen:req:tsf.register.uninstall+1]
 > `kbdi keyboard_uninstall` MUST, in this order:
 >
 > 1. remove the TIP string for the current user with `ILOT_UNINSTALL`
-> 2. call `UnregisterProfile` for every LANGID under which it registered the
+> 2. remove what Windows keeps of the profile for the current user: its key
+>    under `HKCU\Software\Microsoft\CTF\TIP\{CLSID}\LanguageProfile`, which
+>    `ILOT_UNINSTALL` leaves with `Enable` 0, and a language's keyboard
+>    entries under `HKCU\Software\Microsoft\CTF\SortOrder\AssemblyItem`,
+>    which activating the profile writes, when they name only the profile;
+>    keys left empty go too
+> 3. call `UnregisterProfile` for every LANGID under which it registered the
 >    profile GUID
-> 3. remove the KLID as today
+> 4. remove the KLID as today
 >
 > The text service's own uninstaller MUST run only when no language profile
 > remains under its CLSID in `CTF\TIP`. Removing one keyboard therefore never
-> breaks another.
+> breaks another. (Verified: without step 2 both keys outlive the keyboard;
+> with it an install and uninstall restore the user's registry exactly.)
 
-> [spec:kbdgen:req:tsf.register.upgrade+1]
+> [spec:kbdgen:req:tsf.register.upgrade+2]
 > Every running process that has typed text keeps the text service loaded,
 > Explorer and consoles included. Its installer MUST therefore:
 >
@@ -738,8 +746,14 @@ bundles divvun-wind (`tsf.installer.bundle`).
 >    `%ProgramFiles%\Divvun\Text Service\<version>\`, where `<version>` is
 >    the `kbd-tsf` package version (`tsf.component`)
 > 2. point `InprocServer32` at the new version
-> 3. delete older directories only when no file in them is in use, otherwise
->    at the next install or reboot
+> 3. delete older directories
+>
+> A file in use cannot be deleted but can be renamed. The installer and the
+> uninstaller MUST move such a file out of its directory, on the same
+> volume, and delete it from there at the next reboot. They MUST NOT
+> schedule a version directory's own paths for deletion at reboot: had that
+> version been installed again before then, the reboot would delete the
+> DLLs it registered.
 >
 > It MUST NOT overwrite a DLL in place. `DllRegisterServer` MUST fail,
 > registering nothing, unless its DLL lies in a directory named for its own
@@ -910,3 +924,48 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > that activates the test profile MUST therefore activate the previously
 > active profile again afterwards. Arm64 and Arm64X need a Windows on Arm
 > machine.
+
+> [spec:kbdgen:req:tsf.test.acceptance]
+> An acceptance test MUST install a keyboard on a Windows 11 machine with an
+> interactive session as a user gets it, and type through the installed text
+> service. A run:
+>
+> 1. builds the text service (`kbdgen tsf`) and `kbdi` under a test CLSID,
+>    the layout DLLs of a fixture bundle, and the text service and keyboard
+>    installers that divvun-actions generates, under test AppIds
+> 2. records the user's languages and inputs, the user's and the welcome
+>    screen's keyboard registry, the text service's registration, the
+>    installed KLIDs, both uninstall entries and the installed files
+> 3. runs the keyboard installer silently, which runs the text service's
+>    installer and `kbdi keyboard_install -e`
+> 4. types every case with `SendInput` through the profile `kbdi` enabled,
+>    under the LANGID the user's input list gives it, into the controls of
+>    `tsf.test.vm` from 64- and 32-bit processes; into a console switched to
+>    the keyboard with Win+Space, as a user switches; and into an `EDIT`
+>    with the layout DLL alone
+> 5. uninstalls, installs again and uninstalls while a process holds the
+>    text service's DLL loaded, as Explorer does, and records the state
+>    again
+>
+> The fixture is a v4 layout derived from the golden Võro layout. Its cases
+> MUST cover dead-key outputs of several UTF-16 units (combining sequences,
+> a surrogate pair), a chain of three dead keys, two transform groups that
+> rewrite text before the key and dead-key output, a dead key followed by an
+> AltGr ligature, Backspace cancelling a pending dead key and a pending
+> chain, and Backspace passing after transform and dead-key output. Each
+> control MUST hold what `kbd-engine` types for the case on the model
+> embedded in the built layout DLL (`tsf.data.resource`), following
+> `tsf.keys.identity` and `tsf.edit.reset`; after a passed Backspace that
+> erases part of a grapheme, what the control's own Backspace leaves. The
+> layout DLL alone MUST type the engine's text where the tables can express
+> the case, and other text where the case needs the text service. After the
+> last uninstall every recorded item MUST equal its state before, and
+> neither install may find the DLLs it registers scheduled for deletion at
+> the next reboot (`tsf.register.upgrade`).
+>
+> The sign-in screen and the secure desktop, where the layout DLL is the
+> input method (`tsf.pairing.self-sufficient`), take no `SendInput` from the
+> session, so the layout DLL alone is typed in an ordinary `EDIT`.
+> (Verified: Windows 11's console host runs the text service once the
+> keyboard is selected in it; a console started while another process
+> activated the profile keeps the session's previous input.)

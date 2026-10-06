@@ -271,7 +271,7 @@ fn types_emoji_through_text_service() {
 // [spec:kbdgen:req:tsf.arch.registration+1/test]
 // [spec:kbdgen:req:tsf.arch.builds+1/test]
 // [spec:kbdgen:req:tsf.register.server/test]
-// [spec:kbdgen:req:tsf.register.upgrade+1/test]
+// [spec:kbdgen:req:tsf.register.upgrade+2/test]
 // [spec:kbdgen:req:tsf.security.appcontainer+2/test]
 #[test]
 #[ignore = "needs the Windows 11 VM with a signed-in session and KBD_TSF_VM_LAYOUT"]

@@ -103,7 +103,7 @@ fn refuses_misnamed_or_foreign_dlls() {
     assert_eq!(own(Machine::X64, Machine::X86), Err(Refusal::Unsupported));
 }
 
-// [spec:kbdgen:req:tsf.register.upgrade+1/test]
+// [spec:kbdgen:req:tsf.register.upgrade+2/test]
 #[test]
 fn accepts_only_versioned_directory() {
     let module = at("divvun_tip_x64.dll");

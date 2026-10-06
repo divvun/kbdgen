@@ -94,7 +94,7 @@ fn with_categories(body: impl FnOnce(&ITfCategoryMgr) -> Result<()>) -> Result<(
 /// Checks that this DLL lies in its version's directory under the 64-bit
 /// `%ProgramFiles%`, and that every file its registration loads grants
 /// read and execute to both package SIDs.
-// [spec:kbdgen:req:tsf.register.upgrade+1]
+// [spec:kbdgen:req:tsf.register.upgrade+2]
 // [spec:kbdgen:req:tsf.security.appcontainer+2]
 fn verify(plan: &Plan) -> Result<()> {
     place(&module_path()?, &program_files()?, VERSION)?;
@@ -136,7 +136,7 @@ pub fn register() -> Result<()> {
 /// leaves the text service's empty keys in `CTF\TIP`; the DLL that owns
 /// the categories deletes them when no language profile remains there.
 // [spec:kbdgen:req:tsf.register.server]
-// [spec:kbdgen:req:tsf.register.upgrade+1]
+// [spec:kbdgen:req:tsf.register.upgrade+2]
 pub fn unregister() -> Result<()> {
     let plan = plan(&module_path()?, OWN, native_machine()?)?;
     let key = class_key();

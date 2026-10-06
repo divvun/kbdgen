@@ -1,7 +1,8 @@
 // The VM test's driver (tsf.test.vm): calls the registration exports,
 // registers the test profiles, and types scan codes with SendInput into a
 // Win32 EDIT, a RichEdit or a WPF TextBox with a text service profile
-// active in this process, printing what each control then holds.
+// active in this process, or into a console, printing what each control
+// then holds.
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -144,6 +145,42 @@ public static class TsfDriver {
     var text = new StringBuilder();
     foreach (var unit in units.Split(',')) text.Append((char)Convert.ToInt32(unit, 16));
     return text.ToString();
+  }
+
+  // Types every case into a fresh console window (conhost) running
+  // `reader`, a console program that writes what ReadConsoleW returns, as
+  // UTF-16 hex, to the file it is given, and that file's name with
+  // ".hwnd" appended holding its console window. `toggle` is the chord that
+  // switches the console's input to the text service and back, as a user
+  // does with Win+Space: a console started from here takes the session's
+  // input, not the profile this process activates. Enter ends each case.
+  // Cases that put text without typing ("set:") are skipped.
+  public static string TypeConsole(string reader, string toggle, string[] cases) {
+    var log = new StringBuilder();
+    var output = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "kbd-tsf-console.txt");
+    foreach (var test in cases) {
+      var parts = test.Split('=');
+      if (parts[1].Contains("set:")) continue;
+      System.IO.File.Delete(output);
+      System.IO.File.Delete(output + ".hwnd");
+      var console = System.Diagnostics.Process.Start("conhost.exe", "\"" + reader + "\" \"" + output + "\"");
+      for (int i = 0; i < 100 && !System.IO.File.Exists(output + ".hwnd"); i++) System.Threading.Thread.Sleep(100);
+      System.Threading.Thread.Sleep(300);
+      var window = IntPtr.Zero;
+      if (System.IO.File.Exists(output + ".hwnd")) window = new IntPtr(long.Parse(System.IO.File.ReadAllText(output + ".hwnd")));
+      Foreground(window);
+      System.Threading.Thread.Sleep(300);
+      bool foreground = GetForegroundWindow() == window;
+      Chord(toggle);
+      foreach (var chord in parts[1].Split(' ')) Chord(chord);
+      Chord(toggle);
+      Chord("1c");
+      for (int i = 0; i < 50 && !System.IO.File.Exists(output); i++) System.Threading.Thread.Sleep(100);
+      var text = System.IO.File.Exists(output) ? System.IO.File.ReadAllText(output) : "none";
+      if (!console.HasExited) console.Kill();
+      log.AppendFormat("RESULT console 64 {0} => {1}\n", parts[0], foreground ? text : "background");
+    }
+    return log.ToString();
   }
 
   // Types every case ("name=chord chord ...") into a fresh control of kind

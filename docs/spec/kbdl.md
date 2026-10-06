@@ -356,15 +356,17 @@ Sources:
 > Windows emits the pending dead id, then that input's character. (Verified
 > for depths 2 and 3, through plain and dead keys, with that fallback.)
 
-> [spec:kbdgen:req:kbdl.dead-keys.diagnostics]
+> [spec:kbdgen:req:kbdl.dead-keys.diagnostics+1]
 > It is fatal for a key dead character to have no tree entry or a leaf
 > entry, and for any branch, at any depth, to lack a standalone child or to
 > have a branch as its standalone child. A child whose input is not exactly
 > one unit, or which is a leaf whose output is not exactly one unit, or
 > either of which lies in `0xF000`–`0xF002`, MUST warn (naming the input path
 > and output) and be omitted; this includes outputs needing a combining mark
-> (`b` → `b́`). Tree entries for dead-key outputs that no key emits are
-> ignored. None of these conditions may panic.
+> (`b` → `b́`). A branch child left with no children after these omissions,
+> its standalone child included, MUST warn and be omitted as well, since its
+> chained state would have no group. Tree entries for dead-key outputs that
+> no key emits are ignored. None of these conditions may panic.
 
 > [spec:kbdgen:req:kbdl.dead-keys.names+1]
 > `aKeyNamesDead` MUST hold, for each key dead character in order that has a

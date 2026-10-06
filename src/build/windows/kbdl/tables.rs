@@ -1086,7 +1086,7 @@ fn key_dead_id(
 }
 
 /// Fatal shape errors of a reachable branch, at any depth.
-// [spec:kbdgen:req:kbdl.dead-keys.diagnostics]
+// [spec:kbdgen:req:kbdl.dead-keys.diagnostics+1]
 fn check_branch(children: &IndexMap<String, DeadKeyNode>, path: &str, layout: &str) -> Result<()> {
     match children.get(STANDALONE) {
         None => bail!(
@@ -1104,7 +1104,7 @@ fn check_branch(children: &IndexMap<String, DeadKeyNode>, path: &str, layout: &s
 /// Builds the group of one state from its valid children, in input order
 /// with the standalone child last. A branch child is allocated as a chained
 /// state and visited before the next sibling, so allocation is depth-first.
-// [spec:kbdgen:req:kbdl.dead-keys.diagnostics]
+// [spec:kbdgen:req:kbdl.dead-keys.diagnostics+1]
 // [spec:kbdgen:req:kbdl.dead-keys.chains]
 fn visit<'t>(
     state: usize,
@@ -1152,15 +1152,22 @@ fn visit<'t>(
                 let id = chained_dead_id(grandchildren, ids, &child_path, layout, diag)?;
                 states.push(DeadState {
                     id,
-                    path: child_path,
+                    path: child_path.clone(),
                     children: grandchildren,
                 });
                 let chained = states.len() - 1;
-                result.push(Child::Chain {
-                    base,
-                    state: chained,
-                });
                 visit(chained, states, groups, ids, layout, diag)?;
+                if groups[chained].is_empty() {
+                    diag.warn(format!(
+                        "chained dead-key state {}: none of its children fit the tables; omitted",
+                        show(&child_path)
+                    ));
+                } else {
+                    result.push(Child::Chain {
+                        base,
+                        state: chained,
+                    });
+                }
             }
         }
     }
@@ -2036,7 +2043,7 @@ pub(crate) mod tests {
         check_invariants(&tables).unwrap();
     }
 
-    // [spec:kbdgen:req:kbdl.dead-keys.diagnostics/test]
+    // [spec:kbdgen:req:kbdl.dead-keys.diagnostics+1/test]
     #[test]
     fn dead_key_diagnostics_never_panic() {
         let mut input = chained();
@@ -2093,6 +2100,40 @@ pub(crate) mod tests {
         );
         assert_eq!(diag.warnings().len(), 6, "{:?}", diag.warnings());
         assert!(warned(&diag, &["´ -> b", "b\\u{301}", "omitted"]));
+    }
+
+    // [spec:kbdgen:req:kbdl.dead-keys.diagnostics+1/test]
+    #[test]
+    fn chained_state_without_table_children_is_omitted() {
+        let mut input = chained();
+        input.dead_key_tree.insert(
+            "´".into(),
+            branch(&[
+                ("a", leaf("á")),
+                (
+                    "^",
+                    branch(&[
+                        (
+                            "q",
+                            branch(&[("a", leaf("a\u{302}\u{301}")), (" ", leaf("´^q"))]),
+                        ),
+                        (" ", leaf("´^")),
+                    ]),
+                ),
+                (" ", leaf("´")),
+            ]),
+        );
+        let (tables, diag) = ok(&input);
+        assert!(
+            entries(&tables)
+                .iter()
+                .all(|entry| entry.0 != 0x5e || entry.1 != 0xb4),
+            "{:?}",
+            entries(&tables)
+        );
+        assert!(warned(&diag, &["´ -> ^ -> q", "omitted"]));
+        assert!(warned(&diag, &["´ -> ^", "none of its children"]));
+        check_invariants(&tables).unwrap();
     }
 
     // [spec:kbdgen:req:kbdl.dead-keys.names+1/test]

@@ -1,0 +1,74 @@
+# The golden Võro layout (crates/kbd-engine/tests/golden/layouts/vro.yaml),
+# hardware only, extended for the text service's acceptance test
+# (tsf.test.acceptance): dead keys whose outputs are several UTF-16 units
+# (combining sequences, a surrogate pair), a three-deep dead-key chain,
+# AltGr ligatures, and two groups of transforms that rewrite committed text,
+# dead-key output included.
+format: 4
+displayNames: {vro: Võro TSF acceptance, en: Võro TSF acceptance}
+keyNames: {space: vaih, return: sisse}
+decimal: ','
+deadKeys:
+  ´:
+    standalone: ´
+    compose:
+      a: á
+      A: Á
+      b: b́
+      B: B́
+      e: 'e\u{323}\u{301}'
+      z: '\u{1D56B}\u{301}'
+  ˇ: {standalone: ˇ, compose: {c: č, C: Č}}
+  ę: {standalone: ę, compose: {a: á}}
+  '~':
+    compose:
+      o: õ
+      O: Õ
+      ´:
+        compose:
+          o: ṍ
+          O: Ṍ
+          ˇ: {compose: {o: 'õ\u{301}\u{30C}'}}
+hardware:
+  default:
+    form: iso
+    layers:
+      none: |
+        \d{ˇ} 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        q w e r t y u i o p ü õ
+        a s d f g h j k l ö ä '
+        < z x c v b n m , . -
+      shift: |
+        \d{~} ! " # € % & / ( ) = ? \u{301}
+        Q W E R T Y U I O P Ü Õ
+        A S D F G H J K L Ö Ä *
+        > Z X C V B N M ; : _
+      caps: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{ę}
+        Q W E R T Y U I O P Ü Õ
+        A S D F G H J K L Ö Ä '
+        < Z X C V B N M , . -
+      cmd: |
+        § 1 2 3 4 5 6 7 8 9 0 - =
+        q w e r t y u i o p å ¨
+        a s d f g h j k l ø æ '
+        ` z x c v b n m , . /
+    space: {caps: '\u{A0}'}
+  windows:
+    inherits: default
+    layers:
+      altR: |
+        \u{0} \u{0} @ £ $ € \u{0} { [ ] } \ \d{´}
+        \u{0} š é ŕ t́ ý u̬ i̬ ó ṕ ü̬ õ̭
+        a̱ \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        | \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+transforms:
+  - - {from: "q'", to: ʠ}
+    - {from: "z'", to: 𝕫}
+    - {from: "𝕫'", to: ʐ}
+    - {from: "sch'", to: ʃ}
+    - {from: "([aeiou])-", to: '$1\u{304}'}
+    - {from: "á'", to: 'a\u{30B}'}
+  - - {from: "aʠ", to: ɑʠ}
+targets:
+  windows: {locale: vro-Latn, id: tsfa}

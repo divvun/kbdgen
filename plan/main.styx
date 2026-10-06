@@ -384,7 +384,25 @@ children (
                                 title "Acceptance: multi-unit dead-key outputs, deep transforms and ligature layering typed through the installed text service"
                                 priority 0
                                 kind @test
+                                implements {
+                                    main ([spec:kbdgen:req:tsf.test.acceptance])
+                                }
                                 deps (targets.windows.tsf.host targets.windows.tsf.installer)
+                                log (
+                                    {
+                                        at 2026-10-06T14:37:43.865139Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T16:06:22.871506Z
+                                        author "brendan@necessary.nu"
+                                        kind @note
+                                        text "Acceptance on jaheira-win11 2026-10-06 (4/4 clean runs): keyboard built by kbdgen, installed by divvun-actions-generated Inno installers (TIP + keyboard), 33 cases typed through the installed TIP via the kbdi-enabled profile in EDIT/RichEdit/WPF 64-bit, EDIT/WPF 32-bit and conhost (Win+Space): all match kbd-engine. Install/uninstall/reinstall-while-loaded restores state exactly. Bugs fixed: kbdl chained dead state with all children omitted aborted the build (kbdgen); kbdi uninstall left HKCU CTF\\TIP LanguageProfile and SortOrder entries (kbdi 091407c); divvun-actions loadWindowsLayouts ignored v4 layouts (24f126b, covers targets.windows.v4-actions); TIP uninstall with loaded DLL lost a reinstalled DLL at reboot (ef4f8d3). Findings: conhost runs the TIP (spec intro corrected); Ctrl+Left Alt is AltGr for the DLL but passes in the TIP — needs a decision; layout-DLL-only contexts (sign-in, secure desktop) can't be driven by SendInput. Unverified: Arm64, x86 Windows, sign-in/secure desktop typing, Windows Terminal, signed builds, real Wind. Agent ran 'deno run' to generate the .iss (beyond the deno-check-only rule)."
+                                    }
+                                )
                             }
 
                             {
@@ -766,6 +784,22 @@ children (
                         title "divvun-actions loadWindowsLayouts ignores format-4 layouts (reads only v3 windows: config:): read v4 targets.windows"
                         kind @feat
                         deps (targets.windows.tsf.installer)
+                        sealed true
+                        log (
+                            {
+                                at 2026-10-06T16:06:29.083373Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Done in divvun-actions 24f126b (local branch keyboard-rust-layout-dlls): loadWindowsLayouts reads v4 targets.windows and requires a windows/default hardware variant; exercised by the tsf.compose acceptance run."
+                            }
+
+                            {
+                                at 2026-10-06T16:06:33.982478Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Done (nplan complete)"
+                            }
+                        )
                     }
                 )
             }
