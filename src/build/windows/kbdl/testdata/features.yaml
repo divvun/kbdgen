@@ -1,0 +1,55 @@
+# A Windows layout exercising the layout DLL generator: a dead key that
+# chains to a second and a third state, named dead keys, two- and
+# three-unit ligatures, an extra modifier (right Ctrl), an SGCAPS key (D01
+# types č with Caps Lock), the 49th key of `abnt2` (B11), Shift Lock,
+# LRM/RLM, a decimal separator and key-name overrides.
+format: 4
+displayNames: {sme: Davvisámegiella}
+decimal: ','
+deadKeys:
+  ´:
+    name: AKUHTTA
+    standalone: ´
+    compose:
+      a: á
+      A: Á
+      ¨: {standalone: ¨, compose: {u: ǘ, U: Ǘ, '-': {standalone: '-', compose: {u: ǖ}}}}
+  ˇ:
+    name: HÁČEK
+    standalone: ˇ
+    compose: {c: č, C: Č, s: š, S: Š, z: ž, Z: Ž}
+hardware:
+  windows:
+    form: abnt2
+    extraModifiers: [rightCtrl]
+    layers:
+      none: |
+        \d{´} 1 2 3 4 5 6 7 8 9 0 - =
+        q w e r t y u i o p å ¨
+        a s d f g h j k l ö æ \d{ˇ}
+        < z x c v b n m , . - /
+      shift: |
+        § ! " # $ % & / ( ) = _ +
+        Q W E R T Y U I O P Å ^
+        A S D F G H J K L Ö Æ *
+        > Z X C V B N M ; : _ ?
+      caps: |
+        \d{´} 1 2 3 4 5 6 7 8 9 0 - =
+        Č W E R T Y U I O P Å ¨
+        A S D F G H J K L Ö Æ \d{ˇ}
+        < Z X C V B N M , . - /
+      altR: |
+        \u{0} ¡ @ £ $ € \u{0} { [ ] } \ \u{0}
+        \u{0} š é ŕ t́ ŧ \u{0} i̇́ \u{0} \u{0} \u{0} \u{0}
+        á \u{0} đ \u{0} ǧ ǥ \u{0} ǩ \u{0} \u{0} \u{0} \u{0}
+        | ž \u{0} č \u{0} \u{0} ŋ \u{0} \u{0} \u{0} \u{0} \u{0}
+      extra1: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        ; ς ε ρ τ υ θ ι ο π \u{0} \u{0}
+        α σ δ φ γ η ξ κ λ \u{0} \u{0} \u{0}
+        \u{0} ζ χ ψ ω β ν μ \u{0} \u{0} \u{0} \u{0}
+targets:
+  windows:
+    shiftLock: true
+    lrmRlm: true
+    keyNames: {Caps Lock: Stuorrabustávat, Space: Gaskka}

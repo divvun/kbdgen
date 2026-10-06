@@ -152,6 +152,14 @@ children (
                         title "Golden tests for generated Windows layout crates, .res files and DLLs"
                         kind @test
                         deps (targets.windows.dll-gen input.layout-order)
+                        log (
+                            {
+                                at 2026-10-06T23:46:48.316912Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+                        )
                     }
 
                     {

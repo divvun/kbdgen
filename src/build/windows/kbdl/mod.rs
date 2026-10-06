@@ -23,6 +23,8 @@ pub mod bundle;
 pub mod diag;
 #[cfg(test)]
 mod differential;
+#[cfg(test)]
+mod golden;
 pub mod image;
 pub mod input;
 pub mod migrated;

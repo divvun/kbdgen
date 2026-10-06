@@ -1,0 +1,6 @@
+warning: space bar in layer caps: the DLL's space row always types U+0020, so its output "\u{a0}" is dropped
+warning: key E00: SGCAPS cannot be combined with a dead key on the same key; the caps layers are ignored
+warning: key E12: SGCAPS cannot be combined with a dead key on the same key; the caps layers are ignored
+warning: dead-key input "´ -> b" -> output "b\u{301}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
+warning: dead-key input "´ -> B" -> output "B\u{301}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
+info: without the text service, for example at the sign-in screen, users do not get: 2 dead-key output(s) of more than one UTF-16 unit (e.g. ´ b → b́; ´ B → B́)

@@ -1,0 +1,22 @@
+[package]
+name = "kbdvro"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "lib.rs"
+crate-type = ["cdylib"]
+
+[features]
+wow64 = []
+
+[profile.release]
+opt-level = "s"
+panic = "abort"
+lto = true
+codegen-units = 1
+debug = false
+incremental = false
+
+[workspace]

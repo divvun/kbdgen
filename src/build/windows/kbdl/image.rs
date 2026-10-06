@@ -37,6 +37,9 @@ pub struct Image {
     pub machine: u16,
     pub characteristics: u16,
     pub entry_point: u32,
+    /// The preferred load address, which the image's absolute addresses
+    /// assume.
+    pub image_base: u64,
     pub subsystem: u16,
     pub sections: Vec<Section>,
     /// (RVA, size) of each data directory present.
@@ -82,9 +85,17 @@ impl Image {
         let optional_size = usize::from(reader.u16(coff + 16)?);
         let characteristics = reader.u16(coff + 18)?;
         let optional = coff + 20;
-        let (directory_count_at, directories_at) = match reader.u16(optional)? {
-            PE32_MAGIC => (optional + 92, optional + 96),
-            PE32_PLUS_MAGIC => (optional + 108, optional + 112),
+        let (directory_count_at, directories_at, image_base) = match reader.u16(optional)? {
+            PE32_MAGIC => (
+                optional + 92,
+                optional + 96,
+                u64::from(reader.u32(optional + 28)?),
+            ),
+            PE32_PLUS_MAGIC => (
+                optional + 108,
+                optional + 112,
+                u64::from(reader.u32(optional + 24)?) | u64::from(reader.u32(optional + 28)?) << 32,
+            ),
             magic => bail!("unknown optional header magic 0x{magic:x}"),
         };
         let entry_point = reader.u32(optional + 16)?;
@@ -126,6 +137,7 @@ impl Image {
             machine,
             characteristics,
             entry_point,
+            image_base,
             subsystem,
             sections,
             directories,

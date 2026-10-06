@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-06T23:40:07.571458Z
+last_sync_at 2026-10-06T23:46:48.185411Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -21,7 +21,7 @@ rule_versions (
     {id bundle.project, version 0}
     {id bundle.resources, version 0}
     {id bundle.structure, version 0}
-    {id bundle.structure.targets, version 0}
+    {id bundle.structure.targets, version 1}
     {id bundle.structure.targets.env, version 0}
     {id chromeos.descriptor, version 0}
     {id chromeos.descriptor.runtime, version 0}
@@ -165,7 +165,7 @@ rule_versions (
     {id ldml.kbdl.model-resource, version 1}
     {id ldml.kbdl.positions, version 2}
     {id ldml.kbdl.values, version 1}
-    {id ldml.kbdl.windows-inputs, version 0}
+    {id ldml.kbdl.windows-inputs, version 1}
     {id ldml.macos.adapter, version 0}
     {id ldml.macos.classify, version 0}
     {id ldml.macos.dead-keys, version 0}
@@ -255,7 +255,7 @@ rule_versions (
     {id ldml.yaml.import, version 1}
     {id ldml.yaml.key-ids, version 1}
     {id ldml.yaml.key-ids.collisions, version 1}
-    {id ldml.yaml.ldml-ref, version 2}
+    {id ldml.yaml.ldml-ref, version 3}
     {id ldml.yaml.long-press, version 1}
     {id ldml.yaml.lowering, version 1}
     {id ldml.yaml.modifier-names, version 0}
@@ -430,6 +430,7 @@ assertions (
     {id targets.windows.tsf.stdout-logs, kind @complete, author "brendan@necessary.nu", at 2026-10-06T19:38:05.146881Z}
     {id targets.windows.tsf.console, kind @complete, author "brendan@necessary.nu", at 2026-10-06T23:39:33.822226Z}
     {id ldml.ref-windows-targets, kind @complete, author "brendan@necessary.nu", at 2026-10-06T23:46:23.672504Z}
+    {id targets.windows.test-golden, kind @doing, author "brendan@necessary.nu", at 2026-10-06T23:46:48.316912Z}
 )
 
 impl_evidence (
@@ -451,15 +452,6 @@ impl_evidence (
         {impl_name main, rule bundle.structure}
         {impl_name main, rule bundle.structure.targets}
         {impl_name main, rule bundle.structure.targets.env}
-    ), rule_versions_seen (
-        {id bundle.fetch, version 0}
-        {id bundle.layouts, version 1}
-        {id bundle.layouts.autonym, version 0}
-        {id bundle.project, version 0}
-        {id bundle.resources, version 0}
-        {id bundle.structure, version 0}
-        {id bundle.structure.targets, version 0}
-        {id bundle.structure.targets.env, version 0}
     )}
     {id input.cli, covered_rules (
         cli.commands
@@ -504,10 +496,6 @@ impl_evidence (
         {impl_name main, rule ldml.kbdl.windows-inputs}
         {impl_name main, rule ldml.yaml.native}
         {impl_name main, rule ldml.yaml.targets}
-    ), rule_versions_seen (
-        {id ldml.kbdl.windows-inputs, version 0}
-        {id ldml.yaml.native, version 0}
-        {id ldml.yaml.targets, version 0}
     )}
     {id ldml.conformance, covered_rules (
         ldml.cli.test
@@ -972,38 +960,6 @@ impl_evidence (
         {impl_name main, rule ldml.yaml.touch.flicks}
         {impl_name main, rule ldml.yaml.touch.roles}
         {impl_name main, rule ldml.yaml.verbatim}
-    ), rule_versions_seen (
-        {id ldml.scope.macos-rules, version 0}
-        {id ldml.yaml.coexistence, version 1}
-        {id ldml.yaml.dead-keys, version 1}
-        {id ldml.yaml.dead-keys.backspace, version 0}
-        {id ldml.yaml.dead-keys.compose, version 0}
-        {id ldml.yaml.dead-keys.fallback, version 0}
-        {id ldml.yaml.dead-keys.keys, version 0}
-        {id ldml.yaml.detect, version 0}
-        {id ldml.yaml.displays.auto, version 0}
-        {id ldml.yaml.escape, version 1}
-        {id ldml.yaml.hardware, version 1}
-        {id ldml.yaml.hardware.rows, version 1}
-        {id ldml.yaml.hosts, version 0}
-        {id ldml.yaml.implied-layers, version 1}
-        {id ldml.yaml.import, version 1}
-        {id ldml.yaml.key-ids, version 1}
-        {id ldml.yaml.key-ids.collisions, version 1}
-        {id ldml.yaml.ldml-ref, version 2}
-        {id ldml.yaml.long-press, version 1}
-        {id ldml.yaml.lowering, version 1}
-        {id ldml.yaml.modifier-names, version 0}
-        {id ldml.yaml.normalization, version 0}
-        {id ldml.yaml.roundtrip, version 2}
-        {id ldml.yaml.rows, version 0}
-        {id ldml.yaml.schema, version 3}
-        {id ldml.yaml.strict, version 0}
-        {id ldml.yaml.tokens, version 0}
-        {id ldml.yaml.touch, version 1}
-        {id ldml.yaml.touch.flicks, version 0}
-        {id ldml.yaml.touch.roles, version 1}
-        {id ldml.yaml.verbatim, version 1}
     )}
     {id targets.android.layout, rule_versions_seen (
         {id android.gradle, version 0}
@@ -1285,6 +1241,10 @@ impl_evidence (
         {impl_name main, rule tsf.arch.arm64x}
         {impl_name main, rule tsf.arch.builds}
         {impl_name main, rule tsf.security.signing}
+    ), rule_versions_seen (
+        {id tsf.arch.arm64x, version 1}
+        {id tsf.arch.builds, version 1}
+        {id tsf.security.signing, version 2}
     )}
     {id targets.windows.tsf.compose, covered_rules (
         tsf.test.acceptance

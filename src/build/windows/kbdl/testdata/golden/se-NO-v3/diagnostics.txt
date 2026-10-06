@@ -1,0 +1,4 @@
+warning: dead-key input "¨ -> T" -> output "T\\u{308}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
+warning: dead-key input "ˇ -> J" -> output "J\\u{30C}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
+warning: dead-key input "ˇ -> x" -> output "ʒ\\u{30C}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
+warning: dead-key input "ˇ -> X" -> output "Ʒ\\u{30C}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
