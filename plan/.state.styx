@@ -1232,6 +1232,69 @@ impl_evidence (
         {id tsf.test.differential, version 0}
         {id tsf.test.engine, version 0}
     )}
+    {id targets.windows.tsf.host, covered_rules (
+        ldml.crate.tsf
+        tsf.component
+        tsf.component.crate
+        tsf.component.interfaces
+        tsf.component.logging
+        tsf.component.panic
+        tsf.component.self-contained
+        tsf.data.locate
+        tsf.edit.apply
+        tsf.edit.cache
+        tsf.edit.inject
+        tsf.edit.ops
+        tsf.edit.preedit
+        tsf.edit.reset
+        tsf.edit.session
+        tsf.edit.units
+        tsf.engine.api
+        tsf.engine.contract
+        tsf.keys.altgr
+        tsf.keys.claim
+        tsf.keys.identity
+        tsf.keys.locale-flags
+        tsf.pairing.alternatives
+        tsf.pairing.self-sufficient
+        tsf.pairing.substitute
+        tsf.security.disabled
+        tsf.security.integrity
+        tsf.security.secure-mode
+        tsf.test.host
+        tsf.test.vm
+    ), covered_claims (
+        {impl_name main, rule ldml.crate.tsf}
+        {impl_name main, rule tsf.component}
+        {impl_name main, rule tsf.component.crate}
+        {impl_name main, rule tsf.component.interfaces}
+        {impl_name main, rule tsf.component.logging}
+        {impl_name main, rule tsf.component.panic}
+        {impl_name main, rule tsf.component.self-contained}
+        {impl_name main, rule tsf.data.locate}
+        {impl_name main, rule tsf.edit.apply}
+        {impl_name main, rule tsf.edit.cache}
+        {impl_name main, rule tsf.edit.inject}
+        {impl_name main, rule tsf.edit.ops}
+        {impl_name main, rule tsf.edit.preedit}
+        {impl_name main, rule tsf.edit.reset}
+        {impl_name main, rule tsf.edit.session}
+        {impl_name main, rule tsf.edit.units}
+        {impl_name main, rule tsf.engine.api}
+        {impl_name main, rule tsf.engine.contract}
+        {impl_name main, rule tsf.keys.altgr}
+        {impl_name main, rule tsf.keys.claim}
+        {impl_name main, rule tsf.keys.identity}
+        {impl_name main, rule tsf.keys.locale-flags}
+        {impl_name main, rule tsf.pairing.alternatives}
+        {impl_name main, rule tsf.pairing.self-sufficient}
+        {impl_name main, rule tsf.pairing.substitute}
+        {impl_name main, rule tsf.security.disabled}
+        {impl_name main, rule tsf.security.integrity}
+        {impl_name main, rule tsf.security.secure-mode}
+        {impl_name main, rule tsf.test.host}
+        {impl_name main, rule tsf.test.vm}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

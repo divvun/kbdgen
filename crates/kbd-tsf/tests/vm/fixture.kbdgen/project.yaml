@@ -1,0 +1,14 @@
+locales:
+  en:
+    name: Võro Keyboards
+    description: Mobile OS keyboards for the Võro language from the Divvun group at UiT.
+  nb:
+    name: Võro tastatur
+    description: Mobiltastatur for Võro fra Divvun-gruppa.
+  vro:
+    name: Võro klaviatuur
+    description: Mobiltastatur for Võro fra Divvun-gruppa.
+author: 'The Divvun Group, UiT Norgga árktalaš universitehta'
+copyright: (c) 2017 Divvun/Giellatekno/UiT
+email: feedback@divvun.no
+organisation: UiT Norgga árktalaš universitehta

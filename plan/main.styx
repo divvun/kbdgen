@@ -495,6 +495,21 @@ children (
                                     )
                                 }
                                 deps (targets.windows.tsf.reconcile ldml.engine targets.windows.tsf.data)
+                                log (
+                                    {
+                                        at 2026-10-06T10:03:24.830505Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T11:03:21.232779Z
+                                        author "brendan@necessary.nu"
+                                        kind @note
+                                        text "Verified on jaheira-win11: 70/70 typing checks (Win32 EDIT, RichEdit, WPF TextBox x64; EDIT, WPF x86): plain, dead keys, AltGr ligature and AltGr dead key, numpad decimal, commit on End, Backspace cancels pending dead key, text-rewriting transforms incl. surrogate pair (inject path in EDIT/RichEdit, range path in WPF). Layering proof: DLL alone ´ b = '´b', q' = \"q'\"; through the TIP b+U+0301 and ʠ. 36 COM entry points fault-injected -> E_UNEXPECTED + poisoned. Spec deviations to fold (node targets.windows.tsf.host-spec): tsf.keys.altgr — TSF never delivers WM_SYSKEYDOWN (Alt without Ctrl) to the key sink, so AltGr chords the engine would consume are registered as preserved keys (OnPreservedKey), with a 0xFF key sent after to suppress menu-bar activation (untested: no menu app); tsf.keys.identity — WPF passes lParam without scan code/extended flag, so scan code is recovered from the VK via the dummy layout (numpad Del with NumLock off behaves as Delete); OnKeyDown is only called for keys OnTestKeyDown ate, so commit-and-reset for passing keys happens in the test phase; EDIT/RichEdit report an extra text change after the service's own edits (counted and ignored); ActivateProfile's per-process flag switched the session-wide input method (driver restores previous); text inserted at a composition start can be absorbed — composition start is moved past it; a profile-switch sink was added (one CLSID, many profiles). Not verified: console/AppContainer hosts, password fields in real apps, secure mode/sign-in screen, menu-bar suppression, Shift Lock and B00 on real hardware, profile switching between two keyboards, Arm64/Arm64X, at_start. VM leftover: a first-run test DLL in admin's Temp is still loaded in explorer/SearchHost/msedgewebview2 and is scheduled for deletion at next restart."
+                                    }
+                                )
                             }
 
                             {
@@ -554,6 +569,13 @@ children (
                                 title "Spec the DLL/engine differences the differential test found: unmatched dead key after dead key, ligature after dead key, space outside base columns, SGCAPS with dead keys, migrated caps (fix ldml.kbdl.dead-tree wording)"
                                 kind @docs
                                 deps (targets.windows.tsf.data)
+                            }
+
+                            {
+                                id targets.windows.tsf.host-spec
+                                title "Fold Windows 11 TSF findings into tsf.md: AltGr via preserved keys, WPF scan-code recovery, test-phase commit, own-edit echo, ActivateProfile scope, composition start"
+                                kind @docs
+                                deps (targets.windows.tsf.host)
                             }
                         )
                         log (

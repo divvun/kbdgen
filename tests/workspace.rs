@@ -252,3 +252,49 @@ fn kbdgen_depends_on_crates_by_path() {
         assert_eq!(Path::new(path), workspace.root.join("crates").join(name));
     }
 }
+
+// [spec:kbdgen:req:ldml.crate.tsf+1/test]
+// [spec:kbdgen:req:tsf.component.crate/test]
+#[test]
+fn tsf_is_windows_cdylib_on_engine_and_windows() {
+    let workspace = Workspace::load();
+    let tsf = workspace.package("kbd-tsf");
+
+    let library = tsf["targets"]
+        .as_array()
+        .expect("targets")
+        .iter()
+        .find(|target| target["name"] == "kbd_tsf")
+        .expect("kbd-tsf has a library");
+    assert_eq!(strings(&library["crate_types"]), BTreeSet::from(["cdylib"]));
+    assert!(
+        !workspace
+            .names_of("workspace_default_members")
+            .contains("kbd-tsf"),
+        "a plain cargo build never compiles the text service"
+    );
+
+    assert_eq!(
+        dependency_names(tsf),
+        BTreeSet::from(["kbd-engine", "kbd-model", "windows", "windows-core"])
+    );
+    for name in ["kbd-engine", "kbd-model"] {
+        let dependency = dependency(tsf, name);
+        assert!(dependency["path"].is_string(), "{name} by path");
+        assert_eq!(dependency["uses_default_features"], true, "{name} defaults");
+    }
+    for name in ["windows", "windows-core"] {
+        let dependency = dependency(tsf, name);
+        assert_eq!(
+            dependency["target"], "cfg(windows)",
+            "{name} only on Windows"
+        );
+        assert!(
+            dependency["req"]
+                .as_str()
+                .expect("req")
+                .starts_with("^0.62"),
+            "{name} is 0.62.x"
+        );
+    }
+}
