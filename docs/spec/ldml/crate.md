@@ -121,8 +121,9 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > - return an error for every failure, never panic
 > - keep all mutable state in the `State` value, which the host owns
 
-> [spec:kbdgen:req:ldml.crate.kbdgen]
+> [spec:kbdgen:req:ldml.crate.kbdgen+1]
 > The `kbdgen` package MUST depend on `kbd-model`, `kbd-engine` and `kbd-ldml`
 > by path. The `kbdl` adapter derives dead-key tables by running the engine
 > (`ldml.kbdl.dead-tree`). As a result, the native table fallback and the
-> engine cannot disagree on what a dead key composes to.
+> engine agree on what a dead key composes to, except where
+> `tsf.test.differential` lists Windows' own dead-key behaviour.

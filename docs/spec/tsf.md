@@ -833,7 +833,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > the resource of `tsf.data.resource` in each built `<name>.res` decodes
 > with `Model::from_bytes` to the model of `ldml.kbdl.model-resource`.
 
-> [spec:kbdgen:req:tsf.test.differential]
+> [spec:kbdgen:req:tsf.test.differential+1]
 > For every fixture layout, a test MUST compare `kbd-engine` on the layout's
 > model with the layout DLL built from it. For each table-expressible
 > position, `kbdl.layers` layer and dead-key path, the engine's committed
@@ -845,7 +845,14 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > - what `ldml.kbdl.classify` reports: multi-unit dead-key leaves,
 >   transforms that do not start with a marker, `reorder` and extra
 >   `backspace` rules, mixed outputs, enabled normalization
-> - positions `ldml.kbdl.positions` drops or warns about
+> - positions `ldml.kbdl.positions` drops or warns about, and the space
+>   bar outside the columns its fixed row fills
+> - caps states of a dead key that `kbdl.caps.sgcaps` cannot express
+> - a v3 layout's caps states at positions M09 lists for Windows
+>   (`ldml.kbdl.model-resource`, `ldml.migrate.caps-diff`)
+> - a dead key with no entry after a pending one (`ldml.kbdl.dead-tree`)
+> - a ligature whose first unit composes with a pending dead key
+>   (`kbdl.ligatures`)
 >
 > Each exception MUST be listed in the test.
 

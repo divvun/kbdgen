@@ -7,7 +7,7 @@
 //! own empty `[workspace]`, so this workspace never captures them.
 
 // [spec:kbdgen:def:ldml.crate.layout+1]
-// [spec:kbdgen:req:ldml.crate.kbdgen]
+// [spec:kbdgen:req:ldml.crate.kbdgen+1]
 pub mod build;
 pub mod bundle;
 pub mod ldml;

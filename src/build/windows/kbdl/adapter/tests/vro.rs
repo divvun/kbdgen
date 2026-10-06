@@ -118,9 +118,9 @@ const COLUMN_LAYERS: [Layer; 5] = [
 
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
 // [spec:kbdgen:sem:ldml.kbdl.layers/test]
-// [spec:kbdgen:sem:ldml.kbdl.positions+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.positions+2/test]
 // [spec:kbdgen:sem:ldml.kbdl.values+1/test]
-// [spec:kbdgen:sem:ldml.kbdl.dead-tree+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.dead-tree+2/test]
 #[test]
 fn vro_v4_tables_match_v3_where_they_overlap() {
     let v3 = vro3();
@@ -197,7 +197,7 @@ fn leaf(output: &str) -> DeadKeyNode {
     DeadKeyNode::Leaf(output.into())
 }
 
-// [spec:kbdgen:sem:ldml.kbdl.dead-tree+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.dead-tree+2/test]
 // [spec:kbdgen:sem:ldml.kbdl.values+1/test]
 #[test]
 fn vro_dead_tree_comes_from_the_engine() {

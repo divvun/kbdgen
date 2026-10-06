@@ -119,7 +119,7 @@ fn extra_modifiers_select_their_own_columns() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.kbdl.positions+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.positions+2/test]
 // [spec:kbdgen:req:ldml.kbdl.windows-inputs/test]
 #[test]
 fn abnt2_form_fills_the_49th_key() {
@@ -147,7 +147,7 @@ fn abnt2_form_fills_the_49th_key() {
     assert!(!tables.rows.iter().any(|row| row.vk == 0xc1));
 }
 
-// [spec:kbdgen:sem:ldml.kbdl.positions+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.positions+2/test]
 #[test]
 fn keys_outside_the_49_positions_warn() {
     let rows = "§ 1 2 3 4 5 6 7 8 9 0 - = ¥\n        q w e r t y u i o p å ¨\n        a s d f g h j k l ö æ '\n        z x c v b n m , . / \\\n";
@@ -184,7 +184,7 @@ fn chained() -> String {
     ))
 }
 
-// [spec:kbdgen:sem:ldml.kbdl.dead-tree+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.dead-tree+2/test]
 #[test]
 fn chained_dead_keys_become_dkf_dead_entries() {
     let input = adapted("sme", &chained()).input;
@@ -226,7 +226,7 @@ fn explicit_dead_key(extra: &str) -> String {
     ))
 }
 
-// [spec:kbdgen:sem:ldml.kbdl.dead-tree+1/test]
+// [spec:kbdgen:sem:ldml.kbdl.dead-tree+2/test]
 #[test]
 fn dead_key_cycles_are_fatal() {
     let yaml = explicit_dead_key(

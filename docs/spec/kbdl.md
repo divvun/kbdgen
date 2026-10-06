@@ -310,7 +310,7 @@ Sources:
 
 ## Dead keys
 
-> [spec:kbdgen:req:kbdl.dead-keys+1]
+> [spec:kbdgen:req:kbdl.dead-keys+2]
 > A one-unit value flagged dead MUST make its cell `WCH_DEAD`, and its row
 > MUST be followed by a row with `VirtualKey` `0xff`, `Attributes` `0`, the
 > dead id of that dead character in each `WCH_DEAD` column and `WCH_NONE` in
@@ -319,7 +319,8 @@ Sources:
 > 0 to *N*−1). Each key dead character, and each chained state
 > (`kbdl.dead-keys.chains`), is a *dead state*, identified by one unit, its
 > *dead id*; on a key with no entry in the state's group, Windows emits the
-> dead id, then that key's character. Key dead characters are given ids in
+> dead id, then that key's character, which for a dead key is its own dead
+> id, and leaves nothing pending. Key dead characters are given ids in
 > order, before any chained state. A key dead character's id MUST be the
 > standalone output of its tree branch when that is exactly one unit, outside
 > `0xF000`–`0xF002` and not already a dead id, so that an unmatched key emits
@@ -378,7 +379,7 @@ Sources:
 
 ## Ligatures
 
-> [spec:kbdgen:req:kbdl.ligatures]
+> [spec:kbdgen:req:kbdl.ligatures+1]
 > Each ligature cell MUST be `WCH_LGTR` and add one `aLigature` entry
 > `{virtual key, column, units…}`, in emission order (rows in table order,
 > columns 0 to *N*−1). With `n` the longest ligature's unit count (2–16),
@@ -387,6 +388,9 @@ Sources:
 > `n` and `cbLgEntry` = `4 + 2n`. Ligatures never occur in SGCAPS follow
 > rows (`kbdl.caps.sgcaps`), so (virtual key, column) is unique. Without
 > ligatures, `nLgMax` and `cbLgEntry` are `0` and `pLigature` is null.
+> With a dead state pending, Windows composes it with a ligature's first
+> unit by that unit's `aDeadKey` entry and types the remaining units after
+> the result. (Verified with leaf entries; a `DKF_DEAD` entry is untested.)
 
 > [spec:kbdgen:thm:kbdl.ligatures.limit]
 > Windows delivers at most 16 UTF-16 units per keystroke: typed input

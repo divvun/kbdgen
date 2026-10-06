@@ -162,7 +162,9 @@ impl Drop for Installed {
     }
 }
 
-// [spec:kbdgen:req:tsf.test.differential/test]
+// [spec:kbdgen:req:tsf.test.differential+1/test]
+// [spec:kbdgen:req:kbdl.dead-keys+2/test]
+// [spec:kbdgen:req:kbdl.ligatures+1/test]
 #[tokio::test]
 #[ignore = "installs layouts; needs an elevated interactive Windows session"]
 async fn real_dlls_type_what_the_simulation_types() {

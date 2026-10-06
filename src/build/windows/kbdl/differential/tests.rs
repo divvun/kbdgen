@@ -51,7 +51,7 @@ fn synthetic(body: &str) -> String {
     )
 }
 
-// [spec:kbdgen:req:tsf.test.differential/test]
+// [spec:kbdgen:req:tsf.test.differential+1/test]
 #[test]
 fn fixture_layouts_type_what_the_engine_types() {
     let mut unexplained = Vec::new();
@@ -69,7 +69,7 @@ fn fixture_layouts_type_what_the_engine_types() {
     assert_eq!(exercised, BTreeSet::from(FIXTURE_EXCEPTIONS));
 }
 
-// [spec:kbdgen:req:tsf.test.differential/test]
+// [spec:kbdgen:req:tsf.test.differential+1/test]
 #[test]
 fn each_listed_exception_explains_a_difference() {
     for (exception, body) in SYNTHETIC {
@@ -95,7 +95,7 @@ fn each_listed_exception_explains_a_difference() {
     );
 }
 
-// [spec:kbdgen:req:tsf.test.differential/test]
+// [spec:kbdgen:req:tsf.test.differential+1/test]
 #[test]
 fn corrupted_tables_are_not_explained() {
     let fixture = fixture_bundles()
@@ -129,7 +129,7 @@ fn corrupted_tables_are_not_explained() {
     );
 }
 
-// [spec:kbdgen:req:tsf.test.differential/test]
+// [spec:kbdgen:req:tsf.test.differential+1/test]
 #[test]
 fn simulated_dead_keys_compose_chain_and_fall_back() {
     let mut input = base();

@@ -438,7 +438,7 @@ fn dead_keys(out: &mut String, tables: &Tables) {
 }
 
 /// `aLigature`, every entry padded with `WCH_NONE` to the longest.
-// [spec:kbdgen:req:kbdl.ligatures]
+// [spec:kbdgen:req:kbdl.ligatures+1]
 fn ligatures(out: &mut String, tables: &Tables) {
     let lg_max = tables.lg_max();
     if lg_max == 0 {
@@ -513,7 +513,7 @@ fn scancodes(out: &mut String, tables: &Tables) {
 /// `KbdTables`, in `KBDTABLES` field order.
 // [spec:kbdgen:def:kbdl.tables]
 // [spec:kbdgen:req:kbdl.locale]
-// [spec:kbdgen:req:kbdl.ligatures]
+// [spec:kbdgen:req:kbdl.ligatures+1]
 fn descriptor(out: &mut String, tables: &Tables) {
     let dead_keys = if tables.dead_keys.is_empty() {
         "P::NULL"
@@ -726,7 +726,7 @@ mod tests {
 
     // [spec:kbdgen:def:kbdl.tables/test]
     // [spec:kbdgen:req:kbdl.vk-chars/test]
-    // [spec:kbdgen:req:kbdl.ligatures/test]
+    // [spec:kbdgen:req:kbdl.ligatures+1/test]
     // [spec:kbdgen:req:kbdl.dead-keys.names+1/test]
     #[test]
     fn descriptor_fields_and_null_tables() {

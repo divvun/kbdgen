@@ -239,7 +239,7 @@ fn ldml_depends_on_model_icu_normalizer_and_xmlem() {
     );
 }
 
-// [spec:kbdgen:req:ldml.crate.kbdgen/test]
+// [spec:kbdgen:req:ldml.crate.kbdgen+1/test]
 #[test]
 fn kbdgen_depends_on_crates_by_path() {
     let workspace = Workspace::load();

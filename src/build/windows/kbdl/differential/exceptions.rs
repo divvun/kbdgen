@@ -33,7 +33,7 @@ pub enum Exception {
 }
 
 /// Every exception the rule lists, with where it is documented.
-// [spec:kbdgen:req:tsf.test.differential]
+// [spec:kbdgen:req:tsf.test.differential+1]
 pub const LISTED: [(Exception, &str); 13] = [
     (
         Exception::CapsShiftCaplok,

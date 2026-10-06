@@ -310,7 +310,7 @@ impl Report {
 }
 
 /// Compares the engine with the simulated DLL on every case.
-// [spec:kbdgen:req:tsf.test.differential]
+// [spec:kbdgen:req:tsf.test.differential+1]
 pub fn compare(subject: &Subject) -> Report {
     let mut report = Report::default();
     for case in cases(subject) {

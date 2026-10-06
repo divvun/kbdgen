@@ -736,7 +736,7 @@ impl CharTableBuilder<'_> {
 
     /// The `0xff` row after a row with dead keys. It holds the dead
     /// characters until [`substitute_dead_ids`] replaces them with ids.
-    // [spec:kbdgen:req:kbdl.dead-keys+1]
+    // [spec:kbdgen:req:kbdl.dead-keys+2]
     fn dead_row(&mut self, cells: &[Cell]) {
         let wch = cells
             .iter()
@@ -1051,7 +1051,7 @@ fn dead_keys(
 /// outside `0xF000`-`0xF002` and not yet another state's id, so Windows'
 /// fallback for an unmatched key emits the standalone output; otherwise the
 /// dead character itself, or, if that too is taken, a private-use unit.
-// [spec:kbdgen:req:kbdl.dead-keys+1]
+// [spec:kbdgen:req:kbdl.dead-keys+2]
 fn key_dead_id(
     dead_char: u16,
     children: &IndexMap<String, DeadKeyNode>,
@@ -1200,7 +1200,7 @@ fn chained_dead_id(
 }
 
 /// Replaces the dead characters held by `0xff` rows with their dead ids.
-// [spec:kbdgen:req:kbdl.dead-keys+1]
+// [spec:kbdgen:req:kbdl.dead-keys+2]
 fn substitute_dead_ids(rows: &mut [Row], ids: &HashMap<u16, u16>) {
     for row in rows.iter_mut().filter(|row| row.vk == VK_DEAD_ROW) {
         for unit in row.wch.iter_mut().filter(|unit| **unit != WCH_NONE) {
@@ -1866,7 +1866,7 @@ pub(crate) mod tests {
         input
     }
 
-    // [spec:kbdgen:req:kbdl.dead-keys+1/test]
+    // [spec:kbdgen:req:kbdl.dead-keys+2/test]
     // [spec:kbdgen:req:kbdl.dead-keys.table/test]
     #[test]
     fn dead_rows_and_one_group_per_dead_state() {
@@ -1917,7 +1917,7 @@ pub(crate) mod tests {
         assert!(!diag.warnings().iter().any(|warning| warning.contains('¨')));
     }
 
-    // [spec:kbdgen:req:kbdl.dead-keys+1/test]
+    // [spec:kbdgen:req:kbdl.dead-keys+2/test]
     #[test]
     fn dead_ids_are_standalone_outputs_with_fallbacks() {
         let (tables, diag) = ok(&vro_like());
@@ -2123,7 +2123,7 @@ pub(crate) mod tests {
         assert!(tables.dead_key_names.is_empty());
     }
 
-    // [spec:kbdgen:req:kbdl.ligatures/test]
+    // [spec:kbdgen:req:kbdl.ligatures+1/test]
     #[test]
     fn ligatures_in_emission_order() {
         let mut input = base();

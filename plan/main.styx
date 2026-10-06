@@ -616,6 +616,22 @@ children (
                                 title "Spec the DLL/engine differences the differential test found: unmatched dead key after dead key, ligature after dead key, space outside base columns, SGCAPS with dead keys, migrated caps (fix ldml.kbdl.dead-tree wording)"
                                 kind @docs
                                 deps (targets.windows.tsf.data)
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-10-06T13:15:44.105185Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T13:19:36.295468Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
+                                    }
+                                )
                             }
 
                             {

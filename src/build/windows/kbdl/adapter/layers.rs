@@ -245,7 +245,7 @@ pub fn derive(
 
 /// The value of the key at one position, recording distinct values, dead
 /// keys and mixed outputs as they first occur.
-// [spec:kbdgen:sem:ldml.kbdl.positions+1]
+// [spec:kbdgen:sem:ldml.kbdl.positions+2]
 // [spec:kbdgen:sem:ldml.kbdl.values+1]
 fn key_value(
     keyboard: &Keyboard,
@@ -325,7 +325,7 @@ fn record_dead_key(
 /// Warns about keys of hardware layer `index` that no position of the
 /// tables holds: scan codes outside the 49 ISO positions, and a space bar
 /// whose output is not U+0020.
-// [spec:kbdgen:sem:ldml.kbdl.positions+1]
+// [spec:kbdgen:sem:ldml.kbdl.positions+2]
 fn check_unplaced_keys(
     keyboard: &Keyboard,
     hardware: &Hardware,

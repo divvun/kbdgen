@@ -41,7 +41,7 @@ Sources: `docs/spec/kbdl.md` (`kbdl.input`, `kbdl.layers`, `kbdl.caps`,
 `kbd-engine` exposes no layer-selection API, so the adapter repeats the
 engine's selection for these states; a test checks that both agree.
 
-> [spec:kbdgen:sem:ldml.kbdl.positions+1]
+> [spec:kbdgen:sem:ldml.kbdl.positions+2]
 > A `kbdl.input` position takes the key at the hardware position whose
 > scan code equals that position's scan code in `kbdl.scancodes.iso`. A
 > position whose scan code the form lacks is "no key": `B11` is filled
@@ -50,7 +50,10 @@ engine's selection for these states; a test checks that both agree.
 > output at scan codes outside the 49 warn and are dropped, such as `jis`
 > `7D`. The space row is fixed by `kbdl.vk-chars`, so a space position
 > whose output is not U+0020 warns. One example is the NBSP of `space:
-> {caps: \u{A0}}`.
+> {caps: \u{A0}}`. That row fills only the `default`, `shift` and `ctrl`
+> columns, so in the `alt`, `alt+shift`, `alt+caps` and extra-modifier
+> layers the DLL's space bar types nothing; a U+0020 output there does
+> not warn.
 
 > [spec:kbdgen:sem:ldml.kbdl.values+1]
 > A key's value is set as follows:
@@ -68,7 +71,7 @@ engine's selection for these states; a test checks that both agree.
 > are listed in first-occurrence order: `kbdl` layers in `kbdl.layers`
 > order, then positions.
 
-> [spec:kbdgen:sem:ldml.kbdl.dead-tree+1]
+> [spec:kbdgen:sem:ldml.kbdl.dead-tree+2]
 > The adapter derives each dead-key tree by running the engine
 > (`ldml.engine.api`) with `CancelOrPass`, `Nfc` and host `windows`, on an
 > empty context, pressing keys by `Id`. Pressing a dead key with marker m
@@ -80,9 +83,12 @@ engine's selection for these states; a test checks that both agree.
 > - a branch, built the same way, when nothing is committed and the
 >   trailing markers (`Model::pending_markers`) are exactly one marker n
 >   not already on the path
-> - none, when the committed text equals U; Windows' unmatched behaviour
->   does the same. This includes re-pressing a pending marker whose
->   standalone is empty.
+> - none, when the committed text equals U. This includes re-pressing a
+>   pending marker whose standalone is empty. For a value that is not
+>   dead, Windows' unmatched behaviour (`kbdl.dead-keys`) does the same.
+>   For a dead value it does not: the engine keeps the value's marker
+>   pending, as macOS does, where Windows types both dead ids and keeps
+>   nothing pending.
 > - otherwise fatal, when n is already on the path: a cycle
 > - a leaf, for other committed text with no marker pending; with markers
 >   pending, it warns and is omitted
