@@ -234,3 +234,26 @@ fn id_and_emit_keys_for_tests() {
     assert_eq!(s.emit("xyz"), typed("xyz"));
     assert_eq!(s.text, "àáxyz");
 }
+
+// [spec:kbdgen:sem:ldml.engine.test-keys+1/test]
+#[test]
+fn id_on_gap_or_role_key_passes() {
+    let m = model(touch_keyboard());
+    let id = |id: &str, gesture: Gesture| {
+        let event = KeyEvent::new(Key::Id {
+            id: id.to_string(),
+            gesture,
+        });
+        m.key(&State::default(), &Context::new("q"), &event).0
+    };
+    assert_eq!(id("gap", Gesture::Tap), Action::Pass);
+    assert_eq!(id("gap", Gesture::LongPress(1)), Action::Pass);
+    // The shift role key has a layer_id, but it is the host's own.
+    assert_eq!(id("shift", Gesture::Tap), Action::Pass);
+    assert_eq!(id("shift", Gesture::MultiTap(2)), Action::Pass);
+    // A layer-switch key without a role still switches.
+    assert_eq!(
+        id("to-symbols", Gesture::Tap),
+        with_layer(0, "", "", "symbols")
+    );
+}

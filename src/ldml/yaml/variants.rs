@@ -427,6 +427,7 @@ fn raw_touch(name: &str, value: &Value, at: &At, strings: &Strings) -> Result<Ra
     })
 }
 
+// [spec:kbdgen:def:ldml.yaml.touch+1]
 fn merge_long_press(base: &mut Vec<LongPressEntry>, own: &[LongPressEntry]) {
     for entry in own {
         match base.iter_mut().find(|e| e.output == entry.output) {

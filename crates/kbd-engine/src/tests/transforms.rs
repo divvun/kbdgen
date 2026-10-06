@@ -64,3 +64,32 @@ fn anchored_rule_needs_at_start_context() {
     let mut t = Session::new(&m);
     assert_eq!(t.emit("q"), typed("q"));
 }
+
+// [spec:kbdgen:sem:ldml.engine.context+1/test]
+// [spec:kbdgen:sem:ldml.engine.match+1/test]
+#[test]
+fn truncated_context_is_not_at_start() {
+    let mut k = keyboard(Normalization::Disabled);
+    // The first group shrinks C, so the anchored rule of the second can
+    // span all of it: only the truncation decides whether it applies.
+    k.simple = vec![
+        TransformGroup::Rules(vec![rule(chars("xyz"), vec![to_text("Q")])]),
+        TransformGroup::Rules(vec![Rule {
+            from: Pattern::from_tree(true, vec![chars("vwQ")]).unwrap(),
+            to: vec![to_text("R")],
+        }]),
+    ];
+    let m = model(k);
+    assert_eq!(m.context_len(), 4);
+    let press = |text: &str| {
+        let context = Context {
+            text: text.to_string(),
+            authoritative: true,
+            at_start: true,
+        };
+        let event = KeyEvent::new(Key::Emit("z".to_string()));
+        m.key(&State::default(), &context, &event).0
+    };
+    assert_eq!(press("vwxy"), edit(4, "R", ""));
+    assert_eq!(press("uvwxy"), edit(2, "Q", ""));
+}

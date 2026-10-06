@@ -1492,6 +1492,22 @@ children (
                 title "Annotate long-press application sites; test Id on gap/role keys and at_start after context truncation"
                 kind @test
                 deps (ldml.yaml-v4 ldml.engine)
+                sealed true
+                log (
+                    {
+                        at 2026-10-06T13:19:59.552097Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-06T13:30:54.630682Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
             }
         )
         log (

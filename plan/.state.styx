@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-06T13:15:44.035165Z
+last_sync_at 2026-10-06T13:19:55.276012Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -41,7 +41,7 @@ rule_versions (
     {id kbdl.caps, version 0}
     {id kbdl.caps.sgcaps, version 0}
     {id kbdl.crate, version 0}
-    {id kbdl.dead-keys, version 1}
+    {id kbdl.dead-keys, version 2}
     {id kbdl.dead-keys.chains, version 0}
     {id kbdl.dead-keys.diagnostics, version 0}
     {id kbdl.dead-keys.names, version 1}
@@ -54,7 +54,7 @@ rule_versions (
     {id kbdl.input.bundle, version 1}
     {id kbdl.key-names, version 0}
     {id kbdl.layers, version 0}
-    {id kbdl.ligatures, version 0}
+    {id kbdl.ligatures, version 1}
     {id kbdl.ligatures.limit, version 0}
     {id kbdl.locale, version 0}
     {id kbdl.metadata, version 0}
@@ -103,7 +103,7 @@ rule_versions (
     {id ldml.cli.test, version 0}
     {id ldml.crate.engine, version 1}
     {id ldml.crate.ffi, version 0}
-    {id ldml.crate.kbdgen, version 0}
+    {id ldml.crate.kbdgen, version 1}
     {id ldml.crate.layout, version 1}
     {id ldml.crate.ldml, version 0}
     {id ldml.crate.model, version 0}
@@ -141,11 +141,11 @@ rule_versions (
     {id ldml.kbdl.adapter, version 0}
     {id ldml.kbdl.caps, version 0}
     {id ldml.kbdl.classify, version 0}
-    {id ldml.kbdl.dead-tree, version 1}
+    {id ldml.kbdl.dead-tree, version 2}
     {id ldml.kbdl.layers, version 0}
     {id ldml.kbdl.metadata, version 0}
     {id ldml.kbdl.model-resource, version 1}
-    {id ldml.kbdl.positions, version 1}
+    {id ldml.kbdl.positions, version 2}
     {id ldml.kbdl.values, version 1}
     {id ldml.kbdl.windows-inputs, version 0}
     {id ldml.migrate.caps-diff, version 1}
@@ -301,7 +301,7 @@ rule_versions (
     {id tsf.security.integrity, version 0}
     {id tsf.security.secure-mode, version 1}
     {id tsf.security.signing, version 1}
-    {id tsf.test.differential, version 0}
+    {id tsf.test.differential, version 1}
     {id tsf.test.emoji, version 0}
     {id tsf.test.engine, version 0}
     {id tsf.test.host, version 0}
@@ -396,6 +396,7 @@ assertions (
     {id targets.windows.tsf.data, kind @doing, author "brendan@necessary.nu", at 2026-10-05T22:36:18.668509Z}
     {id targets.windows.tsf.host-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-06T13:15:27.284309Z}
     {id targets.windows.tsf.differential-spec, kind @complete, author "brendan@necessary.nu", at 2026-10-06T13:19:36.295468Z}
+    {id ldml.coverage-gaps, kind @complete, author "brendan@necessary.nu", at 2026-10-06T13:30:54.630682Z}
 )
 
 impl_evidence (

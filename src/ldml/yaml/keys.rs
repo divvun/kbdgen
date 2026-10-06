@@ -250,6 +250,7 @@ impl<'a> KeyTable<'a> {
         Ok(node.marker.clone())
     }
 
+    // [spec:kbdgen:def:ldml.yaml.long-press+1]
     fn def(&mut self, token: &Token, ctx: &Ctx, at: &At) -> Result<KeyDef> {
         let width = |w: &Option<u32>| w.unwrap_or(DEFAULT_WIDTH);
         let mut def = match token {
@@ -322,6 +323,7 @@ impl<'a> KeyTable<'a> {
         Ok(def)
     }
 
+    // [spec:kbdgen:def:ldml.yaml.long-press+1]
     // [spec:kbdgen:sem:ldml.yaml.key-ids.collisions+1]
     /// The id of the key a token makes or names, registering it on first
     /// use. A new definition whose id is taken by a different one gets the

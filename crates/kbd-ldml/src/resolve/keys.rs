@@ -79,6 +79,7 @@ fn flicks(ctx: &mut Ctx, root: &El) -> Result<()> {
     Ok(())
 }
 
+// [spec:kbdgen:def:ldml.model.keys]
 /// Builds the key table: implied keys first, then the rest in document
 /// order, with overrides in place; then flicks, and the references
 /// between keys, which may point forwards.

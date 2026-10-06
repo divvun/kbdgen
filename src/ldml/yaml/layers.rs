@@ -414,6 +414,7 @@ fn flicks_at(
     Ok(out)
 }
 
+// [spec:kbdgen:def:ldml.yaml.long-press+1]
 // [spec:kbdgen:def:ldml.yaml.touch+1]
 /// The touch sets of a variant in ascending `minDeviceWidth`, the size
 /// without one first. A variant's `longPress` entries replace the global
