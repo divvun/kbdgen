@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-06T23:46:48.185411Z
+last_sync_at 2026-10-06T23:57:10.455378Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -452,6 +452,15 @@ impl_evidence (
         {impl_name main, rule bundle.structure}
         {impl_name main, rule bundle.structure.targets}
         {impl_name main, rule bundle.structure.targets.env}
+    ), rule_versions_seen (
+        {id bundle.fetch, version 0}
+        {id bundle.layouts, version 1}
+        {id bundle.layouts.autonym, version 0}
+        {id bundle.project, version 0}
+        {id bundle.resources, version 0}
+        {id bundle.structure, version 0}
+        {id bundle.structure.targets, version 1}
+        {id bundle.structure.targets.env, version 0}
     )}
     {id input.cli, covered_rules (
         cli.commands
@@ -496,6 +505,10 @@ impl_evidence (
         {impl_name main, rule ldml.kbdl.windows-inputs}
         {impl_name main, rule ldml.yaml.native}
         {impl_name main, rule ldml.yaml.targets}
+    ), rule_versions_seen (
+        {id ldml.kbdl.windows-inputs, version 1}
+        {id ldml.yaml.native, version 0}
+        {id ldml.yaml.targets, version 0}
     )}
     {id ldml.conformance, covered_rules (
         ldml.cli.test
@@ -960,6 +973,38 @@ impl_evidence (
         {impl_name main, rule ldml.yaml.touch.flicks}
         {impl_name main, rule ldml.yaml.touch.roles}
         {impl_name main, rule ldml.yaml.verbatim}
+    ), rule_versions_seen (
+        {id ldml.scope.macos-rules, version 0}
+        {id ldml.yaml.coexistence, version 1}
+        {id ldml.yaml.dead-keys, version 1}
+        {id ldml.yaml.dead-keys.backspace, version 0}
+        {id ldml.yaml.dead-keys.compose, version 0}
+        {id ldml.yaml.dead-keys.fallback, version 0}
+        {id ldml.yaml.dead-keys.keys, version 0}
+        {id ldml.yaml.detect, version 0}
+        {id ldml.yaml.displays.auto, version 0}
+        {id ldml.yaml.escape, version 1}
+        {id ldml.yaml.hardware, version 1}
+        {id ldml.yaml.hardware.rows, version 1}
+        {id ldml.yaml.hosts, version 0}
+        {id ldml.yaml.implied-layers, version 1}
+        {id ldml.yaml.import, version 1}
+        {id ldml.yaml.key-ids, version 1}
+        {id ldml.yaml.key-ids.collisions, version 1}
+        {id ldml.yaml.ldml-ref, version 3}
+        {id ldml.yaml.long-press, version 1}
+        {id ldml.yaml.lowering, version 1}
+        {id ldml.yaml.modifier-names, version 0}
+        {id ldml.yaml.normalization, version 0}
+        {id ldml.yaml.roundtrip, version 2}
+        {id ldml.yaml.rows, version 0}
+        {id ldml.yaml.schema, version 3}
+        {id ldml.yaml.strict, version 0}
+        {id ldml.yaml.tokens, version 0}
+        {id ldml.yaml.touch, version 1}
+        {id ldml.yaml.touch.flicks, version 0}
+        {id ldml.yaml.touch.roles, version 1}
+        {id ldml.yaml.verbatim, version 1}
     )}
     {id targets.android.layout, rule_versions_seen (
         {id android.gradle, version 0}
