@@ -1478,6 +1478,22 @@ children (
                 title "Reject listed non-NFD class values even when adjacent ranges merge before the NFD check ([\\u{C0}\\u{C1}] warns instead of erroring)"
                 kind @fix
                 deps (ldml.parser)
+                sealed true
+                log (
+                    {
+                        at 2026-10-06T13:31:17.75198Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-10-06T13:35:10.324058Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
             }
 
             {

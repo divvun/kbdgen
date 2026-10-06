@@ -18,34 +18,47 @@ use crate::syntax::{
 use crate::tree::El;
 
 // [spec:kbdgen:req:ldml.xml.nfd-classes+1]
-/// With normalization enabled, a class may list only NFD scalar values
-/// (`ldml.xml.nfd-classes`): a listed non-NFD value is an error. A range
-/// that merely contains non-NFD values warns, and those values are
-/// removed, since the model's classes hold only NFD values and such values
-/// never occur in NFD text.
+/// With normalization enabled, a `from` class or a `uset` may list only
+/// NFD scalar values (`ldml.xml.nfd-classes`): a listed non-NFD value is
+/// an error. `listed` holds the values written singly, before ranges were
+/// merged, so `[\u{C0}\u{C1}]` is rejected even though it normalizes to
+/// one range.
+pub(super) fn reject_listed(ctx: &Ctx, el: &El, attribute: &str, listed: &[char]) -> Result<()> {
+    if !ctx.enabled() {
+        return Ok(());
+    }
+    match listed.iter().find(|&&c| !is_nfd_char(c)) {
+        Some(&c) => Err(el.attr_error(
+            attribute,
+            format!(
+                "U+{:04X} is not NFD and may not be listed in a class",
+                u32::from(c)
+            ),
+        )),
+        None => Ok(()),
+    }
+}
+
+// [spec:kbdgen:req:ldml.xml.nfd-classes+1]
+/// With normalization enabled, removes the non-NFD values of normalized
+/// `ranges` with a warning, since the model's classes hold only NFD values
+/// and such values never occur in NFD text (`ldml.xml.nfd-classes`).
+/// Callers reject listed non-NFD values first where they are an error
+/// ([`reject_listed`]).
 pub(super) fn nfd_ranges(
     ctx: &mut Ctx,
     el: &El,
     attribute: &str,
     ranges: Vec<ClassRange>,
-    listed_is_error: bool,
-) -> Result<Vec<ClassRange>> {
+) -> Vec<ClassRange> {
     if !ctx.enabled() {
-        return Ok(ranges);
+        return ranges;
     }
     let mut out = Vec::new();
     for r in ranges {
         if r.lo == r.hi {
             if is_nfd_char(r.lo) {
                 out.push(r);
-            } else if listed_is_error {
-                return Err(el.attr_error(
-                    attribute,
-                    format!(
-                        "U+{:04X} is not NFD and may not be listed in a class",
-                        u32::from(r.lo)
-                    ),
-                ));
             } else {
                 ctx.warn(
                     el.warning(format!(
@@ -85,7 +98,7 @@ pub(super) fn nfd_ranges(
             );
         }
     }
-    Ok(normalize_ranges(out))
+    normalize_ranges(out)
 }
 
 fn prev(c: char) -> char {
@@ -97,11 +110,17 @@ fn prev(c: char) -> char {
 
 fn class_atom(ctx: &mut Ctx, el: &El, class: &ClassSyntax) -> Result<TreeAtom> {
     let mut ranges = Vec::new();
+    let mut listed = Vec::new();
     let mut markers = Vec::new();
     let mut any_marker = false;
     for member in &class.members {
         match member {
-            ClassMember::Range(lo, hi) => ranges.push(ClassRange { lo: *lo, hi: *hi }),
+            ClassMember::Range(lo, hi) => {
+                if lo == hi {
+                    listed.push(*lo);
+                }
+                ranges.push(ClassRange { lo: *lo, hi: *hi });
+            }
             ClassMember::Marker(m) => {
                 let i = ctx.marker(el, m)?;
                 if !markers.contains(&i) {
@@ -111,7 +130,8 @@ fn class_atom(ctx: &mut Ctx, el: &El, class: &ClassSyntax) -> Result<TreeAtom> {
             ClassMember::AnyMarker => any_marker = true,
         }
     }
-    let ranges = nfd_ranges(ctx, el, "from", normalize_ranges(ranges), true)?;
+    reject_listed(ctx, el, "from", &listed)?;
+    let ranges = nfd_ranges(ctx, el, "from", normalize_ranges(ranges));
     if class.negated || !any_marker {
         let i = ctx.class_index(
             el,
@@ -148,8 +168,9 @@ fn var_atom(ctx: &mut Ctx, el: &El, id: &str) -> Result<TreeAtom> {
             .collect::<Result<Vec<Text>>>()?;
         return Ok(TreeAtom::Set(ctx.set_index(el, texts)?));
     }
-    if let Some(ranges) = ctx.vars.uset(id) {
-        let ranges = nfd_ranges(ctx, el, "from", ranges, true)?;
+    if let Some(set) = ctx.vars.uset(id) {
+        reject_listed(ctx, el, "from", &set.listed)?;
+        let ranges = nfd_ranges(ctx, el, "from", set.ranges);
         let i = ctx.class_index(
             el,
             Class {

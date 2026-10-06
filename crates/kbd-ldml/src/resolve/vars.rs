@@ -1,11 +1,9 @@
 //! Variables, resolved in definition order (`ldml.xml.resolve` step 3):
 //! each may refer only to variables defined before it.
 
-use kbd_model::ClassRange;
-
 use crate::diag::Result;
 use crate::escape::{Piece, decode_text};
-use crate::syntax::{parse_set, parse_uset, substitute_strings};
+use crate::syntax::{Uset, parse_set, parse_uset, substitute_strings};
 use crate::tree::El;
 
 struct StringVar {
@@ -20,7 +18,7 @@ struct StringVar {
 pub(crate) struct Vars {
     strings: Vec<StringVar>,
     sets: Vec<(String, Vec<Vec<Piece>>)>,
-    usets: Vec<(String, Vec<ClassRange>)>,
+    usets: Vec<(String, Uset)>,
 }
 
 impl Vars {
@@ -46,8 +44,8 @@ impl Vars {
                 }
                 "uset" => {
                     let raw = substitute_strings(value, &|s| vars.string_raw(s)).map_err(err)?;
-                    let ranges = parse_uset(&raw, &|s| vars.uset(s)).map_err(err)?;
-                    vars.usets.push((id, ranges));
+                    let set = parse_uset(&raw, &|s| vars.uset(s)).map_err(err)?;
+                    vars.usets.push((id, set));
                 }
                 _ => {}
             }
@@ -76,7 +74,7 @@ impl Vars {
             .map(|(_, v)| v.clone())
     }
 
-    pub(crate) fn uset(&self, id: &str) -> Option<Vec<ClassRange>> {
+    pub(crate) fn uset(&self, id: &str) -> Option<Uset> {
         self.usets
             .iter()
             .find(|(i, _)| i == id)

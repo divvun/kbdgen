@@ -19,7 +19,7 @@ pub use from::{encode_pattern, parse_pattern};
 pub use reorder::{
     ReorderElem, encode_reorder, parse_reorder, parse_reorder_bools, parse_reorder_ints,
 };
-pub use sets::{encode_set_items, encode_uset, parse_set, parse_uset};
+pub use sets::{Uset, encode_set_items, encode_uset, parse_set, parse_uset};
 pub use to::{ToItem, encode_replacement, parse_replacement};
 
 use kbd_model::{ClassRange, Fixed};

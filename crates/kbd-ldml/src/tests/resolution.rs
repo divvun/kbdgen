@@ -551,6 +551,58 @@ fn non_nfd_class_members_error_or_warn() {
     assert!(off.warnings.iter().all(|w| !w.message.contains("NFD")));
 }
 
+// [spec:kbdgen:req:ldml.xml.nfd-classes+1/test]
+#[test]
+fn adjacent_listed_non_nfd_values_error() {
+    for from in [
+        r"[\u{C0}\u{C1}]",
+        r"[a\u{C1}\u{C0}b]",
+        r"[\u{C0 C1}]",
+        r"[^\u{C0}\u{C1}]",
+    ] {
+        let e = error_of(&format!(
+            r#"<transforms type="simple"><transformGroup><transform from="{from}"/></transformGroup></transforms>"#
+        ));
+        assert!(
+            e.contains("is not NFD and may not be listed"),
+            "{from}: {e}"
+        );
+    }
+    for value in [r"[\u{C0}\u{C1}]", r"[\u{BF}\u{C0}]"] {
+        let e = error_of(&format!(
+            r#"<variables><uset id="u" value="{value}"/><uset id="v" value="[$[u] a]"/></variables>
+               <transforms type="simple"><transformGroup><transform from="$[v]"/></transformGroup></transforms>"#
+        ));
+        assert!(e.contains("U+00C0 is not NFD"), "{value}: {e}");
+    }
+}
+
+// [spec:kbdgen:req:ldml.xml.nfd-classes+1/test]
+#[test]
+fn ranges_over_non_nfd_values_only_warn() {
+    for from in [r"[\u{C0}-\u{C1}]", r"[\u{BF}-\u{C0}\u{C1}-\u{C2}]", "$[u]"] {
+        let r = resolved(&with_layers(&format!(
+            r#"<variables><uset id="u" value="[\u{{BF}}-\u{{C1}}]"/></variables>
+               <transforms type="simple"><transformGroup><transform from="{from}"/></transformGroup></transforms>"#
+        )));
+        assert!(
+            r.warnings
+                .iter()
+                .any(|w| w.message.contains("not NFD; they are removed")),
+            "{from}"
+        );
+        let ranges = &r.keyboard.classes[0].ranges;
+        assert!(
+            ranges.iter().all(|range| !range.contains('\u{C0}')),
+            "{from}"
+        );
+    }
+    let single = resolved(&with_layers(
+        r#"<transforms type="simple"><transformGroup><transform from="[\u{BF}]"/></transformGroup></transforms>"#,
+    ));
+    assert!(single.warnings.iter().all(|w| !w.message.contains("NFD")));
+}
+
 // [spec:kbdgen:sem:ldml.xml.resolve+1/test]
 #[test]
 fn reorder_groups_merge_and_sort() {

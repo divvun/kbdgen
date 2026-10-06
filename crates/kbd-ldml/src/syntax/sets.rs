@@ -101,12 +101,9 @@ pub fn encode_set_items(items: &[Vec<Piece>]) -> String {
 /// usets, union and difference. Strings (`{…}`) and properties (`\p{…}`,
 /// `[:…:]`) are errors. Whitespace between members is ignored. The result
 /// is normalized.
-pub fn parse_uset(
-    value: &str,
-    uset: &dyn Fn(&str) -> Option<Vec<ClassRange>>,
-) -> Result<Vec<ClassRange>, SyntaxError> {
+pub fn parse_uset(value: &str, uset: &dyn Fn(&str) -> Option<Uset>) -> Result<Uset, SyntaxError> {
     let mut cur = Cursor::new(value.trim());
-    let ranges = uset_operand(&mut cur, uset)?;
+    let set = uset_operand(&mut cur, uset)?;
     skip_ws(&mut cur);
     if cur.peek().is_some() {
         return Err(SyntaxError::new(
@@ -114,7 +111,19 @@ pub fn parse_uset(
             "unexpected text after the set",
         ));
     }
-    Ok(ranges)
+    Ok(set)
+}
+
+/// A resolved `uset` value.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Uset {
+    /// The members, normalized.
+    pub ranges: Vec<ClassRange>,
+    /// The members written as single values rather than inside a range,
+    /// here or in a referenced uset, sorted. Normalizing merges adjacent
+    /// values into one range, so `ranges` alone cannot tell
+    /// `[\u{C0}\u{C1}]` from `[\u{C0}-\u{C1}]` (`ldml.xml.nfd-classes`).
+    pub listed: Vec<char>,
 }
 
 fn skip_ws(cur: &mut Cursor) {
@@ -126,8 +135,8 @@ fn skip_ws(cur: &mut Cursor) {
 /// A bracketed set or a `$[id]` reference.
 fn uset_operand(
     cur: &mut Cursor,
-    uset: &dyn Fn(&str) -> Option<Vec<ClassRange>>,
-) -> Result<Vec<ClassRange>, SyntaxError> {
+    uset: &dyn Fn(&str) -> Option<Uset>,
+) -> Result<Uset, SyntaxError> {
     let start = cur.offset;
     if cur.starts_with("$[") {
         cur.next();
@@ -155,6 +164,7 @@ fn uset_operand(
     }
     let negated = cur.eat('^');
     let mut ranges: Vec<ClassRange> = Vec::new();
+    let mut listed: Vec<char> = Vec::new();
     loop {
         skip_ws(cur);
         let at = cur.offset;
@@ -170,10 +180,13 @@ fn uset_operand(
                 if cur.peek() == Some('-') && (cur.starts_with("-[") || cur.starts_with("-$[")) {
                     cur.next();
                     let other = uset_operand(cur, uset)?;
-                    operand =
-                        intersect_ranges(&normalize_ranges(operand), &complement_ranges(&other));
+                    operand.ranges = intersect_ranges(
+                        &normalize_ranges(operand.ranges),
+                        &complement_ranges(&other.ranges),
+                    );
                 }
-                ranges.extend(operand);
+                ranges.extend(operand.ranges);
+                listed.extend(operand.listed);
             }
             Some(_) => {
                 let lo = uset_char(cur)?;
@@ -190,17 +203,22 @@ fn uset_operand(
                     }
                     ranges.push(ClassRange { lo: *lo, hi: *hi });
                 } else {
-                    ranges.extend(lo.into_iter().map(ClassRange::single));
+                    ranges.extend(lo.iter().copied().map(ClassRange::single));
+                    listed.extend(lo);
                 }
             }
         }
     }
     let ranges = normalize_ranges(ranges);
-    Ok(if negated {
+    let ranges = if negated {
         complement_ranges(&ranges)
     } else {
         ranges
-    })
+    };
+    listed.retain(|&c| ranges.iter().any(|r| r.contains(c)));
+    listed.sort_unstable();
+    listed.dedup();
+    Ok(Uset { ranges, listed })
 }
 
 /// One member character, or several for a multi-value `\u{…}`.

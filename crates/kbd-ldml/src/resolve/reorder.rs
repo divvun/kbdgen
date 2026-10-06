@@ -188,7 +188,7 @@ fn classes(ctx: &mut Ctx, el: &El, attribute: &str) -> Result<Vec<ReorderClass>>
                 ReorderClass::Char(c)
             }
             ReorderElem::Ranges(r) => {
-                let r = nfd_ranges(ctx, el, attribute, r, false)?;
+                let r = nfd_ranges(ctx, el, attribute, r);
                 if r.is_empty() {
                     return Err(el.attr_error(attribute, "an element matches no NFD character"));
                 }

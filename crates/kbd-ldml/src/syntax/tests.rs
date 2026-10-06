@@ -240,9 +240,16 @@ fn set_values_split_and_splice() {
 // [spec:kbdgen:syn:ldml.xml.sets+1/test]
 #[test]
 fn uset_subset_resolves_to_ranges() {
-    let earlier = |id: &str| (id == "range").then(|| vec![range('a', 'z'), range('D', 'G')]);
+    let earlier = |id: &str| {
+        (id == "range").then(|| Uset {
+            ranges: vec![range('a', 'z'), range('D', 'G')],
+            listed: Vec::new(),
+        })
+    };
     assert_eq!(
-        parse_uset("[a-z D E F G \\u{200A}]", &|_| None).unwrap(),
+        parse_uset("[a-z D E F G \\u{200A}]", &|_| None)
+            .unwrap()
+            .ranges,
         vec![
             range('D', 'G'),
             range('a', 'z'),
@@ -250,15 +257,15 @@ fn uset_subset_resolves_to_ranges() {
         ]
     );
     assert_eq!(
-        parse_uset("[$[range]-[G]]", &earlier).unwrap(),
+        parse_uset("[$[range]-[G]]", &earlier).unwrap().ranges,
         vec![range('D', 'F'), range('a', 'z')]
     );
     assert_eq!(
-        parse_uset("[[ab][$[range]]]", &earlier).unwrap(),
+        parse_uset("[[ab][$[range]]]", &earlier).unwrap().ranges,
         vec![range('D', 'G'), range('a', 'z')]
     );
     assert_eq!(
-        parse_uset("[^\\u{0}-\\u{FF}]", &|_| None).unwrap(),
+        parse_uset("[^\\u{0}-\\u{FF}]", &|_| None).unwrap().ranges,
         vec![range('\u{100}', char::MAX)]
     );
     for bad in [
@@ -273,11 +280,34 @@ fn uset_subset_resolves_to_ranges() {
     ] {
         assert!(parse_uset(bad, &earlier).is_err(), "{bad:?}");
     }
-    let ranges = parse_uset("[a-c\\-\\[x]", &|_| None).unwrap();
+    let ranges = parse_uset("[a-c\\-\\[x]", &|_| None).unwrap().ranges;
     assert_eq!(
-        parse_uset(&encode_uset(&ranges), &|_| None).unwrap(),
+        parse_uset(&encode_uset(&ranges), &|_| None).unwrap().ranges,
         ranges
     );
+}
+
+// [spec:kbdgen:req:ldml.xml.nfd-classes+1/test]
+#[test]
+fn uset_records_values_listed_outside_ranges() {
+    let adjacent = parse_uset("[\\u{C0}\\u{C1} x-z]", &|_| None).unwrap();
+    assert_eq!(
+        adjacent.ranges,
+        vec![range('x', 'z'), range('\u{C0}', '\u{C1}')]
+    );
+    assert_eq!(adjacent.listed, vec!['\u{C0}', '\u{C1}']);
+    let multi = parse_uset("[\\u{C0 C1}]", &|_| None).unwrap();
+    assert_eq!(multi.listed, vec!['\u{C0}', '\u{C1}']);
+    let ranged = parse_uset("[\\u{C0}-\\u{C1}]", &|_| None).unwrap();
+    assert_eq!(ranged.ranges, adjacent.ranges[1..]);
+    assert!(ranged.listed.is_empty(), "a range lists nothing");
+    let earlier = |id: &str| (id == "u").then(|| adjacent.clone());
+    let referenced = parse_uset("[$[u] a]", &earlier).unwrap();
+    assert_eq!(referenced.listed, vec!['a', '\u{C0}', '\u{C1}']);
+    let removed = parse_uset("[$[u]-[\\u{C0}]]", &earlier).unwrap();
+    assert_eq!(removed.listed, vec!['\u{C1}'], "only surviving members");
+    let negated = parse_uset("[^\\u{C0}]", &|_| None).unwrap();
+    assert!(negated.listed.is_empty());
 }
 
 #[test]
@@ -305,7 +335,12 @@ fn range_algebra_keeps_surrogates_out() {
 
 #[test]
 fn reorder_strings_and_value_lists() {
-    let usets = |id: &str| (id == "v").then(|| vec![range('\u{1A75}', '\u{1A79}')]);
+    let usets = |id: &str| {
+        (id == "v").then(|| Uset {
+            ranges: vec![range('\u{1A75}', '\u{1A79}')],
+            listed: Vec::new(),
+        })
+    };
     let elems = parse_reorder("\\u{1A60}[\\u{1A75}-\\u{1A79}]$[v]x", &usets).unwrap();
     assert_eq!(
         elems,

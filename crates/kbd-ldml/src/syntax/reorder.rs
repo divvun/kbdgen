@@ -3,7 +3,7 @@
 
 use kbd_model::ClassRange;
 
-use super::{FROM_METACHARS, parse_uset};
+use super::{FROM_METACHARS, Uset, parse_uset};
 use crate::escape::{Cursor, SyntaxError, hex_escape, push_hex};
 use crate::gencat::needs_escape;
 use crate::syntax::encode_uset;
@@ -20,7 +20,7 @@ pub enum ReorderElem {
 /// substituted. Markers are an error: reorder never matches them.
 pub fn parse_reorder(
     value: &str,
-    uset: &dyn Fn(&str) -> Option<Vec<ClassRange>>,
+    uset: &dyn Fn(&str) -> Option<Uset>,
 ) -> Result<Vec<ReorderElem>, SyntaxError> {
     let mut cur = Cursor::new(value);
     let mut out = Vec::new();
@@ -29,8 +29,8 @@ pub fn parse_reorder(
         match c {
             '[' => {
                 let set = take_bracketed(&mut cur)?;
-                let ranges = parse_uset(&set, uset).map_err(|e| shift(e, start))?;
-                out.push(ReorderElem::Ranges(ranges));
+                let set = parse_uset(&set, uset).map_err(|e| shift(e, start))?;
+                out.push(ReorderElem::Ranges(set.ranges));
             }
             '$' if cur.starts_with("$[") => {
                 let mut reference = String::new();
@@ -40,8 +40,8 @@ pub fn parse_reorder(
                         break;
                     }
                 }
-                let ranges = parse_uset(&reference, uset).map_err(|e| shift(e, start))?;
-                out.push(ReorderElem::Ranges(ranges));
+                let set = parse_uset(&reference, uset).map_err(|e| shift(e, start))?;
+                out.push(ReorderElem::Ranges(set.ranges));
             }
             '\\' => {
                 cur.next();
