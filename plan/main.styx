@@ -382,6 +382,7 @@ children (
                             {
                                 id targets.windows.tsf.compose
                                 title "Acceptance: multi-unit dead-key outputs, deep transforms and ligature layering typed through the installed text service"
+                                priority 0
                                 kind @test
                                 deps (targets.windows.tsf.host targets.windows.tsf.installer)
                             }
@@ -587,6 +588,7 @@ children (
                             {
                                 id targets.windows.tsf.kbdi
                                 title "kbdi: register, enable and uninstall TIP profiles (divvun/kbdi)"
+                                priority 0
                                 kind @feat
                                 implements {
                                     main (
@@ -599,11 +601,27 @@ children (
                                     )
                                 }
                                 deps (targets.windows.tsf.register)
+                                log (
+                                    {
+                                        at 2026-10-06T13:42:54.88388Z
+                                        author "brendan@necessary.nu"
+                                        kind @decision
+                                        text "Operator decision 2026-10-06: clone divvun/kbdi next to kbdgen, implement on a local unpushed branch, assert the node complete with a note (annotations in another repo are invisible to nspec)."
+                                    }
+
+                                    {
+                                        at 2026-10-06T13:51:59.766807Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+                                )
                             }
 
                             {
                                 id targets.windows.tsf.installer
                                 title "Bundle the text service in keyboard installers (divvun-actions)"
+                                priority 0
                                 kind @feat
                                 implements {
                                     main ([spec:kbdgen:req:tsf.installer.bundle] [spec:kbdgen:req:tsf.installer.layout-dlls])
@@ -1438,6 +1456,28 @@ children (
                         id ldml.port.android
                         title "Generate android output from the v4 model"
                         kind @feat
+                        implements {
+                            main (
+                                [spec:kbdgen:def:ldml.android.adapter]
+                                [spec:kbdgen:def:ldml.android.input]
+                                [spec:kbdgen:req:ldml.android.classify]
+                                [spec:kbdgen:req:ldml.android.dropped]
+                                [spec:kbdgen:req:ldml.android.preserve-case]
+                                [spec:kbdgen:req:ldml.android.speller]
+                                [spec:kbdgen:req:ldml.android.target]
+                                [spec:kbdgen:req:ldml.android.test.differential]
+                                [spec:kbdgen:req:ldml.android.test.golden]
+                                [spec:kbdgen:req:ldml.android.test.writer]
+                                [spec:kbdgen:sem:ldml.android.cells]
+                                [spec:kbdgen:sem:ldml.android.dead-keys.limits]
+                                [spec:kbdgen:sem:ldml.android.dead-keys]
+                                [spec:kbdgen:sem:ldml.android.layers]
+                                [spec:kbdgen:sem:ldml.android.long-press]
+                                [spec:kbdgen:sem:ldml.android.sizes]
+                                [spec:kbdgen:sem:ldml.android.widths]
+                                [spec:kbdgen:syn:ldml.android.key-spec]
+                            )
+                        }
                         deps (ldml.yaml-v4 ldml.spec-errata)
                         log (
                             {
@@ -1445,6 +1485,13 @@ children (
                                 author "brendan@necessary.nu"
                                 kind @status
                                 text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-10-06T13:42:54.838772Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Operator decisions 2026-10-06: ship assets/layouts/{tag}.android.dvkb now; drop caps layer and non-shift/backspace roles with a warning; keep v3 behaviour for preserveCase (hard-coded lut) and tablet output (nothing in xml-sw600dp without a tablet set). Open questions 1-2 (giella-ime dead-key fallback, KeySpec parsing) are factual and to be answered from giella-ime source."
                             }
                         )
                     }
