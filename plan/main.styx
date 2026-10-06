@@ -590,17 +590,8 @@ children (
                                 title "kbdi: register, enable and uninstall TIP profiles (divvun/kbdi)"
                                 priority 0
                                 kind @feat
-                                implements {
-                                    main (
-                                        [spec:kbdgen:def:tsf.register.ids]
-                                        [spec:kbdgen:req:tsf.register.enable]
-                                        [spec:kbdgen:req:tsf.register.langid]
-                                        [spec:kbdgen:req:tsf.register.profile]
-                                        [spec:kbdgen:req:tsf.register.uninstall]
-                                        [spec:kbdgen:req:tsf.register.welcome]
-                                    )
-                                }
                                 deps (targets.windows.tsf.register)
+                                sealed true
                                 log (
                                     {
                                         at 2026-10-06T13:42:54.88388Z
@@ -614,6 +605,20 @@ children (
                                         author "brendan@necessary.nu"
                                         kind @status
                                         text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T14:12:44.312758Z
+                                        author "brendan@necessary.nu"
+                                        kind @decision
+                                        text "Implemented in divvun/kbdi (invisible to kbdgen's nspec), local unpushed branch kbdgen-tsf-profiles on main b0e08bd: 933f2f1 register/unregister TIP profiles, e8f31b5 enable via profile, cc0dd80 remove profiles on uninstall, 86cd013 welcome screen, ed91088 README. Rules tsf.register.{ids,profile,langid,enable,welcome,uninstall} are annotated in kbdi source; claims removed here and the node asserted complete per operator decision. VM 2026-10-06: install/enable/type (64+32-bit EDIT)/uninstall cycle for se-FI and myv-Cyrl restored languages and inputs exactly; layout fallback without TIP works; .DEFAULT welcome-screen entry added and removed. Findings: bare tags (vro, sjd) fail GetLanguageNames — divvun-actions must pass script-qualified locales; Windows ignores ILOT_UNINSTALL of a TIP string once the TIP is unregistered, so the TIP uninstaller must run last; transient-LANGID welcome entry likely shows the wrong language label; --features legacy fails to build (pre-existing). Unverified: multi-user transient LANGIDs, Arm64, typing at the welcome screen, manual taskbar selection, Inno end to end."
+                                    }
+
+                                    {
+                                        at 2026-10-06T14:12:47.50211Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
                                     }
                                 )
                             }

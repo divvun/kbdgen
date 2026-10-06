@@ -666,7 +666,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > machine-wide and needs elevation.
 
 > [spec:kbdgen:req:tsf.register.profile]
-> `kbdi keyboard_install` MUST, after creating the layout's KLID, call
+> `kbdi keyboard_install` MUST, after creating the KLID of a layout whose
+> tag has a Windows locale, call
 > `ITfInputProcessorProfileMgr::RegisterProfile` with these arguments:
 >
 > - the CLSID, the LANGID and the profile GUID
@@ -677,8 +678,11 @@ bundles divvun-wind (`tsf.installer.bundle`).
 >
 > It MUST NOT write `CTF\TIP` keys directly. If the text service's CLSID is
 > not registered, it MUST register no profile and fall back to enabling the
-> layout (`tsf.register.enable`). (Verified with `hklSubstitute` 0 and the
-> TIP DLL as the icon file: the profile registers and activates.)
+> layout (`tsf.register.enable`). A tag without a Windows locale has no
+> LANGID until a user's language list assigns one, so its profile is
+> registered by `kbdi keyboard_enable` (`tsf.register.langid`). (Verified
+> with `hklSubstitute` 0 and the layout DLL as the icon file: the profile
+> registers, activates and types in 64- and 32-bit processes.)
 
 > [spec:kbdgen:req:tsf.register.langid]
 > Profiles are stored machine-wide under a LANGID. For tags without a
@@ -704,9 +708,15 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 > [spec:kbdgen:req:tsf.register.welcome]
 > `kbdi` SHOULD offer to install the layout, not the TIP string, for the
-> welcome screen and new users (`ILOT_DEFUSER4`). Sign-in passwords are then
-> typed through the layout DLL, which `tsf.test.differential` keeps equal to
-> the text service on every table-expressible key.
+> welcome screen (`ILOT_DEFUSER4`, which changes `.DEFAULT`, not the
+> profile that new users copy). Sign-in passwords are then typed through the
+> layout DLL, which `tsf.test.differential` keeps equal to the text service
+> on every table-expressible key. `kbdi keyboard_uninstall` MUST remove it
+> from the welcome screen again, with `ILOT_DEFUSER4 | ILOT_UNINSTALL`,
+> before it removes the KLID. (Verified: `.DEFAULT`'s `Preload` gains the
+> layout through a substitute and, for a LANGID it lacked, an entry for that
+> LANGID; the removal restores both exactly. `C:\Users\Default\NTUSER.DAT`
+> is unchanged. Unverified: typing at the welcome screen.)
 
 > [spec:kbdgen:req:tsf.register.uninstall]
 > `kbdi keyboard_uninstall` MUST, in this order:
