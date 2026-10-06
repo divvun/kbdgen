@@ -68,6 +68,7 @@ impl Stroke {
     /// events with no scan code, or without the extended flag; for every
     /// key the US dummy layout maps, the mapping back gives the physical
     /// key, and it tells the navigation keys from the numeric keypad's.
+    // [spec:kbdgen:req:tsf.keys.recover]
     pub fn restored(self, mapped: u32) -> Stroke {
         let [scan, prefix, ..] = mapped.to_le_bytes();
         let extended = u32::from(prefix == 0xE0);
@@ -96,6 +97,7 @@ pub const ALTGR_CHORDS: u128 = 0x553A_5A99_9E37_4F9D_A956_F34A_5544_0000;
 /// Right Alt never reaches the key event sink. Each chord that the engine
 /// does not pass is registered as a preserved key instead, which TSF
 /// reports with `OnPreservedKey`.
+// [spec:kbdgen:req:tsf.keys.preserved]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Chord {
     pub scan: u8,
@@ -118,7 +120,8 @@ impl Chord {
 
 /// The AltGr and AltGr+Shift chords of the ISO positions that the engine
 /// does not pass for `model`.
-// [spec:kbdgen:req:tsf.keys.altgr]
+// [spec:kbdgen:req:tsf.keys.altgr+1]
+// [spec:kbdgen:req:tsf.keys.preserved]
 pub fn altgr_chords(model: &Model) -> Vec<Chord> {
     let start = State::default();
     let context = Context::default();
@@ -157,7 +160,7 @@ pub enum Role {
 
 /// Classifies a key down. `own` says that its message carries the
 /// injection signature, and `altgr` that Right Alt is AltGr.
-// [spec:kbdgen:req:tsf.keys.identity]
+// [spec:kbdgen:req:tsf.keys.identity+1]
 // [spec:kbdgen:req:tsf.pairing.self-sufficient]
 pub fn classify(stroke: Stroke, own: bool, altgr: bool) -> Role {
     let scan = stroke.scan();
@@ -213,7 +216,7 @@ impl Tracker {
     /// Follows a key down or up whose message has time `time`. Seeing the
     /// same event twice, as `OnTestKeyDown` then `OnKeyDown`, changes
     /// nothing more.
-    // [spec:kbdgen:req:tsf.keys.altgr]
+    // [spec:kbdgen:req:tsf.keys.altgr+1]
     // [spec:kbdgen:req:tsf.keys.locale-flags]
     pub fn observe(&mut self, stroke: Stroke, down: bool, time: u32) {
         match (stroke.scan(), stroke.extended()) {
@@ -243,8 +246,8 @@ impl Tracker {
     /// a held `capsLock` or `B00` extra-modifier key sets its `extra`.
     /// Right Ctrl stays `ctrl_r`, which the engine itself rebinds
     /// (`ldml.engine.extra`).
-    // [spec:kbdgen:req:tsf.keys.identity]
-    // [spec:kbdgen:req:tsf.keys.altgr]
+    // [spec:kbdgen:req:tsf.keys.identity+1]
+    // [spec:kbdgen:req:tsf.keys.altgr+1]
     // [spec:kbdgen:req:tsf.keys.locale-flags]
     pub fn modifiers(&self, held: Held, windows: &Windows, altgr: bool) -> ModifierState {
         let mut extra = [false; 3];
@@ -278,7 +281,7 @@ impl Tracker {
 /// Whether Right Alt is AltGr for `model`: whether the layout DLL built
 /// from it sets `KLLF_ALTGR` (`kbdl.locale`), because some ISO position
 /// gives a character or dead key under AltGr or AltGr+Shift.
-// [spec:kbdgen:req:tsf.keys.altgr]
+// [spec:kbdgen:req:tsf.keys.altgr+1]
 pub fn altgr_layout(model: &Model) -> bool {
     let altgr = ModifierState::altgr();
     let shifted = ModifierState {

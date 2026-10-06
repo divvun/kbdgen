@@ -48,7 +48,8 @@ fn held() -> Held {
 
 /// The key event of the message being handled, whether the text service
 /// injected it, and the message time.
-// [spec:kbdgen:req:tsf.keys.identity]
+// [spec:kbdgen:req:tsf.keys.identity+1]
+// [spec:kbdgen:req:tsf.keys.recover]
 fn current(wparam: WPARAM, lparam: LPARAM) -> (Stroke, bool, u32) {
     let stroke = Stroke {
         vk: wparam.0 as u16,
@@ -74,7 +75,7 @@ fn compartment_set(context: &ITfContext, guid: &GUID) -> bool {
 /// What a key needs from its context: why it would pass, and the flags.
 /// A password field is keyboard-disabled or empty (`tsf.security.disabled`).
 // [spec:kbdgen:req:tsf.security.disabled+1]
-// [spec:kbdgen:req:tsf.edit.session]
+// [spec:kbdgen:req:tsf.edit.session+1]
 fn examine(context: &ITfContext, inert: bool) -> (Blocked, Flags) {
     let status = unsafe { context.GetStatus() }.unwrap_or_default();
     let blocked = Blocked {
@@ -109,11 +110,13 @@ impl Tip_Impl {
     /// decides without changing the document and `OnKeyDown` commits the
     /// same decision. TSF calls `OnKeyDown` only for keys `OnTestKeyDown`
     /// ate, so a key that passes commits and resets in the test half.
-    // [spec:kbdgen:req:tsf.keys.claim]
-    // [spec:kbdgen:req:tsf.keys.identity]
-    // [spec:kbdgen:req:tsf.keys.altgr]
+    // [spec:kbdgen:req:tsf.keys.claim+1]
+    // [spec:kbdgen:req:tsf.keys.identity+1]
+    // [spec:kbdgen:req:tsf.keys.altgr+1]
     // [spec:kbdgen:req:tsf.pairing.self-sufficient]
     // [spec:kbdgen:req:tsf.component.self-contained]
+    // [spec:kbdgen:req:tsf.keys.phases]
+    // [spec:kbdgen:req:tsf.edit.own]
     fn key_down(
         &self,
         context: Option<&ITfContext>,
@@ -178,6 +181,7 @@ impl Tip_Impl {
 
     /// Asks the engine about `event`: in the test half the decision is
     /// kept for the commit half; a pass is handled at once.
+    // [spec:kbdgen:req:tsf.keys.phases]
     fn engine_key(
         &self,
         context: &ITfContext,
@@ -219,8 +223,9 @@ impl Tip_Impl {
     /// An AltGr chord that TSF reports as a preserved key. When it is
     /// eaten, a mask key follows, so that the application does not take
     /// the lone Alt it has seen as a request for its menu bar.
-    // [spec:kbdgen:req:tsf.keys.altgr]
-    // [spec:kbdgen:req:tsf.keys.claim]
+    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.claim+1]
+    // [spec:kbdgen:req:tsf.keys.preserved]
     fn altgr_key(&self, context: Option<&ITfContext>, chord: Chord) -> bool {
         let Some(context) = context else {
             return false;
@@ -255,7 +260,7 @@ impl Tip_Impl {
     }
 
     /// Whether a key up is eaten: exactly when its key down was.
-    // [spec:kbdgen:req:tsf.keys.claim]
+    // [spec:kbdgen:req:tsf.keys.claim+1]
     fn key_up(&self, wparam: WPARAM, lparam: LPARAM, phase: Phase) -> bool {
         let (stroke, own, time) = current(wparam, lparam);
         let Ok(mut inner) = self.shared.try_borrow_mut() else {
@@ -310,7 +315,8 @@ impl ITfKeyEventSink_Impl for Tip_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.keys.altgr]
+    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.preserved]
     fn OnPreservedKey(&self, pic: Ref<ITfContext>, rguid: *const GUID) -> Result<BOOL> {
         contain(&POISON, Entry::OnPreservedKey, || {
             let chord = unsafe { rguid.as_ref() }.and_then(|g| Chord::from_guid(g.to_u128()));

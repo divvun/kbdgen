@@ -7,8 +7,8 @@ use super::fake::Fake;
 use super::fixture::*;
 use crate::document::Flags;
 
-// [spec:kbdgen:req:tsf.edit.preedit/test]
-// [spec:kbdgen:req:tsf.edit.apply/test]
+// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.apply+1/test]
 // [spec:kbdgen:req:tsf.test.host/test]
 #[test]
 fn store_shows_dead_key_preedit_then_composes() {
@@ -23,8 +23,8 @@ fn store_shows_dead_key_preedit_then_composes() {
 }
 
 // [spec:kbdgen:req:tsf.edit.cache/test]
-// [spec:kbdgen:req:tsf.edit.preedit/test]
-// [spec:kbdgen:req:tsf.edit.inject/test]
+// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.inject+1/test]
 #[test]
 fn transitory_context_composes_without_preedit() {
     let mut t = Typist::transitory();
@@ -37,7 +37,7 @@ fn transitory_context_composes_without_preedit() {
     assert!(t.fake.injected.is_empty());
 }
 
-// [spec:kbdgen:req:tsf.edit.inject/test]
+// [spec:kbdgen:req:tsf.edit.inject+1/test]
 // [spec:kbdgen:req:tsf.edit.cache/test]
 #[test]
 fn transitory_deletion_goes_through_injection() {
@@ -51,7 +51,7 @@ fn transitory_deletion_goes_through_injection() {
     assert_eq!(t.document.cache(), "ʠ");
 }
 
-// [spec:kbdgen:req:tsf.edit.apply/test]
+// [spec:kbdgen:req:tsf.edit.apply+1/test]
 // [spec:kbdgen:thm:tsf.edit.units/test]
 #[test]
 fn store_replaces_surrogate_pair_before_caret() {
@@ -65,7 +65,7 @@ fn store_replaces_surrogate_pair_before_caret() {
     assert!(t.fake.injected.is_empty());
 }
 
-// [spec:kbdgen:req:tsf.edit.inject/test]
+// [spec:kbdgen:req:tsf.edit.inject+1/test]
 #[test]
 fn transitory_surrogate_deletion_sends_one_backspace() {
     let mut t = Typist::transitory();
@@ -76,7 +76,7 @@ fn transitory_surrogate_deletion_sends_one_backspace() {
     assert_eq!(t.fake.text(), "ʐ");
 }
 
-// [spec:kbdgen:req:tsf.edit.reset/test]
+// [spec:kbdgen:req:tsf.edit.reset+1/test]
 #[test]
 fn passed_key_commits_shown_preedit() {
     let mut t = Typist::store();
@@ -87,7 +87,7 @@ fn passed_key_commits_shown_preedit() {
     assert_eq!(t.document.state(), &State::default());
 }
 
-// [spec:kbdgen:req:tsf.edit.reset/test]
+// [spec:kbdgen:req:tsf.edit.reset+1/test]
 #[test]
 fn passed_key_commits_unshown_flush_first() {
     let mut t = Typist::transitory();
@@ -99,7 +99,7 @@ fn passed_key_commits_unshown_flush_first() {
     assert_eq!(t.document.state(), &State::default());
 }
 
-// [spec:kbdgen:req:tsf.edit.session/test]
+// [spec:kbdgen:req:tsf.edit.session+1/test]
 #[test]
 fn nonempty_selection_resets_engine_first() {
     let mut t = Typist::store();
@@ -139,8 +139,8 @@ fn disabled_context_maps_keys_without_preedit_or_cache() {
     assert_eq!(stored.fake.text(), "b\u{301}");
 }
 
-// [spec:kbdgen:req:tsf.edit.inject/test]
-// [spec:kbdgen:req:tsf.edit.reset/test]
+// [spec:kbdgen:req:tsf.edit.inject+1/test]
+// [spec:kbdgen:req:tsf.edit.reset+1/test]
 #[test]
 fn injection_shortfall_resets_the_context() {
     let mut t = Typist::transitory();
@@ -151,7 +151,7 @@ fn injection_shortfall_resets_the_context() {
     assert_eq!(t.document.state(), &State::default());
 }
 
-// [spec:kbdgen:req:tsf.keys.claim/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
 // [spec:kbdgen:req:tsf.engine.contract/test]
 #[test]
 fn backspace_claim_depends_on_context_text() {
@@ -163,7 +163,7 @@ fn backspace_claim_depends_on_context_text() {
     assert_eq!(t.fake.text(), "xq");
 }
 
-// [spec:kbdgen:req:tsf.keys.claim/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
 #[test]
 fn backspace_cancels_pending_dead_key() {
     let mut t = Typist::store();
@@ -174,8 +174,9 @@ fn backspace_cancels_pending_dead_key() {
     assert_eq!(t.fake.composition, None);
 }
 
-// [spec:kbdgen:req:tsf.keys.claim/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
 // [spec:kbdgen:def:tsf.engine.api/test]
+// [spec:kbdgen:req:tsf.keys.phases/test]
 #[test]
 fn deciding_twice_changes_nothing() {
     let t = Typist::store();
@@ -188,7 +189,7 @@ fn deciding_twice_changes_nothing() {
     assert!(matches!(first.action, Action::Edit { delete: 1, .. }));
 }
 
-// [spec:kbdgen:req:tsf.keys.claim/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
 // [spec:kbdgen:req:tsf.engine.contract/test]
 #[test]
 fn form_key_without_output_is_eaten_silently() {
@@ -222,7 +223,7 @@ fn shortcuts_pass_and_ctrl_altgr_reaches_ctrl_alt() {
     assert_eq!(t.fake.text(), "ät\u{301}");
 }
 
-// [spec:kbdgen:req:tsf.keys.claim/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
 #[test]
 fn b00_extra_modifier_is_consumed_and_selects() {
     let mut t = Typist::store();
@@ -235,7 +236,7 @@ fn b00_extra_modifier_is_consumed_and_selects() {
     assert_eq!(t.fake.text(), "1");
 }
 
-// [spec:kbdgen:req:tsf.keys.identity/test]
+// [spec:kbdgen:req:tsf.keys.identity+1/test]
 #[test]
 fn decimal_key_types_model_decimal() {
     let mut t = Typist::store();
@@ -243,7 +244,7 @@ fn decimal_key_types_model_decimal() {
     assert_eq!(t.fake.text(), ",");
 }
 
-// [spec:kbdgen:req:tsf.edit.reset/test]
+// [spec:kbdgen:req:tsf.edit.reset+1/test]
 #[test]
 fn reset_and_termination_clear_state_and_cache() {
     let mut t = Typist::transitory();

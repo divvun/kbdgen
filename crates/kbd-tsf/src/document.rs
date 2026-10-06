@@ -62,7 +62,7 @@ impl Document {
 
     /// The engine's decision for `event`, from a fresh read of `text`.
     /// Nothing changes until [`Document::apply`].
-    // [spec:kbdgen:req:tsf.edit.session]
+    // [spec:kbdgen:req:tsf.edit.session+1]
     // [spec:kbdgen:req:tsf.edit.cache]
     // [spec:kbdgen:req:tsf.engine.contract]
     pub fn decide(
@@ -121,10 +121,10 @@ impl Document {
 
     /// Applies a decision; returns whether the key was eaten. If an
     /// injection sends fewer events than given, the document resets.
-    // [spec:kbdgen:req:tsf.edit.apply]
-    // [spec:kbdgen:req:tsf.edit.inject]
+    // [spec:kbdgen:req:tsf.edit.apply+1]
+    // [spec:kbdgen:req:tsf.edit.inject+1]
     // [spec:kbdgen:req:tsf.edit.cache]
-    // [spec:kbdgen:req:tsf.edit.preedit]
+    // [spec:kbdgen:req:tsf.edit.preedit+1]
     pub fn apply(&mut self, text: &mut dyn TextContext, decision: Decision, limit: usize) -> bool {
         if decision.reset {
             self.reset(Some(text));
@@ -172,7 +172,7 @@ impl Document {
     /// then reset. A shown preedit stays as committed text; otherwise the
     /// edit of a `Commit` event is applied first, which gives the same text
     /// (`ldml.engine.preedit`).
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     pub fn pass(&mut self, model: &Model, text: &mut dyn TextContext, flags: Flags) {
         if self.composing {
             let _ = text.commit_preedit();
@@ -187,7 +187,7 @@ impl Document {
 
     /// Resets to `State::default()` and clears the cache. With a context, a
     /// shown preedit stays as committed text.
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     pub fn reset(&mut self, text: Option<&mut dyn TextContext>) {
         if self.composing
             && let Some(text) = text

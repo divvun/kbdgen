@@ -17,7 +17,7 @@ fn b00_bound() -> Windows {
     fixture::keyboard().windows
 }
 
-// [spec:kbdgen:req:tsf.keys.identity/test]
+// [spec:kbdgen:req:tsf.keys.identity+1/test]
 #[test]
 fn keys_are_identified_by_scan_code() {
     let q = Stroke {
@@ -38,8 +38,8 @@ fn keys_are_identified_by_scan_code() {
     assert_eq!(classify(down(0x00, false), false, false), Role::Other);
 }
 
-// [spec:kbdgen:req:tsf.keys.identity/test]
-// [spec:kbdgen:req:tsf.edit.inject/test]
+// [spec:kbdgen:req:tsf.keys.identity+1/test]
+// [spec:kbdgen:req:tsf.edit.inject+1/test]
 #[test]
 fn packets_process_keys_and_own_input_skip_engine() {
     for vk in [VK_PACKET, VK_PROCESSKEY] {
@@ -52,8 +52,8 @@ fn packets_process_keys_and_own_input_skip_engine() {
     assert_eq!(classify(down(0x0E, false), true, false), Role::Own);
 }
 
-// [spec:kbdgen:req:tsf.keys.claim/test]
-// [spec:kbdgen:req:tsf.keys.altgr/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
+// [spec:kbdgen:req:tsf.keys.altgr+1/test]
 #[test]
 fn lone_modifiers_and_altgr_roles() {
     for (scan, extended) in [
@@ -76,7 +76,7 @@ fn lone_modifiers_and_altgr_roles() {
     assert_eq!(classify(down(0x38, true), false, false), Role::Modifier);
 }
 
-// [spec:kbdgen:req:tsf.keys.identity/test]
+// [spec:kbdgen:req:tsf.keys.identity+1/test]
 #[test]
 fn repeat_and_physical_key_come_from_lparam() {
     let stroke = Stroke {
@@ -89,7 +89,7 @@ fn repeat_and_physical_key_come_from_lparam() {
     assert!(!down(0x38, false).repeat());
 }
 
-// [spec:kbdgen:req:tsf.keys.altgr/test]
+// [spec:kbdgen:req:tsf.keys.altgr+1/test]
 #[test]
 fn synthesised_left_ctrl_is_not_ctrl() {
     let mut tracker = Tracker::default();
@@ -114,7 +114,7 @@ fn synthesised_left_ctrl_is_not_ctrl() {
     assert!(tracker.modifiers(held, &Windows::default(), true).ctrl_l);
 }
 
-// [spec:kbdgen:req:tsf.keys.altgr/test]
+// [spec:kbdgen:req:tsf.keys.altgr+1/test]
 #[test]
 fn eaten_right_alt_still_counts_as_held() {
     let mut tracker = Tracker::default();
@@ -129,8 +129,8 @@ fn eaten_right_alt_still_counts_as_held() {
     );
 }
 
-// [spec:kbdgen:req:tsf.keys.identity/test]
-// [spec:kbdgen:req:tsf.keys.claim/test]
+// [spec:kbdgen:req:tsf.keys.identity+1/test]
+// [spec:kbdgen:req:tsf.keys.claim+1/test]
 #[test]
 fn held_b00_and_caps_set_their_extra() {
     let mut tracker = Tracker::default();
@@ -208,7 +208,8 @@ fn shift_backspace_gives_engine_mark() {
     assert_eq!(action, Action::Pass);
 }
 
-// [spec:kbdgen:req:tsf.keys.identity/test]
+// [spec:kbdgen:req:tsf.keys.identity+1/test]
+// [spec:kbdgen:req:tsf.keys.recover/test]
 #[test]
 fn missing_scan_code_restored_from_dummy_mapping() {
     let wpf = Stroke {
@@ -237,7 +238,8 @@ fn missing_scan_code_restored_from_dummy_mapping() {
     );
 }
 
-// [spec:kbdgen:req:tsf.keys.altgr/test]
+// [spec:kbdgen:req:tsf.keys.altgr+1/test]
+// [spec:kbdgen:req:tsf.keys.preserved/test]
 #[test]
 fn altgr_chords_cover_non_passing_positions() {
     let model = fixture::model();

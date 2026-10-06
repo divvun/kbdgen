@@ -50,7 +50,7 @@ pub trait TextContext {
 /// `requested` units returned, keeping at most `max` scalar values. A low
 /// surrogate whose high half lies before the read is dropped, and a read
 /// that kept everything up to the start of the document sets `at_start`.
-// [spec:kbdgen:req:tsf.edit.session]
+// [spec:kbdgen:req:tsf.edit.session+1]
 pub fn decode_before(units: &[u16], requested: usize, max: usize) -> Read {
     let split = matches!(units.first(), Some(0xDC00..=0xDFFF)) && units.len() >= requested;
     let units = if split {
@@ -76,7 +76,7 @@ mod tests {
         s.encode_utf16().collect()
     }
 
-    // [spec:kbdgen:req:tsf.edit.session/test]
+    // [spec:kbdgen:req:tsf.edit.session+1/test]
     #[test]
     fn short_read_is_at_start() {
         let read = decode_before(&utf16("ab"), 8, 4);
@@ -84,7 +84,7 @@ mod tests {
         assert!(read.at_start);
     }
 
-    // [spec:kbdgen:req:tsf.edit.session/test]
+    // [spec:kbdgen:req:tsf.edit.session+1/test]
     #[test]
     fn full_read_keeps_last_scalars() {
         let read = decode_before(&utf16("abcdefgh"), 8, 4);
@@ -95,7 +95,7 @@ mod tests {
         assert!(!read.at_start);
     }
 
-    // [spec:kbdgen:req:tsf.edit.session/test]
+    // [spec:kbdgen:req:tsf.edit.session+1/test]
     // [spec:kbdgen:thm:tsf.edit.units/test]
     #[test]
     fn split_surrogate_at_read_start_dropped() {

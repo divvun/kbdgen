@@ -33,6 +33,7 @@ pub const SIGNATURE: usize = 0x4456_4B54;
 /// A key down's identity and what `OnTestKeyDown` decided for it, which
 /// `OnKeyDown` commits (`tsf.keys.claim`). `None` means the key passed and
 /// its pass was handled.
+// [spec:kbdgen:req:tsf.keys.phases]
 pub struct Pending {
     pub id: (u16, u16, u32),
     pub decision: Option<Decision>,
@@ -81,7 +82,7 @@ impl ITfEditSession_Impl for Session_Impl {
 
 impl Session {
     /// Runs `task` with the edit cookie `ec`, or detached from any session.
-    // [spec:kbdgen:req:tsf.edit.session]
+    // [spec:kbdgen:req:tsf.edit.session+1]
     fn run(&self, task: Task, ec: Option<u32>) -> Outcome {
         if let Task::End(composition) = task {
             if let Some(ec) = ec {
@@ -155,7 +156,7 @@ impl Tip_Impl {
     /// Runs `task` for `context` in a synchronous edit session (an
     /// asynchronous one for `Task::End`). If TSF grants none, the task runs
     /// detached, with injected input only.
-    // [spec:kbdgen:req:tsf.edit.session]
+    // [spec:kbdgen:req:tsf.edit.session+1]
     pub(super) fn request(&self, context: &ITfContext, task: Task, write: bool) -> Outcome {
         if poisoned() {
             return Outcome::Eaten(false);
@@ -202,7 +203,7 @@ impl Tip_Impl {
 /// Sends `backspaces` Backspace presses and `text` as Unicode presses in
 /// one `SendInput` call, each event signed with [`SIGNATURE`]; `Failed`
 /// unless every event was sent.
-// [spec:kbdgen:req:tsf.edit.inject]
+// [spec:kbdgen:req:tsf.edit.inject+1]
 // [spec:kbdgen:sem:tsf.security.integrity]
 fn inject(backspaces: usize, text: &str) -> std::result::Result<(), Failed> {
     let mut inputs = Vec::new();
@@ -247,6 +248,7 @@ fn send(inputs: &[INPUT]) -> bool {
 /// Presses and releases the unassigned virtual key `0xFF`, so that an
 /// application that saw Right Alt go down, and none of the chord's keys,
 /// does not open its menu bar when Alt goes up (`tsf.keys.altgr`).
+// [spec:kbdgen:req:tsf.keys.preserved]
 pub fn mask_menu() {
     let mask = VIRTUAL_KEY(0xFF);
     send(&[
@@ -413,7 +415,7 @@ impl TextContext for TsfText<'_> {
                 .is_ok_and(|empty| empty.as_bool())
     }
 
-    // [spec:kbdgen:req:tsf.edit.apply]
+    // [spec:kbdgen:req:tsf.edit.apply+1]
     fn replace(&mut self, units: usize, text: &str) -> std::result::Result<(), Failed> {
         let range = match &self.composition {
             Some(_) => self.anchor()?,
@@ -437,7 +439,7 @@ impl TextContext for TsfText<'_> {
         Ok(())
     }
 
-    // [spec:kbdgen:req:tsf.edit.preedit]
+    // [spec:kbdgen:req:tsf.edit.preedit+1]
     fn set_preedit(&mut self, preedit: &str) -> std::result::Result<(), Failed> {
         let wide: Vec<u16> = preedit.encode_utf16().collect();
         let composition = match (self.composition.take(), wide.is_empty()) {
@@ -490,6 +492,7 @@ impl TextContext for TsfText<'_> {
         Ok(())
     }
 
+    // [spec:kbdgen:req:tsf.edit.own]
     fn insert(&mut self, text: &str) -> std::result::Result<(), Failed> {
         self.echoes += 1;
         let range = self.selection()?;

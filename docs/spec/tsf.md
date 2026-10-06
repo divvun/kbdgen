@@ -52,6 +52,10 @@ session. The test targets were:
 - a WPF `TextBox`, which has a full text store
 - the same controls from a 32-bit process
 
+Claims about `crates/kbd-tsf` itself were verified on the same machine by
+its VM test (`tsf.test.vm`), which types into those controls from 64- and
+32-bit processes.
+
 "Unverified" marks claims taken from documentation or other projects only.
 Nothing was tested on Windows on Arm.
 
@@ -136,7 +140,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > (Verified: a crate of this shape loads in x64 and x86 processes, activates
 > and edits text.)
 
-> [spec:kbdgen:req:tsf.component.interfaces+1]
+> [spec:kbdgen:req:tsf.component.interfaces+2]
 > The TIP object MUST implement:
 >
 > - `ITfTextInputProcessorEx`
@@ -148,6 +152,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 >   empty-context compartments
 > - `ITfDisplayAttributeProvider`, with an enumerator over one preedit
 >   attribute
+> - `ITfActiveLanguageProfileNotifySink`, to follow switches between its
+>   profiles, which share one CLSID and so do not reactivate it
 >
 > `ActivateEx` MUST record the activation flags from
 > `ITfThreadMgrEx::GetActiveFlags`, including `TF_TMF_SECUREMODE` and
@@ -207,13 +213,14 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > (Verified: `LoadKeyboardLayout` accepts layout DLLs carrying the resource,
 > Windows 11 x64, 2026-10-05.)
 
-> [spec:kbdgen:req:tsf.data.locate]
-> On activation for a profile, the text service MUST find the layout under
+> [spec:kbdgen:req:tsf.data.locate+1]
+> On activation, and on each switch to another of its profiles
+> (`tsf.component.interfaces`), the text service MUST find the layout under
 > `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts` whose
 > `Layout Product Code` equals the profile GUID. The comparison ignores
 > case and surrounding braces, because the legacy installer writes the code
 > without a closing brace. The service MUST then load that key's
-> `Layout File` from the system directory with `LoadLibraryExW(…,
+> `Layout File`, which must be a bare file name, from the system directory with `LoadLibraryExW(…,
 > LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE)` and read the
 > resource of `tsf.data.resource`. Results are cached per process. If any
 > step fails, the profile is inert (it eats no keys). (Unverified: that this
@@ -275,42 +282,83 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 ## Key handling
 
-> [spec:kbdgen:req:tsf.keys.identity]
+> [spec:kbdgen:req:tsf.keys.identity+1]
 > The text service MUST identify a key by its scan code and extended flag
-> (`lParam` bits 16–23 and 24), never by its virtual key, which depends on
-> the dummy HKL beneath (`tsf.pairing.substitute`). A key that is not
-> extended becomes `Backspace` for `0e`, `Decimal` for `53`, and otherwise
-> `Scan(code)` (`ldml.engine.event`). Extended keys, `VK_PACKET`,
-> `VK_PROCESSKEY` and the service's own injected input (`tsf.edit.inject`)
-> are never sent to the engine and pass. Modifiers are read with
-> `GetKeyState` while handling the event: left and right Shift, Ctrl and
-> Alt, Caps Lock's toggle as `caps`, either Win key as `cmd`, and held
-> extra-modifier keys as `extra` (`ldml.engine.extra`). `repeat` is
-> `lParam` bit 30.
+> (`lParam` bits 16–23 and 24, completed as in `tsf.keys.recover`), never
+> by its virtual key, which depends on the dummy HKL beneath
+> (`tsf.pairing.substitute`). A key that is not extended becomes
+> `Backspace` for `0e`, `Decimal` for `53`, and otherwise `Scan(code)`
+> (`ldml.engine.event`). Extended keys, `VK_PACKET`, `VK_PROCESSKEY` and the
+> service's own injected input (`tsf.edit.inject`) are never sent to the
+> engine and pass. Modifiers are read with `GetKeyState` while handling the
+> event: left and right Shift, Ctrl and Alt, Caps Lock's toggle as `caps`,
+> either Win key as `cmd`, and held extra-modifier keys as `extra`
+> (`ldml.engine.extra`). `repeat` is `lParam` bit 30.
 
-> [spec:kbdgen:req:tsf.keys.claim]
+> [spec:kbdgen:req:tsf.keys.recover]
+> WPF reports key events whose `lParam` lacks the scan code or the
+> extended flag. The text service MUST map the virtual key through the
+> thread's dummy layout with `MapVirtualKeyExW(…, MAPVK_VK_TO_VSC_EX)` and
+> complete the key's identity from the result. An `lParam` with scan code 0
+> takes the mapped scan code and extended flag. One whose scan code equals
+> the mapped one takes the mapped extended flag. Any other keeps its own.
+> This also tells the navigation keys from the keypad's. The keypad's `53`
+> with Num Lock off, which the dummy layout reports as `VK_DELETE`, is
+> therefore the extended Delete and passes; it is not `Decimal`.
+> (Verified: every case of `tsf.test.vm` types the same in a WPF `TextBox`
+> as in `EDIT`. Unverified: the keypad's `53` with Num Lock off.)
+
+> [spec:kbdgen:req:tsf.keys.claim+1]
 > A key down is eaten exactly when the engine's action for it is not `Pass`
-> (`ldml.engine.api`). `OnTestKeyDown` MUST compute that action without
-> changing engine state, and `OnKeyDown` MUST commit the same action. A key
-> up MUST be eaten exactly when its key down was eaten. While a context is
-> read-only or the service is poisoned or inert, every key passes. A passed
-> key resets the context (`tsf.edit.reset`). Shift, Ctrl, Alt, Win and Caps
+> (`ldml.engine.api`), and `OnTestKeyDown` and `OnKeyDown` agree on it
+> (`tsf.keys.phases`). A key up MUST be eaten exactly when its key down was
+> eaten. While a context is read-only or the service is poisoned or inert,
+> every key passes. A passed key resets the context (`tsf.edit.reset`),
+> unless the service is poisoned or inert. Shift, Ctrl, Alt, Win and Caps
 > Lock alone are not sent to the engine and never reset it; a `B00` bound as
 > an extra modifier is sent, and the engine consumes it
 > (`ldml.engine.extra`). A form key with no output in the selected layer is
 > eaten with no output (`ldml.engine.hardware`), not passed to the dummy
 > layout.
 
-> [spec:kbdgen:req:tsf.keys.altgr]
+> [spec:kbdgen:req:tsf.keys.phases]
+> TSF calls `OnKeyDown` only for keys that `OnTestKeyDown` ate. (Verified.)
+> `OnTestKeyDown` MUST therefore decide every key down. It asks the engine
+> in a `TF_ES_SYNC | TF_ES_READ` edit session, changing no engine state,
+> and keeps the decision with the key's virtual key, physical key and
+> message time. A key that passes is handled at once: in a read-write
+> session, the text service commits and resets as `tsf.edit.reset`
+> requires. `OnKeyDown` MUST apply the kept decision when its key matches,
+> and otherwise decide and apply in one read-write session. A key whose
+> kept decision was to pass is not handled again.
+
+> [spec:kbdgen:req:tsf.keys.altgr+1]
 > The text service MUST treat Right Alt as AltGr, sending `alt_r` with
 > `altgr` set (`ldml.engine.tsf`), when the layout DLL built from the same
-> model sets `KLLF_ALTGR` (`kbdl.locale`, `ldml.kbdl.layers`). It MUST then
-> eat Right Alt's own key down and key up, so the application never sees a
-> lone Alt and does not open its menu bar. A Left Ctrl that the system
-> synthesises with Right Alt MUST NOT be sent as `ctrl_l`. A Ctrl the user
-> really holds with AltGr is sent, and reaches layers that name both ctrl
-> and alt (`ldml.engine.altgr`). (Unverified: the menu-bar behaviour beneath
-> the US dummy layout, and how to tell synthesised from held Left Ctrl.)
+> model sets `KLLF_ALTGR` (`kbdl.locale`, `ldml.kbdl.layers`). AltGr chords
+> without Ctrl reach it only as preserved keys (`tsf.keys.preserved`), and
+> the application sees Right Alt itself. Where Right Alt's own key events
+> reach the key sink, the text service MUST eat them. A Left Ctrl that the
+> system synthesises with Right Alt (same message time) MUST NOT be sent as
+> `ctrl_l`. A Ctrl the user really holds with AltGr is sent, and reaches
+> layers that name both ctrl and alt (`ldml.engine.altgr`). (Verified: an
+> AltGr chord and an AltGr dead key type in `EDIT`, RichEdit and WPF.
+> Unverified: how to tell synthesised from held Left Ctrl.)
+
+> [spec:kbdgen:req:tsf.keys.preserved]
+> TSF calls no key event sink method while Alt is held without Ctrl,
+> because the window then gets `WM_SYSKEYDOWN`. (Verified.) Where Right Alt
+> is AltGr (`tsf.keys.altgr`), the text service MUST register with
+> `ITfKeystrokeMgr::PreserveKey` each AltGr and AltGr+Shift chord of an ISO
+> position (`kbdl.scancodes.iso`) that the engine does not pass from
+> `State::default()` with an empty context. Each is `TF_MOD_RALT`, with
+> `TF_MOD_SHIFT` if shifted, on the dummy layout's virtual key for the scan
+> code. `OnPreservedKey` MUST decide and apply the chord in one edit
+> session. After an eaten chord it MUST send, signed as in
+> `tsf.edit.inject`, a press and release of the unassigned virtual key
+> `0xFF`, so the application, which saw Right Alt, does not open its menu
+> bar. (Unverified: the menu bar. Other chords never reach the engine, even
+> after a dead key.)
 
 > [spec:kbdgen:req:tsf.keys.locale-flags]
 > LRM/RLM on Shift+Backspace is the engine's (`ldml.engine.backspace`), so
@@ -345,35 +393,39 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > service therefore never splits a surrogate pair while the context is
 > authoritative.
 
-> [spec:kbdgen:req:tsf.edit.session]
-> For each eaten key down, the text service MUST request one
-> `TF_ES_SYNC | TF_ES_READWRITE` edit session. In it, it reads the context:
-> it clones the default selection, collapses the clone to its start, shifts
-> the start back by up to `context_len` scalar values, and calls `GetText`.
-> The context is *authoritative* when the read succeeds and the context's
-> static flags lack `TS_SS_TRANSITORY`. Otherwise the cache of
-> `tsf.edit.cache` is used. `at_start` is set only when an authoritative
-> read's shift stopped short of the request; otherwise it is `false`. A
-> non-empty selection resets the engine first. (Verified: transitory
-> contexts return no text before the caret; a WPF `TextBox` returns it.
-> Unverified: `at_start`.)
+> [spec:kbdgen:req:tsf.edit.session+1]
+> The text service MUST do its document work in `TF_ES_SYNC` edit
+> sessions: read-only to decide a key, read-write to apply or pass it
+> (`tsf.keys.phases`). It reads the context back from the caret, which is
+> the start of the default selection, or of the composition while a preedit
+> is shown. It shifts a clone's start back by up to 2 × `context_len`
+> UTF-16 units, calls `GetText`, drops a low surrogate cut from its pair,
+> and keeps the last `context_len` scalar values. The context is
+> *authoritative* when the read succeeds and the context's static flags
+> lack `TS_SS_TRANSITORY`. Otherwise, and when TSF grants no session, the
+> cache of `tsf.edit.cache` is used. `at_start` is set only when an
+> authoritative read stopped short of the request. A non-empty selection
+> resets the engine first. (Verified: transitory contexts return no text
+> before the caret; a WPF `TextBox` returns it. Unverified: `at_start`.)
 
-> [spec:kbdgen:req:tsf.edit.apply]
+> [spec:kbdgen:req:tsf.edit.apply+1]
 > In an authoritative context, the edit MUST be applied in the edit session:
 >
-> 1. Clone the selection range and shift its start back by the units of
->    `tsf.edit.units`.
+> 1. Clone the selection range, or the composition's start while a preedit
+>    is shown, and shift its start back by the units of `tsf.edit.units`.
 > 2. `SetText` it to *s*, which also replaces any selection.
-> 3. Collapse the range to its end and make it the selection.
+> 3. Collapse the range to its end and, if no preedit is shown, make it the
+>    selection.
 > 4. Update the composition to *p* (`tsf.edit.preedit`).
 >
 > (Verified in a WPF `TextBox`: `a` then a key mapped to "delete 1, insert
 > `a` U+0308 U+0303" leaves exactly those three units.)
 
-> [spec:kbdgen:req:tsf.edit.inject]
-> In a transitory or unreadable context, an edit with *d* = 0 MUST be
-> applied with `SetText` at the selection. An edit with *d* > 0 MUST instead
-> be sent with `SendInput`, all in one call:
+> [spec:kbdgen:req:tsf.edit.inject+1]
+> In a context that is not authoritative, an edit with *d* = 0 MUST be
+> applied with `SetText` at the selection, or with `SendInput` when TSF
+> grants no edit session. An edit with *d* > 0 MUST be sent with
+> `SendInput`, all in one call:
 >
 > 1. *d* Backspace presses (`VK_BACK`, scan `0e`)
 > 2. one `KEYEVENTF_UNICODE` press per UTF-16 unit of *s*
@@ -382,8 +434,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > `GetMessageExtraInfo` reveals, so that the text service passes it through.
 > Mixing the two paths would apply the insertion before the queued
 > deletions. If `SendInput` reports fewer events than it was given, the
-> context MUST be reset. (Verified in a Win32 `EDIT` control; unverified in
-> AppContainers and consoles.)
+> context MUST be reset. (Verified in Win32 `EDIT` and RichEdit controls,
+> 64- and 32-bit; unverified in AppContainers and consoles.)
 
 > [spec:kbdgen:req:tsf.edit.cache]
 > For contexts that are not authoritative, the text service MUST keep a
@@ -394,15 +446,17 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > discarded with the context. The cache MUST be passed to the engine with
 > `authoritative` and `at_start` false.
 
-> [spec:kbdgen:req:tsf.edit.reset]
+> [spec:kbdgen:req:tsf.edit.reset+1]
 > The text service MUST reset the engine state to `State::default()`, and
 > clear the cache, at each event of `ldml.engine.state`:
 >
-> - the focused document or context changes (`OnSetFocus`, context push
->   or pop)
-> - `ITfTextEditSink::OnEndEdit` reports a text or selection change from an
->   edit session other than its own, as after a mouse click or another input
+> - the focused document or context changes (`OnSetFocus` of either sink,
+>   context push or pop)
+> - `ITfTextEditSink::OnEndEdit` reports a text or selection change that is
+>   not its own (`tsf.edit.own`), as after a mouse click or another input
 >   method
+> - the keyboard-disabled or empty-context compartment changes, or TSF
+>   switches profile
 > - a key passes other than a lone modifier
 > - the application terminates its composition
 >
@@ -412,16 +466,35 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > `Commit` event (`ldml.engine.commit`) before passing a key other than a
 > lone modifier.
 
-> [spec:kbdgen:req:tsf.edit.preedit]
+> [spec:kbdgen:req:tsf.edit.own]
+> A change that `OnEndEdit` reports is the text service's *own*, and does
+> not reset, when:
+>
+> - it is reported while the text service requests its own edit session
+> - the text service injected input (`tsf.edit.inject`) since the last key
+>   down it did not inject: the application's handling of that input
+>   reaches TSF as the application's edit
+> - it echoes a `SetText` at the selection in a context that is not
+>   authoritative. Win32 `EDIT` and RichEdit report one further change as
+>   the application's after each such edit session. The text service counts
+>   these edits and ignores as many reports, until the next key down it did
+>   not inject.
+>
+> (Verified in `EDIT` and RichEdit.)
+
+> [spec:kbdgen:req:tsf.edit.preedit+1]
 > A non-empty preedit MUST be shown as a composition, started with
-> `ITfContextComposition::StartComposition` at the caret. It is decorated
-> with the provider's single display attribute, a dotted underline, and
-> replaced in place on each edit. An empty preedit ends the composition.
-> Committed text of an edit goes before the composition range. If
-> `OnCompositionTerminated` arrives, the preedit text stays as committed and
-> the engine is reset. Where no edit session is possible
-> (`tsf.edit.inject`), the preedit is not shown. (Unverified for transitory
-> contexts.)
+> `ITfContextComposition::StartComposition` after the edit's committed
+> text, or at the caret. It is decorated with the provider's single display
+> attribute, a dotted underline, and replaced in place on each edit. An
+> empty preedit ends the composition and removes its text. Committed text of
+> an edit goes before the composition range. TSF may add text set at the
+> composition's start to the composition, so before updating or ending it
+> the text service MUST move the composition's start (`ShiftStart`) past
+> the text it just committed. If `OnCompositionTerminated` arrives, the
+> preedit text stays as committed, undecorated, and the engine is reset. In
+> a context that is not authoritative (`tsf.edit.session`), the preedit is
+> not shown. (Verified in a WPF `TextBox`.)
 
 ## Security contexts
 
@@ -784,7 +857,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > that the call returns `E_UNEXPECTED` and that the service is then poisoned
 > (`tsf.component.panic`).
 
-> [spec:kbdgen:req:tsf.test.vm]
+> [spec:kbdgen:req:tsf.test.vm+1]
 > Integration tests MUST run on a Windows 11 machine with an interactive
 > session, launched through a scheduled task in the signed-in session. TSF
 > needs a desktop, and the shared Server Core CI queue has none. A run:
@@ -797,4 +870,8 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > 3. checks the resulting text
 > 4. restores the user's language list and removes every registration
 >
-> Arm64 and Arm64X need a Windows on Arm machine.
+> `ActivateProfile` with `TF_IPPMF_FORPROCESS` switches the input method of
+> the whole session, not only of the calling process. (Verified.) A run
+> that activates the test profile MUST therefore activate the previously
+> active profile again afterwards. Arm64 and Arm64X need a Windows on Arm
+> machine.

@@ -250,7 +250,7 @@ fn class_object_only_for_own_clsid() {
     created.cast::<ITfTextInputProcessorEx>().unwrap();
 }
 
-// [spec:kbdgen:req:tsf.component.interfaces+1/test]
+// [spec:kbdgen:req:tsf.component.interfaces+2/test]
 #[test]
 fn text_service_answers_every_required_interface() {
     let unknown: IUnknown = Tip::new().into();
@@ -264,7 +264,7 @@ fn text_service_answers_every_required_interface() {
     unknown.cast::<ITfDisplayAttributeProvider>().unwrap();
 }
 
-// [spec:kbdgen:req:tsf.edit.preedit/test]
+// [spec:kbdgen:req:tsf.edit.preedit+1/test]
 #[test]
 fn one_dotted_preedit_attribute_is_enumerated() {
     let attributes = attributes();

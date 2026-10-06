@@ -19,14 +19,14 @@ pub struct Keyboard {
 
 /// Whether a `Layout Product Code` value names `profile`, ignoring case and
 /// surrounding braces.
-// [spec:kbdgen:req:tsf.data.locate]
+// [spec:kbdgen:req:tsf.data.locate+1]
 pub fn names_profile(value: &str, profile: u128) -> bool {
     guid::parse(value.trim()) == Some(profile)
 }
 
 /// Whether a `Layout File` value is a bare file name, which is loaded from
 /// the system directory and nowhere else.
-// [spec:kbdgen:req:tsf.data.locate]
+// [spec:kbdgen:req:tsf.data.locate+1]
 // [spec:kbdgen:req:tsf.component.self-contained]
 pub fn is_layout_file(name: &str) -> bool {
     !name.is_empty() && name != "." && name != ".." && !name.contains(['\\', '/', ':', '\0'])
@@ -35,7 +35,7 @@ pub fn is_layout_file(name: &str) -> bool {
 /// Decodes a layout DLL's model resource with `Model::from_bytes`, which
 /// refuses an unknown major version. A refused model leaves the profile
 /// inert.
-// [spec:kbdgen:req:tsf.data.locate]
+// [spec:kbdgen:req:tsf.data.locate+1]
 // [spec:kbdgen:def:tsf.engine.api]
 // [spec:kbdgen:req:ldml.crate.tsf+1]
 pub fn decode(bytes: &[u8]) -> Option<Keyboard> {
@@ -87,7 +87,7 @@ mod tests {
 
     const PROFILE: u128 = 0x1234_5678_9ABC_4DEF_8123_4567_89AB_CDEF;
 
-    // [spec:kbdgen:req:tsf.data.locate/test]
+    // [spec:kbdgen:req:tsf.data.locate+1/test]
     #[test]
     fn product_code_ignores_case_and_braces() {
         for value in [
@@ -105,7 +105,7 @@ mod tests {
         assert!(!names_profile("", PROFILE));
     }
 
-    // [spec:kbdgen:req:tsf.data.locate/test]
+    // [spec:kbdgen:req:tsf.data.locate+1/test]
     // [spec:kbdgen:req:tsf.component.self-contained/test]
     #[test]
     fn layout_file_must_be_bare_name() {
@@ -115,7 +115,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:tsf.data.locate/test]
+    // [spec:kbdgen:req:tsf.data.locate+1/test]
     // [spec:kbdgen:req:ldml.crate.tsf+1/test]
     #[test]
     fn decodes_model_and_detects_altgr() {
@@ -130,7 +130,7 @@ mod tests {
         assert!(!plain.altgr);
     }
 
-    // [spec:kbdgen:req:tsf.data.locate/test]
+    // [spec:kbdgen:req:tsf.data.locate+1/test]
     #[test]
     fn refused_model_leaves_profile_inert() {
         let mut bytes = fixture::keyboard().to_bytes().unwrap();
@@ -139,7 +139,7 @@ mod tests {
         assert!(decode(b"not a model").is_none());
     }
 
-    // [spec:kbdgen:req:tsf.data.locate/test]
+    // [spec:kbdgen:req:tsf.data.locate+1/test]
     #[test]
     fn keyboards_load_each_profile_once() {
         let keyboards = Keyboards::new();

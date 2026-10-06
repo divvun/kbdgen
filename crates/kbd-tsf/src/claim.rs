@@ -29,7 +29,7 @@ pub struct Blocked {
     pub read_only: bool,
 }
 
-// [spec:kbdgen:req:tsf.keys.claim]
+// [spec:kbdgen:req:tsf.keys.claim+1]
 // [spec:kbdgen:req:tsf.component.panic]
 pub fn route(role: &Role, blocked: Blocked) -> Route {
     if blocked.poisoned || blocked.inert {
@@ -84,7 +84,7 @@ mod tests {
         read_only: false,
     };
 
-    // [spec:kbdgen:req:tsf.keys.claim/test]
+    // [spec:kbdgen:req:tsf.keys.claim+1/test]
     #[test]
     fn engine_keys_go_to_engine_when_open() {
         assert_eq!(route(&Role::Engine(Key::Scan(0x10)), OPEN), Route::Engine);
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(route(&Role::Own, OPEN), Route::Ignore);
     }
 
-    // [spec:kbdgen:req:tsf.keys.claim/test]
+    // [spec:kbdgen:req:tsf.keys.claim+1/test]
     // [spec:kbdgen:req:tsf.component.panic/test]
     #[test]
     fn poisoned_inert_or_read_only_pass_everything() {
@@ -128,7 +128,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:tsf.keys.claim/test]
+    // [spec:kbdgen:req:tsf.keys.claim+1/test]
     #[test]
     fn key_up_is_eaten_exactly_after_eaten_down() {
         let mut claims = Claims::default();

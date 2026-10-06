@@ -623,6 +623,29 @@ children (
                                 title "Fold Windows 11 TSF findings into tsf.md: AltGr via preserved keys, WPF scan-code recovery, test-phase commit, own-edit echo, ActivateProfile scope, composition start"
                                 kind @docs
                                 deps (targets.windows.tsf.host)
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-10-06T13:09:45.125266Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T13:15:27.284309Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
+                                    }
+                                )
+                            }
+
+                            {
+                                id targets.windows.tsf.console
+                                title "tsf.test.vm requires typing into a console, but run-vm.ps1 has no console case: add it (or drop it from the rule)"
+                                kind @test
+                                deps (targets.windows.tsf.host-spec)
                             }
                         )
                         log (

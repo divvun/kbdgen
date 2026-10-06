@@ -50,9 +50,9 @@ pub fn units(context: &str, delete: usize) -> usize {
 /// before the queued deletions. No preedit is shown there, nor in a
 /// disabled context.
 // [spec:kbdgen:def:tsf.edit.ops]
-// [spec:kbdgen:req:tsf.edit.apply]
-// [spec:kbdgen:req:tsf.edit.inject]
-// [spec:kbdgen:req:tsf.edit.preedit]
+// [spec:kbdgen:req:tsf.edit.apply+1]
+// [spec:kbdgen:req:tsf.edit.inject+1]
+// [spec:kbdgen:req:tsf.edit.preedit+1]
 // [spec:kbdgen:req:tsf.security.disabled+1]
 // [spec:kbdgen:def:tsf.engine.api]
 pub fn plan(action: &Action, context: &Context, mode: Mode) -> Vec<Step> {
@@ -111,7 +111,7 @@ mod tests {
         disabled: false,
     };
 
-    // [spec:kbdgen:req:tsf.edit.apply/test]
+    // [spec:kbdgen:req:tsf.edit.apply+1/test]
     // [spec:kbdgen:def:tsf.edit.ops/test]
     #[test]
     fn authoritative_edit_replaces_then_shows_preedit() {
@@ -132,7 +132,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:req:tsf.edit.inject/test]
+    // [spec:kbdgen:req:tsf.edit.inject+1/test]
     #[test]
     fn transitory_edit_injects_or_sets_text() {
         let context = Context::default();
@@ -152,7 +152,7 @@ mod tests {
     }
 
     // [spec:kbdgen:req:tsf.security.disabled+1/test]
-    // [spec:kbdgen:req:tsf.edit.preedit/test]
+    // [spec:kbdgen:req:tsf.edit.preedit+1/test]
     #[test]
     fn disabled_context_drops_preedit() {
         let mode = Mode {

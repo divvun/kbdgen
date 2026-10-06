@@ -39,7 +39,7 @@ use super::session::{Pending, Task};
     windows::Win32::UI::TextServices::ITfDisplayAttributeProvider,
     windows::Win32::UI::TextServices::ITfActiveLanguageProfileNotifySink
 )]
-// [spec:kbdgen:req:tsf.component.interfaces+1]
+// [spec:kbdgen:req:tsf.component.interfaces+2]
 pub struct Tip {
     _live: Live,
     pub(super) shared: Rc<RefCell<Inner>>,
@@ -67,6 +67,7 @@ impl Advice {
 }
 
 /// The text service's state on one thread.
+// [spec:kbdgen:req:tsf.edit.own]
 #[derive(Default)]
 pub(super) struct Inner {
     pub thread_mgr: Option<ITfThreadMgr>,
@@ -134,7 +135,7 @@ fn active_profile() -> Option<u128> {
 impl Tip_Impl {
     /// Loads the keyboard of `profile`, or makes the service inert, and
     /// resets.
-    // [spec:kbdgen:req:tsf.data.locate]
+    // [spec:kbdgen:req:tsf.data.locate+1]
     pub(super) fn select_profile(&self, profile: Option<u128>) {
         let keyboard = profile.and_then(data::keyboard);
         self.unpreserve();
@@ -149,7 +150,8 @@ impl Tip_Impl {
 
     /// Registers `chords` as preserved keys, each on the virtual key that
     /// the thread's dummy layout gives its scan code.
-    // [spec:kbdgen:req:tsf.keys.altgr]
+    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.preserved]
     fn preserve(&self, chords: &[Chord]) {
         let Ok(mut inner) = self.shared.try_borrow_mut() else {
             return;
@@ -199,7 +201,7 @@ impl Tip_Impl {
 
     /// Resets the document (`tsf.edit.reset`). A shown preedit is left
     /// committed by ending its composition in an edit session of its own.
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     pub(super) fn reset_document(&self) {
         let ending = {
             let Ok(mut inner) = self.shared.try_borrow_mut() else {
@@ -314,7 +316,7 @@ impl ITfTextInputProcessor_Impl for Tip_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.component.interfaces+1]
+    // [spec:kbdgen:req:tsf.component.interfaces+2]
     fn Deactivate(&self) -> Result<()> {
         contain(&POISON, Entry::Deactivate, || {
             self.deactivate();
@@ -324,7 +326,7 @@ impl ITfTextInputProcessor_Impl for Tip_Impl {
 }
 
 impl ITfTextInputProcessorEx_Impl for Tip_Impl {
-    // [spec:kbdgen:req:tsf.component.interfaces+1]
+    // [spec:kbdgen:req:tsf.component.interfaces+2]
     // [spec:kbdgen:req:tsf.security.secure-mode+1]
     fn ActivateEx(&self, ptim: Ref<ITfThreadMgr>, tid: u32, _flags: u32) -> Result<()> {
         contain(&POISON, Entry::ActivateEx, || {

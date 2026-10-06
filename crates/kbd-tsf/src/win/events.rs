@@ -37,7 +37,7 @@ fn advise(source: ITfSource, iid: &GUID, sink: &IUnknown) -> Option<Advice> {
 impl Tip_Impl {
     /// Advises the text-edit sink on `context` and the compartment sink on
     /// its keyboard-disabled and empty-context compartments.
-    // [spec:kbdgen:req:tsf.component.interfaces+1]
+    // [spec:kbdgen:req:tsf.component.interfaces+2]
     pub(super) fn advise_context(&self, context: &ITfContext) -> Vec<Advice> {
         let edit: ITfTextEditSink = self.to_interface();
         let compartment: ITfCompartmentEventSink = self.to_interface();
@@ -78,7 +78,7 @@ impl ITfThreadMgrEventSink_Impl for Tip_Impl {
         contain(&POISON, Entry::OnUninitDocumentMgr, || Ok(()))
     }
 
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     fn OnSetFocus(
         &self,
         _focus: Ref<ITfDocumentMgr>,
@@ -90,7 +90,7 @@ impl ITfThreadMgrEventSink_Impl for Tip_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     fn OnPushContext(&self, _pic: Ref<ITfContext>) -> Result<()> {
         contain(&POISON, Entry::OnPushContext, || {
             self.refocus();
@@ -98,7 +98,7 @@ impl ITfThreadMgrEventSink_Impl for Tip_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     fn OnPopContext(&self, _pic: Ref<ITfContext>) -> Result<()> {
         contain(&POISON, Entry::OnPopContext, || {
             self.refocus();
@@ -111,7 +111,8 @@ impl ITfTextEditSink_Impl for Tip_Impl {
     /// An edit the text service did not make, such as a mouse click or
     /// another input method, resets. Its own edit sessions, and what its
     /// injected input makes the application do, do not.
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
+    // [spec:kbdgen:req:tsf.edit.own]
     fn OnEndEdit(
         &self,
         _pic: Ref<ITfContext>,
@@ -138,8 +139,8 @@ impl ITfTextEditSink_Impl for Tip_Impl {
 impl ITfCompositionSink_Impl for Tip_Impl {
     /// The application ended the composition: its text stays committed,
     /// undecorated, and the engine resets.
-    // [spec:kbdgen:req:tsf.edit.preedit]
-    // [spec:kbdgen:req:tsf.edit.reset]
+    // [spec:kbdgen:req:tsf.edit.preedit+1]
+    // [spec:kbdgen:req:tsf.edit.reset+1]
     fn OnCompositionTerminated(
         &self,
         ecwrite: u32,
@@ -184,7 +185,7 @@ impl ITfCompartmentEventSink_Impl for Tip_Impl {
 impl ITfActiveLanguageProfileNotifySink_Impl for Tip_Impl {
     /// Switching between this text service's profiles loads the new
     /// profile's keyboard (`tsf.data.locate`).
-    // [spec:kbdgen:req:tsf.data.locate]
+    // [spec:kbdgen:req:tsf.data.locate+1]
     fn OnActivated(
         &self,
         clsid: *const GUID,
