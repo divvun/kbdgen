@@ -548,6 +548,13 @@ children (
                                 }
                                 deps (targets.windows.tsf.register targets.windows.tsf.kbdi)
                             }
+
+                            {
+                                id targets.windows.tsf.differential-spec
+                                title "Spec the DLL/engine differences the differential test found: unmatched dead key after dead key, ligature after dead key, space outside base columns, SGCAPS with dead keys, migrated caps (fix ldml.kbdl.dead-tree wording)"
+                                kind @docs
+                                deps (targets.windows.tsf.data)
+                            }
                         )
                         log (
                             {
