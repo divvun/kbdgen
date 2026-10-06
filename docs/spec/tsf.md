@@ -754,7 +754,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 ## Installer
 
-> [spec:kbdgen:req:tsf.installer.bundle]
+> [spec:kbdgen:req:tsf.installer.bundle+1]
 > Every keyboard installer MUST embed one pinned, BLAKE3-checked release of
 > the text service's installer, as divvun-actions embeds divvun-wind. It MUST
 > run that installer silently before any `kbdi keyboard_install`. The text
@@ -762,7 +762,25 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > It MUST run on every Windows the keyboard installer accepts
 > (`tsf.installer.layout-dlls`). It is not gated like divvun-wind. Failure to
 > install it MUST NOT fail the keyboard install, and the keyboard then falls
-> back to its layout (`tsf.register.enable`).
+> back to its layout (`tsf.register.enable`). After its last
+> `kbdi keyboard_uninstall`, the keyboard uninstaller MUST run the text
+> service's uninstaller. That uninstaller refuses while any language profile
+> remains under the CLSID (`tsf.register.uninstall`), so removing the last
+> keyboard removes the text service.
+>
+> divvun-actions builds the text service installer in the kbdgen pipeline,
+> with a version of its own for every development build
+> (`tsf.register.upgrade`). Builds of main replace the `kbd-tsf-dev-latest`
+> prerelease of divvun/kbdgen; a `kbd-tsf-v<version>` tag gets its own
+> release. Keyboard builds embed the installer of `kbd-tsf-dev-latest`, as
+> they do divvun-wind's `dev-latest`. (Verified on Windows 11 x64, with a
+> test CLSID and two keyboard installers: the first installs and registers
+> the text service, which types in 64- and 32-bit processes; the second,
+> embedding an older text service, leaves the newer one registered and
+> types too; removing the first leaves the text service for the second;
+> removing the second removes it and restores the language list. An upgrade
+> while the old DLL is loaded deletes it at restart. Unverified: Arm64, x86
+> Windows, outto packages, signed builds.)
 
 > [spec:kbdgen:req:tsf.installer.layout-dlls]
 > The keyboard installer MUST place kbdgen's layout DLL variants unchanged:

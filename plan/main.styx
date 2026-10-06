@@ -628,10 +628,30 @@ children (
                                 title "Bundle the text service in keyboard installers (divvun-actions)"
                                 priority 0
                                 kind @feat
-                                implements {
-                                    main ([spec:kbdgen:req:tsf.installer.bundle] [spec:kbdgen:req:tsf.installer.layout-dlls])
-                                }
                                 deps (targets.windows.tsf.register targets.windows.tsf.kbdi)
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-10-06T14:13:00.288371Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T14:37:33.099098Z
+                                        author "brendan@necessary.nu"
+                                        kind @decision
+                                        text "Implemented in divvun-actions (local unpushed branch keyboard-rust-layout-dlls): 905740e TIP Inno installer, d7ab1cf CI build+publish (kbd-tsf-dev-latest / kbd-tsf-v* on divvun/kbdgen), 932fae5 shared release download verification, 804aa44 embed TIP in keyboard installers. Agent decisions pending operator sign-off: TIP released separately and embedded from dev-latest per keyboard build; per-build dev versions; TIP installer is Inno (not outto); fixed AppId D75B9208-31F3-44DA-9F6F-CD1AD320E17A and uninstaller path {commonpf}\\Divvun\\Text Service\\unins000.exe; refcount = CTF\\TIP language profiles. VM 2026-10-06: TIP install/upgrade-while-loaded/downgrade-refusal; Võro (vro-Latn) and emoji keyboard installers typed through the TIP in 64+32-bit EDIT; shared-TIP uninstall refused while a profile remained; final uninstall restored languages/inputs exactly. Unverified: Arm64, x86 Windows, outto path, CI signing/publish, exit-10 path."
+                                    }
+
+                                    {
+                                        at 2026-10-06T14:37:35.7022Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
+                                    }
+                                )
                             }
 
                             {
@@ -686,6 +706,13 @@ children (
                                 kind @test
                                 deps (targets.windows.tsf.host-spec)
                             }
+
+                            {
+                                id targets.windows.tsf.stdout-logs
+                                title "kbdgen tsf logs to stdout, mixing logs into the list of files to sign: send logs to stderr"
+                                kind @fix
+                                deps (targets.windows.tsf.arch)
+                            }
                         )
                         log (
                             {
@@ -732,6 +759,13 @@ children (
                                 text "Doing → Done (nplan complete)"
                             }
                         )
+                    }
+
+                    {
+                        id targets.windows.v4-actions
+                        title "divvun-actions loadWindowsLayouts ignores format-4 layouts (reads only v3 windows: config:): read v4 targets.windows"
+                        kind @feat
+                        deps (targets.windows.tsf.installer)
                     }
                 )
             }
