@@ -43,6 +43,7 @@ LDML-only.
 | `yaml.md` | `ldml.yaml.*` | the v4 authoring format and its lowering |
 | `migrate.md` | `ldml.migrate.*` | v3 to v4 conversion and the defect report |
 | `kbdl.md` | `ldml.kbdl.*` | the model to `kbdl.input` adapter |
+| `android.md` | `ldml.android.*` | the model to Android layout resources adapter |
 | `cli.md` | `ldml.cli.*` | `kbdgen ldml` subcommands |
 
 Rule bodies flag LDML gaps and kbdgen additions with fixed phrases:

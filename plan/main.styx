@@ -1439,6 +1439,14 @@ children (
                         title "Generate android output from the v4 model"
                         kind @feat
                         deps (ldml.yaml-v4 ldml.spec-errata)
+                        log (
+                            {
+                                at 2026-10-06T13:35:30.717096Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+                        )
                     }
 
                     {
