@@ -1,8 +1,8 @@
 // The VM test's driver (tsf.test.vm): calls the registration exports,
-// registers the test profiles, and types scan codes with SendInput into a
-// Win32 EDIT, a RichEdit or a WPF TextBox with a text service profile
-// active in this process, or into a console, printing what each control
-// then holds.
+// registers the test profiles and adds them to the user's inputs, and
+// types scan codes with SendInput into a Win32 EDIT, a RichEdit or a WPF
+// TextBox with a text service profile active in this process, or into a
+// console, printing what each control then holds.
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -72,6 +72,15 @@ public static class TsfDriver {
   public static int Unregister(string clsid, ushort langid, string profile) {
     var c = new Guid(clsid); var p = new Guid(profile);
     return Profiles().UnregisterProfile(ref c, langid, ref p, 0);
+  }
+
+  [DllImport("input.dll", CharSet = CharSet.Unicode)] static extern bool InstallLayoutOrTip(string tip, uint flags);
+
+  // Adds the input `tip` ("0409:{clsid}{profile}") to the user's input
+  // list, or removes it (ILOT_UNINSTALL), as the language settings do, for
+  // Win+Space to reach it.
+  public static bool EnableInput(string tip, bool add) {
+    return InstallLayoutOrTip(tip, add ? 0u : 1u);
   }
 
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr LoadLibraryW(string path);
@@ -154,6 +163,19 @@ public static class TsfDriver {
     return text.ToString();
   }
 
+  [DllImport("user32.dll")] static extern int GetKeyboardLayoutList(int count, IntPtr[] list);
+
+  // The keyboard layouts loaded in the session, which Win+Space cycles
+  // through with the user's inputs: one left loaded by an input since
+  // removed takes a turn too.
+  static string Layouts() {
+    var list = new IntPtr[64];
+    var names = new List<string>();
+    int count = GetKeyboardLayoutList(list.Length, list);
+    for (int i = 0; i < count; i++) names.Add(((long)list[i]).ToString("x"));
+    return string.Join(",", names.ToArray());
+  }
+
   // Types every case into a fresh console window (conhost) running
   // `reader`, a console program that writes what ReadConsoleW returns, as
   // UTF-16 hex, to the file it is given, and that file's name with
@@ -164,6 +186,7 @@ public static class TsfDriver {
   // Cases that put text without typing ("set:") are skipped.
   public static string TypeConsole(string reader, string toggle, string[] cases) {
     var log = new StringBuilder();
+    log.AppendFormat("LAYOUTS {0}\n", Layouts());
     var output = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "kbd-tsf-console.txt");
     foreach (var test in cases) {
       var parts = test.Split('=');
@@ -192,14 +215,16 @@ public static class TsfDriver {
 
   // Types every case ("name=chord chord ...") into a fresh control of kind
   // `kind` (edit, rich or wpf). A chord "set:d83d,de00" instead puts those
-  // UTF-16 units into the control without typing, caret at the end. With
-  // `klid` set, the layout DLL alone is active instead of the text service.
+  // UTF-16 units into the control without typing, caret at the end, and
+  // "select:1,2" selects 2 units from offset 1. With `klid` set, the
+  // layout DLL alone is active instead of the text service.
   public static string TypeCases(string kind, string clsid, string profile, ushort langid, string klid, string[] cases) {
     wpf = kind == "wpf";
     var log = new StringBuilder();
     IntPtr handle = IntPtr.Zero;
     Func<string> read;
     Action<string> put;
+    Action<int, int> select;
     Action clear;
     Action focus;
     if (wpf) {
@@ -209,6 +234,7 @@ public static class TsfDriver {
       window.Show();
       read = () => box.Text;
       put = text => { box.Text = text; box.CaretIndex = text.Length; };
+      select = (start, length) => box.Select(start, length);
       clear = () => box.Clear();
       focus = () => {
         handle = new System.Windows.Interop.WindowInteropHelper(window).Handle;
@@ -224,6 +250,7 @@ public static class TsfDriver {
       form.Show();
       read = () => box.Text;
       put = text => { box.Text = text; box.SelectionStart = box.TextLength; };
+      select = (start, length) => box.Select(start, length);
       clear = () => box.Clear();
       focus = () => { handle = form.Handle; Foreground(handle); form.Activate(); box.Focus(); };
     }
@@ -258,7 +285,12 @@ public static class TsfDriver {
       if (GetForegroundWindow() != handle) { focus(); Pump(); }
       Chord("e04f");
       foreach (var chord in parts[1].Split(' ')) {
-        if (chord.StartsWith("set:")) { put(Unhex(chord.Substring(4))); Pump(); } else Chord(chord);
+        if (chord.StartsWith("set:")) { put(Unhex(chord.Substring(4))); Pump(); }
+        else if (chord.StartsWith("select:")) {
+          var span = chord.Substring(7).Split(',');
+          select(int.Parse(span[0]), int.Parse(span[1]));
+          Pump();
+        } else Chord(chord);
       }
       Pump();
       log.AppendFormat("RESULT {0} {1} {2} => {3}\n", kind + (klid != "" ? "-dll" : ""), IntPtr.Size * 8, parts[0], Hex(read()));

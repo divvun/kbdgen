@@ -1,7 +1,7 @@
-// The console program of the acceptance test's console case
-// (tsf.test.acceptance): writes its console window's handle to
-// "<file>.hwnd", reads one line with ReadConsoleW, and writes that line's
-// UTF-16 units as space-separated hex to <file>.
+// The console program of the console cases of the VM and acceptance tests
+// (tsf.test.vm, tsf.test.acceptance): writes its console window's handle
+// to "<file>.hwnd", reads one line with ReadConsoleW, and writes that
+// line's UTF-16 units as space-separated hex to <file>.
 using System;
 using System.Collections.Generic;
 using System.IO;

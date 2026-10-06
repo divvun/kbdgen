@@ -139,7 +139,7 @@ impl ITfTextEditSink_Impl for Tip_Impl {
 impl ITfCompositionSink_Impl for Tip_Impl {
     /// The application ended the composition: its text stays committed,
     /// undecorated, and the engine resets.
-    // [spec:kbdgen:req:tsf.edit.preedit+1]
+    // [spec:kbdgen:req:tsf.edit.preedit+2]
     // [spec:kbdgen:req:tsf.edit.reset+1]
     fn OnCompositionTerminated(
         &self,

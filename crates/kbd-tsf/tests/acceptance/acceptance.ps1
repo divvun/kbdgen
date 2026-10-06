@@ -19,9 +19,9 @@
 #   3. removes whatever is left, and reports it
 #
 # Output lines: LAYOUTDLL (the built x64 layout DLL, whose model gives the
-# expected text), EXIT, INSTALLED, INPUT, SETUP, RESULT, RESTORE, BEFORE,
-# AFTER, PENDING and LEFT lines, and CLEANUP done. tests/acceptance.rs
-# checks them.
+# expected text), EXIT, INSTALLED, INPUT, SETUP, LAYOUTS, RESULT, RESTORE,
+# BEFORE, AFTER, PENDING and LEFT lines, and CLEANUP done.
+# tests/acceptance.rs checks them.
 param(
   [string]$Phase = 'run',
   [string]$IssDir = '',
@@ -221,7 +221,7 @@ function Type-Cases($Keyboard) {
   & "$System32\WindowsPowerShell\v1.0\powershell.exe" @common -Kinds edit,rich,wpf
   & "$SysWow64\WindowsPowerShell\v1.0\powershell.exe" @common -Kinds edit,wpf
   $reader = Join-Path $Work 'reader.exe'
-  Add-Type -Path (Join-Path $PSScriptRoot 'ConsoleReader.cs') -OutputAssembly $reader -OutputType ConsoleApplication
+  Add-Type -Path (Join-Path $PSScriptRoot '..\vm\ConsoleReader.cs') -OutputAssembly $reader -OutputType ConsoleApplication
   & "$System32\WindowsPowerShell\v1.0\powershell.exe" @common -Kinds console -Reader $reader
 }
 

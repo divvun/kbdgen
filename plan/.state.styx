@@ -428,6 +428,7 @@ assertions (
     {id targets.windows.tsf.installer, kind @complete, author "brendan@necessary.nu", at 2026-10-06T14:37:35.7022Z}
     {id targets.windows.v4-actions, kind @complete, author "brendan@necessary.nu", at 2026-10-06T16:06:33.982478Z}
     {id targets.windows.tsf.stdout-logs, kind @complete, author "brendan@necessary.nu", at 2026-10-06T19:38:05.146881Z}
+    {id targets.windows.tsf.console, kind @complete, author "brendan@necessary.nu", at 2026-10-06T23:39:33.822226Z}
 )
 
 impl_evidence (
@@ -1390,37 +1391,6 @@ impl_evidence (
         {impl_name main, rule tsf.security.secure-mode}
         {impl_name main, rule tsf.test.host}
         {impl_name main, rule tsf.test.vm}
-    ), rule_versions_seen (
-        {id ldml.crate.tsf, version 1}
-        {id tsf.component, version 0}
-        {id tsf.component.crate, version 0}
-        {id tsf.component.interfaces, version 2}
-        {id tsf.component.logging, version 0}
-        {id tsf.component.panic, version 0}
-        {id tsf.component.self-contained, version 0}
-        {id tsf.data.locate, version 1}
-        {id tsf.edit.apply, version 1}
-        {id tsf.edit.cache, version 0}
-        {id tsf.edit.inject, version 1}
-        {id tsf.edit.ops, version 0}
-        {id tsf.edit.preedit, version 1}
-        {id tsf.edit.reset, version 1}
-        {id tsf.edit.session, version 1}
-        {id tsf.edit.units, version 0}
-        {id tsf.engine.api, version 0}
-        {id tsf.engine.contract, version 0}
-        {id tsf.keys.altgr, version 2}
-        {id tsf.keys.claim, version 1}
-        {id tsf.keys.identity, version 1}
-        {id tsf.keys.locale-flags, version 0}
-        {id tsf.pairing.alternatives, version 0}
-        {id tsf.pairing.self-sufficient, version 0}
-        {id tsf.pairing.substitute, version 0}
-        {id tsf.security.disabled, version 1}
-        {id tsf.security.integrity, version 0}
-        {id tsf.security.secure-mode, version 1}
-        {id tsf.test.host, version 0}
-        {id tsf.test.vm, version 1}
     )}
     {id targets.windows.tsf.register, covered_rules (
         tsf.arch.registration

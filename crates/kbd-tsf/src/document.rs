@@ -124,7 +124,7 @@ impl Document {
     // [spec:kbdgen:req:tsf.edit.apply+1]
     // [spec:kbdgen:req:tsf.edit.inject+1]
     // [spec:kbdgen:req:tsf.edit.cache]
-    // [spec:kbdgen:req:tsf.edit.preedit+1]
+    // [spec:kbdgen:req:tsf.edit.preedit+2]
     pub fn apply(&mut self, text: &mut dyn TextContext, decision: Decision, limit: usize) -> bool {
         if decision.reset {
             self.reset(Some(text));

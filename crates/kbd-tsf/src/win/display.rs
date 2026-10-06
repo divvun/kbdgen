@@ -44,7 +44,7 @@ impl ITfDisplayAttributeInfo_Impl for PreeditInfo_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.edit.preedit+1]
+    // [spec:kbdgen:req:tsf.edit.preedit+2]
     fn GetAttributeInfo(&self, pda: *mut TF_DISPLAYATTRIBUTE) -> Result<()> {
         contain(&POISON, Entry::InfoGetAttributeInfo, || {
             let none = TF_DA_COLOR {

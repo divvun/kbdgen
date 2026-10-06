@@ -10,8 +10,10 @@
 //! `tests/vm/run-vm.ps1` checks where `DllRegisterServer` refuses to
 //! register, registers a test build and a profile per fixture layout, types
 //! each case below with `SendInput` scan codes in the signed-in session,
-//! and removes everything again; these tests check what registration wrote
-//! and what each control holds. All tests share one run.
+//! into the controls of `CONTROLS` and into a console switched to the
+//! profile with Win+Space, and removes everything again; these tests check
+//! what registration wrote and what each control holds. All tests share
+//! one run.
 
 #![cfg(windows)]
 
@@ -20,7 +22,10 @@ use std::process::Command;
 use std::sync::OnceLock;
 
 /// Name, scan-code chords (`e0` prefixes extended keys, `+` holds keys
-/// together), and the UTF-16 units the control must then hold.
+/// together), and the UTF-16 units the control must then hold. A chord
+/// `set:` puts UTF-16 units into the control without typing, caret at the
+/// end, and `select:1,1` selects one unit from offset 1; the console skips
+/// cases that put text.
 const CASES: &[(&str, &str, &str)] = &[
     ("plain", "10 11 12", "0071 0077 0065"),
     ("acute a", "0d 1e", "00e1"),
@@ -36,6 +41,11 @@ const CASES: &[(&str, &str, &str)] = &[
     ("q apostrophe", "10 2b", "02a0"),
     ("a q apostrophe", "1e 10 2b", "0061 02a0"),
     ("z apostrophe twice", "2c 2b 2b", "0290"),
+    (
+        "acute over selection",
+        "set:0078,0079,007a select:1,1 0d 1e",
+        "0078 00e1 007a",
+    ),
 ];
 
 const GRINNING: &str = "d83d de00";
@@ -174,17 +184,33 @@ fn result<'a>(results: &'a Results, kind: &str, bits: &str, name: &str) -> &'a s
     results.get(&key).map_or("missing", String::as_str)
 }
 
-// [spec:kbdgen:req:tsf.test.vm+1/test]
+/// What the console, switched to the profile with Win+Space, typed
+/// differently from `cases` (name, chords, expected units), skipping the
+/// cases that put text without typing.
+fn console_failures<'a>(
+    results: &Results,
+    cases: impl IntoIterator<Item = (&'a str, &'a str, &'a str)>,
+) -> Vec<String> {
+    cases
+        .into_iter()
+        .filter(|(_, chords, _)| !chords.contains("set:"))
+        .filter_map(|(name, _, expected)| {
+            let got = result(results, "console", "64", name);
+            (got != expected).then(|| format!("console {name}: got [{got}], want [{expected}]"))
+        })
+        .collect()
+}
+
 // [spec:kbdgen:req:tsf.component.crate/test]
 // [spec:kbdgen:req:tsf.edit.apply+1/test]
 // [spec:kbdgen:req:tsf.edit.inject+1/test]
-// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.preedit+2/test]
 // [spec:kbdgen:req:tsf.edit.reset+1/test]
 // [spec:kbdgen:req:tsf.keys.altgr+2/test]
 // [spec:kbdgen:req:tsf.data.locate+1/test]
 // [spec:kbdgen:req:tsf.pairing.self-sufficient/test]
-// [spec:kbdgen:req:tsf.test.vm+1]
-// [spec:kbdgen:req:tsf.test.vm+1/test]
+// [spec:kbdgen:req:tsf.test.vm+2]
+// [spec:kbdgen:req:tsf.test.vm+2/test]
 // [spec:kbdgen:req:tsf.keys.recover/test]
 // [spec:kbdgen:req:tsf.keys.phases/test]
 // [spec:kbdgen:req:tsf.keys.preserved+1/test]
@@ -206,6 +232,7 @@ fn types_through_text_service_in_apps() {
             }
         }
     }
+    failures.extend(console_failures(results, CASES.iter().copied()));
     let dll_only = result(results, "edit-dll", "64", "acute b");
     if dll_only == "missing" || dll_only == "0062 0301" {
         failures.push(format!(
@@ -219,6 +246,10 @@ fn types_through_text_service_in_apps() {
     }
     if stdout.contains("LEFT ") || !stdout.contains("CLEANUP done") {
         failures.push("cleanup left registrations or files behind".to_owned());
+    }
+    let languages = line(stdout, "LANGUAGES before ");
+    if languages == "missing" || line(stdout, "LANGUAGES after ") != languages {
+        failures.push("the user's languages and inputs were not restored".to_owned());
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
@@ -250,6 +281,16 @@ fn types_emoji_through_text_service() {
             }
         }
     }
+    let console: Vec<(String, &str, &str)> = EMOJI_KEYS
+        .iter()
+        .map(|(key, scan, units)| (format!("emoji {key}"), *scan, *units))
+        .collect();
+    failures.extend(console_failures(
+        results,
+        console
+            .iter()
+            .map(|(name, scan, units)| (name.as_str(), *scan, *units)),
+    ));
     // The layout DLL alone delivers ligatures of up to 16 units and has
     // no key for a longer output (`kbdl.vk-chars.values`).
     for (key, _, units) in EMOJI_KEYS {

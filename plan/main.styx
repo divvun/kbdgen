@@ -731,6 +731,22 @@ children (
                                 title "tsf.test.vm requires typing into a console, but run-vm.ps1 has no console case: add it (or drop it from the rule)"
                                 kind @test
                                 deps (targets.windows.tsf.host-spec)
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-10-06T19:38:46.463888Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T23:39:33.822226Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Doing → Done (nplan complete)"
+                                    }
+                                )
                             }
 
                             {

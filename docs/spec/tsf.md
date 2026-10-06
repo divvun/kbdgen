@@ -520,19 +520,21 @@ bundles divvun-wind (`tsf.installer.bundle`).
 >
 > (Verified in `EDIT` and RichEdit.)
 
-> [spec:kbdgen:req:tsf.edit.preedit+1]
+> [spec:kbdgen:req:tsf.edit.preedit+2]
 > A non-empty preedit MUST be shown as a composition, started with
 > `ITfContextComposition::StartComposition` after the edit's committed
-> text, or at the caret. It is decorated with the provider's single display
-> attribute, a dotted underline, and replaced in place on each edit. An
-> empty preedit ends the composition and removes its text. Committed text of
-> an edit goes before the composition range. TSF may add text set at the
-> composition's start to the composition, so before updating or ending it
-> the text service MUST move the composition's start (`ShiftStart`) past
-> the text it just committed. If `OnCompositionTerminated` arrives, the
-> preedit text stays as committed, undecorated, and the engine is reset. In
-> a context that is not authoritative (`tsf.edit.session`), the preedit is
-> not shown. (Verified in a WPF `TextBox`.)
+> text, or at the caret over any selection, which the preedit replaces. It
+> is decorated with the provider's single display attribute, a dotted
+> underline, and replaced in place on each edit. An empty preedit ends the
+> composition and removes its text. Committed text of an edit goes before
+> the composition range. TSF may add text set at the composition's start to
+> the composition, so before updating or ending it the text service MUST
+> move the composition's start (`ShiftStart`) past the text it just
+> committed. If `OnCompositionTerminated` arrives, the preedit text stays as
+> committed, undecorated, and the engine is reset. In a context that is not
+> authoritative (`tsf.edit.session`), the preedit is not shown. (Verified in
+> a WPF `TextBox`, and over a selection in an `EDIT`, a RichEdit and a WPF
+> `TextBox`.)
 
 ## Security contexts
 
@@ -944,16 +946,17 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > that the call returns `E_UNEXPECTED` and that the service is then poisoned
 > (`tsf.component.panic`).
 
-> [spec:kbdgen:req:tsf.test.vm+1]
+> [spec:kbdgen:req:tsf.test.vm+2]
 > Integration tests MUST run on a Windows 11 machine with an interactive
 > session, launched through a scheduled task in the signed-in session. TSF
 > needs a desktop, and the shared Server Core CI queue has none. A run:
 >
 > 1. registers the build under a test CLSID, with a test KLID, test layout
 >    DLL and test LANGID
-> 2. sends scan codes with `SendInput` into a Win32 `EDIT`, a RichEdit, a
->    WPF `TextBox` pumped by its dispatcher, a console, and the same from a
->    32-bit process
+> 2. sends scan codes with `SendInput` into a Win32 `EDIT`, a RichEdit and
+>    a WPF `TextBox` pumped by its dispatcher; into an `EDIT` and a WPF
+>    `TextBox` from a 32-bit process; and into a console switched to the
+>    test profile with Win+Space while the profile is in the user's inputs
 > 3. checks the resulting text
 > 4. restores the user's language list and removes every registration
 >

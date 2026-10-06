@@ -99,9 +99,7 @@ impl TextContext for Fake {
     }
 
     fn set_preedit(&mut self, preedit: &str) -> Result<(), Failed> {
-        let (start, end) = self
-            .composition
-            .unwrap_or((self.selection().0, self.selection().0));
+        let (start, end) = self.composition.unwrap_or(self.selection());
         self.composition = None;
         let at = self.splice(start, end, preedit);
         if !preedit.is_empty() {

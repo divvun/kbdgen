@@ -12,16 +12,21 @@
 #      tsf.test.emoji) installs its layout DLLs under a test KLID whose
 #      Layout Product Code is its test profile, and registers the profile
 #      under a test LANGID
-#   2. in the signed-in session, through a scheduled task, types each
-#      layout's cases into a Win32 EDIT, a RichEdit and a WPF TextBox from
-#      64-bit PowerShell, into an EDIT and a WPF TextBox from 32-bit
-#      PowerShell, and into an EDIT with the layout DLL alone, for
-#      comparison
-#   3. removes every registration, file and task, and reports what is left
+#   2. in the signed-in session, through a scheduled task per layout while
+#      only its profile is registered, types the layout's cases into a
+#      Win32 EDIT, a RichEdit and a WPF TextBox from 64-bit PowerShell,
+#      into an EDIT and a WPF TextBox from 32-bit PowerShell, into an EDIT
+#      with the layout DLL alone, for comparison, and into a console
+#      (conhost) switched to the profile with Win+Space, as a user
+#      switches, while the profile is in the user's inputs
+#   3. removes every registration, file, input and task, and reports what
+#      is left
 #
 # Output lines: EXPORTS, DEPENDS, REFUSE, SERVER, CATEGORIES, STALE and
-# UNREGISTERED lines for the builds and their registration, SETUP and RESULT
-# lines from the driver, LEFT lines for anything cleanup could not remove.
+# UNREGISTERED lines for the builds and their registration, SETUP, LAYOUTS
+# and RESULT lines from the driver, LANGUAGES lines with the user's
+# languages and inputs before and after, LEFT lines for anything cleanup
+# could not remove.
 # tests/vm.rs checks them.
 param(
   [Parameter(Mandatory)][string]$LayoutDir,
@@ -57,6 +62,7 @@ $Task = 'kbd-tsf-vm'
 $LayoutKeys = 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layouts'
 $System32 = Join-Path $env:SystemRoot 'System32'
 $SysWow64 = Join-Path $env:SystemRoot 'SysWOW64'
+$Reader = Join-Path $env:TEMP 'kbd-tsf-vm-reader.exe'
 
 function Invoke-Interactive([string]$Script, [int]$TimeoutSec = 600) {
   $out = Join-Path $env:TEMP 'kbd-tsf-vm.out'
@@ -121,6 +127,13 @@ function Get-Categories {
   if ($names) { $names -join ',' } else { 'none' }
 }
 
+# The user's languages and their inputs, in order, on one line.
+function Get-Languages {
+  # The cmdlet writes its list as one object; a variable enumerates it.
+  $languages = Get-WinUserLanguageList
+  @(foreach ($language in $languages) { "$($language.LanguageTag)[" + ($language.InputMethodTips -join ',') + ']' }) -join ' '
+}
+
 function Get-Server([string]$Key) {
   $server = Get-ItemProperty "$Key\InprocServer32" -ErrorAction SilentlyContinue
   if ($server) { $server.'(default)' + ' ' + $server.ThreadingModel } else { 'none' }
@@ -145,6 +158,8 @@ function Test-Refusals([string]$Dll) {
 $quser = (query user 2>&1) -join ' '
 if ($quser -notmatch 'Active') { 'SKIPPED nobody is signed in interactively'; exit 0 }
 
+'LANGUAGES before ' + (Get-Languages)
+$Registered = @()
 try {
   $env:KBD_TSF_CLSID = $Clsid
   $targetDir = Join-Path $Repo 'target\tsf-vm'
@@ -159,6 +174,7 @@ try {
 
   Add-Type -Path "$PSScriptRoot\TsfDriver.cs" -ReferencedAssemblies System.Windows.Forms, PresentationFramework, PresentationCore, WindowsBase, System.Xaml
   Test-Refusals $x64
+  Add-Type -Path "$PSScriptRoot\ConsoleReader.cs" -OutputAssembly $Reader -OutputType ConsoleApplication
 
   foreach ($dll in $X64Dll, $X86Dll) { Remove-Locked $dll }
   New-Item -ItemType Directory -Force $Install | Out-Null
@@ -178,7 +194,10 @@ try {
   $typer = Join-Path $PSScriptRoot 'type.ps1'
   $ps64 = "$System32\WindowsPowerShell\v1.0\powershell.exe"
   $ps32 = "$SysWow64\WindowsPowerShell\v1.0\powershell.exe"
-  $runs = foreach ($layout in $Layouts) {
+  # One layout at a time: Win+Space reaches every registered profile of
+  # the language, so the console's switch finds the other layout's profile
+  # while it is registered.
+  foreach ($layout in $Layouts) {
     $file = $layout.File
     Copy-Item -Force (Join-Path $LayoutDir "x64\$file") (Join-Path $System32 $file)
     Copy-Item -Force (Join-Path $LayoutDir "wow64\$file") (Join-Path $SysWow64 $file)
@@ -190,19 +209,28 @@ try {
     Set-ItemProperty $key 'Layout Product Code' $layout.Profile
     Set-ItemProperty $key 'Layout Display Name' "@%SystemRoot%\system32\$file,-1000"
     'PROFILE register {0} 0x{1:x}' -f $layout.Profile, [TsfDriver]::Register($Clsid, $LangId, $layout.Profile, $layout.Text, (Join-Path $System32 $file))
+    $Registered += $layout.Profile
 
     $common = "-Clsid '$Clsid' -ProfileGuid '$($layout.Profile)' -LangId $LangId -CasesFile '$($layout.Cases)'"
-    "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit $common -Klid $($layout.Klid)"
-    "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,rich,wpf $common"
-    "& '$ps32' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,wpf $common"
+    $tip = '{0:x4}:{1}{2}' -f $LangId, $Clsid, $layout.Profile
+    Invoke-Interactive ((
+        "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit $common -Klid $($layout.Klid)",
+        "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,rich,wpf $common",
+        "& '$ps32' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds edit,wpf $common",
+        "& '$ps64' -NoProfile -ExecutionPolicy Bypass -File '$typer' -Kinds console $common -Reader '$Reader' -AddInput '$tip'"
+      ) -join "`n")
+    'PROFILE unregister {0} 0x{1:x}' -f $layout.Profile, [TsfDriver]::Unregister($Clsid, $LangId, $layout.Profile)
+    $Registered = @($Registered | Where-Object { $_ -ne $layout.Profile })
   }
-  $runs | Where-Object { $_ -like 'PROFILE *' }
-  Invoke-Interactive (($runs | Where-Object { $_ -like '& *' }) -join "`n")
 }
 finally {
   if ('TsfDriver' -as [type]) {
     foreach ($layout in $Layouts) {
-      'PROFILE unregister {0} 0x{1:x}' -f $layout.Profile, [TsfDriver]::Unregister($Clsid, $LangId, $layout.Profile)
+      $tip = '{0:x4}:{1}{2}' -f $LangId, $Clsid, $layout.Profile
+      if ((Get-Languages) -like "*$tip*") { 'USERINPUT remove {0} {1}' -f $tip, [TsfDriver]::EnableInput($tip, $false) }
+    }
+    foreach ($guid in $Registered) {
+      'PROFILE unregister {0} 0x{1:x}' -f $guid, [TsfDriver]::Unregister($Clsid, $LangId, $guid)
     }
   }
   if (Test-Path $X86Dll) { 'UNREGISTER x86 ' + (Invoke-Regsvr32 "$SysWow64\regsvr32.exe" $X86Dll '/u') }
@@ -210,6 +238,9 @@ finally {
   if (Test-Path $X64Dll) { 'UNREGISTER x64 ' + (Invoke-Regsvr32 "$System32\regsvr32.exe" $X64Dll '/u') }
   'UNREGISTERED 64={0} 32={1} tip={2}' -f (Test-Path $ClassKey), (Test-Path $WowClassKey), (Test-Path "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$Clsid")
   Remove-Item -Recurse -Force "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$Clsid" -ErrorAction SilentlyContinue
+  # Removing an input from the user's inputs disables its profile for the
+  # user, and that outlives the profile: a later run could not activate it.
+  Remove-Item -Recurse -Force "HKCU:\Software\Microsoft\CTF\TIP\$Clsid" -ErrorAction SilentlyContinue
   foreach ($layout in $Layouts) {
     Remove-Item -Recurse -Force (Join-Path $LayoutKeys $layout.Klid) -ErrorAction SilentlyContinue
     foreach ($file in (Join-Path $System32 $layout.File), (Join-Path $SysWow64 $layout.File)) {
@@ -217,7 +248,7 @@ finally {
     }
   }
   foreach ($dll in $X64Dll, $X86Dll) { Remove-Locked $dll }
-  Remove-Item -Recurse -Force $Root, $Outside -ErrorAction SilentlyContinue
+  Remove-Item -Recurse -Force $Root, $Outside, $Reader -ErrorAction SilentlyContinue
   if (Get-ScheduledTask -TaskName $Task -ErrorAction SilentlyContinue) { Unregister-ScheduledTask -TaskName $Task -Confirm:$false }
   Remove-Item Env:\KBD_TSF_CLSID -ErrorAction SilentlyContinue
 
@@ -225,13 +256,16 @@ finally {
     "HKLM:\SOFTWARE\Classes\CLSID\$Clsid",
     "HKLM:\SOFTWARE\WOW6432Node\Classes\CLSID\$Clsid",
     "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$Clsid",
+    "HKCU:\Software\Microsoft\CTF\TIP\$Clsid",
     $Root,
-    $Outside
+    $Outside,
+    $Reader
   ) + @(foreach ($layout in $Layouts) {
     (Join-Path $LayoutKeys $layout.Klid)
     (Join-Path $System32 $layout.File)
     (Join-Path $SysWow64 $layout.File)
   }) | Where-Object { Test-Path $_ }
   foreach ($item in $left) { "LEFT $item" }
+  'LANGUAGES after ' + (Get-Languages)
   'CLEANUP done'
 }

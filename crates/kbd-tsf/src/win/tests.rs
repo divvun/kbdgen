@@ -264,7 +264,7 @@ fn text_service_answers_every_required_interface() {
     unknown.cast::<ITfDisplayAttributeProvider>().unwrap();
 }
 
-// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.preedit+2/test]
 #[test]
 fn one_dotted_preedit_attribute_is_enumerated() {
     let attributes = attributes();

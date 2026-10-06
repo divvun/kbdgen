@@ -7,7 +7,7 @@ use super::fake::Fake;
 use super::fixture::*;
 use crate::document::Flags;
 
-// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.preedit+2/test]
 // [spec:kbdgen:req:tsf.edit.apply+1/test]
 // [spec:kbdgen:req:tsf.test.host/test]
 #[test]
@@ -23,7 +23,7 @@ fn store_shows_dead_key_preedit_then_composes() {
 }
 
 // [spec:kbdgen:req:tsf.edit.cache/test]
-// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.preedit+2/test]
 // [spec:kbdgen:req:tsf.edit.inject+1/test]
 #[test]
 fn transitory_context_composes_without_preedit() {
@@ -111,18 +111,18 @@ fn nonempty_selection_resets_engine_first() {
     assert_eq!(t.fake.text(), "ay´");
 }
 
-// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.preedit+2/test]
 // [spec:kbdgen:req:tsf.edit.session+1/test]
 #[test]
-fn preedit_over_selection_starts_at_caret() {
+fn preedit_replaces_selection_at_caret() {
     let mut t = Typist::store();
-    t.fake = Fake::with_text("xy");
+    t.fake = Fake::with_text("xyz");
     t.fake.select(1, 2);
     assert!(t.scan(ACUTE));
-    assert_eq!(t.fake.text(), "x´y");
+    assert_eq!(t.fake.text(), "x´z");
     assert_eq!(t.fake.composition, Some((1, 2)));
     assert!(t.scan(A));
-    assert_eq!(t.fake.text(), "xáy");
+    assert_eq!(t.fake.text(), "xáz");
 }
 
 // [spec:kbdgen:req:tsf.security.disabled+1/test]

@@ -439,7 +439,7 @@ impl TextContext for TsfText<'_> {
         Ok(())
     }
 
-    // [spec:kbdgen:req:tsf.edit.preedit+1]
+    // [spec:kbdgen:req:tsf.edit.preedit+2]
     fn set_preedit(&mut self, preedit: &str) -> std::result::Result<(), Failed> {
         let wide: Vec<u16> = preedit.encode_utf16().collect();
         let composition = match (self.composition.take(), wide.is_empty()) {
@@ -460,7 +460,7 @@ impl TextContext for TsfText<'_> {
             (None, false) => {
                 let at = match self.after.take() {
                     Some(after) => after,
-                    None => self.anchor()?,
+                    None => self.selection()?,
                 };
                 let contexts: ITfContextComposition = self.context.cast()?;
                 unsafe { contexts.StartComposition(self.ec, &at, self.sink) }?
