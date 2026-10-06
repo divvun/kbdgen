@@ -201,6 +201,7 @@ fn string_block(slots: &[(u16, &str)]) -> Vec<u8> {
 // [spec:kbdgen:req:kbdl.resources]
 // [spec:kbdgen:syn:kbdl.resources.format+1]
 // [spec:kbdgen:req:ldml.kbdl.model-resource+1]
+// [spec:kbdgen:req:tsf.data.resource]
 pub fn res_file(metadata: &Metadata, version: [u16; 4], model: Option<&[u8]>) -> Vec<u8> {
     let mut out = Vec::new();
     entry(&mut out, 0, 0, 0, 0, &[]);
@@ -360,6 +361,7 @@ pub(crate) mod tests {
 
     // [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
     // [spec:kbdgen:syn:kbdl.resources.format+1/test]
+    // [spec:kbdgen:req:tsf.data.resource/test]
     #[test]
     fn model_resource_precedes_the_string_tables() {
         let model = b"DVKB\x01\x00\x00\x00\x07";

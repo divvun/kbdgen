@@ -227,6 +227,7 @@ const COVERAGE: &[(&str, &str, &str)] = &[
 // [spec:kbdgen:req:ldml.test.golden/test]
 // [spec:kbdgen:def:ldml.test.harness+1/test]
 // [spec:kbdgen:def:ldml.test.vectors+1/test]
+// [spec:kbdgen:req:tsf.test.engine/test]
 #[test]
 fn golden_vectors_all_pass() {
     let report = run_bundle(&golden(), false).unwrap_or_else(|e| panic!("{e}"));

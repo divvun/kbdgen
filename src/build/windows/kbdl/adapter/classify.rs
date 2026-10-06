@@ -41,7 +41,9 @@ pub struct Classification {
     pub normalization: bool,
 }
 
-fn starts_with_marker(pattern: &Pattern) -> bool {
+/// Whether every alternative of `pattern` must start with a marker, as a
+/// dead-key transform does.
+pub fn starts_with_marker(pattern: &Pattern) -> bool {
     pattern.nodes.first().is_some_and(|top| {
         top.alternatives.iter().all(|sequence| {
             sequence.first().is_some_and(|item| {
@@ -124,7 +126,7 @@ fn show_pattern(keyboard: &Keyboard, pattern: &Pattern) -> String {
 
 /// The backspace rule `ldml.yaml.dead-keys.backspace` generates: `\m{.}`
 /// with no replacement.
-fn is_generated_backspace(rule: &Rule) -> bool {
+pub fn is_generated_backspace(rule: &Rule) -> bool {
     let only_any_marker = rule.from.nodes.len() == 1
         && rule.from.nodes[0].alternatives.len() == 1
         && rule.from.nodes[0].alternatives[0] == [Item::one(Atom::AnyMarker)];

@@ -32,7 +32,7 @@ use super::{
     tables::{KEY_NAMES, KEY_NAMES_EXT},
 };
 
-pub use classify::{Category, Classification};
+pub use classify::{Category, Classification, is_generated_backspace, starts_with_marker};
 
 /// A v4 layout compiled for Windows: the compiled layout, which has a
 /// `windows` keyboard, and its `targets.windows` `id` and `locale`.
@@ -112,8 +112,10 @@ pub fn layout_name(tag: &LanguageTag, path: &Path) -> Result<Option<String>> {
         .map(|(_, extensions)| keyboard_name(tag, windows_target(&extensions, "id").as_deref())))
 }
 
-/// The input, diagnostics and model of one compiled layout.
+/// The input, diagnostics and model of one compiled layout. The model is
+/// the encoding of the same `windows` keyboard the input derives from.
 // [spec:kbdgen:def:ldml.kbdl.adapter]
+// [spec:kbdgen:def:tsf.engine.model]
 pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
     let keyboard = layout
         .layout

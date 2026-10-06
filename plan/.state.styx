@@ -396,6 +396,7 @@ assertions (
     {id targets.windows.installer-dlls, kind @complete, author "brendan@necessary.nu", at 2026-10-05T17:38:26.486139Z}
     {id ldml.spec-errata, kind @complete, author "brendan@necessary.nu", at 2026-10-05T22:34:39.32735Z}
     {id targets.windows.tsf.reconcile, kind @complete, author "brendan@necessary.nu", at 2026-10-05T22:16:51.175196Z}
+    {id targets.windows.tsf.data, kind @doing, author "brendan@necessary.nu", at 2026-10-05T22:36:18.668509Z}
 )
 
 impl_evidence (

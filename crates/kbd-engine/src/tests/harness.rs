@@ -9,6 +9,7 @@ fn scan_event(code: u8) -> KeyEvent {
 }
 
 // [spec:kbdgen:def:ldml.test.harness+1/test]
+// [spec:kbdgen:req:tsf.test.engine/test]
 #[test]
 fn edits_delete_scalars_then_append() {
     let m = model(dead_keys(Normalization::Disabled, false));

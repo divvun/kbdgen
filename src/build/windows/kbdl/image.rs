@@ -397,6 +397,7 @@ mod tests {
 
     // [spec:kbdgen:req:kbdl.image.verify/test]
     // [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
+    // [spec:kbdgen:req:tsf.data.resource/test]
     #[test]
     fn embedded_models_keep_the_image_valid() {
         verify(V4_X64, 0x8664).unwrap();

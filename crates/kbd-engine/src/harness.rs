@@ -10,6 +10,7 @@ use alloc::string::String;
 use crate::{Action, Context, KeyEvent, Model, State};
 
 // [spec:kbdgen:def:ldml.test.harness+1]
+// [spec:kbdgen:req:tsf.test.engine]
 /// A document, the text before the caret, with the engine state and what
 /// the last events did to it.
 ///

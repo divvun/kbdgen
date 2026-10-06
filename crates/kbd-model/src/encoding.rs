@@ -94,6 +94,7 @@ pub fn read_header(bytes: &[u8]) -> Result<(Version, &[u8]), DecodeError> {
 impl Keyboard {
     // [spec:kbdgen:syn:ldml.model.encoding+1]
     // [spec:kbdgen:req:ldml.model.deterministic+1]
+    // [spec:kbdgen:req:tsf.data.version]
     /// The binary form: `DVKB`, major version 1 and minor version 0 as
     /// little-endian `u16`s, then the postcard encoding of the keyboard.
     ///
@@ -111,6 +112,7 @@ impl Keyboard {
     }
 
     // [spec:kbdgen:req:ldml.model.decode]
+    // [spec:kbdgen:req:tsf.data.version]
     /// Decodes and validates a keyboard ([`Keyboard::validate`]).
     ///
     /// Fails, without panicking, on a short header, a wrong magic, a major

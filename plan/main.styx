@@ -439,6 +439,21 @@ children (
                                     )
                                 }
                                 deps (targets.windows.tsf.reconcile ldml.model targets.windows.dll-build)
+                                log (
+                                    {
+                                        at 2026-10-05T22:36:18.668509Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T10:02:06.920363Z
+                                        author "brendan@necessary.nu"
+                                        kind @note
+                                        text "Differential test (src/build/windows/kbdl/differential): ~7,800 cases simulate ToUnicodeEx over the built tables vs kbd-engine; on jaheira-win11 7,842/7,842 simulated cases equalled real ToUnicodeEx (x64 DLLs of five fixtures). Spec gaps found (not in tsf.test.differential's list, needed by fixtures): space bar outside default/shift/ctrl columns; SGCAPS impossible on a dead-key key; v3 caps states differing after migration (M09); two dead keys with no composition — Windows types both, the engine (macOS rule) keeps the second pending, so ldml.kbdl.dead-tree's 'Windows does the same' is wrong for dead keys; a ligature typed after a pending dead key — Windows composes the dead key with the ligature's first unit, the engine does not. The Windows-only test windows.rs was never compiled on Windows: copying the source tree to the VM was blocked as data exfiltration and needs operator permission."
+                                    }
+                                )
                             }
 
                             {

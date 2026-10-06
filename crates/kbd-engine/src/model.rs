@@ -70,8 +70,10 @@ enum Outcome {
 }
 
 impl Model {
+    // [spec:kbdgen:req:tsf.data.version]
     /// Decodes a `DVKB` model (`ldml.model.encoding`) with default
-    /// [`Options`]; [`Model::with_options`] chooses others.
+    /// [`Options`]; [`Model::with_options`] chooses others. An unknown major
+    /// version is refused and a higher minor version accepted.
     pub fn from_bytes(bytes: &[u8]) -> Result<Model, Error> {
         let keyboard = Keyboard::from_bytes(bytes, NFD_CHECK).map_err(|e| match e {
             DecodeError::Invariant(error) => invariant_error(error),

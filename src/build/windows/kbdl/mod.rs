@@ -21,6 +21,8 @@ pub mod adapter;
 pub mod build;
 pub mod bundle;
 pub mod diag;
+#[cfg(test)]
+mod differential;
 pub mod image;
 pub mod input;
 pub mod migrated;
@@ -131,6 +133,8 @@ fn sources(bundle: &KbdgenBundle) -> Vec<Source<'_>> {
 }
 
 // [spec:kbdgen:req:ldml.kbdl.model-resource+1]
+// [spec:kbdgen:req:tsf.data.resource]
+// [spec:kbdgen:def:tsf.engine.model]
 /// The engine model of a v3 layout, by migrating its file in memory
 /// (`ldml.migrate.*`) with nothing written. When that is not possible the
 /// DLL has no model, which leaves the text service inert for the layout,
@@ -179,48 +183,71 @@ fn v3_model(bundle: &KbdgenBundle, tag: &LanguageTag, diag: &mut Diagnostics) ->
     }
 }
 
-/// The input of one v3 layout (`kbdl.input.bundle`) with the model of
-/// its in-memory migration.
-// [spec:kbdgen:req:ldml.kbdl.model-resource+1]
-fn v3_layout(
-    bundle: &KbdgenBundle,
-    tag: &LanguageTag,
-    layout: &Layout,
-    target: &WindowsTarget,
-) -> Result<GeneratedLayout> {
-    let (input, mut diag) = bundle::layout_input(bundle, tag, layout, target)?;
-    let model = v3_model(bundle, tag, &mut diag);
-    generate(&input, model.as_deref(), &mut diag)
+/// One layout's generator input, the encoded engine model it embeds, if
+/// any, and the warnings raised deriving them.
+pub struct SourceLayout {
+    pub tag: LanguageTag,
+    pub input: LayoutInput,
+    pub model: Option<Vec<u8>>,
+    pub diag: Diagnostics,
 }
 
-/// The generated crate of one layout, or `None` for a v4 layout without a
-/// `windows` document.
+/// The input and model of one layout, or `None` for a v4 layout without a
+/// `windows` document. A v3 layout's tables come from `kbdl.input.bundle`
+/// and its model from its in-memory migration; a v4 layout's both come
+/// from its `windows` keyboard.
 // [spec:kbdgen:def:ldml.kbdl.adapter]
-fn generate_source(bundle: &KbdgenBundle, source: &Source) -> Result<Option<GeneratedLayout>> {
+// [spec:kbdgen:req:ldml.kbdl.model-resource+1]
+// [spec:kbdgen:def:tsf.engine.model]
+fn source_layout(bundle: &KbdgenBundle, source: &Source) -> Result<Option<SourceLayout>> {
     match source {
-        Source::V3(tag, layout, target) => v3_layout(bundle, tag, layout, target).map(Some),
+        Source::V3(tag, layout, target) => {
+            let (input, mut diag) = bundle::layout_input(bundle, tag, layout, target)?;
+            let model = v3_model(bundle, tag, &mut diag);
+            Ok(Some(SourceLayout {
+                tag: (*tag).clone(),
+                input,
+                model,
+                diag,
+            }))
+        }
         Source::V4(tag, path) => {
             let Some(layout) = adapter::load(tag, path)? else {
                 return Ok(None);
             };
-            let mut adapted = adapter::adapt(bundle, &layout)?;
-            generate(&adapted.input, Some(&adapted.model), &mut adapted.diag).map(Some)
+            let adapted = adapter::adapt(bundle, &layout)?;
+            Ok(Some(SourceLayout {
+                tag: (*tag).clone(),
+                input: adapted.input,
+                model: Some(adapted.model),
+                diag: adapted.diag,
+            }))
         }
     }
+}
+
+/// The input and model of every layout of the bundle with Windows output,
+/// in bundle layout order.
+pub fn source_layouts(bundle: &KbdgenBundle) -> Result<Vec<SourceLayout>> {
+    let mut layouts = Vec::new();
+    for source in sources(bundle) {
+        let layout = source_layout(bundle, &source)
+            .with_context(|| format!("Windows layout for {}", source.tag()))?;
+        layouts.extend(layout);
+    }
+    Ok(layouts)
 }
 
 /// Generates every layout of the bundle with Windows output, v3 and v4 side
 /// by side in bundle layout order. Any fatal condition fails the whole
 /// bundle.
 // [spec:kbdgen:req:kbdl.metadata]
+// [spec:kbdgen:req:tsf.data.resource]
 pub fn generate_bundle(bundle: &KbdgenBundle) -> Result<Vec<GeneratedLayout>> {
     let mut generated: Vec<GeneratedLayout> = Vec::new();
-    for source in sources(bundle) {
-        let layout = generate_source(bundle, &source)
-            .with_context(|| format!("Windows layout for {}", source.tag()))?;
-        let Some(layout) = layout else {
-            continue;
-        };
+    for mut source in source_layouts(bundle)? {
+        let layout = generate(&source.input, source.model.as_deref(), &mut source.diag)
+            .with_context(|| format!("Windows layout for {}", source.tag))?;
         if generated.iter().any(|other| other.name == layout.name) {
             bail!(
                 "two Windows layouts are named {}; set the Windows id to tell them apart",
