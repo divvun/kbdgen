@@ -4,7 +4,9 @@ use kbd_engine::{Action, Context, Key, KeyEvent, Model, ModifierState, Options, 
 use kbd_model::Windows;
 
 use super::fixture;
-use crate::keys::{Held, Role, Stroke, Tracker, VK_PACKET, VK_PROCESSKEY, classify};
+use crate::keys::{
+    AltGrChords, Held, Role, Stroke, Tracker, VK_PACKET, VK_PROCESSKEY, classify, ctrl_alt,
+};
 
 fn down(scan: u8, extended: bool) -> Stroke {
     Stroke {
@@ -53,7 +55,7 @@ fn packets_process_keys_and_own_input_skip_engine() {
 }
 
 // [spec:kbdgen:req:tsf.keys.claim+1/test]
-// [spec:kbdgen:req:tsf.keys.altgr+1/test]
+// [spec:kbdgen:req:tsf.keys.altgr+2/test]
 #[test]
 fn lone_modifiers_and_altgr_roles() {
     for (scan, extended) in [
@@ -89,7 +91,7 @@ fn repeat_and_physical_key_come_from_lparam() {
     assert!(!down(0x38, false).repeat());
 }
 
-// [spec:kbdgen:req:tsf.keys.altgr+1/test]
+// [spec:kbdgen:req:tsf.keys.altgr+2/test]
 #[test]
 fn synthesised_left_ctrl_is_not_ctrl() {
     let mut tracker = Tracker::default();
@@ -114,7 +116,7 @@ fn synthesised_left_ctrl_is_not_ctrl() {
     assert!(tracker.modifiers(held, &Windows::default(), true).ctrl_l);
 }
 
-// [spec:kbdgen:req:tsf.keys.altgr+1/test]
+// [spec:kbdgen:req:tsf.keys.altgr+2/test]
 #[test]
 fn eaten_right_alt_still_counts_as_held() {
     let mut tracker = Tracker::default();
@@ -238,12 +240,12 @@ fn missing_scan_code_restored_from_dummy_mapping() {
     );
 }
 
-// [spec:kbdgen:req:tsf.keys.altgr+1/test]
-// [spec:kbdgen:req:tsf.keys.preserved/test]
+// [spec:kbdgen:req:tsf.keys.altgr+2/test]
+// [spec:kbdgen:req:tsf.keys.preserved+1/test]
 #[test]
 fn altgr_chords_cover_non_passing_positions() {
     let model = fixture::model();
-    let chords = crate::keys::altgr_chords(&model);
+    let chords = AltGrChords::of(&model).preserved;
     let plain: Vec<u8> = chords.iter().filter(|c| !c.shift).map(|c| c.scan).collect();
     assert_eq!(plain, [0x0D, 0x10, 0x14, 0x1E, 0x2B, 0x56, 0x2C, 0x30]);
     let shifted: Vec<u8> = chords.iter().filter(|c| c.shift).map(|c| c.scan).collect();
@@ -252,17 +254,160 @@ fn altgr_chords_cover_non_passing_positions() {
         [0x56],
         "only the B00 modifier key without an AltGr+Shift layer"
     );
-    assert!(
-        chords
+    assert!(chords.iter().all(|c| {
+        [false, true]
             .iter()
-            .all(|c| crate::keys::Chord::from_guid(c.guid()) == Some(*c))
-    );
+            .all(|&ctrl| crate::keys::Chord::from_guid(c.guid(ctrl)) == Some(*c))
+    }));
     assert_eq!(
         crate::keys::Chord::from_guid(crate::keys::ALTGR_CHORDS - 1),
         None
     );
     assert_eq!(
-        crate::keys::Chord::from_guid(crate::keys::ALTGR_CHORDS + 0x200),
+        crate::keys::Chord::from_guid(crate::keys::ALTGR_CHORDS + 0x400),
         None
     );
+}
+
+// [spec:kbdgen:req:tsf.keys.altgr+2/test]
+// [spec:kbdgen:req:tsf.keys.ctrl-alt/test]
+#[test]
+fn typed_chords_give_text_or_dead_keys() {
+    let chords = AltGrChords::of(&fixture::model());
+    let typed: Vec<(u8, bool)> = chords.typed.iter().map(|c| (c.scan, c.shift)).collect();
+    assert_eq!(typed, [(fixture::ACUTE, false), (fixture::T, false)]);
+    assert!(chords.typed.iter().all(|c| chords.preserved.contains(c)));
+}
+
+/// What `ctrl_alt` makes of `key` under `m` for the fixture.
+fn through_ctrl_alt(key: &Key, m: ModifierState, windows: &Windows) -> Option<ModifierState> {
+    let model = fixture::model();
+    let chords = AltGrChords::of(&model);
+    ctrl_alt(key, m, windows, &chords.typed)
+}
+
+/// The output of `scan` under `m` from the start, for the fixture.
+fn output(scan: u8, m: ModifierState) -> (Action, bool) {
+    let model = fixture::model();
+    let event = KeyEvent::with(Key::Scan(scan), m);
+    let (action, state) = model.key(&State::default(), &Context::default(), &event);
+    (action, state != State::default())
+}
+
+// [spec:kbdgen:req:tsf.keys.ctrl-alt/test]
+#[test]
+fn ctrl_with_either_alt_types_as_altgr() {
+    let sides = [
+        (true, false, true, false),
+        (false, true, true, false),
+        (true, false, false, true),
+        (false, true, false, true),
+    ];
+    for (ctrl_l, ctrl_r, alt_l, alt_r) in sides {
+        let m = ModifierState {
+            ctrl_l,
+            ctrl_r,
+            alt_l,
+            alt_r,
+            caps: true,
+            ..ModifierState::default()
+        };
+        let altgr = ModifierState {
+            caps: true,
+            ..ModifierState::altgr()
+        };
+        for scan in [fixture::T, fixture::ACUTE] {
+            let sent = through_ctrl_alt(&Key::Scan(scan), m, &b00_bound());
+            assert_eq!(sent, Some(altgr), "{m:?} {scan:02x}");
+        }
+    }
+    let (action, _) = output(fixture::T, ModifierState::altgr());
+    assert!(matches!(action, Action::Edit { insert, .. } if insert == "t\u{301}"));
+    assert!(output(fixture::ACUTE, ModifierState::altgr()).1);
+}
+
+// [spec:kbdgen:req:tsf.keys.ctrl-alt/test]
+#[test]
+fn ctrl_alt_without_altgr_output_passes() {
+    let ctrl_alt_r = ModifierState {
+        ctrl_l: true,
+        alt_r: true,
+        altgr: true,
+        ..ModifierState::default()
+    };
+    // The gap, a position with no key, and the empty key, which only the
+    // `ctrl alt` layer fills and the layout DLL's AltGr column leaves
+    // empty.
+    for scan in [fixture::Q, fixture::A, fixture::APOSTROPHE] {
+        assert_eq!(
+            through_ctrl_alt(&Key::Scan(scan), ctrl_alt_r, &b00_bound()),
+            None,
+            "{scan:02x}"
+        );
+    }
+    let (action, _) = output(fixture::A, ctrl_alt_r);
+    assert!(matches!(action, Action::Edit { insert, .. } if insert == "ä"));
+    let shifted = ModifierState {
+        shift_r: true,
+        ..ctrl_alt_r
+    };
+    assert_eq!(
+        through_ctrl_alt(&Key::Scan(fixture::T), shifted, &b00_bound()),
+        None
+    );
+}
+
+// [spec:kbdgen:req:tsf.keys.ctrl-alt/test]
+#[test]
+fn other_keys_keep_held_modifiers() {
+    let ctrl_alt_l = ModifierState {
+        ctrl_l: true,
+        alt_l: true,
+        ..ModifierState::default()
+    };
+    let windows = b00_bound();
+    for key in [
+        Key::Backspace,
+        Key::Decimal,
+        Key::Scan(fixture::SPACE),
+        Key::Scan(fixture::B00),
+    ] {
+        assert_eq!(
+            through_ctrl_alt(&key, ctrl_alt_l, &windows),
+            Some(ctrl_alt_l)
+        );
+    }
+    let t = Key::Scan(fixture::T);
+    for m in [
+        ModifierState::altgr(),
+        ModifierState {
+            ctrl_l: true,
+            ..ModifierState::default()
+        },
+        ModifierState {
+            alt_l: true,
+            ..ModifierState::default()
+        },
+    ] {
+        assert_eq!(through_ctrl_alt(&t, m, &windows), Some(m));
+    }
+    let right_ctrl = Windows {
+        extra_modifiers: vec![kbd_model::ExtraModifierKey::RightCtrl],
+        ..Windows::default()
+    };
+    let extra_alt = ModifierState {
+        ctrl_r: true,
+        alt_l: true,
+        ..ModifierState::default()
+    };
+    assert_eq!(
+        through_ctrl_alt(&t, extra_alt, &right_ctrl),
+        Some(extra_alt)
+    );
+    let both = ModifierState {
+        ctrl_l: true,
+        ..extra_alt
+    };
+    let sent = through_ctrl_alt(&t, both, &right_ctrl).unwrap();
+    assert!(sent.ctrl_r && !sent.ctrl_l && !sent.alt_l && sent.alt_r && sent.altgr);
 }

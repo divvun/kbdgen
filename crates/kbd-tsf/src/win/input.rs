@@ -18,7 +18,7 @@ use windows_core::{BOOL, GUID, Interface, Ref, Result};
 use crate::claim::{Blocked, Route, route};
 use crate::document::Flags;
 use crate::guard::{Entry, POISON, contain, poisoned};
-use crate::keys::{Chord, Held, Role, Stroke, classify};
+use crate::keys::{Chord, Held, Role, Stroke, classify, ctrl_alt};
 
 use super::session::{Outcome, Pending, SIGNATURE, Task, mask_menu};
 use super::tip::Tip_Impl;
@@ -93,12 +93,15 @@ fn examine(context: &ITfContext, inert: bool) -> (Blocked, Flags) {
 
 impl Tip_Impl {
     /// The engine event for `key` with the modifiers held now, if a
-    /// keyboard is loaded.
+    /// keyboard is loaded and the key is not a Ctrl+Alt chord that passes
+    /// (`tsf.keys.ctrl-alt`).
+    // [spec:kbdgen:req:tsf.keys.ctrl-alt]
     fn event(&self, key: kbd_engine::Key, repeat: bool) -> Option<KeyEvent> {
         let inner = self.shared.try_borrow().ok()?;
         let keyboard = inner.keyboard.as_ref()?;
         let windows = &keyboard.model.keyboard().windows;
         let modifiers = inner.tracker.modifiers(held(), windows, keyboard.altgr);
+        let modifiers = ctrl_alt(&key, modifiers, windows, &keyboard.chords.typed)?;
         Some(KeyEvent {
             key,
             modifiers,
@@ -112,7 +115,8 @@ impl Tip_Impl {
     /// ate, so a key that passes commits and resets in the test half.
     // [spec:kbdgen:req:tsf.keys.claim+1]
     // [spec:kbdgen:req:tsf.keys.identity+1]
-    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
+    // [spec:kbdgen:req:tsf.keys.ctrl-alt]
     // [spec:kbdgen:req:tsf.pairing.self-sufficient]
     // [spec:kbdgen:req:tsf.component.self-contained]
     // [spec:kbdgen:req:tsf.keys.phases]
@@ -162,14 +166,10 @@ impl Tip_Impl {
                 self.request(context, Task::Apply(decision), true),
                 Outcome::Eaten(true)
             ),
-            (Route::Reset, None, _) => {
-                self.request(context, Task::Pass(flags), true);
-                self.remember(phase, Pending { id, decision: None });
-                false
-            }
+            (Route::Reset, None, _) => self.pass(context, flags, phase, id),
             (Route::Engine, None, Role::Engine(key)) => match self.event(key, stroke.repeat()) {
                 Some(event) => self.engine_key(context, event, flags, phase, id),
-                None => false,
+                None => self.pass(context, flags, phase, id),
             },
             (Route::Engine, None, _) => false,
         };
@@ -212,6 +212,15 @@ impl Tip_Impl {
         }
     }
 
+    /// Passes a key down that the engine is not asked about: commits and
+    /// resets, and keeps the decision for the commit half.
+    // [spec:kbdgen:req:tsf.keys.claim+1]
+    fn pass(&self, context: &ITfContext, flags: Flags, phase: Phase, id: (u16, u16, u32)) -> bool {
+        self.request(context, Task::Pass(flags), true);
+        self.remember(phase, Pending { id, decision: None });
+        false
+    }
+
     fn remember(&self, phase: Phase, pending: Pending) {
         if phase == Phase::Test
             && let Ok(mut inner) = self.shared.try_borrow_mut()
@@ -223,9 +232,10 @@ impl Tip_Impl {
     /// An AltGr chord that TSF reports as a preserved key. When it is
     /// eaten, a mask key follows, so that the application does not take
     /// the lone Alt it has seen as a request for its menu bar.
-    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
     // [spec:kbdgen:req:tsf.keys.claim+1]
-    // [spec:kbdgen:req:tsf.keys.preserved]
+    // [spec:kbdgen:req:tsf.keys.preserved+1]
+    // [spec:kbdgen:req:tsf.keys.ctrl-alt]
     fn altgr_key(&self, context: Option<&ITfContext>, chord: Chord) -> bool {
         let Some(context) = context else {
             return false;
@@ -247,6 +257,7 @@ impl Tip_Impl {
             return false;
         };
         let Some(event) = self.event(key, false) else {
+            self.request(context, Task::Pass(flags), true);
             return false;
         };
         let eaten = matches!(
@@ -315,8 +326,8 @@ impl ITfKeyEventSink_Impl for Tip_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.keys.altgr+1]
-    // [spec:kbdgen:req:tsf.keys.preserved]
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
+    // [spec:kbdgen:req:tsf.keys.preserved+1]
     fn OnPreservedKey(&self, pic: Ref<ITfContext>, rguid: *const GUID) -> Result<BOOL> {
         contain(&POISON, Entry::OnPreservedKey, || {
             let chord = unsafe { rguid.as_ref() }.and_then(|g| Chord::from_guid(g.to_u128()));

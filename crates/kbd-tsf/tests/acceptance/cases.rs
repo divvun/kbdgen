@@ -1,11 +1,16 @@
 //! The acceptance cases of `tsf.test.acceptance` and what `kbd-engine`
 //! makes of them, following the text service's key handling: scan codes
-//! by `tsf.keys.identity`, a `Commit` before every key that passes other
-//! than a lone modifier (`tsf.edit.reset`), and a passed Backspace erasing
-//! one scalar value before the caret, as a Win32 `EDIT` does.
+//! by `tsf.keys.identity`, Ctrl+Alt as AltGr (`tsf.keys.ctrl-alt`), a
+//! `Commit` before every key that passes other than a lone modifier
+//! (`tsf.edit.reset`), and a passed Backspace erasing one scalar value
+//! before the caret, as a Win32 `EDIT` does. A Ctrl+Alt chord that passes
+//! never reaches the text service, so it keeps the context, and types
+//! nothing: the US dummy layout beneath has no Ctrl+Alt column.
 
 use kbd_engine::harness::Harness;
 use kbd_engine::{Action, Key, KeyEvent, Model, ModifierState};
+
+use crate::keys::{AltGrChords, ctrl_alt};
 
 /// How the control's text after a case is checked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +73,18 @@ pub const CASES: &[(&str, &str, &str, End, Dll)] = &[
     ("z apostrophe backspace apostrophe", "2c 2b 0e 2b", "'", End::Engine, Dll::Unchecked),
     ("q backspace apostrophe", "10 0e 2b", "'", End::Engine, Dll::Same),
     ("acute b backspace", "0d 30 0e", "b\u{301}", End::Native, Dll::Unchecked),
+    ("ctrl alt at", "1d+38+03", "@", End::Engine, Dll::Same),
+    ("ctrl altgr t", "1d+e038+14", "t\u{301}", End::Engine, Dll::Same),
+    ("rctrl alt at", "e01d+38+03", "@", End::Engine, Dll::Same),
+    ("rctrl altgr t", "e01d+e038+14", "t\u{301}", End::Engine, Dll::Same),
+    ("ctrl alt acute a", "1d+38+0d 1e", "á", End::Engine, Dll::Same),
+    ("ctrl alt acute b", "1d+38+0d 30", "b\u{301}", End::Engine, Dll::Differs),
+    ("ctrl altgr acute a", "1d+e038+0d 1e", "á", End::Engine, Dll::Same),
+    ("rctrl alt acute a", "e01d+38+0d 1e", "á", End::Engine, Dll::Same),
+    ("acute ctrl alt q a", "0d 1d+38+10 1e", "á", End::Engine, Dll::Same),
+    ("acute ctrl altgr q a", "0d 1d+e038+10 1e", "á", End::Engine, Dll::Same),
+    ("acute rctrl alt q a", "0d e01d+38+10 1e", "á", End::Engine, Dll::Same),
+    ("ctrl alt shift t", "1d+38+2a+14", "", End::Engine, Dll::Same),
 ];
 
 /// The UTF-16 units of `text` as space-separated lowercase hex, as the
@@ -107,7 +124,13 @@ fn modifier(code: u16, held: &mut ModifierState, toggled: &mut ModifierState) ->
 }
 
 /// Types one chord; true when its key passed the text service.
-fn press(harness: &mut Harness, caps: &mut ModifierState, chord: &str) -> Result<bool, String> {
+fn press(
+    harness: &mut Harness,
+    model: &Model,
+    chords: &AltGrChords,
+    caps: &mut ModifierState,
+    chord: &str,
+) -> Result<bool, String> {
     let mut held = ModifierState::default();
     let mut key = None;
     for part in chord.split('+') {
@@ -135,6 +158,10 @@ fn press(harness: &mut Harness, caps: &mut ModifierState, chord: &str) -> Result
         }
     };
     let backspace = key == Key::Backspace;
+    let windows = &model.keyboard().windows;
+    let Some(held) = ctrl_alt(&key, held, windows, &chords.typed) else {
+        return Ok(true);
+    };
     if !matches!(harness.send(&KeyEvent::with(key, held)), Action::Pass) {
         return Ok(false);
     }
@@ -154,11 +181,12 @@ fn press(harness: &mut Harness, caps: &mut ModifierState, chord: &str) -> Result
 /// the driver does (End first), and whether the last key passed.
 pub fn typed(model: &Model, chords: &str) -> Result<(String, bool), String> {
     let mut harness = Harness::new(model);
+    let altgr = AltGrChords::of(model);
     let mut caps = ModifierState::default();
     commit(&mut harness);
     let mut passed = false;
     for chord in chords.split(' ') {
-        passed = press(&mut harness, &mut caps, chord)?;
+        passed = press(&mut harness, model, &altgr, &mut caps, chord)?;
     }
     if caps.caps {
         return Err("the case leaves Caps Lock on".to_owned());

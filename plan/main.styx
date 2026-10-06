@@ -731,6 +731,31 @@ children (
                                 kind @fix
                                 deps (targets.windows.tsf.arch)
                             }
+
+                            {
+                                id targets.windows.tsf.ctrl-alt
+                                title "Treat Ctrl+Alt (either side) as AltGr in the text service, as Windows layouts do"
+                                kind @fix
+                                implements {
+                                    main ([spec:kbdgen:req:tsf.keys.ctrl-alt])
+                                }
+                                deps (targets.windows.tsf.compose)
+                                log (
+                                    {
+                                        at 2026-10-06T17:04:13.128117Z
+                                        author "brendan@necessary.nu"
+                                        kind @decision
+                                        text "Operator decision 2026-10-06: the text service treats Ctrl+Alt (either Ctrl with either Alt) as AltGr, matching Windows layout behaviour; currently Ctrl+Left Alt+key passes and types nothing."
+                                    }
+
+                                    {
+                                        at 2026-10-06T17:04:13.24587Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+                                )
+                            }
                         )
                         log (
                             {

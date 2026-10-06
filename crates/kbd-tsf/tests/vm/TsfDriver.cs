@@ -124,14 +124,21 @@ public static class TsfDriver {
     return input;
   }
 
-  // "2a+29" presses 2a, then 29, and releases them in reverse order.
+  // "2a+29" presses 2a, then 29, and releases them in reverse order. Each
+  // press is its own SendInput a few ticks after the last, so that a Left
+  // Ctrl held before Right Alt has an earlier message time than Right Alt,
+  // as a user's does, and is not taken for the one AltGr synthesises.
   static void Chord(string chord) {
     var codes = new List<int>();
     foreach (var part in chord.Split('+')) codes.Add(Convert.ToInt32(part, 16));
+    var size = Marshal.SizeOf(typeof(Input));
+    for (int i = 0; i < codes.Count; i++) {
+      if (i > 0) System.Threading.Thread.Sleep(40);
+      SendInput(1, new[] { Key(codes[i], false) }, size);
+    }
     var inputs = new List<Input>();
-    foreach (var code in codes) inputs.Add(Key(code, false));
     for (int i = codes.Count - 1; i >= 0; i--) inputs.Add(Key(codes[i], true));
-    SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf(typeof(Input)));
+    SendInput((uint)inputs.Count, inputs.ToArray(), size);
     Pump();
   }
 

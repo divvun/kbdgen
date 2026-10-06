@@ -13,7 +13,8 @@ use windows::Win32::UI::TextServices::{
     ITfActiveLanguageProfileNotifySink, ITfCategoryMgr, ITfComposition, ITfCompositionSink,
     ITfContext, ITfInputProcessorProfileMgr, ITfKeyEventSink, ITfKeystrokeMgr, ITfSource,
     ITfTextInputProcessor_Impl, ITfTextInputProcessorEx_Impl, ITfThreadMgr, ITfThreadMgrEventSink,
-    ITfThreadMgrEx, TF_INPUTPROCESSORPROFILE, TF_MOD_RALT, TF_MOD_SHIFT, TF_PRESERVEDKEY,
+    ITfThreadMgrEx, TF_INPUTPROCESSORPROFILE, TF_MOD_ALT, TF_MOD_CONTROL, TF_MOD_RALT,
+    TF_MOD_SHIFT, TF_PRESERVEDKEY,
 };
 use windows_core::{GUID, IUnknown, IUnknownImpl, Interface, Ref, Result, implement};
 
@@ -21,7 +22,7 @@ use crate::claim::Claims;
 use crate::document::Document;
 use crate::guard::{Entry, POISON, contain};
 use crate::guid::{CLSID, PREEDIT_ATTRIBUTE};
-use crate::keys::{Chord, Tracker, altgr_chords};
+use crate::keys::{Chord, Tracker};
 use crate::locate::Keyboard;
 use crate::server::Live;
 
@@ -140,7 +141,8 @@ impl Tip_Impl {
         let keyboard = profile.and_then(data::keyboard);
         self.unpreserve();
         if let Some(keyboard) = keyboard.as_ref().filter(|k| k.altgr) {
-            self.preserve(&altgr_chords(&keyboard.model));
+            self.preserve(&keyboard.chords.preserved, false);
+            self.preserve(&keyboard.chords.typed, true);
         }
         if let Ok(mut inner) = self.shared.try_borrow_mut() {
             inner.keyboard = keyboard;
@@ -149,10 +151,12 @@ impl Tip_Impl {
     }
 
     /// Registers `chords` as preserved keys, each on the virtual key that
-    /// the thread's dummy layout gives its scan code.
-    // [spec:kbdgen:req:tsf.keys.altgr+1]
-    // [spec:kbdgen:req:tsf.keys.preserved]
-    fn preserve(&self, chords: &[Chord]) {
+    /// the thread's dummy layout gives its scan code, under Right Alt or,
+    /// when `ctrl` is set, under Ctrl and Alt (`tsf.keys.ctrl-alt`).
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
+    // [spec:kbdgen:req:tsf.keys.preserved+1]
+    // [spec:kbdgen:req:tsf.keys.ctrl-alt]
+    fn preserve(&self, chords: &[Chord], ctrl: bool) {
         let Ok(mut inner) = self.shared.try_borrow_mut() else {
             return;
         };
@@ -171,12 +175,17 @@ impl Tip_Impl {
             if vk == 0 {
                 continue;
             }
-            let modifiers = TF_MOD_RALT | if chord.shift { TF_MOD_SHIFT } else { 0 };
+            let alt = if ctrl {
+                TF_MOD_CONTROL | TF_MOD_ALT
+            } else {
+                TF_MOD_RALT
+            };
+            let modifiers = alt | if chord.shift { TF_MOD_SHIFT } else { 0 };
             let key = TF_PRESERVEDKEY {
                 uVKey: vk,
                 uModifiers: modifiers,
             };
-            let guid = GUID::from_u128(chord.guid());
+            let guid = GUID::from_u128(chord.guid(ctrl));
             if unsafe { keys.PreserveKey(inner.client, &guid, &key, &[]) }.is_ok() {
                 inner.preserved.push((guid, key));
             }

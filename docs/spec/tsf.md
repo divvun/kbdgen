@@ -333,33 +333,70 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > and otherwise decide and apply in one read-write session. A key whose
 > kept decision was to pass is not handled again.
 
-> [spec:kbdgen:req:tsf.keys.altgr+1]
+> [spec:kbdgen:req:tsf.keys.altgr+2]
 > The text service MUST treat Right Alt as AltGr, sending `alt_r` with
 > `altgr` set (`ldml.engine.tsf`), when the layout DLL built from the same
-> model sets `KLLF_ALTGR` (`kbdl.locale`, `ldml.kbdl.layers`). AltGr chords
-> without Ctrl reach it only as preserved keys (`tsf.keys.preserved`), and
-> the application sees Right Alt itself. Where Right Alt's own key events
-> reach the key sink, the text service MUST eat them. A Left Ctrl that the
-> system synthesises with Right Alt (same message time) MUST NOT be sent as
-> `ctrl_l`. A Ctrl the user really holds with AltGr is sent, and reaches
-> layers that name both ctrl and alt (`ldml.engine.altgr`). (Verified: an
-> AltGr chord and an AltGr dead key type in `EDIT`, RichEdit and WPF.
+> model sets `KLLF_ALTGR` (`kbdl.locale`, `ldml.kbdl.layers`): when some
+> AltGr or AltGr+Shift chord of an ISO position types, giving a character
+> or a dead key. AltGr chords without Ctrl reach it only as preserved keys
+> (`tsf.keys.preserved`), and the application sees Right Alt itself. Where
+> Right Alt's own key events reach the key sink, the text service MUST eat
+> them. A Left Ctrl that the system synthesises with Right Alt (same
+> message time) MUST NOT be sent as `ctrl_l`. A Ctrl the user really holds
+> with Right Alt makes a Ctrl+Alt chord (`tsf.keys.ctrl-alt`). (Verified:
+> an AltGr chord and an AltGr dead key type in `EDIT`, RichEdit and WPF.
 > Unverified: how to tell synthesised from held Left Ctrl.)
 
-> [spec:kbdgen:req:tsf.keys.preserved]
-> TSF calls no key event sink method while Alt is held without Ctrl,
-> because the window then gets `WM_SYSKEYDOWN`. (Verified.) Where Right Alt
-> is AltGr (`tsf.keys.altgr`), the text service MUST register with
-> `ITfKeystrokeMgr::PreserveKey` each AltGr and AltGr+Shift chord of an ISO
-> position (`kbdl.scancodes.iso`) that the engine does not pass from
-> `State::default()` with an empty context. Each is `TF_MOD_RALT`, with
-> `TF_MOD_SHIFT` if shifted, on the dummy layout's virtual key for the scan
-> code. `OnPreservedKey` MUST decide and apply the chord in one edit
-> session. After an eaten chord it MUST send, signed as in
-> `tsf.edit.inject`, a press and release of the unassigned virtual key
-> `0xFF`, so the application, which saw Right Alt, does not open its menu
-> bar. (Unverified: the menu bar. Other chords never reach the engine, even
-> after a dead key.)
+> [spec:kbdgen:req:tsf.keys.ctrl-alt]
+> A Ctrl and an Alt held together, either Ctrl with either Alt, are AltGr,
+> as they are for a layout DLL: `KBDCTRL | KBDALT` selects the DLL's `alt`
+> column, which holds the AltGr state's outputs (`kbdl.layers`,
+> `ldml.kbdl.layers`), so a layer that names ctrl and alt apart from
+> AltGr's is not reached. A Right Ctrl bound as an extra modifier
+> (`ldml.engine.extra`) is not a Ctrl. For a key at an ISO position
+> (`kbdl.scancodes.iso`) other than a bound `B00`, held with a Ctrl and an
+> Alt, the text service MUST:
+>
+> - when its AltGr or AltGr+Shift chord, as Shift is held, types
+>   (`tsf.keys.altgr`), send it with `alt_r` and `altgr` set, `alt_l` and
+>   ctrl clear, and Shift, Caps Lock, Win and the extra modifiers as held,
+>   so it types what AltGr types
+> - otherwise pass it, so the application's Ctrl+Alt shortcut works, even
+>   where the engine would consume the chord under AltGr or a layer names
+>   ctrl and alt
+>
+> Any other key held with a Ctrl and an Alt is sent with the modifiers
+> held. TSF calls no key event sink method while Alt is held, even with
+> Ctrl (verified), so the typing chords reach the text service only as
+> preserved keys (`tsf.keys.preserved`). A passing chord never reaches it
+> and the context is kept: a pending dead key stays pending, as with the
+> layout DLL alone. Ctrl+Alt+Del never reaches the text service.
+> (Verified: Left or Right Ctrl with Left or Right Alt types AltGr's
+> character and dead key in `EDIT`, RichEdit, WPF and a console. Unverified:
+> whether the application opens its menu bar when Alt goes up after an
+> eaten chord.)
+
+> [spec:kbdgen:req:tsf.keys.preserved+1]
+> TSF calls no key event sink method while Alt is held, with or without
+> Ctrl. (Verified.) Without Ctrl the window gets `WM_SYSKEYDOWN`. Where
+> Right Alt is AltGr (`tsf.keys.altgr`), the text service MUST register
+> with `ITfKeystrokeMgr::PreserveKey`, on the dummy layout's virtual key for
+> the scan code:
+>
+> - each AltGr and AltGr+Shift chord of an ISO position
+>   (`kbdl.scancodes.iso`) that the engine does not pass from
+>   `State::default()` with an empty context, as `TF_MOD_RALT`, with
+>   `TF_MOD_SHIFT` if shifted
+> - each such chord that types (`tsf.keys.ctrl-alt`) again as
+>   `TF_MOD_CONTROL | TF_MOD_ALT`, with `TF_MOD_SHIFT` if shifted, under a
+>   GUID of its own
+>
+> `OnPreservedKey` MUST decide and apply the chord in one edit session,
+> with the modifiers held (`tsf.keys.ctrl-alt`). After an eaten chord it
+> MUST send, signed as in `tsf.edit.inject`, a press and release of the
+> unassigned virtual key `0xFF`, so the application, which saw Alt, does
+> not open its menu bar. (Unverified: the menu bar. Other chords never
+> reach the engine, even after a dead key.)
 
 > [spec:kbdgen:req:tsf.keys.locale-flags]
 > LRM/RLM on Shift+Backspace is the engine's (`ldml.engine.backspace`), so

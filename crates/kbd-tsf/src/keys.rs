@@ -86,18 +86,19 @@ impl Stroke {
     }
 }
 
-/// The base of the GUIDs of the AltGr preserved keys; a [`Chord`] adds its
-/// scan code and Shift to the low bits.
+/// The base of the GUIDs of the AltGr preserved keys; a [`Chord`] adds
+/// Ctrl, its scan code and Shift to the low bits.
 pub const ALTGR_CHORDS: u128 = 0x553A_5A99_9E37_4F9D_A956_F34A_5544_0000;
 
 /// An AltGr chord: Right Alt, optionally Shift, and the key at `scan`.
 ///
-/// TSF hands a text service no key event while Alt is held without Ctrl,
-/// because the window gets `WM_SYSKEYDOWN` then, so the US dummy layout's
-/// Right Alt never reaches the key event sink. Each chord that the engine
-/// does not pass is registered as a preserved key instead, which TSF
-/// reports with `OnPreservedKey`.
-// [spec:kbdgen:req:tsf.keys.preserved]
+/// TSF hands a text service no key event while Alt is held, with or
+/// without Ctrl, so the US dummy layout's Right Alt never reaches the key
+/// event sink, nor does a Ctrl+Alt chord. Each chord that the engine does
+/// not pass is registered as a preserved key instead, and each that types
+/// once more under Ctrl and Alt (`tsf.keys.ctrl-alt`); TSF reports them
+/// with `OnPreservedKey`.
+// [spec:kbdgen:req:tsf.keys.preserved+1]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Chord {
     pub scan: u8,
@@ -105,40 +106,107 @@ pub struct Chord {
 }
 
 impl Chord {
-    pub fn guid(self) -> u128 {
-        ALTGR_CHORDS | (u128::from(self.scan) << 1) | u128::from(self.shift)
+    /// The GUID of the chord's preserved key: under Right Alt, or under
+    /// Ctrl and Alt when `ctrl` is set.
+    pub fn guid(self, ctrl: bool) -> u128 {
+        ALTGR_CHORDS
+            | (u128::from(ctrl) << 9)
+            | (u128::from(self.scan) << 1)
+            | u128::from(self.shift)
     }
 
+    /// The chord of a preserved key's GUID, under either modifier.
     pub fn from_guid(guid: u128) -> Option<Chord> {
-        let offset = guid.checked_sub(ALTGR_CHORDS).filter(|o| *o < 0x200)?;
+        let offset = guid.checked_sub(ALTGR_CHORDS).filter(|o| *o < 0x400)?;
         Some(Chord {
-            scan: u8::try_from(offset >> 1).ok()?,
+            scan: u8::try_from((offset >> 1) & 0xFF).ok()?,
             shift: offset & 1 == 1,
         })
     }
 }
 
-/// The AltGr and AltGr+Shift chords of the ISO positions that the engine
-/// does not pass for `model`.
-// [spec:kbdgen:req:tsf.keys.altgr+1]
-// [spec:kbdgen:req:tsf.keys.preserved]
-pub fn altgr_chords(model: &Model) -> Vec<Chord> {
-    let start = State::default();
-    let context = Context::default();
-    let mut chords = Vec::new();
-    for shift in [false, true] {
-        let modifiers = ModifierState {
-            shift_l: shift,
-            ..ModifierState::altgr()
-        };
-        for &scan in &ISO_SCAN_CODES {
-            let event = KeyEvent::with(Key::Scan(scan), modifiers);
-            if model.key(&start, &context, &event).0 != Action::Pass {
-                chords.push(Chord { scan, shift });
+/// The AltGr and AltGr+Shift chords of the ISO positions, by the engine's
+/// action for each from `State::default()` with an empty context.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AltGrChords {
+    /// The chords the engine does not pass, registered as preserved keys
+    /// under Right Alt (`tsf.keys.preserved`).
+    pub preserved: Vec<Chord>,
+    /// The chords that type: that give a character or a dead key, as a
+    /// layout DLL's character table cell does. Right Alt is AltGr exactly
+    /// when there is one (`kbdl.locale`), and Ctrl+Alt types only these,
+    /// registered as preserved keys under Ctrl and Alt (`tsf.keys.ctrl-alt`).
+    pub typed: Vec<Chord>,
+}
+
+impl AltGrChords {
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
+    // [spec:kbdgen:req:tsf.keys.preserved+1]
+    // [spec:kbdgen:req:tsf.keys.ctrl-alt]
+    pub fn of(model: &Model) -> AltGrChords {
+        let start = State::default();
+        let context = Context::default();
+        let mut chords = AltGrChords::default();
+        for shift in [false, true] {
+            let modifiers = ModifierState {
+                shift_l: shift,
+                ..ModifierState::altgr()
+            };
+            for &scan in &ISO_SCAN_CODES {
+                let chord = Chord { scan, shift };
+                let event = KeyEvent::with(Key::Scan(scan), modifiers);
+                match model.key(&start, &context, &event) {
+                    (Action::Pass, _) => continue,
+                    (Action::Edit { insert, .. }, state)
+                        if !insert.is_empty() || state != start =>
+                    {
+                        chords.typed.push(chord);
+                    }
+                    _ => {}
+                }
+                chords.preserved.push(chord);
             }
         }
+        chords
     }
-    chords
+}
+
+/// The modifiers to send for `key` when a Ctrl and an Alt are held
+/// together (`tsf.keys.ctrl-alt`), as the layout DLL's `KBDCTRL | KBDALT`
+/// column has them: a key at an ISO position whose chord is in `typed`
+/// gets the AltGr state, with Shift, Caps Lock, Win and the extra
+/// modifiers kept; any other key at an ISO position passes (`None`), so the
+/// application's Ctrl+Alt shortcut works. A Right Ctrl bound as an extra
+/// modifier, a bound `B00`, and keys at no ISO position are left alone.
+// [spec:kbdgen:req:tsf.keys.ctrl-alt]
+pub fn ctrl_alt(
+    key: &Key,
+    m: ModifierState,
+    windows: &Windows,
+    typed: &[Chord],
+) -> Option<ModifierState> {
+    let bound = |k: ExtraModifierKey| windows.extra_modifiers.contains(&k);
+    let ctrl_r = m.ctrl_r && !bound(ExtraModifierKey::RightCtrl);
+    let held = (m.ctrl_l || ctrl_r) && (m.alt_l || m.alt_r);
+    let scan = match key {
+        &Key::Scan(scan) if !(scan == SCAN_B00 && bound(ExtraModifierKey::B00)) => scan,
+        _ => return Some(m),
+    };
+    if !held || !ISO_SCAN_CODES.contains(&scan) {
+        return Some(m);
+    }
+    let chord = Chord {
+        scan,
+        shift: m.shift_l || m.shift_r,
+    };
+    typed.contains(&chord).then_some(ModifierState {
+        ctrl_l: false,
+        ctrl_r: m.ctrl_r && !ctrl_r,
+        alt_l: false,
+        alt_r: true,
+        altgr: true,
+        ..m
+    })
 }
 
 /// What a key down is to the text service.
@@ -216,7 +284,7 @@ impl Tracker {
     /// Follows a key down or up whose message has time `time`. Seeing the
     /// same event twice, as `OnTestKeyDown` then `OnKeyDown`, changes
     /// nothing more.
-    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
     // [spec:kbdgen:req:tsf.keys.locale-flags]
     pub fn observe(&mut self, stroke: Stroke, down: bool, time: u32) {
         match (stroke.scan(), stroke.extended()) {
@@ -247,7 +315,7 @@ impl Tracker {
     /// Right Ctrl stays `ctrl_r`, which the engine itself rebinds
     /// (`ldml.engine.extra`).
     // [spec:kbdgen:req:tsf.keys.identity+1]
-    // [spec:kbdgen:req:tsf.keys.altgr+1]
+    // [spec:kbdgen:req:tsf.keys.altgr+2]
     // [spec:kbdgen:req:tsf.keys.locale-flags]
     pub fn modifiers(&self, held: Held, windows: &Windows, altgr: bool) -> ModifierState {
         let mut extra = [false; 3];
@@ -276,27 +344,4 @@ impl Tracker {
             extra,
         }
     }
-}
-
-/// Whether Right Alt is AltGr for `model`: whether the layout DLL built
-/// from it sets `KLLF_ALTGR` (`kbdl.locale`), because some ISO position
-/// gives a character or dead key under AltGr or AltGr+Shift.
-// [spec:kbdgen:req:tsf.keys.altgr+1]
-pub fn altgr_layout(model: &Model) -> bool {
-    let altgr = ModifierState::altgr();
-    let shifted = ModifierState {
-        shift_l: true,
-        ..altgr
-    };
-    let start = State::default();
-    let context = Context::default();
-    ISO_SCAN_CODES.iter().any(|&code| {
-        [altgr, shifted].iter().any(|&modifiers| {
-            let event = KeyEvent::with(Key::Scan(code), modifiers);
-            match model.key(&start, &context, &event) {
-                (Action::Edit { insert, .. }, state) => !insert.is_empty() || state != start,
-                (Action::Pass, _) => false,
-            }
-        })
-    })
 }

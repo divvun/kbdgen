@@ -1385,6 +1385,11 @@ impl_evidence (
         {id tsf.register.upgrade, version 1}
         {id tsf.security.appcontainer, version 2}
     )}
+    {id targets.windows.tsf.ctrl-alt, covered_rules (
+        tsf.keys.ctrl-alt
+    ), covered_claims (
+        {impl_name main, rule tsf.keys.ctrl-alt}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

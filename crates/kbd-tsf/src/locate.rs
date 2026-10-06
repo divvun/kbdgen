@@ -8,13 +8,15 @@ use std::sync::{Arc, Mutex};
 use kbd_engine::Model;
 
 use crate::guid;
-use crate::keys::altgr_layout;
+use crate::keys::AltGrChords;
 
-/// A profile's keyboard: the decoded model and whether Right Alt is AltGr.
+/// A profile's keyboard: the decoded model, whether Right Alt is AltGr
+/// (`tsf.keys.altgr`), and its AltGr chords.
 #[derive(Debug)]
 pub struct Keyboard {
     pub model: Model,
     pub altgr: bool,
+    pub chords: AltGrChords,
 }
 
 /// Whether a `Layout Product Code` value names `profile`, ignoring case and
@@ -38,10 +40,15 @@ pub fn is_layout_file(name: &str) -> bool {
 // [spec:kbdgen:req:tsf.data.locate+1]
 // [spec:kbdgen:def:tsf.engine.api]
 // [spec:kbdgen:req:ldml.crate.tsf+1]
+// [spec:kbdgen:req:tsf.keys.altgr+2]
 pub fn decode(bytes: &[u8]) -> Option<Keyboard> {
     let model = Model::from_bytes(bytes).ok()?;
-    let altgr = altgr_layout(&model);
-    Some(Keyboard { model, altgr })
+    let chords = AltGrChords::of(&model);
+    Some(Keyboard {
+        altgr: !chords.typed.is_empty(),
+        model,
+        chords,
+    })
 }
 
 /// The keyboards of the profiles this process has activated, including

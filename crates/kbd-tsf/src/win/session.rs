@@ -248,7 +248,7 @@ fn send(inputs: &[INPUT]) -> bool {
 /// Presses and releases the unassigned virtual key `0xFF`, so that an
 /// application that saw Right Alt go down, and none of the chord's keys,
 /// does not open its menu bar when Alt goes up (`tsf.keys.altgr`).
-// [spec:kbdgen:req:tsf.keys.preserved]
+// [spec:kbdgen:req:tsf.keys.preserved+1]
 pub fn mask_menu() {
     let mask = VIRTUAL_KEY(0xFF);
     send(&[

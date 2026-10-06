@@ -22,6 +22,10 @@
 
 #[path = "acceptance/cases.rs"]
 mod cases;
+/// The text service's key handling, which the cases follow.
+#[allow(dead_code)]
+#[path = "../src/keys.rs"]
+mod keys;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::process::Command;
