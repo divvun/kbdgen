@@ -14,7 +14,7 @@ use kbd_model::{
 use serde_yaml::Value;
 
 use super::error::{At, Result, YamlProblem};
-use super::node::{Fields, boolean, entries, list, number_text, string};
+use super::node::{Fields, boolean, entries, flag_text, list, number_text, string};
 use super::text::{Strings, Syntax, check_escapes, hex_name, output, plain};
 use super::tokens::{Token, candidates, width};
 
@@ -455,6 +455,10 @@ fn number_field(fields: &mut Fields, name: &str) -> Result<Option<String>> {
         .transpose()
 }
 
+fn flag_field(fields: &mut Fields, name: &str) -> Result<Option<String>> {
+    fields.take(name).map(|(v, a)| flag_text(v, &a)).transpose()
+}
+
 fn reorder(value: &Value, at: &At) -> Result<Reorder4> {
     let mut f = Fields::new(value, at)?;
     let (from, from_at) = f.require("from")?;
@@ -465,8 +469,8 @@ fn reorder(value: &Value, at: &At) -> Result<Reorder4> {
         before: regex_field(&mut f, "before")?,
         order: number_field(&mut f, "order")?,
         tertiary: number_field(&mut f, "tertiary")?,
-        tertiary_base: number_field(&mut f, "tertiaryBase")?,
-        pre_base: number_field(&mut f, "preBase")?,
+        tertiary_base: flag_field(&mut f, "tertiaryBase")?,
+        pre_base: flag_field(&mut f, "preBase")?,
     };
     f.finish()?;
     Ok(r)
@@ -755,7 +759,7 @@ fn unused_dead_keys(layout: &Layout4) -> Vec<YamlProblem> {
         .collect()
 }
 
-// [spec:kbdgen:def:ldml.yaml.schema+2]
+// [spec:kbdgen:def:ldml.yaml.schema+3]
 // [spec:kbdgen:req:ldml.yaml.strict]
 // [spec:kbdgen:req:ldml.yaml.ldml-ref+2]
 /// Parses the top-level mapping of a v4 file, `format: 4` already

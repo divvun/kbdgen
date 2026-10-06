@@ -111,6 +111,20 @@ fn nonempty_selection_resets_engine_first() {
     assert_eq!(t.fake.text(), "ay´");
 }
 
+// [spec:kbdgen:req:tsf.edit.preedit+1/test]
+// [spec:kbdgen:req:tsf.edit.session+1/test]
+#[test]
+fn preedit_over_selection_starts_at_caret() {
+    let mut t = Typist::store();
+    t.fake = Fake::with_text("xy");
+    t.fake.select(1, 2);
+    assert!(t.scan(ACUTE));
+    assert_eq!(t.fake.text(), "x´y");
+    assert_eq!(t.fake.composition, Some((1, 2)));
+    assert!(t.scan(A));
+    assert_eq!(t.fake.text(), "xáy");
+}
+
 // [spec:kbdgen:req:tsf.security.disabled+1/test]
 #[test]
 fn disabled_context_maps_keys_without_preedit_or_cache() {

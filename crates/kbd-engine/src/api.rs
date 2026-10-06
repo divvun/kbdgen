@@ -14,8 +14,8 @@ pub enum Gesture {
     /// `LongPress(n)` picks `long_press[n-1]` for *n* ≥ 1 and
     /// `long_press_default` for *n* = 0.
     LongPress(usize),
-    /// The *n*-th tap of a multi-tap sequence, *n* ≥ 2. `MultiTap(1)` is the
-    /// key itself.
+    /// The *n*-th tap of a multi-tap sequence, *n* ≥ 1. `MultiTap(1)` is the
+    /// key itself, and `MultiTap(0)` has no target.
     MultiTap(usize),
     /// The direction sequence of a flick.
     Flick(Vec<Direction>),

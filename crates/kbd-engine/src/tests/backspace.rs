@@ -83,6 +83,15 @@ fn shift_backspace_inserts_lrm_or_rlm() {
         s.press(KeyEvent::with(Key::Backspace, right)),
         edit(0, "\u{200F}", "")
     );
+    let ctrl_shift = ModifierState {
+        ctrl_l: true,
+        cmd: true,
+        ..ModifierState::shift()
+    };
+    assert_eq!(
+        s.press(KeyEvent::with(Key::Backspace, ctrl_shift)),
+        edit(0, "\u{200E}", "")
+    );
     assert_eq!(s.backspace(), Action::Pass);
 }
 

@@ -1,6 +1,6 @@
 schema_version 7
 
-last_sync_at 2026-10-06T16:06:54.01745Z
+last_sync_at 2026-10-06T18:45:15.401284Z
 
 rule_versions (
     {id android.dependencies, version 0}
@@ -166,6 +166,17 @@ rule_versions (
     {id ldml.kbdl.positions, version 2}
     {id ldml.kbdl.values, version 1}
     {id ldml.kbdl.windows-inputs, version 0}
+    {id ldml.macos.adapter, version 0}
+    {id ldml.macos.classify, version 0}
+    {id ldml.macos.dead-keys, version 0}
+    {id ldml.macos.input, version 0}
+    {id ldml.macos.keys, version 0}
+    {id ldml.macos.modifiers, version 0}
+    {id ldml.macos.semantics, version 0}
+    {id ldml.macos.target, version 0}
+    {id ldml.macos.test.differential, version 0}
+    {id ldml.macos.test.golden, version 0}
+    {id ldml.macos.test.typing, version 0}
     {id ldml.migrate.caps-diff, version 1}
     {id ldml.migrate.dead-keys, version 1}
     {id ldml.migrate.defects, version 1}
@@ -194,7 +205,7 @@ rule_versions (
     {id ldml.model.touch, version 1}
     {id ldml.model.transforms, version 1}
     {id ldml.model.windows, version 0}
-    {id ldml.scope.deferred, version 0}
+    {id ldml.scope.deferred, version 1}
     {id ldml.scope.macos-rules, version 0}
     {id ldml.scope.v1, version 1}
     {id ldml.test.bundle, version 1}
@@ -228,7 +239,7 @@ rule_versions (
     {id ldml.xml.to, version 0}
     {id ldml.xml.validate, version 1}
     {id ldml.xml.write, version 0}
-    {id ldml.yaml.coexistence, version 0}
+    {id ldml.yaml.coexistence, version 1}
     {id ldml.yaml.dead-keys, version 1}
     {id ldml.yaml.dead-keys.backspace, version 0}
     {id ldml.yaml.dead-keys.compose, version 0}
@@ -297,8 +308,9 @@ rule_versions (
     {id tsf.engine.api, version 0}
     {id tsf.engine.contract, version 0}
     {id tsf.engine.model, version 1}
-    {id tsf.keys.altgr, version 1}
+    {id tsf.keys.altgr, version 2}
     {id tsf.keys.claim, version 1}
+    {id tsf.keys.ctrl-alt, version 0}
     {id tsf.keys.identity, version 1}
     {id tsf.keys.locale-flags, version 0}
     {id tsf.pairing.alternatives, version 0}
@@ -381,6 +393,7 @@ derived_priorities (
     {id targets.windows.tsf.arch, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id targets.windows.tsf.compose, priority 3, derived_at 2026-10-05T13:56:44.342691Z}
     {id targets.windows.tsf.console, priority 3, derived_at 2026-10-06T13:15:44.035165Z}
+    {id targets.windows.tsf.ctrl-alt, priority 3, derived_at 2026-10-06T18:45:15.401284Z}
     {id targets.windows.tsf.data, priority 3, derived_at 2026-10-05T17:21:48.229555Z}
     {id targets.windows.tsf.design, priority 2, derived_at 2026-10-05T13:56:44.342691Z}
     {id targets.windows.tsf.differential-spec, priority 3, derived_at 2026-10-06T10:02:30.251458Z}
@@ -836,6 +849,43 @@ impl_evidence (
         {id ldml.xml.write, version 0}
     )}
     {id ldml.port.android}
+    {id ldml.port.macos, covered_rules (
+        ldml.macos.adapter
+        ldml.macos.classify
+        ldml.macos.dead-keys
+        ldml.macos.input
+        ldml.macos.keys
+        ldml.macos.modifiers
+        ldml.macos.semantics
+        ldml.macos.target
+        ldml.macos.test.differential
+        ldml.macos.test.golden
+        ldml.macos.test.typing
+    ), covered_claims (
+        {impl_name main, rule ldml.macos.adapter}
+        {impl_name main, rule ldml.macos.classify}
+        {impl_name main, rule ldml.macos.dead-keys}
+        {impl_name main, rule ldml.macos.input}
+        {impl_name main, rule ldml.macos.keys}
+        {impl_name main, rule ldml.macos.modifiers}
+        {impl_name main, rule ldml.macos.semantics}
+        {impl_name main, rule ldml.macos.target}
+        {impl_name main, rule ldml.macos.test.differential}
+        {impl_name main, rule ldml.macos.test.golden}
+        {impl_name main, rule ldml.macos.test.typing}
+    ), rule_versions_seen (
+        {id ldml.macos.adapter, version 0}
+        {id ldml.macos.classify, version 0}
+        {id ldml.macos.dead-keys, version 0}
+        {id ldml.macos.input, version 0}
+        {id ldml.macos.keys, version 0}
+        {id ldml.macos.modifiers, version 0}
+        {id ldml.macos.semantics, version 0}
+        {id ldml.macos.target, version 0}
+        {id ldml.macos.test.differential, version 0}
+        {id ldml.macos.test.golden, version 0}
+        {id ldml.macos.test.typing, version 0}
+    )}
     {id ldml.workspace, covered_rules (
         ldml.crate.engine
         ldml.crate.ffi
@@ -1249,6 +1299,13 @@ impl_evidence (
     ), rule_versions_seen (
         {id tsf.test.acceptance, version 0}
     )}
+    {id targets.windows.tsf.ctrl-alt, covered_rules (
+        tsf.keys.ctrl-alt
+    ), covered_claims (
+        {impl_name main, rule tsf.keys.ctrl-alt}
+    ), rule_versions_seen (
+        {id tsf.keys.ctrl-alt, version 0}
+    )}
     {id targets.windows.tsf.data, covered_rules (
         tsf.data.resource
         tsf.data.version
@@ -1384,36 +1441,6 @@ impl_evidence (
         {id tsf.register.server, version 0}
         {id tsf.register.upgrade, version 1}
         {id tsf.security.appcontainer, version 2}
-    )}
-    {id targets.windows.tsf.ctrl-alt, covered_rules (
-        tsf.keys.ctrl-alt
-    ), covered_claims (
-        {impl_name main, rule tsf.keys.ctrl-alt}
-    )}
-    {id ldml.port.macos, covered_rules (
-        ldml.macos.adapter
-        ldml.macos.classify
-        ldml.macos.dead-keys
-        ldml.macos.input
-        ldml.macos.keys
-        ldml.macos.modifiers
-        ldml.macos.semantics
-        ldml.macos.target
-        ldml.macos.test.differential
-        ldml.macos.test.golden
-        ldml.macos.test.typing
-    ), covered_claims (
-        {impl_name main, rule ldml.macos.adapter}
-        {impl_name main, rule ldml.macos.classify}
-        {impl_name main, rule ldml.macos.dead-keys}
-        {impl_name main, rule ldml.macos.input}
-        {impl_name main, rule ldml.macos.keys}
-        {impl_name main, rule ldml.macos.modifiers}
-        {impl_name main, rule ldml.macos.semantics}
-        {impl_name main, rule ldml.macos.target}
-        {impl_name main, rule ldml.macos.test.differential}
-        {impl_name main, rule ldml.macos.test.golden}
-        {impl_name main, rule ldml.macos.test.typing}
     )}
 )
 

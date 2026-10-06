@@ -117,9 +117,21 @@ pub fn number_text(value: &Value, at: &At) -> Result<String> {
     match value {
         Value::String(s) => Ok(s.clone()),
         Value::Number(n) => Ok(n.to_string()),
-        Value::Bool(b) => Ok(b.to_string()),
         other => Err(at.error(format!(
             "expected a number or a string, found {}",
+            describe(other)
+        ))),
+    }
+}
+
+/// A scalar written as a string or a boolean, as its text: the
+/// `tertiaryBase` and `preBase` lists of `reorder`.
+pub fn flag_text(value: &Value, at: &At) -> Result<String> {
+    match value {
+        Value::String(s) => Ok(s.clone()),
+        Value::Bool(b) => Ok(b.to_string()),
+        other => Err(at.error(format!(
+            "expected true, false or a string, found {}",
             describe(other)
         ))),
     }

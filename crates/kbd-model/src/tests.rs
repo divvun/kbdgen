@@ -1336,6 +1336,9 @@ fn malformed_layouts_are_rejected() {
     l.hosts.remove(&Host::Ios);
     assert_eq!(l.validate(NFD), Err(LayoutError::Unused { index: 1 }));
     let mut l = make();
+    l.keyboards[1].host = None;
+    assert_eq!(l.validate(NFD), Err(LayoutError::HostDropped { index: 1 }));
+    let mut l = make();
     l.keyboards[1].keys[1].multi_tap = vec![1];
     assert!(matches!(
         l.validate(NFD),

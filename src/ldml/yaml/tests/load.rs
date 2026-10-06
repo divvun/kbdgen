@@ -40,7 +40,7 @@ fn format_four_is_v4_and_others_fail() {
 }
 
 // [spec:kbdgen:def:ldml.yaml.detect/test]
-// [spec:kbdgen:def:ldml.yaml.schema+2/test]
+// [spec:kbdgen:def:ldml.yaml.schema+3/test]
 #[test]
 fn autonym_and_display_names_are_required() {
     let err = error("format: 4\n");
@@ -55,7 +55,7 @@ fn autonym_and_display_names_are_required() {
 }
 
 // [spec:kbdgen:req:ldml.yaml.strict/test]
-// [spec:kbdgen:def:ldml.yaml.schema+2/test]
+// [spec:kbdgen:def:ldml.yaml.schema+3/test]
 #[test]
 fn unknown_fields_fail_with_their_path() {
     let cases = [
@@ -588,4 +588,66 @@ fn unused_dead_keys_warn_with_their_path() {
         ),
         "{warnings:?}"
     );
+}
+
+// [spec:kbdgen:def:ldml.yaml.schema+3/test]
+#[test]
+fn scalars_take_only_their_types() {
+    let err = error(&sme("version: 1.10\n"));
+    assert!(err.contains("found 1.1; quote it"), "{err}");
+    for body in [
+        "keys: {a: {output: a, width: true}}\n",
+        "transforms: [{reorder: [{from: a, order: true}]}]\n",
+    ] {
+        let err = error(&sme(body));
+        assert!(
+            err.contains("expected a number or a string, found true"),
+            "{body}: {err}"
+        );
+    }
+    let err = error(&sme(
+        "transforms: [{reorder: [{from: a, tertiaryBase: 1}]}]\n",
+    ));
+    assert!(err.contains("expected true, false or a string"), "{err}");
+    let err = error(&sme("keys: {a: {output: a, gap: 'true'}}\n"));
+    assert!(err.contains("expected true or false"), "{err}");
+    let layout = load_as(
+        "sme",
+        &sme(
+            "keys: {a: {output: a, width: 1.5}}\ntransforms: [{reorder: [{from: a, order: 1, preBase: false}]}]\n",
+        ),
+    )
+    .unwrap();
+    assert_eq!(layout.keys[0].width.as_deref(), Some("1.5"));
+}
+
+// [spec:kbdgen:syn:ldml.yaml.escape+1/test]
+#[test]
+fn unicode_only_strings_refuse_markers_and_variables() {
+    let vars = "variables: {strings: {v: x}}\n";
+    for body in [
+        "keyNames: {space: '\\m{a}'}\n",
+        "keyNames: {space: '${v}'}\n",
+        "deadKeys: {'\\m{a}': {}}\n",
+        "deadKeys: {´: {standalone: '${v}'}}\n",
+        "deadKeys: {´: {compose: {'\\m{a}': b}}}\n",
+        "displays: [{displayBase: '\\m{a}'}]\n",
+    ] {
+        assert!(
+            load_as("sme", &sme(&format!("{vars}{body}"))).is_err(),
+            "{body}"
+        );
+    }
+    let layout = load_as(
+        "sme",
+        &sme(&format!(
+            "{vars}decimal: '${{v}}\\m{{a}}'\nlongPress: {{'${{v}}': b}}\n"
+        )),
+    )
+    .unwrap();
+    assert_eq!(
+        layout.decimal,
+        Some(vec![Piece::Char('x'), Piece::Marker("a".to_string())])
+    );
+    assert_eq!(layout.long_press[0].output, chars("x"));
 }

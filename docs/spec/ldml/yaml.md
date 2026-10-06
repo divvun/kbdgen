@@ -36,12 +36,14 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >
 > A bundle may mix v3 and v4 files.
 
-> [spec:kbdgen:def:ldml.yaml.schema+2]
+> [spec:kbdgen:def:ldml.yaml.schema+3]
 > A v4 layout has these top-level fields. A value given as a string MUST
 > be a YAML string; any other scalar there is an error asking to quote it,
 > so `1.10` never becomes `1.1`. Whole numbers are accepted only for
 > `format` and `minDeviceWidth`; a number or a string for `width` and the
-> `reorder` lists; booleans for `gap`, `stretch`, `shiftLock` and `lrmRlm`.
+> `reorder` lists `order` and `tertiary`; a boolean or a string for the
+> `reorder` lists `tertiaryBase` and `preBase`; booleans for `gap`,
+> `stretch`, `shiftLock` and `lrmRlm`.
 >
 > | Field | Type | Default | Lowers to |
 > |---|---|---|---|

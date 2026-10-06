@@ -15,8 +15,8 @@ pub type KeyIndex = u16;
 /// An index into `Keyboard::flicks`.
 pub type FlickIndex = u16;
 
-/// The largest `context_len` a keyboard may have, because a host context
-/// holds at most 64 scalar values (`tsf.engine.api`).
+/// The largest `context_len` a keyboard may have, so a host never reads or
+/// caches more than 64 scalar values (`ldml.engine.api`, `tsf.edit.cache`).
 pub const MAX_CONTEXT_LEN: u8 = 64;
 
 /// The host a keyboard is built for. The declaration order is the host
@@ -327,8 +327,8 @@ pub struct Keyboard {
     /// Extension: the numpad decimal key's output.
     pub decimal: Option<Text>,
     // [spec:kbdgen:def:ldml.model.flush+1]
-    /// Extension: marker → the plain text a pending marker stands for when
-    /// input is interrupted. The engine shows it as preedit and commits it.
+    /// Extension: marker → the plain string, holding no markers, that a
+    /// pending marker stands for when input is interrupted. The engine shows it as preedit and commits it.
     pub flush: BTreeMap<MarkerIndex, String>,
     /// Extension: marker → Windows dead-key name.
     pub dead_key_names: BTreeMap<MarkerIndex, String>,

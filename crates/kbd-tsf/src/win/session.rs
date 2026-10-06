@@ -460,11 +460,7 @@ impl TextContext for TsfText<'_> {
             (None, false) => {
                 let at = match self.after.take() {
                     Some(after) => after,
-                    None => {
-                        let range = self.selection()?;
-                        unsafe { range.Collapse(self.ec, TF_ANCHOR_END) }?;
-                        range
-                    }
+                    None => self.anchor()?,
                 };
                 let contexts: ITfContextComposition = self.context.cast()?;
                 unsafe { contexts.StartComposition(self.ec, &at, self.sink) }?

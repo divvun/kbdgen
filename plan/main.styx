@@ -669,6 +669,14 @@ children (
                                         kind @status
                                         text "Doing → Done (nplan complete)"
                                     }
+
+                                    {
+                                        at 2026-10-06T19:19:21.720777Z
+                                        author "brendan@necessary.nu"
+                                        kind @decision
+                                        text "Operator 2026-10-06: the installer is external work, not in kbdgen. The divvun-actions/kbdi branches carry it; installer decisions are owned there."
+                                        after_done true
+                                    }
                                 )
                             }
 

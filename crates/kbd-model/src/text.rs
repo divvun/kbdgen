@@ -20,8 +20,9 @@ pub enum TextElem {
 // [spec:kbdgen:def:ldml.model.text+1]
 /// A sequence of scalar values and marker references.
 ///
-/// The marker table lists marker names in order of first appearance in
-/// document order; `\m{.}` is never an entry and appears only in patterns
+/// The marker table lists distinct marker names in order of first
+/// appearance during resolution: display outputs, key outputs, transforms,
+/// then kbdgen extension data; `\m{.}` is never an entry and appears only in patterns
 /// (`Atom::AnyMarker`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Text(pub Vec<TextElem>);

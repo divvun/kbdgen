@@ -13,9 +13,9 @@ use crate::validate::{InvariantError, NfdCheck};
 /// A compiled layout.
 ///
 /// Hosts whose keyboards are equal in every field except `host` share one
-/// entry, which then has no `host`; its engine follows the rules for no
-/// host, and each consumer supplies its own. A keyboard used by one host
-/// keeps that host.
+/// entry, which then has no `host`; each consumer supplies its own host
+/// (the engine's `Options.host`). A keyboard used by one host keeps that
+/// host, and no host maps to another host's keyboard.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Layout {
     /// The layout's normalised language tag.
@@ -41,6 +41,8 @@ pub enum LayoutError {
     HostMismatch { host: Host },
     /// Keyboard `index` serves no host.
     Unused { index: usize },
+    /// Keyboard `index` has no `host` but serves only one host.
+    HostDropped { index: usize },
     /// More than 65536 distinct keyboards.
     TooManyKeyboards,
     /// Host document `document` has no `host`.
@@ -62,6 +64,9 @@ impl fmt::Display for LayoutError {
                 write!(f, "host {} maps to another host's keyboard", host.name())
             }
             LayoutError::Unused { index } => write!(f, "keyboards[{index}] serves no host"),
+            LayoutError::HostDropped { index } => {
+                write!(f, "keyboards[{index}] serves one host but has no host")
+            }
             LayoutError::TooManyKeyboards => f.write_str("layout has too many keyboards"),
             LayoutError::MissingHost { document } => {
                 write!(f, "host document {document} names no host")
@@ -132,7 +137,8 @@ impl Layout {
 
     /// Checks every keyboard, that keyboards are distinct even ignoring
     /// `host`, that every host names a keyboard built for it or shared,
-    /// and that every keyboard serves a host.
+    /// that every keyboard serves a host, and that a keyboard serving one
+    /// host keeps that host.
     pub fn validate(&self, nfd: Option<&dyn NfdCheck>) -> Result<(), LayoutError> {
         for (index, keyboard) in self.keyboards.iter().enumerate() {
             keyboard
@@ -150,7 +156,7 @@ impl Layout {
                 });
             }
         }
-        let mut used = BTreeMap::new();
+        let mut used: BTreeMap<u16, usize> = BTreeMap::new();
         for (&host, &index) in &self.hosts {
             let Some(keyboard) = self.keyboards.get(usize::from(index)) else {
                 return Err(LayoutError::HostIndex { host });
@@ -158,13 +164,21 @@ impl Layout {
             if keyboard.host.is_some_and(|h| h != host) {
                 return Err(LayoutError::HostMismatch { host });
             }
-            used.insert(index, ());
+            let count = used.entry(index).or_insert(0);
+            *count = count.saturating_add(1);
         }
-        match (0..self.keyboards.len())
-            .find(|i| u16::try_from(*i).map_or(true, |i| !used.contains_key(&i)))
-        {
-            Some(index) => Err(LayoutError::Unused { index }),
-            None => Ok(()),
+        for (index, keyboard) in self.keyboards.iter().enumerate() {
+            let hosts = u16::try_from(index)
+                .ok()
+                .and_then(|i| used.get(&i).copied())
+                .unwrap_or(0);
+            if hosts == 0 {
+                return Err(LayoutError::Unused { index });
+            }
+            if hosts == 1 && keyboard.host.is_none() {
+                return Err(LayoutError::HostDropped { index });
+            }
         }
+        Ok(())
     }
 }
