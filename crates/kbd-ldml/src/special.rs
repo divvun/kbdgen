@@ -9,7 +9,7 @@ use crate::diag::Result;
 use crate::escape::decode_plain;
 use crate::tree::El;
 
-// [spec:kbdgen:def:ldml.xml.special+1]
+// [spec:kbdgen:def:ldml.xml.special+2]
 /// The namespace of kbdgen's extension elements.
 pub const KBDGEN_NS: &str = "https://divvun.no/ns/kbdgen-ldml/1";
 
@@ -63,7 +63,7 @@ pub struct Generated {
     pub by: String,
 }
 
-// [spec:kbdgen:def:ldml.xml.special+1]
+// [spec:kbdgen:def:ldml.xml.special+2]
 /// The kbdgen data of a document that is not part of the keyboard model:
 /// layout-level fields and authoring metadata. Resolution reads it and
 /// export writes it; it never changes the model.

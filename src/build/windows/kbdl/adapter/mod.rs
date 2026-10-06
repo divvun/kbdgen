@@ -115,7 +115,7 @@ pub fn layout_name(tag: &LanguageTag, path: &Path) -> Result<Option<String>> {
 /// The input, diagnostics and model of one compiled layout. The model is
 /// the encoding of the same `windows` keyboard the input derives from.
 // [spec:kbdgen:def:ldml.kbdl.adapter]
-// [spec:kbdgen:def:tsf.engine.model]
+// [spec:kbdgen:def:tsf.engine.model+1]
 pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
     let keyboard = layout
         .layout

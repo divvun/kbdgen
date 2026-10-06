@@ -2,14 +2,13 @@
 //! canonical export of the model, and kbdgen data from its extensions.
 
 use kbd_ldml::escape::{encode_plain, encode_text};
-use kbd_ldml::{ComposeValue, DeadKey, encode_modifiers, encode_width};
-use kbd_model::{DEFAULT_WIDTH, DisplayTarget, Flick, Key, Keyboard, ModifierSet, TextElem};
+use kbd_ldml::{ComposeValue, DeadKey, encode_width};
+use kbd_model::{DEFAULT_WIDTH, DisplayTarget, Flick, Key, Keyboard, TextElem};
 use serde_yaml::{Mapping, Value};
 use xmlem::{Document, Element};
 
 use super::keys::pieces;
 use super::layers::insert;
-use crate::ldml::yaml::emoji::position_name;
 
 fn children(doc: &Document, el: Element, name: &str) -> Vec<Element> {
     el.children(doc)
@@ -369,35 +368,4 @@ pub fn targets(kb: &Keyboard, entries: &[kbd_ldml::Target], warnings: &mut Vec<S
         insert(&mut out, host, Value::Mapping(m));
     }
     Value::Mapping(out)
-}
-
-/// `emoji`: the key by ISO position. Annotations need a file of their own,
-/// which import does not write, so they are reported instead.
-pub fn emoji(kb: &Keyboard, warnings: &mut Vec<String>) -> Value {
-    if !kb.emoji.annotations.is_empty() {
-        warnings.push(format!(
-            "{} emoji annotations are dropped; v4 reads them from a CLDR annotations file",
-            kb.emoji.annotations.len()
-        ));
-    }
-    let Some(key) = kb.emoji.key else {
-        return Value::Null;
-    };
-    let Some(position) = position_name(key.scan_code) else {
-        warnings.push(format!(
-            "the emoji key's scan code {:02X} has no ISO position and is dropped",
-            key.scan_code
-        ));
-        return Value::Null;
-    };
-    let mut k = Mapping::new();
-    insert(&mut k, "position", Value::String(position.into()));
-    insert(
-        &mut k,
-        "modifiers",
-        Value::String(encode_modifiers(&[ModifierSet::Set(key.modifiers)])),
-    );
-    let mut m = Mapping::new();
-    insert(&mut m, "key", Value::Mapping(k));
-    Value::Mapping(m)
 }

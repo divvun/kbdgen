@@ -53,7 +53,7 @@ fn whole_match_keeps_its_markers() {
 }
 
 // [spec:kbdgen:sem:ldml.engine.match+1/test]
-// [spec:kbdgen:req:ldml.engine.tsf+1/test]
+// [spec:kbdgen:req:ldml.engine.tsf+2/test]
 #[test]
 fn anchored_rule_needs_at_start_context() {
     let m = model(transform_keyboard());

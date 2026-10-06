@@ -39,7 +39,7 @@ use super::session::{Pending, Task};
     windows::Win32::UI::TextServices::ITfDisplayAttributeProvider,
     windows::Win32::UI::TextServices::ITfActiveLanguageProfileNotifySink
 )]
-// [spec:kbdgen:req:tsf.component.interfaces]
+// [spec:kbdgen:req:tsf.component.interfaces+1]
 pub struct Tip {
     _live: Live,
     pub(super) shared: Rc<RefCell<Inner>>,
@@ -314,7 +314,7 @@ impl ITfTextInputProcessor_Impl for Tip_Impl {
         })
     }
 
-    // [spec:kbdgen:req:tsf.component.interfaces]
+    // [spec:kbdgen:req:tsf.component.interfaces+1]
     fn Deactivate(&self) -> Result<()> {
         contain(&POISON, Entry::Deactivate, || {
             self.deactivate();
@@ -324,8 +324,8 @@ impl ITfTextInputProcessor_Impl for Tip_Impl {
 }
 
 impl ITfTextInputProcessorEx_Impl for Tip_Impl {
-    // [spec:kbdgen:req:tsf.component.interfaces]
-    // [spec:kbdgen:req:tsf.security.secure-mode]
+    // [spec:kbdgen:req:tsf.component.interfaces+1]
+    // [spec:kbdgen:req:tsf.security.secure-mode+1]
     fn ActivateEx(&self, ptim: Ref<ITfThreadMgr>, tid: u32, _flags: u32) -> Result<()> {
         contain(&POISON, Entry::ActivateEx, || {
             let thread_mgr = ptim.ok()?;

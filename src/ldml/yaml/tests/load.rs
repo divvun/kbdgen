@@ -2,7 +2,7 @@
 //! escapes, rows and tokens, and the checks of whole variants.
 
 use kbd_ldml::escape::Piece;
-use kbd_model::{BottomRow, ModifierSet, Role};
+use kbd_model::{BottomRow, Role};
 use serde_yaml::Value;
 
 use super::*;
@@ -40,7 +40,7 @@ fn format_four_is_v4_and_others_fail() {
 }
 
 // [spec:kbdgen:def:ldml.yaml.detect/test]
-// [spec:kbdgen:def:ldml.yaml.schema+1/test]
+// [spec:kbdgen:def:ldml.yaml.schema+2/test]
 #[test]
 fn autonym_and_display_names_are_required() {
     let err = error("format: 4\n");
@@ -55,7 +55,7 @@ fn autonym_and_display_names_are_required() {
 }
 
 // [spec:kbdgen:req:ldml.yaml.strict/test]
-// [spec:kbdgen:def:ldml.yaml.schema+1/test]
+// [spec:kbdgen:def:ldml.yaml.schema+2/test]
 #[test]
 fn unknown_fields_fail_with_their_path() {
     let cases = [
@@ -80,10 +80,6 @@ fn unknown_fields_fail_with_their_path() {
         (
             "targets: {windows: {languageName: Võro}}\n",
             "targets.windows.languageName: unknown field languageName",
-        ),
-        (
-            "emoji: {key: {position: C01, modifiers: none, mods: x}}\n",
-            "emoji.key.mods",
         ),
     ];
     for (body, expected) in cases {
@@ -495,7 +491,7 @@ fn dead_key_errors_are_addressed() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+1/test]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+2/test]
 #[test]
 fn ldml_ref_excludes_what_the_file_defines() {
     for field in [
@@ -578,53 +574,6 @@ fn long_press_candidates_are_tokens() {
             Token::Output(chars("å")),
         ]
     );
-}
-
-// [spec:kbdgen:def:ldml.yaml.emoji/test]
-#[test]
-fn emoji_reads_key_position_and_annotations() {
-    let (dir, path) = write(
-        "sme",
-        &sme("emoji: {key: {position: B00, modifiers: ctrl shift}, annotations: ann.xml}\n"),
-    );
-    std::fs::write(
-        dir.path().join("ann.xml"),
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<!DOCTYPE ldml SYSTEM \"../../common/dtd/ldml.dtd\">\n<ldml><identity><language type=\"se\"/></identity><annotations>\n<annotation cp=\"😀\">ilu | nirvu</annotation>\n<annotation cp=\"😀\" type=\"tts\">nirvvas ámadadju</annotation>\n<annotation cp=\"🐟\" type=\"tts\">guolli</annotation>\n</annotations></ldml>\n",
-    )
-    .unwrap();
-    let layout = load(&path, "sme").unwrap();
-    let key = layout.emoji.key.unwrap();
-    assert_eq!(key.scan_code, 0x56);
-    assert_eq!(
-        kbd_ldml::encode_modifiers(&[ModifierSet::Set(key.modifiers)]),
-        "ctrl shift"
-    );
-    let names: Vec<(&str, &str, Vec<&str>)> = layout
-        .emoji
-        .annotations
-        .iter()
-        .map(|a| {
-            (
-                a.emoji.as_str(),
-                a.name.as_str(),
-                a.keywords.iter().map(String::as_str).collect(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        names,
-        [
-            ("😀", "nirvvas ámadadju", vec!["ilu", "nirvu"]),
-            ("🐟", "guolli", vec![]),
-        ]
-    );
-    let err = error(&sme("emoji: {key: {position: Z99, modifiers: none}}\n"));
-    assert!(
-        err.contains("emoji.key.position: Z99 is not an ISO position"),
-        "{err}"
-    );
-    let err = error(&sme("emoji: {annotations: missing.xml}\n"));
-    assert!(err.contains("emoji.annotations: cannot read"), "{err}");
 }
 
 // [spec:kbdgen:req:ldml.yaml.strict/test]

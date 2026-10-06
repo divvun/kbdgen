@@ -13,13 +13,13 @@
 
 mod deadkeys;
 mod document;
-mod emoji;
 mod error;
 pub mod import;
 mod keys;
 mod layers;
 mod lower;
 pub(crate) mod node;
+mod positions;
 mod schema;
 mod text;
 mod tokens;
@@ -29,9 +29,9 @@ use std::path::Path;
 
 use serde_yaml::Value;
 
-pub use emoji::position_scan_code;
 pub use error::{At, YamlError, YamlProblem};
 pub use lower::{HOSTS, lower};
+pub use positions::position_scan_code;
 pub use schema::Layout4;
 
 use super::LdmlError;
@@ -74,7 +74,7 @@ pub fn read_yaml(path: &Path) -> Result<Value, LdmlError> {
 
 /// Loads the v4 layout file `path`, tagged `tag`: the schema with unknown
 /// fields refused at any depth, escapes decoded, rows parsed into tokens,
-/// inheritance resolved, and emoji annotations read.
+/// and inheritance resolved.
 pub fn load(path: &Path, tag: &str) -> Result<Layout4, LdmlError> {
     let value = read_yaml(path)?;
     load_value(path, tag, &value)

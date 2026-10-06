@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use kbd_model::{
-    Atom, BottomRow, Class, Component, DisplayTarget, Emoji, Host, Key, Keyboard, ModifierSet,
+    Atom, BottomRow, Class, Component, DisplayTarget, Host, Key, Keyboard, ModifierSet,
     Normalization, Pattern, ReorderClass, ReorderRule, ReplacementItem, Text, TextElem,
     TransformGroup, TransformList,
 };
@@ -632,7 +632,6 @@ impl Builder<'_> {
             implied_layers: extensions.implied_layers.clone(),
             display_names: extensions.display_names.clone(),
             targets: Vec::new(),
-            emoji: Emoji::default(),
         };
         layout_elements(
             &mut self.doc,
@@ -673,7 +672,6 @@ impl Builder<'_> {
         }
         let tail = LayoutData {
             targets: extensions.targets.clone(),
-            emoji: kb.emoji.clone(),
             ..LayoutData::default()
         };
         layout_elements(
@@ -714,8 +712,6 @@ fn has_keyboard_special(kb: &Keyboard, ext: &Extensions) -> bool {
         || kb.windows.shift_lock
         || kb.windows.lrm_rlm
         || !kb.windows.key_names.is_empty()
-        || kb.emoji.key.is_some()
-        || !kb.emoji.annotations.is_empty()
         || (kb.hardware.is_none() && !kb.windows.extra_modifiers.is_empty())
 }
 
@@ -790,14 +786,13 @@ pub struct LayoutData {
     pub implied_layers: Option<String>,
     pub display_names: BTreeMap<String, String>,
     pub targets: Vec<Target>,
-    pub emoji: Emoji,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum LayoutPart {
     /// `kbdgen:keyboard` and `kbdgen:displayName`.
     Head,
-    /// `kbdgen:target`, `kbdgen:emojiKey` and `kbdgen:emoji`.
+    /// `kbdgen:target`.
     Tail,
 }
 
@@ -854,42 +849,16 @@ fn layout_elements(
             ],
         );
     }
-    if let Some(key) = data.emoji.key {
-        add(
-            doc,
-            special,
-            &name("emojiKey"),
-            &[
-                ("scanCode", format!("{:02X}", key.scan_code)),
-                (
-                    "modifiers",
-                    encode_modifiers(&[ModifierSet::Set(key.modifiers)]),
-                ),
-            ],
-        );
-    }
-    for a in &data.emoji.annotations {
-        add(
-            doc,
-            special,
-            &name("emoji"),
-            &[
-                ("emoji", encode_plain(&a.emoji)),
-                ("name", encode_plain(&a.name)),
-                ("keywords", encode_plain(&a.keywords.join("|"))),
-            ],
-        );
-    }
 }
 
 /// The kbdgen elements a layout file overrides in a referenced document.
-const LAYOUT_ELEMENTS: [&str; 5] = ["keyboard", "displayName", "target", "emojiKey", "emoji"];
+const LAYOUT_ELEMENTS: [&str; 3] = ["keyboard", "displayName", "target"];
 
-// [spec:kbdgen:req:ldml.xml.ldml-ref+1]
+// [spec:kbdgen:req:ldml.xml.ldml-ref+2]
 /// Puts a layout file's data into a referenced LDML document, which is
 /// otherwise kept exactly as read (`ldml.xml.roundtrip`). Only kbdgen's
 /// layout elements of `keyboard3`'s `special` are replaced: `keyboard`,
-/// `displayName`, `target`, `emojiKey` and `emoji`. The new ones go into
+/// `displayName` and `target`. The new ones go into
 /// the `special` that held kbdgen elements, else the first `special`, else
 /// a `special` appended to `keyboard3`. An `impliedLayers` that the
 /// document's `kbdgen:keyboard` had is kept. Other `special` content and

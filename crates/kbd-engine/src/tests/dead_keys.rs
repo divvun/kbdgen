@@ -15,7 +15,7 @@ fn dead_key_composes_with_next_key() {
     assert_eq!(s.text, "á");
 }
 
-// [spec:kbdgen:def:ldml.scope.v1/test]
+// [spec:kbdgen:def:ldml.scope.v1+1/test]
 // [spec:kbdgen:sem:ldml.engine.transforms/test]
 #[test]
 fn unmatched_dead_key_emits_standalone_then_key() {

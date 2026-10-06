@@ -6,7 +6,7 @@ of `docs/spec/kbdl.md`. Users see one entry per keyboard: the text service's
 profile (`tsf.register.enable`). The text service runs kbdgen's keyboard
 engine, `kbd-engine` (`ldml.engine.*`), on the layout's model, so it does
 what tables cannot: dead-key and transform output of any length, deep
-chains, rules on visible text, a visible pending state, and an emoji picker.
+chains, rules on visible text, and a visible pending state.
 The layout DLL is the fallback wherever Windows reads keyboard layouts
 without TSF: the sign-in screen, the secure desktop, consoles and games, and
 any machine without the text service. It also carries the text service's
@@ -22,7 +22,6 @@ These rules cover:
 - security contexts
 - architectures and registration
 - installer and `kbdi` responsibilities
-- the emoji picker
 - the engine boundary
 - testing
 
@@ -94,14 +93,12 @@ Sources:
 - chewing/windows-chewing-tsf, a Rust TIP that uses an Arm64X pure forwarder
 - The Rust 1.81 release notes on aborting at non-unwind ABIs:
   <https://blog.rust-lang.org/2024/09/05/Rust-1.81.0/>
-- Unicode CLDR `common/annotations` and `common/annotationsDerived`, and
-  Unicode `emoji-test.txt`
 - divvun/kbdi `main` (`src/keyboard.rs`, `src/keyboard_win8.rs`) and
   divvun-actions `actions/keyboard/build/{mod,iss,outto,wind,layouts}.ts`,
   including branch `keyboard-rust-layout-dlls`
 - `docs/spec/ldml/engine.md` (`ldml.engine.*`), `docs/spec/ldml/crate.md`
   (`ldml.crate.*`), `docs/spec/ldml/model.md` (`ldml.model.encoding`,
-  `ldml.model.emoji`, `ldml.model.windows`) and `docs/spec/ldml/kbdl.md`
+  `ldml.model.windows`) and `docs/spec/ldml/kbdl.md`
   (`ldml.kbdl.*`); `src/build/windows/kbdl/resources.rs`
 
 `divvun-wind` is unrelated to this layer. It is a per-session daemon that
@@ -136,7 +133,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > (Verified: a crate of this shape loads in x64 and x86 processes, activates
 > and edits text.)
 
-> [spec:kbdgen:req:tsf.component.interfaces]
+> [spec:kbdgen:req:tsf.component.interfaces+1]
 > The TIP object MUST implement:
 >
 > - `ITfTextInputProcessorEx`
@@ -149,8 +146,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > - `ITfDisplayAttributeProvider`, with an enumerator over one preedit
 >   attribute
 >
-> The emoji picker additionally implements `ITfCandidateListUIElement`
-> (`tsf.emoji.ui`). `ActivateEx` MUST record the activation flags from
+> `ActivateEx` MUST record the activation flags from
 > `ITfThreadMgrEx::GetActiveFlags`, including `TF_TMF_SECUREMODE` and
 > `TF_TMF_IMMERSIVEMODE`. `Deactivate` MUST unadvise every sink and end any
 > composition it owns.
@@ -426,7 +422,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 ## Security contexts
 
-> [spec:kbdgen:req:tsf.security.disabled]
+> [spec:kbdgen:req:tsf.security.disabled+1]
 > A context with `GUID_COMPARTMENT_KEYBOARD_DISABLED` or
 > `GUID_COMPARTMENT_EMPTYCONTEXT` set (for example a password field) MUST
 > still get the engine's mapping. A password must type the same in every
@@ -434,19 +430,17 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > context the text service MUST NOT:
 >
 > - show a preedit (*p* is dropped)
-> - open the emoji picker
 > - keep a cache
 >
 > If edit sessions fail there, `tsf.edit.inject` applies. (Unverified:
 > Chromium's password-field behaviour.)
 
-> [spec:kbdgen:req:tsf.security.secure-mode]
+> [spec:kbdgen:req:tsf.security.secure-mode+1]
 > The text service MUST register `GUID_TFCAT_TIPCAP_SECUREMODE`. Under
 > `TF_TMF_SECUREMODE`, as on the welcome screen, UAC prompts and
 > credential UI, it MUST NOT:
 >
 > - create windows
-> - open the emoji picker
 > - read anything but its own image and the layout DLL resource
 > - emit diagnostics
 >
@@ -454,14 +448,13 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > third-party TIPs. The installer keeps the layout DLL as the welcome-screen
 > input method in any case: `tsf.register.welcome`.)
 
-> [spec:kbdgen:req:tsf.security.appcontainer]
+> [spec:kbdgen:req:tsf.security.appcontainer+1]
 > The text service MUST register `GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT`. Store
-> apps and AppContainer processes load it, so every file it reads (its
-> DLLs, emoji data) MUST lie under `%ProgramFiles%`. Each such file MUST
-> grant read and execute to `ALL APPLICATION PACKAGES` (`S-1-15-2-1`) and
-> `ALL RESTRICTED APPLICATION PACKAGES` (`S-1-15-2-2`), and its installer MUST
-> verify that after copying. Under `TF_TMF_IMMERSIVEMODE` its windows follow
-> `tsf.emoji.ui`. (Unverified: loading in an AppContainer process.)
+> apps and AppContainer processes load it, so every file it reads (its DLLs)
+> MUST lie under `%ProgramFiles%`. Each such file MUST grant read and
+> execute to `ALL APPLICATION PACKAGES` (`S-1-15-2-1`) and `ALL RESTRICTED
+> APPLICATION PACKAGES` (`S-1-15-2-2`), and its installer MUST verify that
+> after copying. (Unverified: loading in an AppContainer process.)
 
 > [spec:kbdgen:sem:tsf.security.integrity]
 > The text service runs inside each host process at that process's
@@ -645,72 +638,20 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > x64 emulation. outto has no Arm64 architecture selector, so its package
 > refuses Arm64 until outto gains one.
 
-## Emoji picker
+## Emoji keyboard
 
-> [spec:kbdgen:def:tsf.emoji.picker]
-> The *emoji picker* is a window that the text service hosts. It lists
-> emoji by Unicode `emoji-test.txt` group and subgroup, showing
-> fully-qualified sequences only. It filters them by keyword search in the
-> keyboard's language (`tsf.emoji.data`) and remembers recently used emoji
-> per process. Choosing an emoji commits it (`tsf.emoji.commit`). Windows'
-> own panel (Win+. and Win+;) has no documented extension point and is left
-> untouched. The text service never eats Win chords, so that panel keeps
-> working alongside it.
-
-> [spec:kbdgen:req:tsf.emoji.trigger]
-> The picker MUST open from a preserved key, registered with
-> `ITfKeystrokeMgr::PreserveKey` while the profile is active. The key is
-> `Model::preserved_keys()` (`ldml.model.emoji`): its scan code is mapped to
-> a virtual key of the HKL beneath with `MapVirtualKeyExW`, and none is
-> registered if the model names none. It MUST NOT open in secure mode or in
-> disabled contexts (`tsf.security.disabled`). While the picker is open, the
-> text service eats keys:
+> [spec:kbdgen:req:tsf.test.emoji]
+> The integration tests (`tsf.test.vm`) MUST type, through the text
+> service, a fixture layout whose keys output emoji, and check the committed
+> text in a Win32 `EDIT` and a WPF `TextBox`. It proves output is not limited
+> to UCS-2 or to the 16 UTF-16 units of a layout DLL ligature. Its keys
+> include at least:
 >
-> - letters edit the search; it MAY type them through the engine
-> - arrows move the selection
-> - Enter commits
-> - Escape closes the picker
+> - `q` → 😀 (U+1F600), outside the BMP, so a surrogate pair
+> - 👩🏽‍💻, an emoji ZWJ sequence with a skin-tone modifier
+> - 👨‍👩‍👧‍👦 followed by 🏳️‍🌈, one output longer than 16 UTF-16 units
 >
-> Opening the picker first resets the engine (`tsf.edit.reset`), which
-> commits any preedit.
-
-> [spec:kbdgen:req:tsf.emoji.ui]
-> The picker MUST be published as an `ITfCandidateListUIElement` through
-> `ITfUIElementMgr::BeginUIElement`, `UpdateUIElement` and `EndUIElement`.
-> It draws its own window only when the application leaves `pbShow` true,
-> so UI-less applications such as games can render it themselves. Its window
-> is:
->
-> - a `WS_POPUP` with `WS_EX_TOOLWINDOW | WS_EX_TOPMOST`
-> - owned by the window of `ITfContextView::GetWnd`, or `GetFocus` as a
->   fallback
-> - placed from `GetTextExt` of the selection
-> - given the UIA AutomationId `IME_Candidate_Window`
-> - announced with `EVENT_OBJECT_IME_SHOW`, `EVENT_OBJECT_IME_HIDE` and
->   `EVENT_OBJECT_IME_CHANGE`
->
-> It declares no DPI awareness of its own.
-
-> [spec:kbdgen:req:tsf.emoji.data]
-> Search keywords and names come from these sources, merged in this order:
->
-> 1. annotations that the bundle supplies for the layout's language
-> 2. CLDR `annotations` and `annotationsDerived` for that language and its
->    CLDR parents
-> 3. the same for each Windows UI language of the user
-> 4. English
->
-> CLDR has no annotations for most Divvun languages, Sámi included (it has
-> `fo`, `kl`, `fi`), so the first source matters. CLDR data MUST be compiled
-> into per-locale files in the text service's install directory. Bundle
-> annotations travel in the model (`ldml.model.emoji`). No data is fetched
-> at runtime.
-
-> [spec:kbdgen:req:tsf.emoji.commit]
-> Committing an emoji MUST insert it through `tsf.edit.apply` or
-> `tsf.edit.inject` as an edit (0, emoji, empty), then reset the engine. In a
-> UI-less or immersive host where the picker cannot be shown, the preserved
-> key does nothing.
+> Backspace after each MUST be checked against `ldml.engine.backspace`.
 
 ## Engine boundary
 
@@ -742,14 +683,13 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > `kbd-engine` MUST build for every target of `tsf.arch.builds`
 > (`ldml.crate.targets`).
 
-> [spec:kbdgen:def:tsf.engine.model]
+> [spec:kbdgen:def:tsf.engine.model+1]
 > The *model* of a layout is the `ldml.model.encoding` (`DVKB` major 1) of
 > the layout's `windows` keyboard, the same keyboard the `kbdl` adapter
 > reads (`ldml.kbdl.model-resource`). A v3 layout gets it by in-memory
 > migration. Of it, the text service uses the hardware set and its layers,
-> the transforms, the flush outputs that form the preedit, `windows`
-> (`ldml.model.windows`) and `emoji` (`ldml.model.emoji`). It does not use
-> touch sets or displays.
+> the transforms, the flush outputs that form the preedit, and
+> `windows` (`ldml.model.windows`). It does not use touch sets or displays.
 
 ## Testing
 

@@ -26,7 +26,7 @@ use crate::guid::{CLSID, braced};
 
 /// The categories of `tsf.register.server`. Secure mode support lets the
 /// text service run under `TF_TMF_SECUREMODE` (`tsf.security.secure-mode`).
-// [spec:kbdgen:req:tsf.security.secure-mode]
+// [spec:kbdgen:req:tsf.security.secure-mode+1]
 pub(super) const CATEGORIES: [GUID; 6] = [
     GUID_TFCAT_TIP_KEYBOARD,
     GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT,

@@ -21,7 +21,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 
 ## API
 
-> [spec:kbdgen:def:ldml.engine.api+1]
+> [spec:kbdgen:def:ldml.engine.api+2]
 > `kbd-engine` exposes:
 >
 > - `Model::from_bytes(&[u8]) -> Result<Model, Error>`, which decodes per
@@ -30,7 +30,6 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > - `Model::from_keyboard(Keyboard, Options) -> Result<Model, Error>`
 > - `Model::keyboard()`, `Model::options()`, and `Model::context_len()`,
 >   which is at most 64
-> - `Model::preserved_keys() -> Option<EmojiKey>` (`ldml.model.emoji`)
 > - `Model::touch_set_for_width(u16)` and `Model::touch_set_by_name(&str)`,
 >   each `-> Option<usize>`
 > - `State`, whose `State::default()` is the reset state, and
@@ -430,7 +429,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 
 ## TSF boundary
 
-> [spec:kbdgen:req:ldml.engine.tsf+1]
+> [spec:kbdgen:req:ldml.engine.tsf+2]
 > `kbd-engine` is the engine of `tsf.engine.api`, and its API is a superset
 > of what the text service uses:
 >
@@ -440,7 +439,6 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > - `KeyEvent` adds touch, `Id` and `Emit` keys, and left/right Shift.
 > - `Context` has `at_start`; a host that cannot tell MUST pass `false`.
 > - `Edit` has `layer`, which TSF ignores.
-> - `preserved_keys()` reads `ldml.model.emoji`.
 >
 > Where `docs/spec/tsf.md` and this file differ on engine behaviour,
 > `ldml.engine.*` governs: `Enabled` keyboards normalize

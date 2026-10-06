@@ -1,10 +1,10 @@
 //! kbdgen's elements in the `special` of `keyboard3` (`ldml.xml.special`,
 //! `ldml.xml.resolve` step 11).
 
-use kbd_model::{Annotation, EmojiKey, Host, ModifierSet, WINDOWS_KEY_NAMES};
+use kbd_model::{Host, WINDOWS_KEY_NAMES};
 
 use super::Ctx;
-use super::layers::{extra_key, parse_modifiers};
+use super::layers::extra_key;
 use crate::diag::Result;
 use crate::special::{Target, bool_attr, check_attrs, kbdgen_children, plain_attr, read_dead_key};
 use crate::tree::El;
@@ -44,33 +44,6 @@ fn keyboard_element(ctx: &mut Ctx, el: &El) -> Result<()> {
     if let Some(implied) = el.attr("impliedLayers") {
         ctx.extensions.implied_layers = Some(implied.to_string());
     }
-    Ok(())
-}
-
-fn emoji_key(ctx: &mut Ctx, el: &El) -> Result<()> {
-    check_attrs(el, &["scanCode", "modifiers"], &["scanCode", "modifiers"])?;
-    let code = el.attr("scanCode").unwrap_or("");
-    let scan_code = u8::from_str_radix(code, 16)
-        .ok()
-        .filter(|_| code.len() == 2)
-        .ok_or_else(|| {
-            el.attr_error(
-                "scanCode",
-                format!("{code} is not a two-digit hex scan code"),
-            )
-        })?;
-    let sets = parse_modifiers(el.attr("modifiers").unwrap_or(""))
-        .map_err(|e| el.attr_error("modifiers", e))?;
-    let modifiers = match sets.as_slice() {
-        [ModifierSet::Set(m)] => *m,
-        _ => {
-            return Err(el.attr_error("modifiers", "the emoji key has one modifier set, not other"));
-        }
-    };
-    ctx.kb.emoji.key = Some(EmojiKey {
-        scan_code,
-        modifiers,
-    });
     Ok(())
 }
 
@@ -120,21 +93,6 @@ fn element(ctx: &mut Ctx, el: &El, prefix: &str) -> Result<()> {
                 value: plain_attr(el, "value")?,
             });
         }
-        "emojiKey" => emoji_key(ctx, el)?,
-        "emoji" => {
-            check_attrs(el, &["emoji", "name", "keywords"], &["emoji", "name"])?;
-            let keywords = plain_attr(el, "keywords")?;
-            ctx.kb.emoji.annotations.push(Annotation {
-                emoji: plain_attr(el, "emoji")?,
-                name: plain_attr(el, "name")?,
-                keywords: keywords
-                    .split('|')
-                    .map(str::trim)
-                    .filter(|k| !k.is_empty())
-                    .map(str::to_string)
-                    .collect(),
-            });
-        }
         "deadKey" => {
             let dead_key = read_dead_key(el, prefix)?;
             ctx.extensions.dead_keys.push(dead_key);
@@ -153,7 +111,7 @@ fn element(ctx: &mut Ctx, el: &El, prefix: &str) -> Result<()> {
     Ok(())
 }
 
-// [spec:kbdgen:def:ldml.xml.special+1]
+// [spec:kbdgen:def:ldml.xml.special+2]
 /// Reads kbdgen's elements of the keyboard's own `special`. Elements of
 /// other namespaces are kept in the document and ignored here.
 pub(super) fn keyboard(ctx: &mut Ctx, root: &El) -> Result<()> {

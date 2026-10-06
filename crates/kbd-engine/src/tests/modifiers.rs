@@ -91,7 +91,7 @@ fn caps_has_no_fallback_without_layer() {
     assert_eq!(out(&m, caps_shift), Action::Pass);
 }
 
-// [spec:kbdgen:def:ldml.scope.v1/test]
+// [spec:kbdgen:def:ldml.scope.v1+1/test]
 #[test]
 fn implied_caps_layers_give_macos_caps_shift() {
     // v4 implied layers: caps → uppercase, caps+shift → uppercase too.
@@ -227,7 +227,7 @@ fn altgr_keyboard(alt_layer: Vec<ModifierSet>) -> Keyboard {
 }
 
 // [spec:kbdgen:sem:ldml.engine.altgr/test]
-// [spec:kbdgen:req:ldml.engine.tsf+1/test]
+// [spec:kbdgen:req:ldml.engine.tsf+2/test]
 #[test]
 fn altgr_reaches_ctrl_alt_and_alt_r_layers() {
     for sets in [vec![set(&[AltR])], vec![set(&[Alt, Ctrl])]] {

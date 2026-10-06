@@ -2,26 +2,14 @@
 
 use super::*;
 
-// [spec:kbdgen:def:ldml.engine.api+1/test]
+// [spec:kbdgen:def:ldml.engine.api+2/test]
 #[test]
 fn model_round_trips_through_bytes() {
-    let mut k = dead_keys(Normalization::Disabled, true);
-    k.emoji.key = Some(EmojiKey {
-        scan_code: 0x34,
-        modifiers: Modifiers::of(&[Cmd]),
-    });
-    let m = model(k);
+    let m = model(dead_keys(Normalization::Disabled, true));
     let bytes = m.keyboard().to_bytes().unwrap();
     let decoded = Model::from_bytes(&bytes).unwrap();
     assert_eq!(decoded, m);
     assert_eq!(decoded.context_len(), 3);
-    assert_eq!(
-        decoded.preserved_keys(),
-        Some(EmojiKey {
-            scan_code: 0x34,
-            modifiers: Modifiers::of(&[Cmd])
-        })
-    );
     assert!(matches!(Model::from_bytes(b"DVKB"), Err(Error::Decode(_))));
     assert!(matches!(
         Model::from_bytes(b"nope and more"),
@@ -40,7 +28,7 @@ fn model_round_trips_through_bytes() {
     );
 }
 
-// [spec:kbdgen:def:ldml.engine.api+1/test]
+// [spec:kbdgen:def:ldml.engine.api+2/test]
 #[test]
 fn invalid_keyboard_is_an_error() {
     let mut k = dead_keys(Normalization::Disabled, false);
@@ -90,7 +78,7 @@ fn equal_inputs_give_equal_results() {
 }
 
 // [spec:kbdgen:req:ldml.engine.contract+1/test]
-// [spec:kbdgen:req:ldml.engine.tsf+1/test]
+// [spec:kbdgen:req:ldml.engine.tsf+2/test]
 #[test]
 fn authoritative_flag_changes_nothing() {
     let m = model(dead_keys(Normalization::Disabled, false));

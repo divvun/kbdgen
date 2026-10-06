@@ -167,7 +167,6 @@ pub enum Site {
     Flush(MarkerIndex),
     DeadKeyName(MarkerIndex),
     Windows,
-    Emoji,
 }
 
 impl fmt::Display for Site {
@@ -198,7 +197,6 @@ impl fmt::Display for Site {
             Site::Flush(m) => write!(f, "flush[{m}]"),
             Site::DeadKeyName(m) => write!(f, "dead_key_names[{m}]"),
             Site::Windows => f.write_str("windows"),
-            Site::Emoji => f.write_str("emoji"),
         }
     }
 }
@@ -491,9 +489,6 @@ impl Keyboard {
                 Invariant::KeyName,
                 Site::Windows,
             )?;
-        }
-        if let Some(key) = &self.emoji.key {
-            check_modifiers(key.modifiers, extras.len(), Site::Emoji)?;
         }
         Ok(())
     }

@@ -1,10 +1,7 @@
 //! Lowering: key ids, rows, implied layers, touch, dead keys, displays,
 //! verbatim fields, hosts and determinism.
 
-use kbd_model::{
-    Component, DisplayTarget, HardwareLayer, ModifierSet, Modifiers, Normalization, Role,
-    TransformGroup,
-};
+use kbd_model::{DisplayTarget, HardwareLayer, Normalization, Role, TransformGroup};
 
 use super::*;
 use crate::ldml::layouts::HostDocument;
@@ -40,10 +37,6 @@ fn sets(kb: &Keyboard) -> Vec<String> {
         .iter()
         .map(|l| kbd_ldml::encode_modifiers(&l.modifiers))
         .collect()
-}
-
-fn set(components: &[Component]) -> ModifierSet {
-    ModifierSet::Set(Modifiers::of(components))
 }
 
 fn touch_yaml(layers: &str) -> String {
@@ -697,7 +690,7 @@ fn equal_documents_share_one_model() {
     assert_eq!(mac.replace("host=\"macOS\"", "host=\"linux\""), linux);
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+1/test]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+2/test]
 #[test]
 fn ldml_ref_keeps_the_file_and_overrides_data() {
     let dir = tempfile::tempdir().unwrap();
@@ -769,17 +762,15 @@ fn lowering_is_deterministic_export_form() {
     }
 }
 
-// [spec:kbdgen:def:ldml.yaml.emoji/test]
 // [spec:kbdgen:def:ldml.yaml.targets/test]
 #[test]
-fn emoji_and_targets_reach_the_model() {
+fn targets_reach_the_model() {
     let yaml = sme(&format!(
-        "emoji: {{key: {{position: E00, modifiers: cmd}}}}\ntargets: {{windows: {{locale: se-Latn, shiftLock: true, keyNames: {{Caps Lock: Stuorrabustávat}}}}, iOS: {{spellerPath: x.zhfst}}}}\n{}",
+        "targets: {{windows: {{locale: se-Latn, shiftLock: true, keyNames: {{Caps Lock: Stuorrabustávat}}}}, iOS: {{spellerPath: x.zhfst}}}}\n{}",
         hardware(&[("none", QWERTY)])
     ));
     let resolved = kbd_ldml::resolve(&document("sme", &yaml, Host::Windows)).unwrap();
     let kb = &resolved.keyboard;
-    assert_eq!(kb.emoji.key.unwrap().scan_code, 0x29);
     assert!(kb.windows.shift_lock && !kb.windows.lrm_rlm);
     assert_eq!(kb.windows.key_names["Caps Lock"], "Stuorrabustávat");
     let targets: Vec<(&str, &str, &str)> = resolved
@@ -794,9 +785,5 @@ fn emoji_and_targets_reach_the_model() {
             ("windows", "locale", "se-Latn"),
             ("iOS", "spellerPath", "x.zhfst")
         ]
-    );
-    assert_eq!(
-        ModifierSet::Set(kb.emoji.key.unwrap().modifiers),
-        set(&[Component::Cmd])
     );
 }

@@ -73,7 +73,7 @@ fn compartment_set(context: &ITfContext, guid: &GUID) -> bool {
 
 /// What a key needs from its context: why it would pass, and the flags.
 /// A password field is keyboard-disabled or empty (`tsf.security.disabled`).
-// [spec:kbdgen:req:tsf.security.disabled]
+// [spec:kbdgen:req:tsf.security.disabled+1]
 // [spec:kbdgen:req:tsf.edit.session]
 fn examine(context: &ITfContext, inert: bool) -> (Blocked, Flags) {
     let status = unsafe { context.GetStatus() }.unwrap_or_default();

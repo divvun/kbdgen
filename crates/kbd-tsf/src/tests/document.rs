@@ -111,7 +111,7 @@ fn nonempty_selection_resets_engine_first() {
     assert_eq!(t.fake.text(), "ay´");
 }
 
-// [spec:kbdgen:req:tsf.security.disabled/test]
+// [spec:kbdgen:req:tsf.security.disabled+1/test]
 #[test]
 fn disabled_context_maps_keys_without_preedit_or_cache() {
     let mut t = Typist::new(

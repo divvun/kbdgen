@@ -4,8 +4,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use kbd_model::{
-    DecodeError, EmojiKey, ExtraModifierKey, Invariant, Key as ModelKey, KeyIndex, Keyboard,
-    NfdCheck, Normalization, Text, TextElem, TransformList,
+    DecodeError, ExtraModifierKey, Invariant, Key as ModelKey, KeyIndex, Keyboard, NfdCheck,
+    Normalization, Text, TextElem, TransformList,
 };
 
 use crate::api::{
@@ -35,8 +35,8 @@ fn invariant_error(error: kbd_model::InvariantError) -> Error {
     }
 }
 
-// [spec:kbdgen:def:ldml.engine.api+1]
-// [spec:kbdgen:def:ldml.scope.v1]
+// [spec:kbdgen:def:ldml.engine.api+2]
+// [spec:kbdgen:def:ldml.scope.v1+1]
 /// A validated keyboard ready to process events, with the options that the
 /// platform chooses. A `Model` is immutable: every event is a pure function
 /// of the model, a host-owned [`State`], a [`Context`] and a [`KeyEvent`].
@@ -127,12 +127,6 @@ impl Model {
         self.context_len
     }
 
-    /// The preserved key of `ldml.model.emoji`, which opens the emoji
-    /// picker.
-    pub fn preserved_keys(&self) -> Option<EmojiKey> {
-        self.keyboard.emoji.key
-    }
-
     // [spec:kbdgen:sem:ldml.engine.touch]
     /// The touch set with the greatest `min_device_width` ≤ `width`, a set
     /// without one counting as 0. With no touch sets, the hardware set
@@ -171,7 +165,7 @@ impl Model {
     }
 
     // [spec:kbdgen:req:ldml.engine.contract+1]
-    // [spec:kbdgen:req:ldml.engine.tsf+1]
+    // [spec:kbdgen:req:ldml.engine.tsf+2]
     /// What `event` does in `context` from `state`: the action and the next
     /// state. On `Pass` the state is returned unchanged.
     ///

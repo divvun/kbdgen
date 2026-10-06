@@ -36,7 +36,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >
 > A bundle may mix v3 and v4 files.
 
-> [spec:kbdgen:def:ldml.yaml.schema+1]
+> [spec:kbdgen:def:ldml.yaml.schema+2]
 > A v4 layout has these top-level fields. A value given as a string MUST
 > be a YAML string; any other scalar there is an error asking to quote it,
 > so `1.10` never becomes `1.1`. Whole numbers are accepted only for
@@ -58,7 +58,6 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > | `longPress` | output → candidate tokens | `{}` | `ldml.yaml.long-press` |
 > | `hardware` | variant name → `ldml.yaml.hardware` | `{}` | hardware set |
 > | `touch` | variant name → `ldml.yaml.touch` | `{}` | touch sets |
-> | `emoji` | `key`, `annotations` | none | `ldml.yaml.emoji` |
 > | `targets` | `ldml.yaml.targets` | `{}` | per-host configuration |
 
 > [spec:kbdgen:req:ldml.yaml.strict]
@@ -76,7 +75,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > output. A layout should opt in only if its transforms must match
 > canonically equivalent text that came from outside the keyboard.
 
-> [spec:kbdgen:req:ldml.yaml.ldml-ref+1]
+> [spec:kbdgen:req:ldml.yaml.ldml-ref+2]
 > `ldml: <path>` names an LDML keyboard3 file that defines the keyboard for
 > every host. The path is relative to the layout file. The map form `ldml:
 > {<host or default>: <path>}` names one file per host, with `default`
@@ -87,12 +86,11 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > - `hardware`, `touch`
 > - `normalization`, `info`, `version`, `locales`
 >
-> Its `displayNames`, `decimal`, `keyNames`, `emoji` and `targets` replace
-> the file's `kbdgen:keyboard`, `kbdgen:displayName`, `kbdgen:target`,
-> `kbdgen:emojiKey` and `kbdgen:emoji` whole: a `decimal` or label that the
-> layout lacks is dropped, not taken from the file. The file's
-> `impliedLayers` and its other kbdgen data are kept. Export re-serializes
-> the file as written (`ldml.xml.ldml-ref`).
+> Its `displayNames`, `decimal`, `keyNames` and `targets` replace the
+> file's `kbdgen:keyboard`, `kbdgen:displayName` and `kbdgen:target`
+> whole: a `decimal` or label that the layout lacks is dropped, not taken
+> from the file. The file's `impliedLayers` and its other kbdgen data are
+> kept. Export re-serializes the file as written (`ldml.xml.ldml-ref`).
 
 ## Text and tokens
 
@@ -391,7 +389,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >   (§Non-spacing marks on keytops)
 > - `<display keyId="space">` = `keyNames.space`
 
-## Targets and emoji
+## Targets
 
 > [spec:kbdgen:def:ldml.yaml.targets]
 > `targets` holds a layout's own platform configuration. In v3 this was
@@ -405,14 +403,6 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >
 > An unknown `keyNames` entry name is an error. These fields reach XML as
 > `kbdgen:windows`, `kbdgen:windowsKeyName` and `kbdgen:target`.
-
-> [spec:kbdgen:def:ldml.yaml.emoji]
-> `emoji: {key?, annotations?}`. `key` is `{position, modifiers}`, with an
-> ISO position name (`keys.iso-order`) and a modifier set. It becomes the
-> preserved key of `ldml.model.emoji`. `annotations` is a path, relative to
-> the layout file, to a CLDR `annotations` XML file (LDML Part 2) for the
-> layout's language, read through `xmlem`. Each `annotation` with
-> `type="tts"` gives the name, and the others give `|`-separated keywords.
 
 ## Hosts and lowering
 
@@ -479,7 +469,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > Imports are spliced in. Comments are dropped, and their count is
 > reported.
 
-> [spec:kbdgen:thm:ldml.yaml.roundtrip+1]
+> [spec:kbdgen:thm:ldml.yaml.roundtrip+2]
 > For every valid keyboard3 document X that import accepts,
 > resolve(export(import(X))) equals resolve(X) in every model field that
 > import does not report as one v4 cannot write. Fields differ, and are
@@ -489,13 +479,12 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > - a touch set without `kbdgen:touchSet`, which import names
 > - a `locale` other than the layout tag, or another `conformsTo` than
 >   lowering's 45 or 47
-> - emoji annotations, whose file import does not write
 > - flush outputs or dead-key names without a `kbdgen:deadKey` table
 > - documents of one tag with different keys, since every lowered
 >   document carries the layout's whole `keys` table
 >
-> For every v4 layout Y without emoji annotations, the models of
-> import(export(Y)) equal those of Y.
+> For every v4 layout Y, the models of import(export(Y)) equal those of
+> Y.
 >
 > Proof sketch: import writes every other model field into a verbatim LDML
 > field, an explicit key, or sugar, and checks the result by lowering and

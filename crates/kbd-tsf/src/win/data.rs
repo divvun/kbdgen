@@ -29,7 +29,7 @@ const MODEL_NAME: PCWSTR = PCWSTR(1 as _);
 /// The keyboard of `profile`, or `None` when the profile is inert.
 // [spec:kbdgen:req:tsf.data.locate]
 // [spec:kbdgen:req:tsf.component.self-contained]
-// [spec:kbdgen:req:tsf.security.secure-mode]
+// [spec:kbdgen:req:tsf.security.secure-mode+1]
 pub fn keyboard(profile: u128) -> Option<Arc<Keyboard>> {
     KEYBOARDS.get(profile, || {
         let file = layout_file(profile)?;

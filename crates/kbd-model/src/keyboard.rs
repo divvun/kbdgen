@@ -5,7 +5,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
-use crate::extensions::{Emoji, EmojiKey, Windows};
+use crate::extensions::Windows;
 use crate::layers::{Hardware, TouchSet};
 use crate::text::{MarkerIndex, Text};
 use crate::transforms::{Class, Set, TransformGroup};
@@ -288,7 +288,7 @@ impl Displays {
     }
 }
 
-// [spec:kbdgen:def:ldml.model.keyboard+1]
+// [spec:kbdgen:def:ldml.model.keyboard+2]
 /// A keyboard: a resolved LDML `keyboard3` document plus kbdgen's
 /// Extensions. Every index refers to a table of the same keyboard.
 ///
@@ -334,8 +334,6 @@ pub struct Keyboard {
     pub dead_key_names: BTreeMap<MarkerIndex, String>,
     /// Extension.
     pub windows: Windows,
-    /// Extension.
-    pub emoji: Emoji,
 }
 
 impl Keyboard {
@@ -364,7 +362,6 @@ impl Keyboard {
             flush: BTreeMap::new(),
             dead_key_names: BTreeMap::new(),
             windows: Windows::default(),
-            emoji: Emoji::default(),
         }
     }
 
@@ -384,10 +381,5 @@ impl Keyboard {
 
     pub fn marker_name(&self, index: MarkerIndex) -> Option<&str> {
         self.markers.get(usize::from(index)).map(String::as_str)
-    }
-
-    /// The preserved key of `ldml.model.emoji`.
-    pub fn preserved_key(&self) -> Option<EmojiKey> {
-        self.emoji.key
     }
 }

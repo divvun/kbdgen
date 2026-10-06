@@ -1,12 +1,9 @@
-//! Extension data: the Windows options and the emoji key and annotations.
+//! Extension data: the Windows options.
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
-
-use crate::layers::ScanCode;
-use crate::modifiers::Modifiers;
 
 /// A physical key that can be bound as an extra modifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -117,29 +114,4 @@ pub struct Windows {
     pub lrm_rlm: bool,
     /// Entry name of [`WINDOWS_KEY_NAMES`] → replacement name.
     pub key_names: BTreeMap<String, String>,
-}
-
-/// The preserved key that opens the emoji picker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct EmojiKey {
-    pub scan_code: ScanCode,
-    pub modifiers: Modifiers,
-}
-
-/// One emoji annotation in the layout's language.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Annotation {
-    pub emoji: String,
-    pub name: String,
-    pub keywords: Vec<String>,
-}
-
-// [spec:kbdgen:def:ldml.model.emoji]
-/// Extension: what the text service's emoji picker needs from the bundle.
-/// The engine never interprets `annotations`.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Emoji {
-    pub key: Option<EmojiKey>,
-    /// In source order.
-    pub annotations: Vec<Annotation>,
 }

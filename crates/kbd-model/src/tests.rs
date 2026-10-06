@@ -266,17 +266,6 @@ fn fixture() -> Keyboard {
         lrm_rlm: false,
         key_names: BTreeMap::from([("Space".to_string(), "Vaih".to_string())]),
     };
-    k.emoji = Emoji {
-        key: Some(EmojiKey {
-            scan_code: 0x39,
-            modifiers: Modifiers::of(&[Extra1]),
-        }),
-        annotations: vec![Annotation {
-            emoji: "😀".to_string(),
-            name: "irvitäs".to_string(),
-            keywords: vec!["nalq".to_string(), "rõõm".to_string()],
-        }],
-    };
     k
 }
 
@@ -307,7 +296,7 @@ fn reorder_rules(k: &mut Keyboard) -> &mut Vec<ReorderRule> {
     }
 }
 
-// [spec:kbdgen:def:ldml.model.keyboard+1/test]
+// [spec:kbdgen:def:ldml.model.keyboard+2/test]
 // [spec:kbdgen:req:ldml.model.invariants+1/test]
 #[test]
 fn fixture_satisfies_every_invariant() {
@@ -550,19 +539,8 @@ fn extra_components_need_their_binding() {
         violation(|k| k.windows.extra_modifiers.clear()),
         Invariant::ExtraModifierUnbound
     );
-    let emoji_extra2 = |k: &mut Keyboard| {
-        k.emoji.key = Some(EmojiKey {
-            scan_code: 0x39,
-            modifiers: Modifiers::of(&[Extra2]),
-        })
-    };
-    assert_eq!(violation(emoji_extra2), Invariant::ExtraModifierUnbound);
     let mut k = fixture();
     k.windows.extra_modifiers.push(ExtraModifierKey::B00);
-    k.emoji.key = Some(EmojiKey {
-        scan_code: 0x39,
-        modifiers: Modifiers::of(&[Extra2, Shift]),
-    });
     assert_eq!(k.validate(NFD), Ok(()));
 }
 
@@ -1024,27 +1002,6 @@ fn extension_maps_reference_markers() {
     );
 }
 
-// [spec:kbdgen:def:ldml.model.emoji/test]
-#[test]
-fn emoji_key_is_the_preserved_key() {
-    let k = fixture();
-    assert_eq!(
-        k.preserved_key(),
-        Some(EmojiKey {
-            scan_code: 0x39,
-            modifiers: Modifiers::of(&[Extra1]),
-        })
-    );
-    assert_eq!(k.emoji.annotations[0].keywords, ["nalq", "rõõm"]);
-    let rejected = |k: &mut Keyboard| {
-        k.emoji.key = Some(EmojiKey {
-            scan_code: 0x39,
-            modifiers: Modifiers::of(&[CtrlL, CtrlR]),
-        })
-    };
-    assert_eq!(violation(rejected), Invariant::ModifierCombination);
-}
-
 // [spec:kbdgen:def:ldml.model.flush+1/test]
 #[test]
 fn flush_and_dead_key_names_survive_encoding() {
@@ -1149,7 +1106,6 @@ fn encoding_matches_a_pinned_byte_sequence() {
         1, // context_len
         0, 0, 0, // decimal, flush, dead_key_names
         0, 0, 0, 0, // windows
-        0, 0, // emoji
     ];
     assert_eq!(bytes, expected);
     assert_eq!(Keyboard::from_bytes(&bytes, None), Ok(k));
@@ -1348,7 +1304,6 @@ fn malformed_layouts_are_rejected() {
                 let mut k = host_document(Host::Ios);
                 k.hardware = None;
                 k.windows = Windows::default();
-                k.emoji.key = None;
                 k
             }],
         )

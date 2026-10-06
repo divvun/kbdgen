@@ -134,7 +134,7 @@ fn sources(bundle: &KbdgenBundle) -> Vec<Source<'_>> {
 
 // [spec:kbdgen:req:ldml.kbdl.model-resource+1]
 // [spec:kbdgen:req:tsf.data.resource]
-// [spec:kbdgen:def:tsf.engine.model]
+// [spec:kbdgen:def:tsf.engine.model+1]
 /// The engine model of a v3 layout, by migrating its file in memory
 /// (`ldml.migrate.*`) with nothing written. When that is not possible the
 /// DLL has no model, which leaves the text service inert for the layout,
@@ -198,7 +198,7 @@ pub struct SourceLayout {
 /// from its `windows` keyboard.
 // [spec:kbdgen:def:ldml.kbdl.adapter]
 // [spec:kbdgen:req:ldml.kbdl.model-resource+1]
-// [spec:kbdgen:def:tsf.engine.model]
+// [spec:kbdgen:def:tsf.engine.model+1]
 fn source_layout(bundle: &KbdgenBundle, source: &Source) -> Result<Option<SourceLayout>> {
     match source {
         Source::V3(tag, layout, target) => {

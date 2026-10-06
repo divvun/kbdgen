@@ -50,7 +50,7 @@ fn rule_lower_vowels() -> Rule {
 }
 
 // [spec:kbdgen:sem:ldml.engine.reorder+1/test]
-// [spec:kbdgen:def:ldml.scope.v1/test]
+// [spec:kbdgen:def:ldml.scope.v1+1/test]
 #[test]
 fn prebase_typed_first_is_stored_after_base() {
     let m = model(myanmar_keyboard());

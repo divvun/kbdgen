@@ -48,7 +48,7 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 
 ## Keyboard
 
-> [spec:kbdgen:def:ldml.model.keyboard+1]
+> [spec:kbdgen:def:ldml.model.keyboard+2]
 > A keyboard has these fields. Every index refers to a table of the same
 > keyboard.
 >
@@ -72,7 +72,6 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 > | `flush` | marker → plain string (`ldml.model.flush`) | Extension |
 > | `dead_key_names` | marker → name | Extension |
 > | `windows` | `ldml.model.windows` | Extension |
-> | `emoji` | `ldml.model.emoji` | Extension |
 
 > [spec:kbdgen:def:ldml.model.keys]
 > The key table holds every key the document defines, implied keys first,
@@ -178,18 +177,6 @@ Sources: UTS #35 Part 7 §Element Hierarchy, §Markers, §Normalization,
 >
 > Dead-key names live in `dead_key_names`. The 49th key is simply the
 > `abnt2` form's `73` position.
-
-> [spec:kbdgen:def:ldml.model.emoji]
-> Extension. `emoji` carries what `tsf.emoji.trigger` and `tsf.emoji.data`
-> need from the bundle:
->
-> - `key`: an optional preserved key, given as a scan code and a modifier
->   set (`ldml.model.modifiers`)
-> - `annotations`: a list of `{emoji, name, keywords}` entries in the
->   layout's language, in source order
->
-> The engine never interprets `annotations`. `Model::preserved_keys()`
-> returns `key`. The emoji picker's own behaviour belongs to `tsf.emoji.*`.
 
 ## Transforms
 

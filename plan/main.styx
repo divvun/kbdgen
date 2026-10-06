@@ -388,18 +388,27 @@ children (
 
                             {
                                 id targets.windows.tsf.emoji
-                                title "Emoji keyboard"
+                                title "Emoji keyboard: a TIP layout whose keys type emoji beyond UCS-2 and the 16-unit DLL ligature limit"
                                 kind @feat
                                 implements {
-                                    main (
-                                        [spec:kbdgen:def:tsf.emoji.picker]
-                                        [spec:kbdgen:req:tsf.emoji.commit]
-                                        [spec:kbdgen:req:tsf.emoji.data]
-                                        [spec:kbdgen:req:tsf.emoji.trigger]
-                                        [spec:kbdgen:req:tsf.emoji.ui]
-                                    )
+                                    main ([spec:kbdgen:req:tsf.test.emoji])
                                 }
                                 deps (targets.windows.tsf.host)
+                                log (
+                                    {
+                                        at 2026-10-06T11:04:29.045196Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Doing (nplan start)"
+                                    }
+
+                                    {
+                                        at 2026-10-06T11:55:27.155951Z
+                                        author "brendan@necessary.nu"
+                                        kind @decision
+                                        text "Operator correction 2026-10-06: 'emoji keyboard' means a keyboard layout whose keys type emoji (e.g. q → 😀), proving the TIP is not limited to UCS-2 — not an emoji picker. The picker spec (tsf.emoji.*), ldml.model.emoji, the emojiKey/emoji LDML extensions and Model::preserved_keys() are removed; the node now implements tsf.test.emoji (VM acceptance with astral, skin-tone ZWJ and >16-unit outputs in Win32 EDIT and WPF). The uncommitted picker implementation was discarded."
+                                    }
+                                )
                             }
 
                             {
@@ -972,7 +981,6 @@ children (
                 implements {
                     main (
                         [spec:kbdgen:def:ldml.model.displays]
-                        [spec:kbdgen:def:ldml.model.emoji]
                         [spec:kbdgen:def:ldml.model.flush]
                         [spec:kbdgen:def:ldml.model.hardware]
                         [spec:kbdgen:def:ldml.model.keyboard]
@@ -1165,7 +1173,6 @@ children (
                     main (
                         [spec:kbdgen:def:ldml.yaml.dead-keys]
                         [spec:kbdgen:def:ldml.yaml.detect]
-                        [spec:kbdgen:def:ldml.yaml.emoji]
                         [spec:kbdgen:def:ldml.yaml.hardware]
                         [spec:kbdgen:def:ldml.yaml.key-ids]
                         [spec:kbdgen:def:ldml.yaml.long-press]

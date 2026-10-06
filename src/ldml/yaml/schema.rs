@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use kbd_ldml::Target;
 use kbd_ldml::escape::Piece;
 use kbd_model::{
-    BottomRow, Direction, Emoji, ExtraModifierKey, Form, ModifierSet, Normalization, Role,
+    BottomRow, Direction, ExtraModifierKey, Form, ModifierSet, Normalization, Role,
     WINDOWS_KEY_NAMES,
 };
 use serde_yaml::Value;
@@ -243,7 +243,6 @@ pub struct Layout4 {
     pub long_press: Vec<LongPressEntry>,
     pub hardware: Vec<HardwareVariant>,
     pub touch: Vec<TouchVariant>,
-    pub emoji: Emoji,
     pub targets: Targets4,
     pub warnings: Vec<YamlProblem>,
 }
@@ -756,9 +755,9 @@ fn unused_dead_keys(layout: &Layout4) -> Vec<YamlProblem> {
         .collect()
 }
 
-// [spec:kbdgen:def:ldml.yaml.schema+1]
+// [spec:kbdgen:def:ldml.yaml.schema+2]
 // [spec:kbdgen:req:ldml.yaml.strict]
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+1]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+2]
 /// Parses the top-level mapping of a v4 file, `format: 4` already
 /// detected. Unknown fields fail at any depth; a layout with `ldml:` may
 /// carry only the fields that override the LDML file's kbdgen data.
@@ -858,10 +857,6 @@ pub fn parse(file: &str, path: &Path, tag: &str, value: &Value) -> Result<Layout
         touch: match f.take("touch") {
             Some((v, a)) => super::variants::touch(v, &a, &strings)?,
             None => Vec::new(),
-        },
-        emoji: match f.take("emoji") {
-            Some((v, a)) => super::emoji::emoji(v, &a, &dir)?,
-            None => Emoji::default(),
         },
         targets: match f.take("targets") {
             Some((v, a)) => targets(v, &a)?,

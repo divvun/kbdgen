@@ -198,7 +198,7 @@ fn windows_keyboard(fixture: &FixtureBundle, tag: &str) -> Keyboard {
 
 // [spec:kbdgen:req:tsf.test.engine/test]
 // [spec:kbdgen:req:tsf.data.resource/test]
-// [spec:kbdgen:def:tsf.engine.model/test]
+// [spec:kbdgen:def:tsf.engine.model+1/test]
 // [spec:kbdgen:req:tsf.data.version/test]
 #[tokio::test]
 async fn built_res_files_decode_to_the_windows_model() {

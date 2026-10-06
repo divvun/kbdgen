@@ -29,7 +29,7 @@ const SE_V3: &str = "displayNames: {se: Davvisámegiella}\nwindows:\n  primary:\
 
 // [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
 // [spec:kbdgen:req:tsf.data.resource/test]
-// [spec:kbdgen:def:tsf.engine.model/test]
+// [spec:kbdgen:def:tsf.engine.model+1/test]
 #[test]
 fn the_dll_embeds_the_windows_keyboard() {
     let fixture = fixture(&[("vro", VRO4)]);
@@ -54,7 +54,7 @@ fn the_dll_embeds_the_windows_keyboard() {
 
 // [spec:kbdgen:req:ldml.kbdl.model-resource+1/test]
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
-// [spec:kbdgen:def:tsf.engine.model/test]
+// [spec:kbdgen:def:tsf.engine.model+1/test]
 #[test]
 fn v3_and_v4_layouts_build_side_by_side() {
     let fixture = fixture(&[("vro", VRO4), ("se", SE_V3)]);

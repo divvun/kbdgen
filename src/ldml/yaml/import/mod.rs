@@ -481,11 +481,6 @@ fn build(
     if !touch.is_empty() {
         insert(&mut out, "touch", Value::Mapping(touch));
     }
-    let emoji = shared(docs, "emoji", &|d| fields::emoji(d.kb, &mut Vec::new()))?;
-    fields::emoji(first.kb, warnings);
-    if !emoji.is_null() {
-        insert(&mut out, "emoji", emoji);
-    }
     let targets = shared(docs, "targets", &|d| {
         fields::targets(d.kb, &d.ext.targets, &mut Vec::new())
     })?;
@@ -578,8 +573,7 @@ fn differences(a: &Keyboard, b: &Keyboard) -> Vec<&'static str> {
         decimal,
         flush,
         dead_key_names,
-        windows,
-        emoji
+        windows
     );
     out
 }
@@ -609,7 +603,7 @@ fn check(tag: &str, dest: &Path, layout: &Mapping, docs: &[Doc]) -> Result<Vec<S
 }
 
 // [spec:kbdgen:sem:ldml.yaml.import+1]
-// [spec:kbdgen:thm:ldml.yaml.roundtrip+1]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+2]
 /// Writes the documents of one layout tag as a v4 layout destined for
 /// `dest`. The sugared layout is chosen when every difference lowering it
 /// leaves is one the verbatim layout leaves too; otherwise the verbatim

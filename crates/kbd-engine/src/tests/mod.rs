@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 
 use kbd_model::Component::*;
 use kbd_model::{
-    BottomRow, Class, ClassRange, Component, Direction, EmojiKey, ExtraModifierKey, Fixed, Flick,
+    BottomRow, Class, ClassRange, Component, Direction, ExtraModifierKey, Fixed, Flick,
     FlickSegment, Form, Hardware, HardwareLayer, Host, Info, Key as ModelKey, Keyboard,
     MarkerIndex, ModifierSet, Modifiers, Normalization, Pattern, ReorderClass, ReorderRule,
     ReplacementItem, Role, Rule, Text, TextElem, TouchLayer, TouchSet, TransformGroup, TreeAtom,

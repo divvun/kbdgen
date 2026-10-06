@@ -179,7 +179,7 @@ pub fn migrate_bundle_layout(bundle: &Path, tag: &str) -> Result<Option<Migratio
 
 /// The encoded `windows` keyboard (`ldml.model.encoding`) of a migration
 /// that does not block; none when it has no `windows` keyboard.
-// [spec:kbdgen:def:tsf.engine.model]
+// [spec:kbdgen:def:tsf.engine.model+1]
 pub fn windows_model(migration: &Migration) -> Result<Option<Vec<u8>>, LdmlError> {
     let Some(layout) = migration.compiled()? else {
         return Ok(None);

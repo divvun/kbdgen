@@ -250,7 +250,7 @@ fn class_object_only_for_own_clsid() {
     created.cast::<ITfTextInputProcessorEx>().unwrap();
 }
 
-// [spec:kbdgen:req:tsf.component.interfaces/test]
+// [spec:kbdgen:req:tsf.component.interfaces+1/test]
 #[test]
 fn text_service_answers_every_required_interface() {
     let unknown: IUnknown = Tip::new().into();
@@ -284,7 +284,7 @@ fn one_dotted_preedit_attribute_is_enumerated() {
     assert_eq!(attribute.lsStyle, TF_LS_DOT);
 }
 
-// [spec:kbdgen:req:tsf.security.secure-mode/test]
+// [spec:kbdgen:req:tsf.security.secure-mode+1/test]
 #[test]
 fn registration_declares_secure_mode_support() {
     use windows::Win32::UI::TextServices::{

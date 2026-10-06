@@ -53,7 +53,7 @@ pub fn units(context: &str, delete: usize) -> usize {
 // [spec:kbdgen:req:tsf.edit.apply]
 // [spec:kbdgen:req:tsf.edit.inject]
 // [spec:kbdgen:req:tsf.edit.preedit]
-// [spec:kbdgen:req:tsf.security.disabled]
+// [spec:kbdgen:req:tsf.security.disabled+1]
 // [spec:kbdgen:def:tsf.engine.api]
 pub fn plan(action: &Action, context: &Context, mode: Mode) -> Vec<Step> {
     let Action::Edit {
@@ -151,7 +151,7 @@ mod tests {
         assert!(plan(&Action::Pass, &context, STORE).is_empty());
     }
 
-    // [spec:kbdgen:req:tsf.security.disabled/test]
+    // [spec:kbdgen:req:tsf.security.disabled+1/test]
     // [spec:kbdgen:req:tsf.edit.preedit/test]
     #[test]
     fn disabled_context_drops_preedit() {

@@ -83,7 +83,7 @@ fn document(
     Ok(build(&parts, host))
 }
 
-// [spec:kbdgen:req:ldml.yaml.ldml-ref+1]
+// [spec:kbdgen:req:ldml.yaml.ldml-ref+2]
 fn referenced(
     layout: &Layout4,
     reference: &LdmlRef,
@@ -111,7 +111,6 @@ fn referenced(
             implied_layers: None,
             display_names: layout.display_names.clone(),
             targets: layout.targets.entries.clone(),
-            emoji: layout.emoji.clone(),
         };
         kbd_ldml::replace_extensions(&mut source.document, &data);
         out.push((host, source));

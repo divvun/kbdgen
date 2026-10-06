@@ -268,7 +268,7 @@ in LDML's own extension point, `special`, under a kbdgen namespace. An
 exported file is therefore a valid LDML keyboard, and reading it back loses
 nothing.
 
-> [spec:kbdgen:def:ldml.xml.special+1]
+> [spec:kbdgen:def:ldml.xml.special+2]
 > Superset data lives in `special` elements in the namespace
 > `https://divvun.no/ns/kbdgen-ldml/1`, bound on `keyboard3` to the prefix
 > `kbdgen`. These elements carry attributes only, never text. Each row below
@@ -283,8 +283,6 @@ nothing.
 > | `keyboard3` | `kbdgen:windows` | `shiftLock`?, `lrmRlm`? | `windows` |
 > | `keyboard3` | `kbdgen:windowsKeyName` | `key`, `name` | `windows.key_names` |
 > | `keyboard3` | `kbdgen:target` | `host`, `name`, `value` | per-layout target config (`ldml.yaml.targets`) |
-> | `keyboard3` | `kbdgen:emojiKey` | `scanCode`, `modifiers` | `emoji.key` |
-> | `keyboard3` | `kbdgen:emoji` | `emoji`, `name`, `keywords` (`|`-separated) | `emoji.annotations` |
 > | `keyboard3` | `kbdgen:extraModifier` | `key` | `windows.extra_modifiers`, for a keyboard without hardware `layers` |
 > | `keyboard3` | `kbdgen:deadKey`, with nested `kbdgen:compose` children | `identity`, `marker`, `display`, `standalone`, `name`?; a compose has `input` plus either `output` or (`marker`, `standalone`, children) | authoring metadata: the v4 `deadKeys` table (`ldml.yaml.import`) |
 > | `transformGroup` | `kbdgen:generated` | `by` (`deadKeys-compose`, `deadKeys-fallback` or `deadKeys-backspace`) | marks a generated group; no model field |
@@ -359,13 +357,12 @@ nothing.
 > Everything else is literal. So `xmlem`'s own entity escaping only ever
 > touches `& < > " '`.
 
-> [spec:kbdgen:req:ldml.xml.ldml-ref+1]
+> [spec:kbdgen:req:ldml.xml.ldml-ref+2]
 > For a layout that references XML (`ldml.yaml.ldml-ref`), export MUST
 > re-serialize the read document, which preserves its structure per
 > `ldml.xml.roundtrip`. In `keyboard3`'s `special` it replaces only the
-> layout-level elements `kbdgen:keyboard`, `kbdgen:displayName`,
-> `kbdgen:target`, `kbdgen:emojiKey` and `kbdgen:emoji` with the layout
-> file's data. They go into the `special` that held kbdgen elements, else
+> layout-level elements `kbdgen:keyboard`, `kbdgen:displayName` and
+> `kbdgen:target` with the layout file's data. They go into the `special` that held kbdgen elements, else
 > the first `special`, else an appended one. The file's
 > `kbdgen:keyboard@impliedLayers` is kept. Other kbdgen elements
 > (`flush`, `deadKeyName`, `windows`, …), other `special` content and

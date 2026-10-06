@@ -581,7 +581,6 @@ pub fn layout_data(parts: &Parts) -> LayoutData {
             .map(|h| if h.implied { "macOS" } else { "none" }.to_string()),
         display_names: layout.display_names.clone(),
         targets: layout.targets.entries.clone(),
-        emoji: layout.emoji.clone(),
     }
 }
 

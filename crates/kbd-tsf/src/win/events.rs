@@ -37,7 +37,7 @@ fn advise(source: ITfSource, iid: &GUID, sink: &IUnknown) -> Option<Advice> {
 impl Tip_Impl {
     /// Advises the text-edit sink on `context` and the compartment sink on
     /// its keyboard-disabled and empty-context compartments.
-    // [spec:kbdgen:req:tsf.component.interfaces]
+    // [spec:kbdgen:req:tsf.component.interfaces+1]
     pub(super) fn advise_context(&self, context: &ITfContext) -> Vec<Advice> {
         let edit: ITfTextEditSink = self.to_interface();
         let compartment: ITfCompartmentEventSink = self.to_interface();
@@ -172,7 +172,7 @@ impl ITfCompositionSink_Impl for Tip_Impl {
 }
 
 impl ITfCompartmentEventSink_Impl for Tip_Impl {
-    // [spec:kbdgen:req:tsf.security.disabled]
+    // [spec:kbdgen:req:tsf.security.disabled+1]
     fn OnChange(&self, _rguid: *const GUID) -> Result<()> {
         contain(&POISON, Entry::OnCompartmentChange, || {
             self.reset_document();

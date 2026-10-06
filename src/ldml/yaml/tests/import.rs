@@ -34,7 +34,7 @@ fn import_file(path: &Path) -> (String, Imported, ImportedFile) {
     (g.tag, imported, g.files.into_iter().next().unwrap())
 }
 
-// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+2/test]
 // [spec:kbdgen:sem:ldml.yaml.import+1/test]
 #[test]
 fn vro_export_import_export_is_identical() {
@@ -90,7 +90,7 @@ fn import_rederives_sugar_from_metadata() {
     }
 }
 
-// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+2/test]
 // [spec:kbdgen:req:ldml.test.roundtrip/test]
 #[test]
 fn cldr_keyboards_survive_import_where_expressible() {

@@ -53,7 +53,7 @@ fn sources(dir: &Path, found: &mut Vec<PathBuf>) {
 
 // [spec:kbdgen:req:tsf.component.self-contained/test]
 // [spec:kbdgen:req:tsf.component.logging/test]
-// [spec:kbdgen:req:tsf.security.secure-mode/test]
+// [spec:kbdgen:req:tsf.security.secure-mode+1/test]
 // [spec:kbdgen:sem:tsf.security.integrity/test]
 #[test]
 fn sources_avoid_io_ipc_windows_and_logging() {

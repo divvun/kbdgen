@@ -52,7 +52,7 @@ fn names(dir: &std::path::Path) -> Vec<String> {
 // [spec:kbdgen:req:ldml.cli.export/test]
 // [spec:kbdgen:req:ldml.cli.compile+1/test]
 // [spec:kbdgen:req:ldml.cli.import/test]
-// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+2/test]
 #[test]
 fn v4_bundle_exports_compiles_and_imports_back() {
     let dir = tempfile::tempdir().unwrap();

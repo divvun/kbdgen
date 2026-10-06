@@ -4,8 +4,7 @@
 use kbd_engine::harness::Harness;
 use kbd_engine::{Gesture, Key as EKey, KeyEvent, ModifierState};
 use kbd_model::{
-    BottomRow, Component, EmojiKey, ExtraModifierKey, Host, ModifierSet, Modifiers, Role, Text,
-    TransformList,
+    BottomRow, Component, ExtraModifierKey, Host, ModifierSet, Modifiers, Role, Text, TransformList,
 };
 
 use super::*;
@@ -96,8 +95,6 @@ const DEAD_KEYS: &str = r#"<?xml version="1.0" encoding="utf-8"?>
     <kbdgen:windows shiftLock="true" />
     <kbdgen:windowsKeyName key="Caps Lock" name="Bokstavlås" />
     <kbdgen:target host="windows" name="locale" value="se-NO" />
-    <kbdgen:emojiKey scanCode="29" modifiers="shift" />
-    <kbdgen:emoji emoji="😀" name="grinning face" keywords="face|grin" />
     <kbdgen:deadKey identity="´" marker="dk_00B4" display="´" standalone="´" name="ACUTE">
       <kbdgen:compose input="a" output="á" />
       <kbdgen:compose input="b" marker="dk_00B4-0062" standalone="b">
@@ -109,7 +106,7 @@ const DEAD_KEYS: &str = r#"<?xml version="1.0" encoding="utf-8"?>
 </keyboard3>
 "#;
 
-// [spec:kbdgen:def:ldml.xml.special+1/test]
+// [spec:kbdgen:def:ldml.xml.special+2/test]
 #[test]
 fn kbdgen_elements_resolve_to_the_superset() {
     let r = resolved(DEAD_KEYS);
@@ -126,14 +123,6 @@ fn kbdgen_elements_resolve_to_the_superset() {
         Some("Bokstavlås")
     );
     assert_eq!(kb.windows.extra_modifiers, [ExtraModifierKey::CapsLock]);
-    assert_eq!(
-        kb.emoji.key,
-        Some(EmojiKey {
-            scan_code: 0x29,
-            modifiers: Modifiers::of(&[Component::Shift])
-        })
-    );
-    assert_eq!(kb.emoji.annotations[0].keywords, ["face", "grin"]);
     let roles: Vec<(&str, Role)> = kb
         .keys
         .iter()
@@ -170,7 +159,7 @@ fn kbdgen_elements_resolve_to_the_superset() {
     );
 }
 
-// [spec:kbdgen:def:ldml.xml.special+1/test]
+// [spec:kbdgen:def:ldml.xml.special+2/test]
 #[test]
 fn unknown_kbdgen_content_is_an_error() {
     let cases = [
@@ -197,11 +186,6 @@ fn unknown_kbdgen_content_is_an_error() {
         ),
         ("key=\"capsLock\"", "key=\"leftAlt\"", "not rightCtrl"),
         ("host=\"windows\"", "host=\"amiga\"", "unknown host"),
-        (
-            "<kbdgen:emojiKey scanCode=\"29\"",
-            "<kbdgen:emojiKey scanCode=\"129\"",
-            "two-digit hex",
-        ),
     ];
     for (from, to, needle) in cases {
         let err = resolve_error(&DEAD_KEYS.replace(from, to));
@@ -335,7 +319,7 @@ const REFERENCED: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </keyboard3>
 "#;
 
-// [spec:kbdgen:req:ldml.xml.ldml-ref+1/test]
+// [spec:kbdgen:req:ldml.xml.ldml-ref+2/test]
 #[test]
 fn layout_data_replaces_only_layout_elements() {
     let mut doc = read_keyboard("ref.xml", None, REFERENCED.as_bytes())

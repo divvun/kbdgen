@@ -113,7 +113,7 @@ fn imported_models(dir: &Path, paths: &[PathBuf]) -> (String, Vec<(Host, Keyboar
 }
 
 // [spec:kbdgen:req:ldml.test.roundtrip/test]
-// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+2/test]
 #[test]
 fn layouts_survive_export_and_import() {
     for path in golden_files("layouts", "yaml") {
@@ -138,7 +138,7 @@ fn layouts_survive_export_and_import() {
 }
 
 // [spec:kbdgen:req:ldml.test.roundtrip/test]
-// [spec:kbdgen:thm:ldml.yaml.roundtrip+1/test]
+// [spec:kbdgen:thm:ldml.yaml.roundtrip+2/test]
 #[test]
 fn xml_keyboards_survive_import_and_export() {
     for path in golden_files("keyboards", "xml") {

@@ -71,7 +71,7 @@ Sources:
 
 ## Scope
 
-> [spec:kbdgen:def:ldml.scope.v1]
+> [spec:kbdgen:def:ldml.scope.v1+1]
 > Version 1 implements these features end to end: through XML, the model
 > and the engine. The last column says what v4 YAML offers for each.
 >
@@ -85,7 +85,7 @@ Sources:
 > | LDML `layers` (one hardware set, several touch sets), every modifier component including `other` | yes |
 > | LDML `variables`, `transforms` (`simple` and `backspace`), the full regex-like syntax, `reorder`, markers | verbatim, plus dead-key sugar |
 > | LDML normalization, on and `disabled`, with marker gluing | yes |
-> | Extension: per-host documents; the modifier components `cmd` and `extra1`–`extra3`; native-only layers; numpad decimal; dead-key flush output; touch roles, labels and bottom-row policy; dead-key names; Windows key-name overrides, Shift Lock, LRM/RLM, and extra-modifier bindings; emoji key and annotations | yes |
+> | Extension: per-host documents; the modifier components `cmd` and `extra1`–`extra3`; native-only layers; numpad decimal; dead-key flush output; touch roles, labels and bottom-row policy; dead-key names; Windows key-name overrides, Shift Lock, LRM/RLM, and extra-modifier bindings | yes |
 > | LDML keyboardTest3 `startContext`, `keystroke` (`flick`, `longPress`, `tapCount`), `emit`, `backspace`, `check` | n/a |
 
 > [spec:kbdgen:req:ldml.scope.deferred]
