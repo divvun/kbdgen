@@ -790,17 +790,22 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > welcome screen, and how it names a LANGID that `.DEFAULT`'s list gives
 > no language.)
 
-> [spec:kbdgen:req:tsf.register.uninstall+2]
+> [spec:kbdgen:req:tsf.register.uninstall+3]
 > `kbdi keyboard_uninstall` MUST, in this order:
 >
-> 1. remove the TIP string for the current user with `ILOT_UNINSTALL`
-> 2. remove what Windows keeps of the profile for the current user: its key
->    under `HKCU\Software\Microsoft\CTF\TIP\{CLSID}\LanguageProfile`, which
->    `ILOT_UNINSTALL` leaves with `Enable` 0, and a language's keyboard
->    entries under `HKCU\Software\Microsoft\CTF\SortOrder\AssemblyItem`,
->    which activating the profile writes, when they name only the profile;
->    the keys it removed them from go once empty, and so do the keys above
->    them, up to `{CLSID}` and the language's key under `AssemblyItem`
+> 1. remove the TIP string, and the layout's `LLLL:<KLID>` where the layout
+>    fallback enabled it (`tsf.register.enable`), for the current user with
+>    `ILOT_UNINSTALL`
+> 2. remove what Windows keeps of them for the current user: the profile's
+>    key under `HKCU\Software\Microsoft\CTF\TIP\{CLSID}\LanguageProfile`,
+>    which `ILOT_UNINSTALL` leaves with `Enable` 0, and a language's
+>    keyboard entries under
+>    `HKCU\Software\Microsoft\CTF\SortOrder\AssemblyItem`, which activating
+>    the profile or the layout writes, when they name only the profile or
+>    the layout (a null `CLSID` and the layout's HKL, `F000` with its
+>    `Layout Id` in the high word); the keys it removed them from go once
+>    empty, and so do the keys above them, up to `{CLSID}` and the
+>    language's key under `AssemblyItem`
 > 3. call `UnregisterProfile` for every LANGID under which it registered the
 >    profile GUID, then delete each such LANGID's key under
 >    `HKLM\SOFTWARE\Microsoft\CTF\TIP\{CLSID}\LanguageProfile` that
