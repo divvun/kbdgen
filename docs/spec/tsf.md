@@ -761,7 +761,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > activates the new profile, and without the text service the new layout,
 > while `ctfmon` keeps running.)
 
-> [spec:kbdgen:req:tsf.register.welcome+2]
+> [spec:kbdgen:req:tsf.register.welcome+3]
 > `kbdi` SHOULD offer to install the layout, not the TIP string, for the
 > welcome screen (`ILOT_DEFUSER4`, which changes `.DEFAULT`, not the
 > profile that new users copy), under the LANGID of the layout's TIP string
@@ -770,25 +770,33 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > language's. Sign-in passwords are then typed through the layout DLL,
 > which `tsf.test.differential` keeps equal to the text service on every
 > table-expressible key. The welcome screen names transient LANGIDs by
-> `.DEFAULT`'s own language list. `kbdi` MUST NOT change that list, and
-> logs which language it gives the LANGID. Every `ILOT_DEFUSER4` call, the
-> removal included, also copies the calling user's hidden dummy layouts
-> (`Preload`, `Substitutes` and `CTF\HiddenDummyLayouts` entries for
-> languages whose inputs are all text service profiles) into `.DEFAULT`, so
-> `kbdi` MUST record the dummy layouts that enabling added, with the keys
-> created for them, and `kbdi keyboard_uninstall` MUST remove the layout
-> with `ILOT_DEFUSER4 | ILOT_UNINSTALL`, under every LANGID `.DEFAULT` has
-> it under, before it removes the KLID, then remove the dummy layouts that
-> call and the enabling added, leaving entries `.DEFAULT` had before or
-> that another recorded keyboard under the same LANGID still needs.
+> `.DEFAULT`'s own language list (`Control Panel\International\User
+> Profile`), and `kbdi` logs which language it gives the LANGID. When the
+> list gives the LANGID no language and lacks the tag the user's list
+> gives it to, `kbdi` MUST add the user's entry of that tag, as Windows
+> does when it copies the user's settings to the welcome screen: the tag's
+> key, with its `CachedLanguageName` and the LANGID as `TransientLangId`,
+> and the tag at the end of `Languages`. It MUST NOT change entries the
+> list has. Every `ILOT_DEFUSER4` call, the removal included, also copies
+> the calling user's hidden dummy layouts (`Preload`, `Substitutes` and
+> `CTF\HiddenDummyLayouts` entries for languages whose inputs are all text
+> service profiles) into `.DEFAULT`, so `kbdi` MUST record the dummy
+> layouts that enabling added, with the keys created for them, and the
+> language it added. `kbdi keyboard_uninstall` MUST remove the layout with
+> `ILOT_DEFUSER4 | ILOT_UNINSTALL`, under every LANGID `.DEFAULT` has it
+> under, before it removes the KLID, then remove the dummy layouts that
+> call and the enabling added, and the language, leaving entries
+> `.DEFAULT` had before, a language whose `TransientLangId` changed since,
+> and what another recorded keyboard under the same LANGID still needs.
 > Windows names a LANGID's layouts anew (`d0012800`, `d0022800`, …) as
 > they come and go; that is no addition. (Verified on Windows 10:
 > `.DEFAULT` is restored byte for byte, also when two keyboards share a
 > LANGID, or share one with the user's dummy layout and are removed in
-> either order, or the welcome screen already had the language;
+> either order, or the welcome screen already had the language, or `kbdi`
+> added it and the other keyboard of its LANGID kept it until removed;
 > `C:\Users\Default\NTUSER.DAT` is unchanged. Unverified: typing at the
-> welcome screen, and how it names a LANGID that `.DEFAULT`'s list gives
-> no language.)
+> welcome screen, and that it names the layout by the language `kbdi`
+> added.)
 
 > [spec:kbdgen:req:tsf.register.uninstall+3]
 > `kbdi keyboard_uninstall` MUST, in this order:
@@ -818,10 +826,11 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > The text service's own uninstaller MUST run only when no language profile
 > remains under its CLSID in `CTF\TIP`. Removing one keyboard therefore never
 > breaks another. (Verified: without step 2 both keys outlive the keyboard;
-> with it an install and uninstall restore the user's registry exactly. On
-> Windows 10 19044, `HKLM`'s `CTF\TIP` is then byte-identical too, in both
-> views, which share it, and a LANGID key that still holds another profile
-> stays.)
+> with it an install and uninstall restore the user's registry exactly,
+> also when the layout fallback enabled the layout and a process activated
+> it. On Windows 10 19044, `HKLM`'s `CTF\TIP` is then byte-identical too,
+> in both views, which share it, and a LANGID key that still holds another
+> profile stays.)
 
 > [spec:kbdgen:req:tsf.register.upgrade+2]
 > Every running process that has typed text keeps the text service loaded,
