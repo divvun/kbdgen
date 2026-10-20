@@ -285,7 +285,7 @@ fn layout_dll_alone_types_table_cases() {
 
 // [spec:kbdgen:req:tsf.test.acceptance/test]
 // [spec:kbdgen:req:tsf.register.upgrade+2/test]
-// [spec:kbdgen:req:tsf.register.uninstall+1/test]
+// [spec:kbdgen:req:tsf.register.uninstall+2/test]
 #[test]
 #[ignore = "needs the Windows 11 VM with a signed-in session, Inno Setup, the .iss scripts and kbdi"]
 fn installers_install_then_restore_the_machine() {
