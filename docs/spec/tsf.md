@@ -808,7 +808,7 @@ bundles divvun-wind (`tsf.installer.bundle`).
 
 ## Installer
 
-> [spec:kbdgen:req:tsf.installer.bundle+1]
+> [spec:kbdgen:req:tsf.installer.bundle+2]
 > Every keyboard installer MUST embed one pinned, BLAKE3-checked release of
 > the text service's installer, as divvun-actions embeds divvun-wind. It MUST
 > run that installer silently before any `kbdi keyboard_install`. The text
@@ -822,21 +822,29 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > remains under the CLSID (`tsf.register.uninstall`), so removing the last
 > keyboard removes the text service.
 >
-> divvun-actions builds the text service installer in the kbdgen pipeline,
-> with a version of its own for every development build
+> divvun-actions builds the text service installer with outto in the kbdgen
+> pipeline, with a version of its own for every development build
 > (`tsf.register.upgrade`). Builds of main replace the `kbd-tsf-dev-latest`
 > prerelease of divvun/kbdgen; a `kbd-tsf-v<version>` tag gets its own
 > release. Keyboard builds embed the installer of `kbd-tsf-dev-latest`, as
 > they do divvun-wind's `dev-latest`. (Verified on Windows 11 x64, with a
-> test CLSID and two keyboard installers: the first installs and registers
-> the text service, which types in 64- and 32-bit processes; the second,
-> embedding an older text service, leaves the newer one registered and
-> types too; removing the first leaves the text service for the second;
+> test CLSID and two Inno Setup keyboard installers: the first installs and
+> registers the text service, which types in 64- and 32-bit processes; the
+> second, embedding an older text service, leaves the newer one registered
+> and types too; removing the first leaves the text service for the second;
 > removing the second removes it and restores the language list. An upgrade
-> while the old DLL is loaded deletes it at restart. Unverified: Arm64, x86
-> Windows, outto packages, signed builds.)
+> while the old DLL is loaded deletes it at restart. Verified on Windows 11
+> x64 for the outto text service installer alone, under a test CLSID: it
+> takes over an install of the earlier Inno Setup one while a profile
+> remains, upgrades while the old version's DLL is loaded, refuses an older
+> version, installs its own version again, fails and registers nothing when
+> a DLL refuses registration, and its uninstaller refuses while a profile
+> remains, changing nothing, and otherwise removes the text service while
+> its DLL is loaded; no path in its directory is scheduled for deletion at
+> restart. Unverified: Arm64, outto keyboard installers embedding it, signed
+> builds.)
 
-> [spec:kbdgen:req:tsf.installer.layout-dlls]
+> [spec:kbdgen:req:tsf.installer.layout-dlls+1]
 > The keyboard installer MUST place kbdgen's layout DLL variants unchanged:
 >
 > | Windows | System32 | SysWOW64 |
@@ -847,10 +855,10 @@ bundles divvun-wind (`tsf.installer.bundle`).
 >
 > A plain `x86` DLL in SysWOW64 does not load
 > (`[spec:kbdgen:req:kbdl.wow64]`). The installer MUST run on Arm64 Windows
-> 11. divvun-actions branch `keyboard-rust-layout-dlls` does this for the
-> Inno installer, which refuses Arm64 Windows 10 because `kbdi` there needs
-> x64 emulation. outto has no Arm64 architecture selector, so its package
-> refuses Arm64 until outto gains one.
+> 11. divvun-actions builds it with outto, whose `x64` and `arm64`
+> architecture selectors pick the System32 variant. outto's installer is an
+> x64 program, so it runs on neither x86 Windows nor Arm64 Windows 10, where
+> `kbdi` would need x64 emulation too. (Unverified: Arm64.)
 
 ## Emoji keyboard
 
