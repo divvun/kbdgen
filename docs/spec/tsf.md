@@ -747,17 +747,24 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > `InstallLayoutOrTip` with a TIP string adds it to the language's
 > `InputMethodTips`, and the profile activates.)
 
-> [spec:kbdgen:req:tsf.register.welcome]
+> [spec:kbdgen:req:tsf.register.welcome+1]
 > `kbdi` SHOULD offer to install the layout, not the TIP string, for the
 > welcome screen (`ILOT_DEFUSER4`, which changes `.DEFAULT`, not the
 > profile that new users copy). Sign-in passwords are then typed through the
 > layout DLL, which `tsf.test.differential` keeps equal to the text service
-> on every table-expressible key. `kbdi keyboard_uninstall` MUST remove it
-> from the welcome screen again, with `ILOT_DEFUSER4 | ILOT_UNINSTALL`,
-> before it removes the KLID. (Verified: `.DEFAULT`'s `Preload` gains the
-> layout through a substitute and, for a LANGID it lacked, an entry for that
-> LANGID; the removal restores both exactly. `C:\Users\Default\NTUSER.DAT`
-> is unchanged. Unverified: typing at the welcome screen.)
+> on every table-expressible key. Every `ILOT_DEFUSER4` call, the removal
+> included, also copies the calling user's hidden dummy layouts (`Preload`,
+> `Substitutes` and `CTF\HiddenDummyLayouts` entries for languages whose
+> inputs are all text service profiles) into `.DEFAULT`, so `kbdi` MUST
+> record what enabling added besides the layout and `kbdi
+> keyboard_uninstall` MUST remove the layout with `ILOT_DEFUSER4 |
+> ILOT_UNINSTALL` before it removes the KLID, then remove what that call
+> and the enabling added, leaving entries `.DEFAULT` had before or that
+> another recorded keyboard still needs. (Verified on Windows 10:
+> `.DEFAULT` is restored byte for byte, also when two keyboards share a
+> LANGID or the welcome screen already had the language;
+> `C:\Users\Default\NTUSER.DAT` is unchanged. Unverified: typing at the
+> welcome screen.)
 
 > [spec:kbdgen:req:tsf.register.uninstall+1]
 > `kbdi keyboard_uninstall` MUST, in this order:
