@@ -50,6 +50,7 @@ pub struct Project {
     pub project_dir_path: String,
     pub project_root: String,
     pub targets: BTreeSet<ObjectId>,
+    pub package_references: Option<BTreeSet<ObjectId>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,6 +98,7 @@ pub struct NativeTarget {
     pub dependencies: BTreeSet<ObjectId>,
     pub name: String,
     pub build_rules: BTreeSet<String>,
+    pub package_product_dependencies: Option<BTreeSet<ObjectId>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -217,7 +219,26 @@ pub struct ContainerItemProxy {
 #[serde(deny_unknown_fields)]
 pub struct BuildFile {
     pub settings: Option<BTreeMap<String, serde_json::Value>>,
-    pub file_ref: ObjectId,
+    pub file_ref: Option<ObjectId>,
+    /// Set instead of `file_ref` for Swift Package Manager products.
+    pub product_ref: Option<ObjectId>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct RemoteSwiftPackageReference {
+    #[serde(rename = "repositoryURL")]
+    pub repository_url: String,
+    pub requirement: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct SwiftPackageProductDependency {
+    pub package: Option<ObjectId>,
+    pub product_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,8 +289,10 @@ impl Pbxproj {
     pub fn build_file_id_by_file_ref_name(&self, name: &str) -> Option<&ObjectId> {
         for object in &self.objects {
             if let (id, Object::BuildFile(build_file)) = object {
-                if let Some(Object::FileReference(file_ref)) =
-                    self.objects.get(&build_file.file_ref)
+                if let Some(Object::FileReference(file_ref)) = build_file
+                    .file_ref
+                    .as_ref()
+                    .and_then(|file_ref| self.objects.get(file_ref))
                 {
                     if let Some(file_ref_name) = file_ref.name.as_ref() {
                         if file_ref_name == name {
@@ -547,7 +570,8 @@ impl Pbxproj {
         tracing::debug!("Adding build file with ref: {}", &object_id);
 
         let variant_group = BuildFile {
-            file_ref: file_ref.clone(),
+            file_ref: Some(file_ref.clone()),
+            product_ref: None,
             settings: None,
         };
 
@@ -811,7 +835,8 @@ impl Pbxproj {
                         self.objects.insert(
                             build_file_id,
                             Object::BuildFile(BuildFile {
-                                file_ref: appex_id,
+                                file_ref: Some(appex_id),
+                                product_ref: None,
                                 settings: Some(temp),
                             }),
                         );
@@ -972,6 +997,12 @@ pub enum Object {
 
     #[serde(rename = "PBXContainerItemProxy")]
     ContainerItemProxy(ContainerItemProxy),
+
+    #[serde(rename = "XCRemoteSwiftPackageReference")]
+    RemoteSwiftPackageReference(RemoteSwiftPackageReference),
+
+    #[serde(rename = "XCSwiftPackageProductDependency")]
+    SwiftPackageProductDependency(SwiftPackageProductDependency),
 }
 
 pub fn convert_pbxproj_to_json(path: &Path) -> Pbxproj {

@@ -84,8 +84,13 @@ impl Pbxproj {
         s.push_str("/* Begin PBXBuildFile section */\n");
         for (oid, build_file) in iter_object!(self, BuildFile) {
             s.push_str(&format!("\t\t{} /* {} */ = {{", oid, "TODO"));
-            s.push_str("isa = PBXBuildFile; fileRef = ");
-            s.push_str(&format!("{} /* {} */; ", build_file.file_ref, "TODO"));
+            s.push_str("isa = PBXBuildFile; ");
+            if let Some(file_ref) = build_file.file_ref.as_ref() {
+                s.push_str(&format!("fileRef = {} /* {} */; ", file_ref, "TODO"));
+            }
+            if let Some(product_ref) = build_file.product_ref.as_ref() {
+                s.push_str(&format!("productRef = {} /* {} */; ", product_ref, "TODO"));
+            }
             if let Some(settings) = build_file.settings.as_ref() {
                 s.push_str("settings = {");
                 for (key, values) in settings {
@@ -315,6 +320,12 @@ impl Pbxproj {
                 list_to_pbxproj_string(native_target.dependencies.clone().into_iter())
             ));
             s.push_str(&format!("\t\t\tname = {:?};\n", native_target.name));
+            if let Some(deps) = native_target.package_product_dependencies.as_ref() {
+                s.push_str(&format!(
+                    "\t\t\tpackageProductDependencies = ({}\n\t\t\t);\n",
+                    list_to_pbxproj_string(deps.iter())
+                ));
+            }
             s.push_str(&format!(
                 "\t\t\tproductName = {};\n",
                 native_target.product_name
@@ -361,6 +372,12 @@ impl Pbxproj {
                 list_to_pbxproj_string(project.known_regions.clone().into_iter())
             ));
             s.push_str(&format!("\t\t\tmainGroup = {};\n", project.main_group));
+            if let Some(package_references) = project.package_references.as_ref() {
+                s.push_str(&format!(
+                    "\t\t\tpackageReferences = ({}\n\t\t\t);\n",
+                    list_to_pbxproj_string(package_references.iter())
+                ));
+            }
             s.push_str(&format!(
                 "\t\t\tproductRefGroup = {} /* Products */;\n",
                 project.product_ref_group
@@ -615,8 +632,44 @@ impl Pbxproj {
             s.push_str("\t\t};\n");
         }
         s.push_str("/* End XCConfigurationList section */\n\n");
-        // s.push_str("\t};\n}\n");
         // END XCConfigurationList
+
+        // START XCRemoteSwiftPackageReference
+        s.push_str("/* Begin XCRemoteSwiftPackageReference section */\n");
+        for (oid, package_reference) in iter_object!(self, RemoteSwiftPackageReference) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = XCRemoteSwiftPackageReference;\n");
+            s.push_str(&format!(
+                "\t\t\trepositoryURL = {:?};\n",
+                package_reference.repository_url
+            ));
+            s.push_str("\t\t\trequirement = {\n");
+            for (key, value) in &package_reference.requirement {
+                s.push_str(&format!("\t\t\t\t{} = {:?};\n", key, value));
+            }
+            s.push_str("\t\t\t};\n");
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End XCRemoteSwiftPackageReference section */\n\n");
+        // END XCRemoteSwiftPackageReference
+
+        // START XCSwiftPackageProductDependency
+        s.push_str("/* Begin XCSwiftPackageProductDependency section */\n");
+        for (oid, dependency) in iter_object!(self, SwiftPackageProductDependency) {
+            s.push_str(&format!("\t\t{} /* {} */ = {{\n", oid, "TODO"));
+            s.push_str("\t\t\tisa = XCSwiftPackageProductDependency;\n");
+            if let Some(package) = dependency.package.as_ref() {
+                s.push_str(&format!("\t\t\tpackage = {} /* {} */;\n", package, "TODO"));
+            }
+            s.push_str(&format!(
+                "\t\t\tproductName = {:?};\n",
+                dependency.product_name
+            ));
+            s.push_str("\t\t};\n");
+        }
+        s.push_str("/* End XCSwiftPackageProductDependency section */\n\n");
+        // END XCSwiftPackageProductDependency
+        // s.push_str("\t};\n}\n");
         s.push_str("\t};\n");
         s.push_str(&format!("\trootObject = {};\n", self.root_object));
         s.push_str("}\n");
