@@ -15,6 +15,7 @@ impl BuildStep for PodInstall {
 
         std::process::Command::new("pod")
             .arg("install")
+            .arg("--repo-update")
             .arg(format!("--project-directory={}", path.to_str().unwrap()))
             .status()
             .unwrap();
