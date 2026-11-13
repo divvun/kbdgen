@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
-    build::BuildStep,
+    build::{BuildStep, ios::ios_layouts},
     bundle::{
         KbdgenBundle,
         layout::{IOsPlatform, Transform, ios::IOsKbdLayer},
@@ -197,7 +197,7 @@ impl BuildStep for GenerateIos {
         // panic!("{:?} {:?} {:?}", repository_path, models_path, keyboard_definitions_file_path);
 
         let mut all_layouts: Vec<IosKeyboardDefinitions> = Vec::new();
-        for (language_tag, layout) in &bundle.layouts {
+        for (language_tag, layout) in ios_layouts(bundle)? {
             if let Some(ios_target) = &layout.i_os {
                 tracing::debug!("Generating json for {}", &language_tag);
 
@@ -226,32 +226,34 @@ impl BuildStep for GenerateIos {
                     i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
                 }
 
-                if let Some(key_names) = &layout.key_names {
-                    all_layouts.push(IosKeyboardDefinitions {
-                        info: IosInfo {
-                            name: layout.autonym().to_string(),
-                            locale: language_tag.to_string(),
-                            return_button: key_names.r#return.to_string(),
-                            space: key_names.space.to_string(),
-                        },
-                        longpress: longpress,
-                        dead_keys: IosDeadKeys {
-                            iphone: dead_keys.clone(),
-                            i_pad_9in: dead_keys.clone(),
-                            i_pad_12in: dead_keys.clone(),
-                        },
-                        transforms: process_transforms(&transforms),
-                        iphone: IosPlatform {
-                            layer: iphone_layers,
-                        },
-                        i_pad_9in: IosPlatform {
-                            layer: i_pad_9in_layers,
-                        },
-                        i_pad_12in: IosPlatform {
-                            layer: i_pad_12in_layers,
-                        },
-                    })
-                }
+                let key_names = layout
+                    .key_names
+                    .as_ref()
+                    .expect("ios_layouts() rejects layouts without keyNames");
+                all_layouts.push(IosKeyboardDefinitions {
+                    info: IosInfo {
+                        name: layout.autonym().to_string(),
+                        locale: language_tag.to_string(),
+                        return_button: key_names.r#return.to_string(),
+                        space: key_names.space.to_string(),
+                    },
+                    longpress: longpress,
+                    dead_keys: IosDeadKeys {
+                        iphone: dead_keys.clone(),
+                        i_pad_9in: dead_keys.clone(),
+                        i_pad_12in: dead_keys.clone(),
+                    },
+                    transforms: process_transforms(&transforms),
+                    iphone: IosPlatform {
+                        layer: iphone_layers,
+                    },
+                    i_pad_9in: IosPlatform {
+                        layer: i_pad_9in_layers,
+                    },
+                    i_pad_12in: IosPlatform {
+                        layer: i_pad_12in_layers,
+                    },
+                });
             }
         }
         std::fs::write(

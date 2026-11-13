@@ -14,7 +14,7 @@ use rayon::prelude::*;
 use crate::{
     build::{
         BuildStep,
-        ios::{IosProjectExt, pbxproj::Pbxproj, xcode_structures::*},
+        ios::{IosProjectExt, ios_layouts, pbxproj::Pbxproj, xcode_structures::*},
     },
     bundle::{KbdgenBundle, layout::IOsTarget, project::Project},
 };
@@ -229,11 +229,10 @@ impl BuildStep for GenerateXcode {
                 sentry_dsn: target.sentry_dsn.clone(),
             };
 
-            for (layout_index, (language_tag, layout)) in bundle
-                .layouts
-                .iter()
-                .filter(|x| x.1.i_os.is_some())
-                .enumerate()
+            // Must use the same list as GenerateIos: `layout_index` becomes DivvunKeyboardIndex, which the
+            // keyboard uses to find its entry in KeyboardDefinitions.json.
+            for (layout_index, (language_tag, layout)) in
+                ios_layouts(bundle)?.into_iter().enumerate()
             {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES
