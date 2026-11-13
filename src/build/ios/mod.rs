@@ -29,6 +29,55 @@ pub mod xcode_structures;
 mod xcodebuild;
 
 const REPOSITORY_FOLDER: &str = "repo";
+const DEFAULT_LOCALE: &str = "en";
+
+/// The bundle's iOS layouts, in the order they are generated.
+///
+/// `KeyboardDefinitions.json` and each keyboard's `DivvunKeyboardIndex` are both built from this list,
+/// and the keyboard extension uses its index to find its entry in the JSON. They must therefore contain
+/// the same layouts in the same order, so both generators must use this function.
+///
+/// Layouts are sorted by their English display name (the name shown in iOS Settings), then by language
+/// tag. Fails if any iOS layout lacks the fields iOS needs, rather than leaving it out of one of the files.
+pub(crate) fn ios_layouts(bundle: &KbdgenBundle) -> anyhow::Result<Vec<(&LanguageTag, &Layout)>> {
+    let default_tag: LanguageTag = DEFAULT_LOCALE
+        .parse()
+        .expect("default language tag must parse");
+
+    let mut layouts: Vec<(&LanguageTag, &Layout)> = bundle
+        .layouts
+        .iter()
+        .filter(|(_, layout)| layout.i_os.is_some())
+        .collect();
+
+    let mut problems = Vec::new();
+    for (tag, layout) in &layouts {
+        if layout.key_names.is_none() {
+            problems.push(format!(
+                "{tag}: missing `keyNames` (space and return key labels)"
+            ));
+        }
+        if !layout.display_names.contains_key(&default_tag) {
+            problems.push(format!("{tag}: missing `displayNames.{DEFAULT_LOCALE}`"));
+        }
+    }
+    if !problems.is_empty() {
+        problems.sort();
+        anyhow::bail!(
+            "Some iOS layouts are incomplete:\n  {}",
+            problems.join("\n  ")
+        );
+    }
+
+    layouts.sort_by_cached_key(|(tag, layout)| {
+        (
+            layout.display_names[&default_tag].to_lowercase(),
+            tag.to_string(),
+        )
+    });
+
+    Ok(layouts)
+}
 
 pub struct IosBuild {
     pub bundle: KbdgenBundle,
@@ -199,4 +248,164 @@ pub async fn init(bundle: KbdgenBundle, path: &Path) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bundle::layout::{IOsTarget, KeyNames};
+    use indexmap::IndexMap;
+
+    fn ios_layout(tag: &str, english_name: &str, with_key_names: bool) -> (LanguageTag, Layout) {
+        let tag: LanguageTag = tag.parse().unwrap();
+        let primary: LanguageTag = tag.primary_language().parse().unwrap();
+        let mut display_names = IndexMap::new();
+        display_names.insert(DEFAULT_LOCALE.parse().unwrap(), english_name.to_string());
+        display_names.insert(primary, format!("{english_name} autonym"));
+
+        let layout = Layout {
+            language_tag: tag.clone(),
+            display_names,
+            decimal: None,
+            windows: None,
+            chrome_os: None,
+            mac_os: None,
+            i_os: Some(IOsTarget {
+                config: Default::default(),
+                primary: None,
+                i_pad_9in: None,
+                i_pad_12in: None,
+                dead_keys: None,
+            }),
+            android: None,
+            longpress: None,
+            transforms: None,
+            key_names: with_key_names.then(|| KeyNames {
+                space: "space".to_string(),
+                r#return: "return".to_string(),
+            }),
+        };
+        (tag, layout)
+    }
+
+    fn bundle(layouts: Vec<(LanguageTag, Layout)>) -> KbdgenBundle {
+        KbdgenBundle::new_test("test".to_string(), layouts.into_iter().collect())
+    }
+
+    fn tags(layouts: &[(&LanguageTag, &Layout)]) -> Vec<String> {
+        layouts.iter().map(|(tag, _)| tag.to_string()).collect()
+    }
+
+    #[test]
+    fn sorts_by_english_display_name_ignoring_case() {
+        let bundle = bundle(vec![
+            ios_layout("se", "Northern Sami", true),
+            ios_layout("en", "English", true),
+            ios_layout("crk", "Plains Cree", true),
+            ios_layout("nn", "norwegian Nynorsk", true),
+            ios_layout("fo", "Faroese", true),
+        ]);
+
+        let layouts = ios_layouts(&bundle).unwrap();
+
+        assert_eq!(tags(&layouts), ["en", "fo", "se", "nn", "crk"]);
+    }
+
+    #[test]
+    fn breaks_display_name_ties_by_language_tag() {
+        let bundle = bundle(vec![
+            ios_layout("smj-SE", "Lule Sami", true),
+            ios_layout("smj-NO", "Lule Sami", true),
+        ]);
+
+        let layouts = ios_layouts(&bundle).unwrap();
+
+        assert_eq!(tags(&layouts), ["smj-NO", "smj-SE"]);
+    }
+
+    #[test]
+    fn skips_layouts_without_ios() {
+        let mut no_ios = ios_layout("fi", "Finnish", true);
+        no_ios.1.i_os = None;
+        let bundle = bundle(vec![no_ios, ios_layout("se", "Northern Sami", true)]);
+
+        let layouts = ios_layouts(&bundle).unwrap();
+
+        assert_eq!(tags(&layouts), ["se"]);
+    }
+
+    #[test]
+    fn fails_listing_every_layout_missing_key_names() {
+        let mut no_english_name = ios_layout("sma", "Southern Sami", true);
+        no_english_name
+            .1
+            .display_names
+            .shift_remove(&DEFAULT_LOCALE.parse::<LanguageTag>().unwrap());
+        let bundle = bundle(vec![
+            ios_layout("se", "Northern Sami", true),
+            ios_layout("en", "English", false),
+            ios_layout("waw", "Wai Wai", false),
+            no_english_name,
+        ]);
+
+        let error = ios_layouts(&bundle).unwrap_err().to_string();
+
+        assert_eq!(
+            error,
+            "Some iOS layouts are incomplete:\n  \
+             en: missing `keyNames` (space and return key labels)\n  \
+             sma: missing `displayNames.en`\n  \
+             waw: missing `keyNames` (space and return key labels)"
+        );
+    }
+
+    #[tokio::test]
+    async fn keyboard_definitions_json_follows_ios_layouts_order() {
+        let bundle = bundle(vec![
+            ios_layout("waw", "Wai Wai", true),
+            ios_layout("en", "English", true),
+            ios_layout("crk", "Plains Cree", true),
+        ]);
+        let output = tempfile::tempdir().unwrap();
+        let models = output
+            .path()
+            .join(REPOSITORY_FOLDER)
+            .join("Keyboard/Models");
+        std::fs::create_dir_all(&models).unwrap();
+
+        GenerateIos.build(&bundle, output.path()).await.unwrap();
+
+        let json: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(models.join("KeyboardDefinitions.json")).unwrap(),
+        )
+        .unwrap();
+        let json_locales: Vec<&str> = json
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|definition| definition["locale"].as_str().unwrap())
+            .collect();
+        let expected = tags(&ios_layouts(&bundle).unwrap());
+        assert_eq!(json_locales, expected);
+        assert_eq!(json_locales, ["en", "crk", "waw"]);
+    }
+
+    #[tokio::test]
+    async fn keyboard_definitions_json_is_not_written_when_key_names_are_missing() {
+        let bundle = bundle(vec![
+            ios_layout("se", "Northern Sami", true),
+            ios_layout("en", "English", false),
+        ]);
+        let output = tempfile::tempdir().unwrap();
+        let models = output
+            .path()
+            .join(REPOSITORY_FOLDER)
+            .join("Keyboard/Models");
+        std::fs::create_dir_all(&models).unwrap();
+
+        let result = GenerateIos.build(&bundle, output.path()).await;
+
+        assert!(result.is_err());
+        assert!(!models.join("KeyboardDefinitions.json").exists());
+    }
 }
