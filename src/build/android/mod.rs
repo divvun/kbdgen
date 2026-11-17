@@ -14,6 +14,7 @@ pub mod dependencies;
 pub mod generate_android;
 
 const REPOSITORY_FOLDER: &str = "repo";
+const MAIN_FOLDER: &str = "app/src/main";
 
 pub struct AndroidBuild {
     pub bundle: KbdgenBundle,
@@ -23,17 +24,16 @@ pub struct AndroidBuild {
 
 pub struct DownloadDependencies;
 
-// [spec:kbdgen:req:android.dependencies.jnilibs]
+// [spec:kbdgen:req:android.dependencies.jnilibs+1]
 #[async_trait(?Send)]
 impl BuildStep for DownloadDependencies {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        let main_path = output_path.join(REPOSITORY_FOLDER).join("app/src/main");
-        dependencies::install_android_deps(&main_path).await?;
-        Ok(())
+        let main_path = output_path.join(REPOSITORY_FOLDER).join(MAIN_FOLDER);
+        dependencies::install_android_deps(&main_path).await
     }
 }
 
-// [spec:kbdgen:req:android.dependencies]
+// [spec:kbdgen:req:android.dependencies+1]
 #[async_trait(?Send)]
 impl BuildSteps for AndroidBuild {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {

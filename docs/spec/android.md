@@ -7,15 +7,17 @@ canonicalised `-o` directory.
 
 ## Toolchain
 
-> [spec:kbdgen:req:android.dependencies]
+> [spec:kbdgen:req:android.dependencies+1]
 > The `target android build` steps are listed in
 > `[spec:kbdgen:sem:pipeline.steps]`. The clone step MUST run
 > `git clone https://github.com/divvun/giellakbd-android repo` with `{out}`
-> as the working directory. It panics only if `git` cannot be spawned. A
-> non-zero exit status is ignored, for example when `{out}/repo` already
-> exists, and later steps reuse whatever checkout is there.
+> as the working directory. If `git` cannot be started, the step fails. A
+> non-zero exit is not an error when `{out}/repo` is a directory, for
+> example a checkout left by an earlier run, and later steps reuse whatever
+> checkout is there. Otherwise a non-zero exit is an error naming the
+> command and including its stderr.
 
-> [spec:kbdgen:req:android.dependencies.jnilibs]
+> [spec:kbdgen:req:android.dependencies.jnilibs+1]
 > The dependency step MUST extract two release assets into
 > `{out}/repo/app/src/main`, in this order:
 > 1. from `divvun/divvunspell`, the asset whose name contains
@@ -28,13 +30,15 @@ canonicalised `-o` directory.
 > `User-Agent: kbdgen-rust-client`. It skips draft and prerelease releases
 > and takes the first matching asset of the newest release that has one.
 >
-> The step panics in these cases:
-> - the response is not a JSON array (for example a rate-limit error
->   object): `Valid releases array`;
-> - no release matches: `No {filter} asset found in any release for {org}/{repo}`;
-> - `tar -xzf <tmp> -C <main>` exits non-zero.
->
-> The download's HTTP status is not checked.
+> The step fails with an error in these cases:
+> - a request fails or answers with a non-success HTTP status, for
+>   example a rate-limit refusal;
+> - the release list is not a JSON array:
+>   `the release list of {org}/{repo} is not a JSON array`;
+> - no release matches: `no {filter} asset found in any release for {org}/{repo}`;
+> - the matching asset has no `browser_download_url`;
+> - `tar -xzf <tmp> -C <main>` cannot be started or exits non-zero. The
+>   error names the asset and includes tar's stderr.
 
 ## Layout XML
 
@@ -58,9 +62,10 @@ canonicalised `-o` directory.
 >
 > Tokens are whitespace-split from each layer line and emitted undecoded.
 
-> [spec:kbdgen:def:android.layout-xml.name]
+> [spec:kbdgen:def:android.layout-xml.name+1]
 > The sanitised keyboard name is derived from `displayNames.en`; generation
-> panics with `no 'en' displayName!` if that entry is missing. The steps are:
+> fails with `{tag}: displayNames has no 'en' entry` if that entry is
+> missing. The steps are:
 > 1. Lowercase it.
 > 2. Replace each space and `-` with `_`.
 > 3. Delete `(` and `)`.
@@ -86,7 +91,7 @@ canonicalised `-o` directory.
 
 ## Keys
 
-> [spec:kbdgen:req:android.keys]
+> [spec:kbdgen:req:android.keys+1]
 > Each token MUST become a `<Key>` element.
 >
 > On lines 1 and later:
@@ -100,8 +105,9 @@ canonicalised `-o` directory.
 >   - `latin:keyLabelFlags="preserveCase"` is added only when the language
 >     tag is exactly `lut`.
 >   - A `longpress` entry for the exact token adds `latin:keyHintLabel`, set
->     to its first value (an empty list panics), and `latin:moreKeys`, set to
->     the values joined with `,`.
+>     to its first value, and `latin:moreKeys`, set to the values joined
+>     with `,`. An empty list is an error naming the layout, the platform,
+>     the layer, the 1-based line and the token.
 >
 > On every line, a token equal to a top-level `transforms` key also gets
 > `latin:deadKey="True"`.
@@ -120,7 +126,7 @@ canonicalised `-o` directory.
 
 ## Transforms
 
-> [spec:kbdgen:req:android.transforms]
+> [spec:kbdgen:req:android.transforms+1]
 > Transforms are interpreted per `[spec:kbdgen:req:layout.transforms.dead-key-entries]`.
 > Flattening runs for every layout in the bundle before the `android` check,
 > so a nested transform in a layout that has no `android` section still
@@ -129,19 +135,20 @@ canonicalised `-o` directory.
 > write `assets/layouts/{languageTag}.json` as pretty JSON:
 > - with `android.config`:
 >   `{"transforms": {deadKey: {next: output}}, "speller": {"path": spellerPath, "package_url": spellerPackageKey}}`.
->   A missing `spellerPath` panics, and an unparseable URL panics. When
->   `spellerPackageKey` is absent, `package_url` is `null`.
+>   A missing `spellerPath` or an unparseable `spellerPackageKey` is an
+>   error naming the layout. When `spellerPackageKey` is absent,
+>   `package_url` is `null`.
 > - without `android.config`: `{"transforms": {}, "speller": null}`. The
 >   transforms are dropped, but `deadKey` marking still applies.
 
 ## Metadata
 
-> [spec:kbdgen:req:android.metadata]
+> [spec:kbdgen:req:android.metadata+1]
 > `res/xml/method.xml` and `res/xml/spellchecker.xml` MUST already exist,
-> each with at least one `<subtype>`; otherwise generation panics. The first
-> `<subtype>` of each file is removed. Then, in bundle layout order, each
-> Android layout appends one subtype to each file. `{sub}` is the language
-> tag with `-`→`_`, lowercased.
+> each with at least one `<subtype>`; otherwise generation fails with an
+> error naming the file. The first `<subtype>` of each file is removed.
+> Then, in bundle layout order, each Android layout appends one subtype to
+> each file. `{sub}` is the language tag with `-`→`_`, lowercased.
 > - `method.xml`:
 >   `<subtype android:icon="@drawable/ic_ime_switcher_dark" android:imeSubtypeMode="keyboard" android:label="@string/subtype_{sub}" android:imeSubtypeLocale="{tag, -→_}" android:imeSubtypeExtraValue="KeyboardLayoutSet={name},AsciiCapable,EmojiCapable" android:isAsciiCapable="true"/>`
 > - `spellchecker.xml`:
@@ -170,32 +177,38 @@ canonicalised `-o` directory.
 > the per-locale `strings.xml` entries are deduplicated; the other appends
 > repeat on every run.
 
-> [spec:kbdgen:req:android.metadata.icons]
+> [spec:kbdgen:req:android.metadata.icons+1]
 > If `resources/android/icon.png` exists, kbdgen MUST run the following
 > command for each density `(mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144, xxxhdpi 192)`:
-> `convert convert -resize {d}x{d} <icon> res/drawable-{density}/ic_launcher_keyboard.png`.
-> The word `convert` appears twice: once as the program name and once as
-> its first argument. The exit status is ignored. Otherwise kbdgen logs
-> `No icon found; skipping.`
+> `convert -resize {d}x{d} <icon> res/drawable-{density}/ic_launcher_keyboard.png`.
+> If `convert` cannot be started or exits non-zero, generation fails with
+> an error naming the icon and the size and including convert's stderr.
+> Without the icon, kbdgen logs
+> `No resources/android/icon.png; keeping the app's launcher icon` and
+> leaves the app's icons unchanged.
 
 ## Gradle
 
-> [spec:kbdgen:req:android.gradle]
+> [spec:kbdgen:req:android.gradle+1]
 > When `targets/android.yaml` exists, kbdgen MUST write
 > `{out}/repo/app/local.gradle` containing
 > `ext.app = [ storeFile, keyAlias, storePassword, keyPassword, packageName, versionCode, versionName, playEmail, playCredentials ]`,
 > one `key: value,` per line with four-space indent. Every value is
 > double-quoted except `versionCode` (`build`).
 > - `storeFile` is the canonicalised `keyStore` path with `\` doubled. It is
->   empty if `keyStore` is absent or cannot be canonicalised.
+>   empty if `keyStore` is absent or cannot be canonicalised. A canonical
+>   path that is not valid UTF-8 is an error.
 > - The key alias, the passwords, `playStoreAccount` and `playStoreP12` have
 >   `"`→`\"` and are empty if absent.
 > - `packageId` and `version` are inserted verbatim.
 > - Every `$` in the final text becomes `\$`.
 >
 > kbdgen then runs `gradlew assembleRelease -Dorg.gradle.jvmargs=-Xmx4096M --info --stacktrace`
-> in `{out}/repo` (`cmd /C gradlew …` on Windows) and prints the captured
-> output. The exit status is unchecked. This also happens on
-> `target android generate`. Without the target file, kbdgen logs
-> `No target configuration found; no package identifier set.` and skips
-> both.
+> in `{out}/repo`: `cmd /C gradlew …` on Windows, elsewhere the
+> canonicalised `{out}/repo/gradlew`, which MUST exist. The output is
+> captured and logged only at trace level. If gradlew cannot be started or
+> exits non-zero, generation fails with an error naming the command and
+> including its stderr. This also happens on `target android generate`.
+> Without the target file, kbdgen logs
+> `No targets/android.yaml; skipping local.gradle and the Gradle build` and
+> skips both.

@@ -1026,9 +1026,6 @@ impl_evidence (
     ), covered_claims (
         {impl_name main, rule android.dependencies}
         {impl_name main, rule android.dependencies.jnilibs}
-    ), rule_versions_seen (
-        {id android.dependencies, version 0}
-        {id android.dependencies.jnilibs, version 0}
     )}
     {id targets.chromeos.ime, covered_rules (
         chromeos.descriptor

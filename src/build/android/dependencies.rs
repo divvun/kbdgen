@@ -1,45 +1,52 @@
-use anyhow::Result;
-use futures_util::StreamExt;
-use serde_json::Value;
 use std::io::Write;
 use std::path::Path;
+use std::process::Command;
 
-// [spec:kbdgen:req:android.dependencies.jnilibs]
+use anyhow::{Context, Result, bail};
+use futures_util::StreamExt;
+use serde_json::Value;
+
+// [spec:kbdgen:req:android.dependencies.jnilibs+1]
 pub async fn install_android_deps(main_path: &Path) -> Result<()> {
-    tracing::info!("Installing Android dependencies from GitHub releases...");
+    tracing::info!(
+        "Installing Android dependencies into {}",
+        main_path.display()
+    );
     download_and_extract_jnilibs("divvun", "divvunspell", "android-jnilibs", main_path).await?;
-    download_and_extract_jnilibs("divvun", "pahkat", "android", main_path).await?;
-    Ok(())
+    download_and_extract_jnilibs("divvun", "pahkat", "android", main_path).await
 }
 
-// [spec:kbdgen:req:android.dependencies.jnilibs]
+// [spec:kbdgen:req:android.dependencies.jnilibs+1]
 async fn download_and_extract_jnilibs(
     org: &str,
     repo: &str,
     filter: &str,
     main_path: &Path,
 ) -> Result<()> {
-    let temp_file = tempfile::NamedTempFile::new()?;
-    let asset_name = download_asset_to_file(org, repo, filter, temp_file.path()).await?;
+    let archive = tempfile::NamedTempFile::new().context("create a temporary file")?;
+    let asset_name = download_asset_to_file(org, repo, filter, archive.path()).await?;
 
-    let status = std::process::Command::new("tar")
-        .args(&[
-            "-xzf",
-            temp_file.path().to_str().expect("Valid temp file path"),
-            "-C",
-            main_path.to_str().expect("Valid main path"),
-        ])
-        .status()?;
-
-    if !status.success() {
-        panic!("Failed to extract {} with tar", asset_name);
+    let output = Command::new("tar")
+        .arg("-xzf")
+        .arg(archive.path())
+        .arg("-C")
+        .arg(main_path)
+        .output()
+        .context("`tar` could not be started")?;
+    if !output.status.success() {
+        bail!(
+            "`tar -xzf` failed to extract {asset_name} into {} with {}: {}",
+            main_path.display(),
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
     }
 
-    tracing::debug!("Extracted {} to {}", asset_name, main_path.display());
+    tracing::debug!("Extracted {asset_name} into {}", main_path.display());
     Ok(())
 }
 
-// [spec:kbdgen:req:android.dependencies.jnilibs]
+// [spec:kbdgen:req:android.dependencies.jnilibs+1]
 async fn download_asset_to_file(
     org: &str,
     repo: &str,
@@ -51,59 +58,64 @@ async fn download_asset_to_file(
     // asset we need. Walk releases newest-first until we find one that does,
     // rather than assuming GitHub's notion of "latest" has it.
     let url = format!("https://api.github.com/repos/{org}/{repo}/releases?per_page=100");
+    let list_context = || format!("list the releases of {org}/{repo}");
     let client = reqwest::Client::new();
     let releases: Value = client
         .get(&url)
         .header("User-Agent", "kbdgen-rust-client")
         .send()
-        .await?
+        .await
+        .and_then(reqwest::Response::error_for_status)
+        .with_context(list_context)?
         .json()
-        .await?;
+        .await
+        .with_context(list_context)?;
 
     let target_filter_lower = target_filter.to_lowercase();
 
-    let asset = releases
+    let (asset_name, asset) = releases
         .as_array()
-        .expect("Valid releases array")
+        .with_context(|| format!("the release list of {org}/{repo} is not a JSON array"))?
         .iter()
         .filter(|release| {
             !release["draft"].as_bool().unwrap_or(false)
                 && !release["prerelease"].as_bool().unwrap_or(false)
         })
         .find_map(|release| {
-            release["assets"].as_array().and_then(|assets| {
-                assets.iter().find(|asset| {
-                    asset["name"]
-                        .as_str()
-                        .is_some_and(|name| name.to_lowercase().contains(&target_filter_lower))
-                })
+            release["assets"].as_array()?.iter().find_map(|asset| {
+                let name = asset["name"].as_str()?;
+                name.to_lowercase()
+                    .contains(&target_filter_lower)
+                    .then_some((name, asset))
             })
         })
-        .unwrap_or_else(|| {
-            panic!(
-                "No {} asset found in any release for {}/{}",
-                target_filter, org, repo
-            )
-        });
+        .with_context(|| {
+            format!("no {target_filter} asset found in any release for {org}/{repo}")
+        })?;
 
     let download_url = asset["browser_download_url"]
         .as_str()
-        .expect("Valid asset download URL");
+        .with_context(|| format!("{asset_name} in {org}/{repo} has no download URL"))?;
 
-    let asset_name = asset["name"].as_str().expect("Valid asset name");
+    tracing::info!("Downloading {asset_name} from {org}/{repo}");
 
-    tracing::debug!("Downloading {}", asset_name);
+    let download_context = || format!("download {download_url}");
+    let response = client
+        .get(download_url)
+        .send()
+        .await
+        .and_then(reqwest::Response::error_for_status)
+        .with_context(download_context)?;
 
-    let response = client.get(download_url).send().await?;
-
-    let mut file = std::fs::File::create(file_path)?;
+    let mut file = std::fs::File::create(file_path)
+        .with_context(|| format!("create {}", file_path.display()))?;
     let mut stream = response.bytes_stream();
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        file.write_all(&chunk)?;
+        let chunk = chunk.with_context(download_context)?;
+        file.write_all(&chunk)
+            .with_context(|| format!("write {}", file_path.display()))?;
     }
-    file.flush()?;
 
-    Ok(asset_name.to_string())
+    Ok(asset_name.to_owned())
 }
