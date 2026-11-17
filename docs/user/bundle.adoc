@@ -151,9 +151,9 @@ naming the file. Files copied before the error stay.
 
 Each file in `targets/` configures one target platform, and its name says
 which: `windows.yaml`, `macos.yaml`, `ios.yaml`, `android.yaml` and
-`chromeos.yaml`. kbdgen warns about any other name and ignores the file. That
-includes `chrome.yaml`, the name older bundles use: rename it to
-`chromeos.yaml`. Without its file a target is unconfigured; the chapter on
+`chromeos.yaml`. Older bundles name the ChromeOS file `chrome.yaml`, which
+works too; having both is an error. kbdgen warns about any other name and
+ignores the file. Without its file a target is unconfigured; the chapter on
 each target says what it needs.
 
 These are the fields. The target chapters explain what each one does.

@@ -332,7 +332,7 @@ where
     serde_path_to_error::deserialize(raw).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
-// [spec:kbdgen:def:bundle.resources+2]
+// [spec:kbdgen:def:bundle.resources+3]
 fn read_resources(path: &Path) -> Result<Resources, Error> {
     tracing::debug!("Reading resources from {}", path.display());
     let mut resources = Resources::default();
@@ -359,7 +359,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
             // Bundles written for kbdgen 2 keep ChromeOS resources in `chrome`.
             "chromeos" | "chrome" => {
                 if let Some(first) = chromeos_dir.replace(dir.clone()) {
-                    return Err(Error::DuplicateResources { first, second: dir });
+                    return Err(Error::ChromeOsTwice { first, second: dir });
                 }
                 resources.chromeos = Some(resources::ChromeOS::load(&dir)?);
             }
@@ -373,7 +373,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
 /// the bundle's Windows target.
 const WINDOWS_LAYOUT_OPTIONS: [&str; 3] = ["shiftLock", "lrmRlm", "keyNames"];
 
-// [spec:kbdgen:req:bundle.structure.targets+3]
+// [spec:kbdgen:req:bundle.structure.targets+4]
 /// Fails when `targets/windows.yaml` sets a keyboard option, which would
 /// otherwise be ignored like an unknown field.
 fn reject_windows_options(path: &Path) -> Result<(), Error> {
@@ -393,12 +393,13 @@ fn reject_windows_options(path: &Path) -> Result<(), Error> {
     }
 }
 
-// [spec:kbdgen:req:bundle.structure.targets+3]
+// [spec:kbdgen:req:bundle.structure.targets+4]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets from {}", path.display());
     let mut targets = Targets::default();
+    let mut chromeos_file: Option<PathBuf> = None;
 
-    let iter = read_dir(path)
+    let mut paths: Vec<PathBuf> = read_dir(path)
         .map_err(|e| Error::Io(path.to_path_buf(), e))?
         .filter_map(Result::ok)
         .map(|file| file.path())
@@ -406,9 +407,11 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
         .filter(|path| match path.extension() {
             Some(ext) => ext == YAML_EXT,
             None => false,
-        });
+        })
+        .collect();
+    paths.sort();
 
-    for path in iter {
+    for path in paths {
         let target_name = path
             .file_stem()
             .ok_or_else(|| Error::NoFileStem { path: path.clone() })
@@ -437,7 +440,16 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
             "macos" => {
                 targets.macos = load_yaml(&path)?;
             }
-            "chromeos" => targets.chromeos = load_yaml(&path)?,
+            // Bundles written for kbdgen 2 name the ChromeOS target file `chrome`.
+            "chromeos" | "chrome" => {
+                if let Some(first) = chromeos_file.replace(path.clone()) {
+                    return Err(Error::ChromeOsTwice {
+                        first,
+                        second: path,
+                    });
+                }
+                targets.chromeos = load_yaml(&path)?;
+            }
             "android" => {
                 targets.android = load_yaml_with_env(
                     &path,
@@ -511,8 +523,8 @@ pub enum Error {
         second: PathBuf,
     },
 
-    #[error("{} and {} both hold ChromeOS resources; keep one", first.display(), second.display())]
-    DuplicateResources { first: PathBuf, second: PathBuf },
+    #[error("{} and {} both configure ChromeOS; keep one", first.display(), second.display())]
+    ChromeOsTwice { first: PathBuf, second: PathBuf },
 }
 
 /// Builds bundle directories on disk for tests that exercise loading.

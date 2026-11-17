@@ -27,9 +27,12 @@ dependency bundles.
 
 ### Target files
 
-> [spec:kbdgen:req:bundle.structure.targets+3]
+> [spec:kbdgen:req:bundle.structure.targets+4]
 > A file in `targets/` is recognised by its stem, exactly `windows`, `ios`,
-> `macos`, `chromeos` or `android`; other stems are warned about and ignored.
+> `macos`, `chromeos` or `android`; `chrome`, as bundles written for kbdgen 2
+> name it, configures ChromeOS too, and having both `chrome` and `chromeos`
+> fails loading with an error naming the files. Other stems are warned about
+> and ignored.
 > An absent file leaves the target unconfigured; a parse failure aborts
 > loading; unknown fields are ignored. The exception is `windows` with a
 > top-level `shiftLock`, `lrmRlm` or `keyNames`: these are keyboard options
@@ -88,7 +91,7 @@ dependency bundles.
 
 ## Resources
 
-> [spec:kbdgen:def:bundle.resources+2]
+> [spec:kbdgen:def:bundle.resources+3]
 > `resources/` holds per-target subdirectories named exactly `macos`, `ios`,
 > `chromeos` (or `chrome`, as bundles written for kbdgen 2 name it; having
 > both is an error) and `android`; other subdirectories are warned about and
@@ -99,6 +102,8 @@ dependency bundles.
 > `<tag>`; the extension is the last `.`-separated segment. A `<tag>` that
 > is not a well-formed language tag (`icon.se_FI.png`), or two files for the
 > same tag or for the default, fail loading with an error naming the files.
+> An `icon.*` entry that is not a file, such as a link to a missing file, is
+> warned about and ignored.
 > iOS and ChromeOS use only the default icon. For `android` the only resource is
 > `icon.png`, if present.
 

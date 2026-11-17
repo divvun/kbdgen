@@ -25,7 +25,8 @@ rustup target add wasm32-unknown-unknown
 ----
 
 === Target configuration
-`targets/chromeos.yaml` is required; without it the build stops with
+`targets/chromeos.yaml` is required (older bundles name it
+`targets/chrome.yaml`, which works too); without it the build stops with
 `targets/chromeos.yaml is missing`. Any scalar is read as a string.
 
 [source,yaml]

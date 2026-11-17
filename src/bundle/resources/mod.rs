@@ -5,7 +5,7 @@ use language_tags::LanguageTag;
 
 use super::Error;
 
-// [spec:kbdgen:def:bundle.resources+2]
+// [spec:kbdgen:def:bundle.resources+3]
 #[derive(Debug, Default)]
 pub struct Resources {
     pub(crate) macos: Option<MacOS>,
@@ -22,7 +22,7 @@ struct Icons {
     by_tag: IndexMap<LanguageTag, PathBuf>,
 }
 
-// [spec:kbdgen:def:bundle.resources+2]
+// [spec:kbdgen:def:bundle.resources+3]
 fn read_icons(dir: &Path) -> Result<Icons, Error> {
     let io = |e| Error::Io(dir.to_path_buf(), e);
     let mut paths = std::fs::read_dir(dir)
@@ -32,7 +32,7 @@ fn read_icons(dir: &Path) -> Result<Icons, Error> {
     paths.sort();
 
     let mut icons = Icons::default();
-    for path in paths.into_iter().filter(|path| path.is_file()) {
+    for path in paths {
         let name = path
             .file_name()
             .expect("read_dir entries have a file name")
@@ -41,6 +41,13 @@ fn read_icons(dir: &Path) -> Result<Icons, Error> {
         let Some(rest) = name.strip_prefix("icon.") else {
             continue;
         };
+        if !path.is_file() {
+            tracing::warn!(
+                "Ignoring {}: it is not a file, or a link to one that does not exist",
+                path.display()
+            );
+            continue;
+        }
         let (previous, which) = match rest.rsplit_once('.') {
             None => (icons.default.replace(path.clone()), "default".to_owned()),
             Some((tag, _extension)) => {
@@ -160,7 +167,7 @@ mod tests {
         icons
     }
 
-    // [spec:kbdgen:def:bundle.resources+2/test]
+    // [spec:kbdgen:def:bundle.resources+3/test]
     #[test]
     fn icons_are_the_default_or_keyed_by_tag() {
         let mut files = Vec::new();
@@ -194,7 +201,7 @@ mod tests {
         assert!(bundle.resources.android.is_none());
     }
 
-    // [spec:kbdgen:def:bundle.resources+2/test]
+    // [spec:kbdgen:def:bundle.resources+3/test]
     #[test]
     fn chrome_and_chromeos_are_one_folder() {
         let (_root, bundle) = load_with_resources(&["chrome/icon.png"]);
@@ -204,10 +211,10 @@ mod tests {
         );
 
         let error = load_error(&["chrome/icon.png", "chromeos/icon.png"]);
-        assert!(matches!(error, Error::DuplicateResources { .. }), "{error}");
+        assert!(matches!(error, Error::ChromeOsTwice { .. }), "{error}");
     }
 
-    // [spec:kbdgen:def:bundle.resources+2/test]
+    // [spec:kbdgen:def:bundle.resources+3/test]
     #[test]
     fn android_resource_is_only_icon_png() {
         let (_root, bundle) = load_with_resources(&["android/icon.png", "android/icon.se.png"]);
@@ -223,7 +230,7 @@ mod tests {
         assert_eq!(bundle.resources.android.unwrap().icon, None);
     }
 
-    // [spec:kbdgen:def:bundle.resources+2/test]
+    // [spec:kbdgen:def:bundle.resources+3/test]
     #[test]
     fn unrecognised_directories_and_plain_files_are_ignored() {
         let (_root, bundle) = load_with_resources(&[
@@ -238,7 +245,23 @@ mod tests {
         assert!(bundle.resources.android.is_none());
     }
 
-    // [spec:kbdgen:def:bundle.resources+2/test]
+    // [spec:kbdgen:def:bundle.resources+3/test]
+    #[cfg(unix)]
+    #[test]
+    fn a_broken_icon_link_is_ignored() {
+        let (_root, path) = bundle_with_resources(&["chrome/logo.png"]);
+        std::os::unix::fs::symlink(
+            path.join("resources/chrome/missing.png"),
+            path.join("resources/chrome/icon.png"),
+        )
+        .unwrap();
+
+        let bundle = read_kbdgen_bundle(&path).unwrap();
+
+        assert_eq!(bundle.resources.chromeos.unwrap().icon, None);
+    }
+
+    // [spec:kbdgen:def:bundle.resources+3/test]
     #[test]
     fn malformed_and_duplicate_icons_are_errors() {
         let error = load_error(&["macos/icon.se_FI.png"]);
