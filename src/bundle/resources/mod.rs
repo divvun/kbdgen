@@ -5,7 +5,7 @@ use language_tags::LanguageTag;
 
 use super::Error;
 
-// [spec:kbdgen:def:bundle.resources+1]
+// [spec:kbdgen:def:bundle.resources+2]
 #[derive(Debug, Default)]
 pub struct Resources {
     pub(crate) macos: Option<MacOS>,
@@ -22,7 +22,7 @@ struct Icons {
     by_tag: IndexMap<LanguageTag, PathBuf>,
 }
 
-// [spec:kbdgen:def:bundle.resources+1]
+// [spec:kbdgen:def:bundle.resources+2]
 fn read_icons(dir: &Path) -> Result<Icons, Error> {
     let io = |e| Error::Io(dir.to_path_buf(), e);
     let mut paths = std::fs::read_dir(dir)
@@ -93,19 +93,17 @@ impl IOS {
     }
 }
 
+/// A ChromeOS extension has one icon for all its keyboards: the default
+/// icon. Input components have no icon of their own.
 #[derive(Debug, Default)]
-#[allow(dead_code)]
 pub(crate) struct ChromeOS {
-    pub(crate) icons: IndexMap<LanguageTag, PathBuf>,
-    pub(crate) default_icon: Option<PathBuf>,
+    pub(crate) icon: Option<PathBuf>,
 }
 
 impl ChromeOS {
     pub fn load(path: &Path) -> Result<Self, Error> {
-        let icons = read_icons(path)?;
         Ok(Self {
-            icons: icons.by_tag,
-            default_icon: icons.default,
+            icon: read_icons(path)?.default,
         })
     }
 }
@@ -162,7 +160,7 @@ mod tests {
         icons
     }
 
-    // [spec:kbdgen:def:bundle.resources+1/test]
+    // [spec:kbdgen:def:bundle.resources+2/test]
     #[test]
     fn icons_are_the_default_or_keyed_by_tag() {
         let mut files = Vec::new();
@@ -185,10 +183,8 @@ mod tests {
         let macos = resources.macos.as_ref().unwrap();
         assert_eq!(sorted_icons(&macos.icons), tagged("macos"));
         assert_eq!(macos.default_icon, Some(dir("macos").join("icon.png")));
-        let chromeos = resources.chromeos.as_ref().unwrap();
-        assert_eq!(sorted_icons(&chromeos.icons), tagged("chromeos"));
         assert_eq!(
-            chromeos.default_icon,
+            resources.chromeos.as_ref().unwrap().icon,
             Some(dir("chromeos").join("icon.png"))
         );
         assert_eq!(
@@ -198,12 +194,12 @@ mod tests {
         assert!(bundle.resources.android.is_none());
     }
 
-    // [spec:kbdgen:def:bundle.resources+1/test]
+    // [spec:kbdgen:def:bundle.resources+2/test]
     #[test]
     fn chrome_and_chromeos_are_one_folder() {
         let (_root, bundle) = load_with_resources(&["chrome/icon.png"]);
         assert_eq!(
-            bundle.resources.chromeos.unwrap().default_icon,
+            bundle.resources.chromeos.unwrap().icon,
             Some(bundle.path.join("resources/chrome/icon.png"))
         );
 
@@ -211,7 +207,7 @@ mod tests {
         assert!(matches!(error, Error::DuplicateResources { .. }), "{error}");
     }
 
-    // [spec:kbdgen:def:bundle.resources+1/test]
+    // [spec:kbdgen:def:bundle.resources+2/test]
     #[test]
     fn android_resource_is_only_icon_png() {
         let (_root, bundle) = load_with_resources(&["android/icon.png", "android/icon.se.png"]);
@@ -227,7 +223,7 @@ mod tests {
         assert_eq!(bundle.resources.android.unwrap().icon, None);
     }
 
-    // [spec:kbdgen:def:bundle.resources+1/test]
+    // [spec:kbdgen:def:bundle.resources+2/test]
     #[test]
     fn unrecognised_directories_and_plain_files_are_ignored() {
         let (_root, bundle) = load_with_resources(&[
@@ -242,7 +238,7 @@ mod tests {
         assert!(bundle.resources.android.is_none());
     }
 
-    // [spec:kbdgen:def:bundle.resources+1/test]
+    // [spec:kbdgen:def:bundle.resources+2/test]
     #[test]
     fn malformed_and_duplicate_icons_are_errors() {
         let error = load_error(&["macos/icon.se_FI.png"]);

@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(bundle_path)?;
-            // [spec:kbdgen:req:ldml.yaml.coexistence+1]
+            // [spec:kbdgen:req:ldml.yaml.coexistence+2]
             bundle.reject_v4_layouts(target_command_struct.target_command.name())?;
 
             let output_path = &target_command_struct.output_path;

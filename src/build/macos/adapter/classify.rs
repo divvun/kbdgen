@@ -19,7 +19,7 @@ pub struct Category {
 }
 
 impl Category {
-    fn add(&mut self, example: impl FnOnce() -> String) {
+    pub(crate) fn add(&mut self, example: impl FnOnce() -> String) {
         if self.examples.len() < MAX_EXAMPLES {
             self.examples.push(example());
         }
@@ -103,7 +103,7 @@ fn gestures(
 
 /// Whether a display is one lowering adds by itself: U+25CC before an
 /// output of marks, or a dead key shown as its flush output.
-fn automatic(keyboard: &Keyboard, target: &DisplayTarget, display: &str) -> bool {
+pub(crate) fn automatic(keyboard: &Keyboard, target: &DisplayTarget, display: &str) -> bool {
     match target {
         DisplayTarget::Output(output) => match output.elements() {
             [TextElem::Marker(marker)] => keyboard.flush.get(marker).is_some_and(|f| f == display),

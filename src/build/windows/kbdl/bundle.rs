@@ -131,7 +131,7 @@ fn token_value(
 
 /// Replaces every `\u{H}` escape with its character, failing with the value
 /// of the first escape that is not a Unicode scalar value.
-// [spec:kbdgen:syn:keys.escape+1]
+// [spec:kbdgen:syn:keys.escape+2]
 fn decode_escapes(token: &str) -> std::result::Result<String, u32> {
     let mut output = String::with_capacity(token.len());
     let mut last = 0;

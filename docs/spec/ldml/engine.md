@@ -164,13 +164,14 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > AltGr (`tsf.keys.altgr`). LDML is ambiguous about how AltGr relates to
 > `ctrl alt`.
 
-> [spec:kbdgen:req:ldml.engine.shortcuts+1]
+> [spec:kbdgen:req:ldml.engine.shortcuts+2]
 > The engine MUST pass, without matching any layer, an event that meets any
 > of:
 >
 > - `cmd` is set
 > - a ctrl modifier is set and no alt modifier is
-> - `alt_l` is set and the host is `windows`, where Left Alt drives menus
+> - `alt_l` is set and the host is `windows` or `chromeOS`, where Left Alt
+>   drives menus and system shortcuts and only Right Alt types
 >
 > The host is the keyboard's `host`, or for a keyboard without one (a
 > shared or foreign keyboard, `ldml.model.layout`) `Options.host`. So

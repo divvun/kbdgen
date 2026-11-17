@@ -86,7 +86,7 @@ dependency bundles.
 
 ## Resources
 
-> [spec:kbdgen:def:bundle.resources+1]
+> [spec:kbdgen:def:bundle.resources+2]
 > `resources/` holds per-target subdirectories named exactly `macos`, `ios`,
 > `chromeos` (or `chrome`, as bundles written for kbdgen 2 name it; having
 > both is an error) and `android`; other subdirectories are warned about and
@@ -97,7 +97,7 @@ dependency bundles.
 > `<tag>`; the extension is the last `.`-separated segment. A `<tag>` that
 > is not a well-formed language tag (`icon.se_FI.png`), or two files for the
 > same tag or for the default, fail loading with an error naming the files.
-> iOS uses only the default icon. For `android` the only resource is
+> iOS and ChromeOS use only the default icon. For `android` the only resource is
 > `icon.png`, if present.
 
 ## Fetch

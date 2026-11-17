@@ -127,7 +127,7 @@ fn implied_caps_layers_give_macos_caps_shift() {
     );
 }
 
-// [spec:kbdgen:req:ldml.engine.shortcuts+1/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+2/test]
 #[test]
 fn shortcuts_pass_before_layer_matching() {
     let m = model(modifier_keyboard());
@@ -168,18 +168,22 @@ fn shortcuts_pass_before_layer_matching() {
     assert_eq!(out(&m, ctrl_alt), typed("o"));
 }
 
-// [spec:kbdgen:req:ldml.engine.shortcuts+1/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+2/test]
 #[test]
-fn left_alt_passes_only_on_windows() {
+fn left_alt_passes_only_on_windows_and_chromeos() {
     let alt_l = ModifierState {
         alt_l: true,
         ..ModifierState::default()
     };
     let mut k = modifier_keyboard();
-    k.host = Some(Host::Windows);
-    assert_eq!(out(&model(k.clone()), alt_l), Action::Pass);
-    k.host = Some(Host::MacOs);
-    assert_eq!(out(&model(k.clone()), alt_l), typed("l"));
+    for host in [Host::Windows, Host::ChromeOs] {
+        k.host = Some(host);
+        assert_eq!(out(&model(k.clone()), alt_l), Action::Pass, "{host:?}");
+    }
+    for host in [Host::MacOs, Host::Linux, Host::Web] {
+        k.host = Some(host);
+        assert_eq!(out(&model(k.clone()), alt_l), typed("l"), "{host:?}");
+    }
     // A shared keyboard takes the consumer's host from the options.
     k.host = None;
     let options = Options {
@@ -191,7 +195,7 @@ fn left_alt_passes_only_on_windows() {
 }
 
 // [spec:kbdgen:def:ldml.model.native/test]
-// [spec:kbdgen:req:ldml.engine.shortcuts+1/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+2/test]
 #[test]
 fn native_only_layers_are_never_selected() {
     // A layer whose sets include `ctrl` is native-only, even for `none`.

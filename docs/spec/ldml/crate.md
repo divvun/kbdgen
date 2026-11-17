@@ -6,6 +6,7 @@ Everything lives in the kbdgen repository as one Cargo workspace:
 - the engine
 - LDML XML support
 - the Windows text service
+- the engine's WebAssembly module
 
 What runs on a device is kept small. Devices embed the engine in many
 places: the Windows TSF DLL, a macOS IMKit app, iOS keyboard extensions with
@@ -21,7 +22,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 
 ## Workspace
 
-> [spec:kbdgen:def:ldml.crate.layout+1]
+> [spec:kbdgen:def:ldml.crate.layout+2]
 > The root `Cargo.toml` keeps the `kbdgen` package and adds a `[workspace]`
 > with:
 >
@@ -37,6 +38,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > | `crates/kbd-engine` | `kbd-engine` | `no_std` + `alloc` lib | the engine (`ldml.engine.*`), which the text service runs (`tsf.engine.api`) |
 > | `crates/kbd-ldml` | `kbd-ldml` | std lib | LDML keyboard3 source documents through `xmlem`, the embedded CLDR imports, parsers for LDML's syntaxes, resolution to the model, and export (`ldml.xml.*`) |
 > | `crates/kbd-tsf` | `kbd-tsf` | `cdylib` | the Windows text service (`docs/spec/tsf.md`), built only per `tsf.arch.builds` |
+> | `crates/kbd-wasm` | `kbd-wasm` | `cdylib` | the engine for WebAssembly hosts (`ldml.chromeos.wasm`), which kbdgen's build script compiles for `wasm32-unknown-unknown` and embeds (`chromeos.engine`) |
 >
 > The `kbdgen` package keeps the v4 YAML format and its lowering, the
 > migrator, the `kbdl` adapter and the `kbdgen ldml` commands. Layout crates
@@ -109,11 +111,12 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > binary provides them. CI MUST at least build both crates for
 > `wasm32-unknown-unknown`.
 
-> [spec:kbdgen:req:ldml.crate.ffi]
-> Host bindings other than `kbd-tsf` are separate crates owned by the host
-> work, and are deferred: a C ABI for Swift and IMKit, JNI for Android, and
-> wasm-bindgen for the web and ChromeOS. To keep them thin, the engine API
-> (`ldml.engine.api`) MUST:
+> [spec:kbdgen:req:ldml.crate.ffi+1]
+> Host bindings are separate crates owned by the host work: `kbd-tsf` for
+> Windows, and `kbd-wasm`, a C ABI of integers and byte buffers for
+> WebAssembly hosts, which ChromeOS uses (`ldml.chromeos.wasm`). A C ABI
+> for Swift and IMKit and JNI for Android are deferred. To keep them thin,
+> the engine API (`ldml.engine.api`) MUST:
 >
 > - use only plain data: integers, `bool`, `&str`, `String`, `Vec`, and
 >   enums without generics

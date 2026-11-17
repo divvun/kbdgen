@@ -1,0 +1,2 @@
+vro: ChromeOS cannot use 2 key(s) with long-press, multi-tap or flick gestures, because hardware keys have no gestures (e.g. u-006F; u-0061)
+vro: ChromeOS cannot use 2 display(s) and key label(s), because the input method draws no keyboard (e.g. vaih; sisse)

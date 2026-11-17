@@ -7,8 +7,9 @@
 //! platforms typed (`oracle`). Every defect found on the way is reported
 //! (`defect`, `report`); a blocking one leaves the file unwritten.
 //!
-//! [`migrate_text`] works in memory, which the Windows build uses to embed
-//! a v3 layout's model (`ldml.kbdl.model-resource`).
+//! [`migrate_text`] works in memory, which the Windows and ChromeOS builds
+//! use to embed a v3 layout's model (`ldml.kbdl.model-resource`,
+//! `ldml.chromeos.input`).
 
 mod check;
 mod convert;
@@ -66,13 +67,13 @@ impl Migration {
         codes
     }
 
-    /// The compiled layout of the migrated text, one keyboard per host
-    /// (`ldml.model.layout`); none when the migration blocks.
-    pub fn compiled(&self) -> Result<Option<Layout>, LdmlError> {
+    /// The host documents of the migrated text (`ldml.yaml.hosts`); none
+    /// when the migration blocks.
+    pub fn host_documents(&self) -> Result<Option<Vec<HostDocument>>, LdmlError> {
         let Some(layout) = self.layout.as_ref().filter(|_| !self.blocked()) else {
             return Ok(None);
         };
-        let documents: Vec<HostDocument> = lower(layout)?
+        let documents = lower(layout)?
             .into_iter()
             .map(|(host, source)| HostDocument {
                 tag: self.tag.clone(),
@@ -80,6 +81,15 @@ impl Migration {
                 source,
             })
             .collect();
+        Ok(Some(documents))
+    }
+
+    /// The compiled layout of the migrated text, one keyboard per host
+    /// (`ldml.model.layout`); none when the migration blocks.
+    pub fn compiled(&self) -> Result<Option<Layout>, LdmlError> {
+        let Some(documents) = self.host_documents()? else {
+            return Ok(None);
+        };
         Ok(compiled_layouts(&documents)?.into_iter().next())
     }
 }

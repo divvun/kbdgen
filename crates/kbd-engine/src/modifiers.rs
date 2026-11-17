@@ -32,14 +32,17 @@ pub(crate) fn apply_extra_bindings(windows: &Windows, mut m: ModifierState) -> M
     m
 }
 
-// [spec:kbdgen:req:ldml.engine.shortcuts+1]
+// [spec:kbdgen:req:ldml.engine.shortcuts+2]
 /// Whether the event is a shortcut, which passes without matching any
-/// layer: `cmd`, ctrl without alt, or Left Alt on a Windows host, where
-/// Left Alt drives menus. Ctrl with AltGr is not a shortcut, so it reaches
-/// a layer naming both ctrl and alt; and since every native-only layer
-/// needs cmd or ctrl without alt, those layers are never used for typing.
+/// layer: `cmd`, ctrl without alt, or Left Alt on a Windows or ChromeOS
+/// host, where Left Alt drives menus and system shortcuts and only Right
+/// Alt types. Ctrl with AltGr is not a shortcut, so it reaches a layer
+/// naming both ctrl and alt; and since every native-only layer needs cmd
+/// or ctrl without alt, those layers are never used for typing.
 pub(crate) fn is_shortcut(m: ModifierState, host: Option<Host>) -> bool {
-    m.cmd || (m.any_ctrl() && !m.any_alt()) || (m.alt_l && host == Some(Host::Windows))
+    m.cmd
+        || (m.any_ctrl() && !m.any_alt())
+        || (m.alt_l && matches!(host, Some(Host::Windows | Host::ChromeOs)))
 }
 
 /// The state of one side pair (any, left, right) as a modifier set needs it.

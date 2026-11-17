@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_name__",
+  "description": "__MSG_description__",
+  "version": "7",
+  "version_name": "2.0.0",
+  "default_locale": "en",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "input"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+  "input_components": [
+    {
+      "name": "__MSG_se_NO__",
+      "id": "se-NO",
+      "language": "nb",
+      "layouts": [
+        "no"
+      ]
+    },
+    {
+      "name": "__MSG_und_x_mods__",
+      "id": "und-x-mods",
+      "language": "en-US",
+      "layouts": [
+        "us"
+      ]
+    },
+    {
+      "name": "__MSG_vro__",
+      "id": "vro",
+      "language": "en-US",
+      "layouts": [
+        "us"
+      ]
+    }
+  ]
+}

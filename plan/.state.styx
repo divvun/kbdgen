@@ -367,7 +367,6 @@ derived_priorities (
     {id targets.android.layout, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.android.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.android.toolchain, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
-    {id targets.chromeos.descriptor-fields, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.chromeos.ime, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.chromeos.panic-message, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.about-path, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
@@ -1028,14 +1027,16 @@ impl_evidence (
         {impl_name main, rule android.dependencies.jnilibs}
     )}
     {id targets.chromeos.ime, covered_rules (
-        chromeos.descriptor
-        chromeos.descriptor.runtime
-        chromeos.keymap
+        chromeos.engine
+        chromeos.extension
+        chromeos.icons
+        chromeos.locales
         chromeos.manifest
     ), covered_claims (
-        {impl_name main, rule chromeos.descriptor}
-        {impl_name main, rule chromeos.descriptor.runtime}
-        {impl_name main, rule chromeos.keymap}
+        {impl_name main, rule chromeos.engine}
+        {impl_name main, rule chromeos.extension}
+        {impl_name main, rule chromeos.icons}
+        {impl_name main, rule chromeos.locales}
         {impl_name main, rule chromeos.manifest}
     )}
     {id targets.ios.keyboard-json, covered_rules (
@@ -1408,6 +1409,29 @@ impl_evidence (
         ios.layouts
     ), covered_claims (
         {impl_name main, rule ios.layouts}
+    )}
+    {id ldml.port.chromeos, covered_rules (
+        ldml.chromeos.classify
+        ldml.chromeos.context
+        ldml.chromeos.input
+        ldml.chromeos.keys
+        ldml.chromeos.modifiers
+        ldml.chromeos.semantics
+        ldml.chromeos.target
+        ldml.chromeos.test.golden
+        ldml.chromeos.test.typing
+        ldml.chromeos.wasm
+    ), covered_claims (
+        {impl_name main, rule ldml.chromeos.classify}
+        {impl_name main, rule ldml.chromeos.context}
+        {impl_name main, rule ldml.chromeos.input}
+        {impl_name main, rule ldml.chromeos.keys}
+        {impl_name main, rule ldml.chromeos.modifiers}
+        {impl_name main, rule ldml.chromeos.semantics}
+        {impl_name main, rule ldml.chromeos.target}
+        {impl_name main, rule ldml.chromeos.test.golden}
+        {impl_name main, rule ldml.chromeos.test.typing}
+        {impl_name main, rule ldml.chromeos.wasm}
     )}
 )
 

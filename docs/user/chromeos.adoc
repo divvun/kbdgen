@@ -1,24 +1,97 @@
 == ChromeOS
-ChromeOS generation mainly involves adding keyboard layout information to a
-JavaScript file.
+`kbdgen target chromeos` writes a ChromeOS input method: a Chrome extension
+(Manifest V3) with one input method per layout. The extension runs the same
+keyboard engine as the Windows text service, compiled to WebAssembly, on
+each layout's compiled keyboard, so dead keys, transforms and everything
+else the layout says type on ChromeOS as they do in the engine.
+
+```
+kbdgen target -b sme.kbdgen -o chromeos-out chromeos
+```
+
+=== What is generated
+The output directory is the unpacked extension:
+
+* `manifest.json` - the extension manifest, with one input method per layout
+* `background.js` - the service worker that runs the engine
+* `engine.wasm` - the keyboard engine
+* `models/<tag>.dvkb` - each layout's compiled keyboard
+* `_locales/<language>/messages.json` - the names of the extension and of
+  each input method, in every language the layouts have a display name in
+* `icon.png` - the extension icon, if the bundle has one
+
+kbdgen warns about anything a layout uses that ChromeOS cannot give, such as
+layers that need Left Alt (on ChromeOS only Right Alt types), long-press
+keys, or key labels.
+
+=== Trying it on a Chromebook
+. Copy the output directory to the Chromebook.
+. Open `chrome://extensions`, turn on *Developer mode* and choose
+  *Load unpacked*, then pick the directory.
+. In *Settings*, *Device*, *Keyboard and inputs*, *Input*, add the new input
+  method; it is listed under the language of its `locale`.
+. Switch to it from the input menu in the shelf, or with Ctrl+Space.
+
+To publish, zip the directory's contents and upload them to the Chrome Web
+Store.
 
 === Target configuration
-A file for the desired target has to be specified, and in this case for ChromeOS, it could look like this:
+`targets/chromeos.yaml`:
 ```
 appId: dnihbfekindancgddjehgonciaopmkbe
 build: 11
 version: 1.0.0
-
 ```
 
-The fields define what follows:
+* `build` - the extension version Chrome compares, one to four
+  dot-separated numbers such as `11` or `1.0.3`
+* `version` - the version shown to users
+* `appId` - not used by kbdgen
 
-* `appId` - the id of the app
-* `version` - current app version
-* `build` - current app build
+The extension's name and description come from `project.yaml` `locales`,
+which must have an `en` entry. The icon is `resources/chromeos/icon.png`, a
+PNG of at least 128 by 128 pixels.
 
 === Keyboard layouts
-The ChromeOS keyboard was modeled after the Windows one and so shares a lot of similarities.
+Both layout formats work. A v4 layout (`format: 4`) gets a ChromeOS input
+method from its `chromeOS` hardware variant, or from `default` when it has
+none:
+
+```
+targets:
+  chromeOS:
+    locale: fi
+    xkbLayout: fi
+deadKeys:
+  ´: {compose: {a: á, e: é}}
+hardware:
+  default:
+    layers:
+      none: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % & / ( ) = ? `
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      altR: |
+        | \u{0} @ £ $ € \u{0} { [ ] } \ \u{0}
+        q w € \u{0} ŧ \u{0} \u{0} ï õ \u{0} ¨ ~
+        â \u{0} \u{0} \u{0} ǧ ǥ \u{0} ǩ \u{0} ø æ '
+        ǯ ʒ x \u{0} \u{0} \u{0} \u{0} µ < > \u{0}
+```
+
+Write AltGr layers as `altR` (or `alt`): ChromeOS reserves Left Alt for
+shortcuts, so layers that need it are never typed.
+
+A v3 layout needs a `chromeOS` section. kbdgen converts it in memory, as
+`kbdgen ldml migrate` would, without changing the file. If the conversion
+reports a blocking problem, such as a layer without exactly 48 keys, the
+build stops and names the layout; `kbdgen ldml migrate --dry-run` lists the
+problems.
 
 ```
 chromeOS:
@@ -36,39 +109,31 @@ chromeOS:
           Á Š E R T Y U I O P Å Ŋ
           A S D F G H J K L Ö Ä Đ
         Ž Z Č C V B N M ; : _
-      caps: |
-        § 1 2 3 4 5 6 7 8 9 0 + ´
-          Á Š E R T Y U I O P Å Ŋ
-          A S D F G H J K L Ö Ä Đ
-        Ž Z Č C V B N M , . -
-      caps+shift: |
-        ½ ! " # ¤ % & / ( ) = ? `
-          á š e r t y u i o p å ŋ
-          a s d f g h j k l ö ä đ
-        ž z č c v b n m ; : _
-      alt: |
-        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
-              q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
-              â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
-        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     <     >     \u{0}
-      alt+shift: |
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-              Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
-              Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
-        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-      ctrl: |
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+  deadKeys:
+    default: [´]
 ```
 
 ==== Config
-The `config` section is used by Pahkat for spellchecking, the fields:
+Both are optional:
 
-* `locale` - defines the language locale
-* `xkbLayout` - defines the layout ??
+* `locale` - the language ChromeOS lists the input method under; `en-US`
+  by default
+* `xkbLayout` - the ChromeOS keyboard layout beneath the input method, which
+  gives Ctrl shortcuts their keys; `us` by default
 
 ==== Layers
-Each layer is split by line,
-typically to 3 lines of the keyboard. Keys in the format of `\u{}` are written in Unicode to avoid display issues.
+In v3, each layer is 48 keys in ISO order, split over lines as you like.
+`\u{...}` writes a character by its code point, and `\u{0}` means no key.
+Layers may be `default`, `shift`, `caps`, `caps+shift`, `alt`, `alt+shift`
+and `ctrl`; `alt` is typed with Right Alt (AltGr).
+
+=== Building kbdgen from source
+kbdgen embeds the engine compiled to WebAssembly, so building kbdgen needs
+Rust's WebAssembly target:
+
+```
+rustup target add wasm32-unknown-unknown
+```
+
+Released kbdgen binaries already contain the engine; generating an extension
+needs no Rust.

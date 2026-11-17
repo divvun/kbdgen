@@ -182,7 +182,7 @@ fn markers_never_reach_the_application() {
     assert_eq!(action, typed(""));
 }
 
-// [spec:kbdgen:req:ldml.crate.ffi/test]
+// [spec:kbdgen:req:ldml.crate.ffi+1/test]
 // [spec:kbdgen:req:ldml.crate.engine+1/test]
 #[test]
 fn public_types_are_send_and_sync() {

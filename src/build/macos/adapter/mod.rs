@@ -26,6 +26,7 @@ use crate::ldml::layouts::{LayoutFile, compiled_layouts, host_documents};
 use crate::ldml::yaml::LayoutFormat;
 use crate::util::decode_unicode_escapes;
 
+pub(crate) use classify::automatic;
 pub use classify::{Category, Classification};
 pub use layers::{DECIMAL_CODE, SPACE, positions};
 

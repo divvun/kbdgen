@@ -37,7 +37,8 @@ pub struct KbdgenBundle {
     pub project: Project,
     pub layouts: Layouts,
     /// The `format: 4` layouts, by tag in bundle layout order, which only
-    /// the windows and macos targets build yet (`ldml.yaml.coexistence`).
+    /// the windows, macos and chromeos targets build yet
+    /// (`ldml.yaml.coexistence`).
     pub v4_layouts: Vec<(LanguageTag, PathBuf)>,
     pub targets: Targets,
     pub resources: Resources,
@@ -103,17 +104,20 @@ impl<'a> IntoIterator for &'a Layouts {
 }
 
 impl KbdgenBundle {
-    // [spec:kbdgen:req:ldml.yaml.coexistence+1]
+    // [spec:kbdgen:req:ldml.yaml.coexistence+2]
     /// Fails, naming the first v4 layout and `target`, when the bundle has
-    /// v4 layouts and `target` cannot build them. Only `windows` and `macos`
-    /// can, through their adapters (`ldml.kbdl.adapter`,
-    /// `ldml.macos.adapter`). A generator never skips a v4 layout silently.
+    /// v4 layouts and `target` cannot build them. Only `windows`, `macos`
+    /// and `chromeos` can, from the model (`ldml.kbdl.adapter`,
+    /// `ldml.macos.adapter`, `ldml.chromeos.input`). A generator never
+    /// skips a v4 layout silently.
     pub fn reject_v4_layouts(&self, target: &'static str) -> Result<(), Error> {
         match self.v4_layouts.first() {
-            Some((tag, _)) if !matches!(target, "windows" | "macos") => Err(Error::V4Layout {
-                tag: tag.to_string(),
-                target,
-            }),
+            Some((tag, _)) if !matches!(target, "windows" | "macos" | "chromeos") => {
+                Err(Error::V4Layout {
+                    tag: tag.to_string(),
+                    target,
+                })
+            }
             _ => Ok(()),
         }
     }
@@ -328,7 +332,7 @@ where
     serde_path_to_error::deserialize(raw).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
-// [spec:kbdgen:def:bundle.resources+1]
+// [spec:kbdgen:def:bundle.resources+2]
 fn read_resources(path: &Path) -> Result<Resources, Error> {
     tracing::debug!("Reading resources from {}", path.display());
     let mut resources = Resources::default();

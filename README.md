@@ -26,6 +26,7 @@ For Linux: `<pkg-manager> install imagemagick`
 ## Installation
 
 1. get [Rust](https://www.rust-lang.org/learn/get-started)
+1. add the WebAssembly target, which the ChromeOS engine is built for: `rustup target add wasm32-unknown-unknown`
 1. clone this repo: `git clone https://github.com/divvun/kbdgen.git`
 1. `cd kbdgen`
 1. `cargo install --path .` (this installs `kbdgen` to the path)

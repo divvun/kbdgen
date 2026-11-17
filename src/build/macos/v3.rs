@@ -83,7 +83,7 @@ fn initialize_key_transition_map(
     let mut layered_key_transition_map = TransitionMap::new();
     for (layer, key_map) in layers {
         let keys = split_keys(key_map);
-        // [spec:kbdgen:req:keys.iso-order.desktop-layers+1]
+        // [spec:kbdgen:req:keys.iso-order.desktop-layers+2]
         if keys.len() < MACOS_KEYS.len() {
             bail!(
                 "macOS layer {layer:?} does not have enough keys, expected {} keys but got {}",

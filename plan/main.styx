@@ -181,7 +181,7 @@ children (
                         id targets.windows.test-golden
                         title "Golden tests for generated Windows layout crates, .res files and DLLs"
                         kind @test
-                        deps (targets.windows.dll-gen input.layout-order)
+                        deps (input.layout-order targets.windows.dll-gen)
                         log (
                             {
                                 at 2026-10-06T23:46:48.316912Z
@@ -331,7 +331,7 @@ children (
                                 [spec:kbdgen:def:kbdl.resources.fields]
                             )
                         }
-                        deps (targets.windows.dll-spec input.layout input.bundle)
+                        deps (input.bundle input.layout targets.windows.dll-spec)
                         log (
                             {
                                 at 2026-10-05T13:56:44.101262Z
@@ -480,7 +480,7 @@ children (
                                 id targets.windows.tsf.reconcile
                                 title "Revise tsf.md for the in-workspace TIP, one entry per keyboard and the shared engine (no interim engine)"
                                 kind @docs
-                                deps (targets.windows.tsf.design ldml.spec)
+                                deps (ldml.spec targets.windows.tsf.design)
                                 sealed true
                                 log (
                                     {
@@ -512,7 +512,7 @@ children (
                                         [spec:kbdgen:req:tsf.test.engine]
                                     )
                                 }
-                                deps (targets.windows.tsf.reconcile ldml.model targets.windows.dll-build)
+                                deps (ldml.model targets.windows.dll-build targets.windows.tsf.reconcile)
                                 log (
                                     {
                                         at 2026-10-05T22:36:18.668509Z
@@ -566,9 +566,11 @@ children (
                                         [spec:kbdgen:thm:tsf.edit.units]
                                         [spec:kbdgen:sem:tsf.pairing.substitute]
                                         [spec:kbdgen:sem:tsf.pairing.alternatives]
+                                        [spec:kbdgen:req:tsf.component.events]
+                                        [spec:kbdgen:req:tsf.data.inert]
                                     )
                                 }
-                                deps (targets.windows.tsf.reconcile ldml.engine targets.windows.tsf.data)
+                                deps (ldml.engine targets.windows.tsf.data targets.windows.tsf.reconcile)
                                 log (
                                     {
                                         at 2026-10-06T10:03:24.830505Z
@@ -684,7 +686,7 @@ children (
                                 title "Bundle the text service in keyboard installers (divvun-actions)"
                                 priority 0
                                 kind @feat
-                                deps (targets.windows.tsf.register targets.windows.tsf.kbdi)
+                                deps (targets.windows.tsf.kbdi targets.windows.tsf.register)
                                 sealed true
                                 log (
                                     {
@@ -1010,7 +1012,7 @@ children (
                                 [spec:kbdgen:req:xcode.targets.hosting-app]
                             )
                         }
-                        deps (targets.ios.pbxproj input.bundle input.layout)
+                        deps (input.bundle input.layout targets.ios.pbxproj)
                     }
 
                     {
@@ -1032,7 +1034,7 @@ children (
                         id targets.ios.test-golden
                         title "Tests for iOS row grammar, transforms, pkg ids, and golden pbxproj round-trip"
                         kind @test
-                        deps (targets.ios.keyboard-json input.layout-order)
+                        deps (input.layout-order targets.ios.keyboard-json)
                     }
 
                     {
@@ -1141,14 +1143,15 @@ children (
                 children (
                     {
                         id targets.chromeos.ime
-                        title "ChromeOS IME extension (key table, descriptor + JS template, manifest v2, _locales)"
+                        title "ChromeOS IME extension (Manifest V3, kbd-engine in wasm, _locales, icon)"
                         kind @feat
                         implements {
                             main (
-                                [spec:kbdgen:def:chromeos.keymap]
-                                [spec:kbdgen:req:chromeos.descriptor]
                                 [spec:kbdgen:req:chromeos.manifest]
-                                [spec:kbdgen:sem:chromeos.descriptor.runtime]
+                                [spec:kbdgen:def:chromeos.extension]
+                                [spec:kbdgen:req:chromeos.engine]
+                                [spec:kbdgen:req:chromeos.icons]
+                                [spec:kbdgen:req:chromeos.locales]
                             )
                         }
                         deps (input.bundle input.layout)
@@ -1164,8 +1167,17 @@ children (
                     {
                         id targets.chromeos.descriptor-fields
                         title "Align descriptor field names with the JS runtime (deadKeys/space vs dead_keys); IME likely broken"
+                        superseded_by ldml.port.chromeos
                         kind @fix
                         deps (targets.chromeos.ime)
+                        log (
+                            {
+                                at 2026-11-17T22:29:42.168237Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "superseded by ldml.port.chromeos: The JS descriptor and its hand-written runtime are gone: the ChromeOS IME now runs kbd-engine compiled to wasm behind Manifest V3 glue (operator decision 2026-11-17 on ldml.port.chromeos), so there are no descriptor fields left to align."
+                            }
+                        )
                     }
                 )
             }
@@ -1174,7 +1186,7 @@ children (
                 id targets.svg
                 title "Implement SVG output from template-iso-keyboard.svg, or drop SVG from README and CLI"
                 kind @feat
-                deps (input.bundle input.layout input.cli)
+                deps (input.bundle input.cli input.layout)
             }
 
             {
@@ -1183,11 +1195,11 @@ children (
                 kind @feat
                 deps (
                     input.layout
-                    targets.macos.keylayout
-                    targets.ios.keyboard-json
                     targets.android.layout
-                    targets.ios.test-golden
                     targets.android.test-golden
+                    targets.ios.keyboard-json
+                    targets.ios.test-golden
+                    targets.macos.keylayout
                     targets.macos.test-golden
                 )
             }
@@ -1204,17 +1216,17 @@ children (
                 title "Clear clippy warnings and remove dead code (MacOsBuild, unused target fields)"
                 kind @refactor
                 deps (
-                    input.layout
                     input.bundle
                     input.cli
-                    targets.windows.dll-gen
-                    targets.windows.dll-build
-                    targets.macos.package
-                    targets.ios.keyboard-json
-                    targets.ios.xcode
-                    targets.ios.toolchain
+                    input.layout
                     targets.android.toolchain
                     targets.chromeos.ime
+                    targets.ios.keyboard-json
+                    targets.ios.toolchain
+                    targets.ios.xcode
+                    targets.macos.package
+                    targets.windows.dll-build
+                    targets.windows.dll-gen
                 )
             }
 
@@ -1229,7 +1241,7 @@ children (
                 id quality.robustness
                 title "Robustness: Windows DLL name collisions on 5-char tag prefix, unchecked subprocess exit codes, Android name sanitiser turning _ into x"
                 kind @fix
-                deps (targets.windows.dll-gen targets.android.layout)
+                deps (targets.android.layout targets.windows.dll-gen)
                 log (
                     {
                         at 2026-10-05T16:32:42.700251Z
@@ -1499,7 +1511,7 @@ children (
                         [spec:kbdgen:thm:ldml.yaml.roundtrip]
                     )
                 }
-                deps (ldml.model ldml.parser ldml.engine)
+                deps (ldml.engine ldml.model ldml.parser)
                 log (
                     {
                         at 2026-10-05T18:26:54.088763Z
@@ -1618,10 +1630,10 @@ children (
                 kind @feat
                 deps (
                     ldml.engine
-                    ldml.port.macos
-                    ldml.port.ios
                     ldml.port.android
                     ldml.port.chromeos
+                    ldml.port.ios
+                    ldml.port.macos
                 )
                 log (
                     {
@@ -1657,7 +1669,7 @@ children (
                                 [spec:kbdgen:sem:ldml.macos.semantics]
                             )
                         }
-                        deps (ldml.yaml-v4 ldml.spec-errata)
+                        deps (ldml.spec-errata ldml.yaml-v4)
                         log (
                             {
                                 at 2026-10-06T18:08:17.722683Z
@@ -1679,7 +1691,7 @@ children (
                         id ldml.port.ios
                         title "Generate ios output from the v4 model"
                         kind @feat
-                        deps (ldml.yaml-v4 ldml.spec-errata)
+                        deps (ldml.spec-errata ldml.yaml-v4)
                     }
 
                     {
@@ -1708,7 +1720,7 @@ children (
                                 [spec:kbdgen:syn:ldml.android.key-spec]
                             )
                         }
-                        deps (ldml.yaml-v4 ldml.spec-errata)
+                        deps (ldml.spec-errata ldml.yaml-v4)
                         log (
                             {
                                 at 2026-10-06T13:35:30.717096Z
@@ -1730,13 +1742,34 @@ children (
                         id ldml.port.chromeos
                         title "Generate chromeos output from the v4 model"
                         kind @feat
-                        deps (ldml.yaml-v4 ldml.spec-errata)
+                        implements {
+                            main (
+                                [spec:kbdgen:def:ldml.chromeos.input]
+                                [spec:kbdgen:req:ldml.chromeos.wasm]
+                                [spec:kbdgen:sem:ldml.chromeos.keys]
+                                [spec:kbdgen:sem:ldml.chromeos.modifiers]
+                                [spec:kbdgen:sem:ldml.chromeos.semantics]
+                                [spec:kbdgen:sem:ldml.chromeos.context]
+                                [spec:kbdgen:req:ldml.chromeos.classify]
+                                [spec:kbdgen:req:ldml.chromeos.target]
+                                [spec:kbdgen:req:ldml.chromeos.test.typing]
+                                [spec:kbdgen:req:ldml.chromeos.test.golden]
+                            )
+                        }
+                        deps (ldml.spec-errata ldml.yaml-v4 targets.chromeos.ime)
                         log (
                             {
                                 at 2026-11-17T21:10:16.66805Z
                                 author "brendan@necessary.nu"
                                 kind @decision
                                 text "Operator 2026-11-17: the ChromeOS IME runs kbd-engine compiled to wasm with the compiled model, behind thin Manifest V3 service-worker glue that maps chrome.input.ime key events to engine events and applies its edits. v3 chromeOS layouts are migrated to the model, as Windows does. This replaces the hand-written JS descriptor runtime (resolving targets.chromeos.descriptor-fields) and moves off Manifest V2."
+                            }
+
+                            {
+                                at 2026-11-17T22:29:42.168237Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "supersedes targets.chromeos.descriptor-fields: The JS descriptor and its hand-written runtime are gone: the ChromeOS IME now runs kbd-engine compiled to wasm behind Manifest V3 glue (operator decision 2026-11-17 on ldml.port.chromeos), so there are no descriptor fields left to align."
                             }
                         )
                     }
@@ -1793,7 +1826,7 @@ children (
                 id ldml.ref-windows-targets
                 title "ldml: layouts silently ignore targets.windows shiftLock/lrmRlm/keyNames; apply or reject them"
                 kind @fix
-                deps (ldml.yaml-v4 input.windows-layers)
+                deps (input.windows-layers ldml.yaml-v4)
                 sealed true
                 log (
                     {
@@ -1816,7 +1849,7 @@ children (
                 id ldml.coverage-gaps
                 title "Annotate long-press application sites; test Id on gap/role keys and at_start after context truncation"
                 kind @test
-                deps (ldml.yaml-v4 ldml.engine)
+                deps (ldml.engine ldml.yaml-v4)
                 sealed true
                 log (
                     {

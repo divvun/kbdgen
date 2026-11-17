@@ -24,7 +24,7 @@
 
 // [spec:kbdgen:req:ldml.crate.engine+1]
 // [spec:kbdgen:req:ldml.crate.targets]
-// [spec:kbdgen:req:ldml.crate.ffi]
+// [spec:kbdgen:req:ldml.crate.ffi+1]
 #![no_std]
 
 extern crate alloc;

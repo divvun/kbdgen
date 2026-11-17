@@ -121,11 +121,12 @@ fn v4_bundle_exports_compiles_and_imports_back() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence+1/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+2/test]
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
 // [spec:kbdgen:req:ldml.macos.target/test]
+// [spec:kbdgen:req:ldml.chromeos.target/test]
 #[test]
-fn windows_and_macos_targets_build_v4_layouts() {
+fn windows_macos_and_chromeos_targets_build_v4_layouts() {
     let dir = tempfile::tempdir().unwrap();
     let bundle = dir.path().join("vro.kbdgen");
     for sub in ["layouts", "targets", "resources"] {
@@ -148,11 +149,6 @@ fn windows_and_macos_targets_build_v4_layouts() {
             "android",
             Some("generate"),
             "the android target cannot build v4 layouts yet",
-        ),
-        (
-            "chromeos",
-            None,
-            "the chromeos target cannot build v4 layouts yet",
         ),
     ] {
         let mut args: Vec<&std::ffi::OsStr> = vec![
@@ -218,6 +214,33 @@ fn windows_and_macos_targets_build_v4_layouts() {
     let strings =
         std::fs::read_to_string(contents.join("Resources/vro.lproj/InfoPlist.strings")).unwrap();
     assert_eq!(strings, "\"vro\" = \"Võro\";");
+
+    std::fs::write(
+        bundle.join("targets/chromeos.yaml"),
+        "appId: abc\nbuild: \"1\"\nversion: 1.0.0\n",
+    )
+    .unwrap();
+    let chromeos = dir.path().join("chromeos");
+    let output = kbdgen(&[
+        "target".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+        "-o".as_ref(),
+        chromeos.as_os_str(),
+        "chromeos".as_ref(),
+    ]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    for file in [
+        "manifest.json",
+        "background.js",
+        "engine.wasm",
+        "models/vro.dvkb",
+    ] {
+        assert!(chromeos.join(file).is_file(), "{file}: {stderr}");
+    }
+    let manifest = std::fs::read_to_string(chromeos.join("manifest.json")).unwrap();
+    assert!(manifest.contains("\"id\": \"vro\""), "{manifest}");
 }
 
 /// Standard output without the log lines `tracing` writes there.

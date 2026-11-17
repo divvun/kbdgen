@@ -1051,6 +1051,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kbd-wasm"
+version = "0.1.0"
+dependencies = [
+ "kbd-engine",
+ "kbd-model",
+]
+
+[[package]]
 name = "kbdgen"
 version = "4.0.0-alpha.1"
 dependencies = [

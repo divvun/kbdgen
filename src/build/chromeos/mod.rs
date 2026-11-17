@@ -1,16 +1,26 @@
+//! The ChromeOS target: a Manifest V3 input-method extension whose service
+//! worker runs `kbd-engine`, compiled to WebAssembly, on each layout's
+//! `chromeOS` keyboard (`docs/spec/chromeos.md`,
+//! `docs/spec/ldml/chromeos.md`).
+
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 
 use crate::bundle::KbdgenBundle;
 
-use self::generate_chromeos::GenerateChromeOs;
+pub use self::generate_chromeos::GenerateChromeOs;
 
 use super::{BuildStep, BuildSteps};
 
+mod classify;
+#[cfg(test)]
+mod differential;
 mod generate_chromeos;
-mod keymap;
 mod manifest;
+mod source;
+#[cfg(test)]
+mod tests;
 
 pub struct ChromeOsBuild {
     pub bundle: KbdgenBundle,

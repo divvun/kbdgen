@@ -114,7 +114,7 @@ fn crate_dirs(root: &Path) -> BTreeSet<String> {
         .collect()
 }
 
-// [spec:kbdgen:def:ldml.crate.layout+1/test]
+// [spec:kbdgen:def:ldml.crate.layout+2/test]
 #[test]
 fn workspace_has_kbdgen_and_crate_members() {
     let workspace = Workspace::load();
@@ -297,4 +297,47 @@ fn tsf_is_windows_cdylib_on_engine_and_windows() {
             "{name} is 0.62.x"
         );
     }
+}
+
+// [spec:kbdgen:req:ldml.chromeos.wasm/test]
+// [spec:kbdgen:req:chromeos.engine/test]
+#[test]
+fn wasm_is_cdylib_on_engine_and_model() {
+    let workspace = Workspace::load();
+    let wasm = workspace.package("kbd-wasm");
+
+    let library = wasm["targets"]
+        .as_array()
+        .expect("targets")
+        .iter()
+        .find(|target| target["name"] == "kbd_wasm")
+        .expect("kbd-wasm has a library");
+    assert_eq!(strings(&library["crate_types"]), BTreeSet::from(["cdylib"]));
+    assert!(
+        !workspace
+            .names_of("workspace_default_members")
+            .contains("kbd-wasm"),
+        "kbdgen's build script builds it for wasm; a plain cargo build does not"
+    );
+    assert_eq!(
+        dependency_names(wasm),
+        BTreeSet::from(["kbd-engine", "kbd-model"])
+    );
+    for name in ["kbd-engine", "kbd-model"] {
+        let dependency = dependency(wasm, name);
+        assert!(dependency["path"].is_string(), "{name} by path");
+        assert_eq!(
+            dependency["uses_default_features"], true,
+            "{name} with its defaults, so normalization is in the module"
+        );
+    }
+    let kbdgen = workspace.package("kbdgen");
+    assert!(
+        !dependency_names(kbdgen).contains("kbd-wasm"),
+        "kbdgen embeds the module, it does not link the crate"
+    );
+    assert!(
+        workspace.root.join("build.rs").is_file(),
+        "kbdgen's build script builds the module"
+    );
 }

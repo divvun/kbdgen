@@ -59,7 +59,7 @@ order that desktop generators map layer tokens onto.
 
 ## Key notation
 
-> [spec:kbdgen:syn:keys.escape+1]
+> [spec:kbdgen:syn:keys.escape+2]
 > A key escape is `\u{H}` with H 1–6 hex digits of either case (regex
 > `\\u\{([0-9A-Fa-f]{1,6})\}`). Decoding replaces every match anywhere in a
 > string with the character of scalar value H; non-matching text (`\u{}`,
@@ -67,24 +67,27 @@ order that desktop generators map layer tokens onto.
 > (surrogates, above U+10FFFF) panics, except in the Windows layout input
 > where it is fatal (`kbdl.input.bundle`); the U+FEFF fallback for unparseable
 > hex is unreachable. Whitespace outputs MUST be escaped (e.g. `\u{20}`) because
-> layers are split on whitespace. Only two generators decode: Windows
-> decodes each layer token (not `deadKeys` or transforms), and macOS decodes
-> every `output` attribute it writes, transform outputs included, while
-> matching against raw tokens. iOS, Android and ChromeOS emit all strings
-> undecoded.
+> layers are split on whitespace. Windows decodes each layer token (not
+> `deadKeys` or transforms), and macOS decodes every `output` attribute it
+> writes, transform outputs included, while matching against raw tokens.
+> ChromeOS migrates the layout (`ldml.chromeos.input`), which decodes every
+> string as v4 does (`ldml.yaml.escape`, defect M14). iOS and Android emit
+> all strings undecoded.
 
-> [spec:kbdgen:def:keys.iso-order]
+> [spec:kbdgen:def:keys.iso-order+1]
 > The ISO key order is the fixed sequence of 49 ISO/IEC 9995 positions,
 > indices 0–48: `E00`–`E12` (13 keys, starting left of `1`), `D01`–`D12`,
 > `C01`–`C12`, `B00`–`B11` (`B00` is the extra ISO key left of `B01`; `B11` is
-> Brazilian-only). The desktop key tables (Windows scancode/VK, macOS key
-> code, ChromeOS `KeyboardEvent.code`) each cover exactly the first 48
-> positions, `E00`…`B10`, in this order; nothing maps `B11`.
+> Brazilian-only). The v3 desktop key tables (Windows scancode/VK, macOS
+> key code) each cover exactly the first 48 positions, `E00`…`B10`, in this
+> order; nothing maps `B11`.
 
-> [spec:kbdgen:req:keys.iso-order.desktop-layers+1]
-> For Windows, macOS and ChromeOS, every `primary` layer string is split on
+> [spec:kbdgen:req:keys.iso-order.desktop-layers+2]
+> For Windows and macOS, every `primary` layer string is split on
 > whitespace (newlines included) and token *i* is assigned to position *i*
 > of the 48-key order `E00`…`B10`. Each layer MUST have at least 48 tokens;
 > fewer is an error naming the layout, the layer, the token count and the 48
 > required. Tokens past the 48th are silently ignored, so a 49th `B11` token
-> has no effect.
+> has no effect. A ChromeOS layout is migrated instead
+> (`ldml.chromeos.input`), where a layer with other than 48 tokens blocks
+> (`ldml.migrate.defects`, M05) and the build fails naming the layout.
