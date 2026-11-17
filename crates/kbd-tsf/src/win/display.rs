@@ -109,13 +109,16 @@ impl IEnumTfDisplayAttributeInfo_Impl for PreeditEnum_Impl {
         contain(&POISON, Entry::EnumNext, || {
             let give = ulcount > 0 && self.next.get() == 0 && !rginfo.is_null();
             if give {
+                // SAFETY: the caller's `rginfo` holds `ulcount` slots, which
+                // it expects to be written without dropping what they held.
                 unsafe { rginfo.write(Some(PreeditInfo::interface())) };
                 self.next.set(1);
             }
-            if let Some(fetched) = unsafe { pcfetched.as_mut() } {
-                *fetched = u32::from(give);
+            let fetched = u32::from(give);
+            if let Some(out) = unsafe { pcfetched.as_mut() } {
+                *out = fetched;
             }
-            if give || ulcount == 0 {
+            if fetched == ulcount {
                 Ok(())
             } else {
                 Err(S_FALSE.into())

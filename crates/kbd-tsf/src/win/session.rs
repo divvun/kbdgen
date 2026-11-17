@@ -2,7 +2,7 @@
 //! the `SendInput` fallback, and the requests that run document work in
 //! a session.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
 
@@ -35,6 +35,8 @@ pub const SIGNATURE: usize = 0x4456_4B54;
 /// its pass was handled.
 // [spec:kbdgen:req:tsf.keys.phases]
 pub struct Pending {
+    /// The virtual key, the physical key and the message time, which tell
+    /// the commit half of this key down from that of another.
     pub id: (u16, u16, u32),
     pub decision: Option<Decision>,
 }
@@ -63,18 +65,17 @@ struct Session {
     shared: Rc<RefCell<Inner>>,
     context: ITfContext,
     sink: ITfCompositionSink,
-    task: RefCell<Option<Task>>,
-    outcome: RefCell<Option<Outcome>>,
+    task: Cell<Option<Task>>,
+    outcome: Cell<Option<Outcome>>,
 }
 
 impl ITfEditSession_Impl for Session_Impl {
     fn DoEditSession(&self, ec: u32) -> Result<()> {
         contain(&POISON, Entry::DoEditSession, || {
-            let Some(task) = self.task.borrow_mut().take() else {
+            let Some(task) = self.task.take() else {
                 return Ok(());
             };
-            let outcome = self.run(task, Some(ec));
-            *self.outcome.borrow_mut() = Some(outcome);
+            self.outcome.set(Some(self.run(task, Some(ec))));
             Ok(())
         })
     }
@@ -167,8 +168,8 @@ impl Tip_Impl {
             shared: self.shared.clone(),
             context: context.clone(),
             sink: self.composition_sink(),
-            task: RefCell::new(Some(task)),
-            outcome: RefCell::new(None),
+            task: Cell::new(Some(task)),
+            outcome: Cell::new(None),
         });
         let interface: ITfEditSession = session.to_interface();
         let flags = match (ending, write) {
@@ -179,10 +180,10 @@ impl Tip_Impl {
         let client = self.set_own(true);
         let _ = unsafe { context.RequestEditSession(client, &interface, flags) };
         self.set_own(false);
-        if let Some(outcome) = session.outcome.borrow_mut().take() {
+        if let Some(outcome) = session.outcome.take() {
             return outcome;
         }
-        match session.task.borrow_mut().take() {
+        match session.task.take() {
             Some(task) if !ending => session.run(task, None),
             _ => Outcome::Done,
         }
@@ -514,8 +515,8 @@ pub(super) fn test_session(context: ITfContext) -> ITfEditSession {
         shared: Rc::default(),
         context,
         sink,
-        task: RefCell::new(None),
-        outcome: RefCell::new(None),
+        task: Cell::new(None),
+        outcome: Cell::new(None),
     })
     .to_interface()
 }

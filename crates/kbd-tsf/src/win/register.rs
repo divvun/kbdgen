@@ -20,12 +20,13 @@ use windows::Win32::UI::TextServices::{
 };
 use windows_core::{GUID, PCWSTR, Result};
 
-use super::facts::{
-    OWN, check, dacl, module_path, native_machine, profiles_remain, program_files, read_string,
-    wide,
-};
 use crate::guid::{CLSID, braced};
 use crate::registration::{Plan, Refusal, VERSION, place, plan, ungranted};
+
+use super::facts::{
+    OWN, check, dacl, module_path, native_machine, profiles_remain, program_files, read_string,
+};
+use super::wide;
 
 /// The categories of `tsf.register.server`. Secure mode support lets the
 /// text service run under `TF_TMF_SECUREMODE` (`tsf.security.secure-mode`).

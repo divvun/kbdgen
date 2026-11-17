@@ -14,9 +14,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(panic = "abort")]
 compile_error!("kbd-tsf must build with panic = \"unwind\" to contain panics");
 
-/// `E_UNEXPECTED`, which a contained panic returns.
-pub const E_UNEXPECTED: i32 = 0x8000_FFFF_u32 as i32;
-
 /// Whether this process's text service has panicked.
 pub static POISON: AtomicBool = AtomicBool::new(false);
 
@@ -175,6 +172,8 @@ pub mod faults {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const E_UNEXPECTED: i32 = 0x8000_FFFF_u32 as i32;
 
     #[derive(Debug, PartialEq)]
     struct Hr(i32);

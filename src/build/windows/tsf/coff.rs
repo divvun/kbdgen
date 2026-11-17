@@ -232,8 +232,9 @@ fn lay_out(sections: &[SectionItems]) -> (Vec<Laid>, Vec<Symbol>) {
     (laid, symbols)
 }
 
-/// Writes a COFF object of `machine` with `sections`, [`NATIVE`] or [`EC`]. Every relocation
-/// target that no label defines becomes an undefined external symbol.
+/// Writes a COFF object of `machine` with `sections`, [`NATIVE`] or
+/// [`EC`]. Every relocation target that no label defines becomes an
+/// undefined external symbol.
 // [spec:kbdgen:req:tsf.arch.arm64x+1]
 pub fn object(machine: u16, sections: &[SectionItems]) -> Vec<u8> {
     let (laid, mut symbols) = lay_out(sections);

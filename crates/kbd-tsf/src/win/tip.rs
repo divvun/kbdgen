@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use windows::Win32::Foundation::E_UNEXPECTED;
 use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetKeyboardLayout, MAPVK_VSC_TO_VK_EX, MapVirtualKeyExW,
@@ -16,7 +17,7 @@ use windows::Win32::UI::TextServices::{
     ITfThreadMgrEx, TF_INPUTPROCESSORPROFILE, TF_MOD_ALT, TF_MOD_CONTROL, TF_MOD_RALT,
     TF_MOD_SHIFT, TF_PRESERVEDKEY,
 };
-use windows_core::{GUID, IUnknown, IUnknownImpl, Interface, Ref, Result, implement};
+use windows_core::{Error, GUID, IUnknown, IUnknownImpl, Interface, Ref, Result, implement};
 
 use crate::claim::Claims;
 use crate::document::Document;
@@ -72,9 +73,12 @@ impl Advice {
 #[derive(Default)]
 pub(super) struct Inner {
     pub thread_mgr: Option<ITfThreadMgr>,
+    /// The `TfClientId` that activation was given.
     pub client: u32,
     /// `ITfThreadMgrEx::GetActiveFlags` at activation: `TF_TMF_SECUREMODE`,
-    /// `TF_TMF_IMMERSIVEMODE` and the rest.
+    /// `TF_TMF_IMMERSIVEMODE` and the rest, recorded as
+    /// `tsf.component.interfaces` requires: in secure or immersive mode no
+    /// diagnostic may be written (`tsf.component.logging`).
     pub active_flags: u32,
     pub keyboard: Option<Arc<Keyboard>>,
     pub document: Document,
@@ -167,6 +171,11 @@ impl Tip_Impl {
         else {
             return;
         };
+        let alt = if ctrl {
+            TF_MOD_CONTROL | TF_MOD_ALT
+        } else {
+            TF_MOD_RALT
+        };
         let layout = unsafe { GetKeyboardLayout(0) };
         for chord in chords {
             let vk = unsafe {
@@ -175,11 +184,6 @@ impl Tip_Impl {
             if vk == 0 {
                 continue;
             }
-            let alt = if ctrl {
-                TF_MOD_CONTROL | TF_MOD_ALT
-            } else {
-                TF_MOD_RALT
-            };
             let modifiers = alt | if chord.shift { TF_MOD_SHIFT } else { 0 };
             let key = TF_PRESERVEDKEY {
                 uVKey: vk,
@@ -250,7 +254,20 @@ impl Tip_Impl {
         }
     }
 
-    fn activate(&self, thread_mgr: &ITfThreadMgr, client: u32) -> Result<()> {
+    /// Activates on `thread_mgr`, or, if that fails part way, deactivates
+    /// again.
+    fn activate(&self, thread_mgr: Ref<ITfThreadMgr>, client: u32) -> Result<()> {
+        let thread_mgr = thread_mgr.ok()?;
+        self.advise(thread_mgr, client)
+            .inspect_err(|_| self.deactivate())?;
+        self.select_profile(active_profile());
+        self.follow_focus();
+        Ok(())
+    }
+
+    /// Advises the key event sink and the thread sinks, keeping in `Inner`
+    /// what [`Tip_Impl::deactivate`] needs to unadvise them.
+    fn advise(&self, thread_mgr: &ITfThreadMgr, client: u32) -> Result<()> {
         let active_flags = thread_mgr
             .cast::<ITfThreadMgrEx>()
             .and_then(|tm| unsafe { tm.GetActiveFlags() })
@@ -260,7 +277,10 @@ impl Tip_Impl {
         let attribute = categories
             .and_then(|c| unsafe { c.RegisterGUID(&GUID::from_u128(PREEDIT_ATTRIBUTE)) }.ok());
         {
-            let mut inner = self.shared.borrow_mut();
+            let mut inner = self
+                .shared
+                .try_borrow_mut()
+                .map_err(|_| Error::from(E_UNEXPECTED))?;
             inner.thread_mgr = Some(thread_mgr.clone());
             inner.client = client;
             inner.active_flags = active_flags;
@@ -272,7 +292,6 @@ impl Tip_Impl {
         let source: ITfSource = thread_mgr.cast()?;
         let thread_sink: ITfThreadMgrEventSink = self.to_interface();
         let profile_sink: ITfActiveLanguageProfileNotifySink = self.to_interface();
-        let mut sinks = Vec::new();
         for (iid, sink) in [
             (ITfThreadMgrEventSink::IID, thread_sink.cast::<IUnknown>()?),
             (
@@ -280,15 +299,18 @@ impl Tip_Impl {
                 profile_sink.cast::<IUnknown>()?,
             ),
         ] {
-            let cookie = unsafe { source.AdviseSink(&iid, &sink) }?;
-            sinks.push(Advice {
+            let advice = Advice {
+                cookie: unsafe { source.AdviseSink(&iid, &sink) }?,
                 source: source.clone(),
-                cookie,
-            });
+            };
+            match self.shared.try_borrow_mut() {
+                Ok(mut inner) => inner.thread_sinks.push(advice),
+                Err(_) => {
+                    advice.unadvise();
+                    return Err(E_UNEXPECTED.into());
+                }
+            }
         }
-        self.shared.borrow_mut().thread_sinks = sinks;
-        self.select_profile(active_profile());
-        self.follow_focus();
         Ok(())
     }
 
@@ -318,11 +340,7 @@ impl Tip_Impl {
 
 impl ITfTextInputProcessor_Impl for Tip_Impl {
     fn Activate(&self, ptim: Ref<ITfThreadMgr>, tid: u32) -> Result<()> {
-        contain(&POISON, Entry::Activate, || {
-            let thread_mgr = ptim.ok()?;
-            self.activate(thread_mgr, tid)
-                .inspect_err(|_| self.deactivate())
-        })
+        contain(&POISON, Entry::Activate, || self.activate(ptim, tid))
     }
 
     // [spec:kbdgen:req:tsf.component.interfaces+2]
@@ -338,10 +356,6 @@ impl ITfTextInputProcessorEx_Impl for Tip_Impl {
     // [spec:kbdgen:req:tsf.component.interfaces+2]
     // [spec:kbdgen:req:tsf.security.secure-mode+1]
     fn ActivateEx(&self, ptim: Ref<ITfThreadMgr>, tid: u32, _flags: u32) -> Result<()> {
-        contain(&POISON, Entry::ActivateEx, || {
-            let thread_mgr = ptim.ok()?;
-            self.activate(thread_mgr, tid)
-                .inspect_err(|_| self.deactivate())
-        })
+        contain(&POISON, Entry::ActivateEx, || self.activate(ptim, tid))
     }
 }

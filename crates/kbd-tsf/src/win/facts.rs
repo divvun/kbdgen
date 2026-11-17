@@ -5,8 +5,8 @@
 use std::ffi::c_void;
 
 use windows::Win32::Foundation::{
-    ERROR_FILE_NOT_FOUND, ERROR_NO_MORE_ITEMS, ERROR_PATH_NOT_FOUND, ERROR_SUCCESS, HLOCAL,
-    HMODULE, LocalFree, WIN32_ERROR,
+    ERROR_FILE_NOT_FOUND, ERROR_INSUFFICIENT_BUFFER, ERROR_INVALID_DATA, ERROR_NO_MORE_ITEMS,
+    ERROR_PATH_NOT_FOUND, ERROR_SUCCESS, HLOCAL, HMODULE, LocalFree, WIN32_ERROR,
 };
 use windows::Win32::Security::Authorization::{
     ConvertSidToStringSidW, GetNamedSecurityInfoW, SE_FILE_OBJECT,
@@ -30,6 +30,8 @@ use windows_core::{Error, PCWSTR, PWSTR, Result};
 
 use crate::registration::{Ace, Machine, Refusal};
 
+use super::wide;
+
 const INHERIT_ONLY_ACE: u8 = 0x08;
 const ACCESS_ALLOWED_ACE_TYPE: u8 = 0;
 const ACCESS_DENIED_ACE_TYPE: u8 = 1;
@@ -45,28 +47,28 @@ pub(super) const OWN: Machine = if cfg!(target_arch = "x86") {
 
 impl From<Refusal> for Error {
     fn from(refusal: Refusal) -> Error {
-        Error::from(WIN32_ERROR(refusal.code()).to_hresult())
+        Error::from(WIN32_ERROR(refusal.code()))
     }
 }
 
-pub(super) fn wide(text: &str) -> Vec<u16> {
-    text.encode_utf16().chain([0]).collect()
-}
-
+/// Registration fails with real Win32 errors, never `Error::empty()`: its
+/// code is `S_OK`, which `DllRegisterServer` would then return.
 pub(super) fn check(status: WIN32_ERROR) -> Result<()> {
     if status == ERROR_SUCCESS {
         Ok(())
     } else {
-        Err(Error::from(status.to_hresult()))
+        Err(Error::from(status))
     }
 }
 
-/// A path as `GetModuleFileNameW` or `GetLongPathNameW` wrote it into
-/// `buffer`, `len` units long, without a `\\?\` prefix.
+/// The first `len` units of `buffer`, a path, registry string or key name
+/// that Windows wrote there, without a `\\?\` prefix.
 fn path_from(buffer: &[u16], len: u32) -> Result<String> {
-    let len = usize::try_from(len).unwrap_or_default();
-    let units = buffer.get(..len).ok_or_else(Error::empty)?;
-    let path = String::from_utf16(units).map_err(|_| Error::empty())?;
+    let len = usize::try_from(len).unwrap_or(usize::MAX);
+    let units = buffer
+        .get(..len)
+        .ok_or_else(|| Error::from(ERROR_INSUFFICIENT_BUFFER))?;
+    let path = String::from_utf16(units).map_err(|_| Error::from(ERROR_INVALID_DATA))?;
     Ok(path
         .strip_prefix(r"\\?\")
         .map(str::to_owned)
@@ -77,6 +79,8 @@ fn path_from(buffer: &[u16], len: u32) -> Result<String> {
 pub(super) fn module_path() -> Result<String> {
     let mut module = HMODULE::default();
     let anchor: fn() -> Result<String> = module_path;
+    // SAFETY: with `GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS` the name is an
+    // address inside this module and is never read as a string.
     unsafe {
         GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -86,13 +90,22 @@ pub(super) fn module_path() -> Result<String> {
     }?;
     let mut short = vec![0u16; 32_768];
     let len = unsafe { GetModuleFileNameW(Some(module), &mut short) };
+    if len == 0 {
+        return Err(Error::from_thread());
+    }
+    // Keeps the terminating NUL, which `GetLongPathNameW` needs. A
+    // truncated path is reported as the buffer's whole length, which
+    // leaves no room for it, and is refused.
     let short = short
-        .get(..=usize::try_from(len).unwrap_or_default())
-        .ok_or_else(Error::empty)?;
+        .get(..=usize::try_from(len).unwrap_or(usize::MAX))
+        .ok_or_else(|| Error::from(ERROR_INSUFFICIENT_BUFFER))?;
     let mut long = vec![0u16; 32_768];
     let len = unsafe { GetLongPathNameW(PCWSTR(short.as_ptr()), Some(&mut long)) };
-    if len == 0 || usize::try_from(len).unwrap_or(usize::MAX) >= long.len() {
+    if len == 0 {
         return Err(Error::from_thread());
+    }
+    if usize::try_from(len).unwrap_or(usize::MAX) >= long.len() {
+        return Err(Error::from(ERROR_INSUFFICIENT_BUFFER));
     }
     path_from(&long, len)
 }
@@ -221,13 +234,15 @@ pub(super) fn program_files() -> Result<String> {
         Some("ProgramFilesDir"),
         KEY_WOW64_64KEY,
     )?
-    .ok_or_else(Error::empty)
+    .ok_or_else(|| Error::from(ERROR_FILE_NOT_FOUND))
 }
 
 fn sid_string(sid: PSID) -> Result<String> {
     let mut text = PWSTR::null();
     unsafe { ConvertSidToStringSidW(sid, &mut text) }?;
-    let string = unsafe { text.to_string() }.map_err(|_| Error::empty());
+    // SAFETY: `ConvertSidToStringSidW` succeeded, so `text` is a
+    // NUL-terminated string that it allocated and that is freed below.
+    let string = unsafe { text.to_string() }.map_err(|_| Error::from(ERROR_INVALID_DATA));
     unsafe { LocalFree(Some(HLOCAL(text.0.cast::<c_void>()))) };
     string
 }
@@ -239,19 +254,22 @@ fn aces(acl: &ACL) -> Result<Vec<Ace>> {
     for index in 0..u32::from(acl.AceCount) {
         let mut ace: *mut c_void = std::ptr::null_mut();
         unsafe { GetAce(acl, index, &mut ace) }?;
+        // SAFETY: `GetAce` succeeded, so `ace` points at a DWORD-aligned
+        // entry of `acl`, and every entry starts with a header.
         let header = unsafe { &*ace.cast::<ACE_HEADER>() };
         let allow = match header.AceType {
             ACCESS_ALLOWED_ACE_TYPE => true,
             ACCESS_DENIED_ACE_TYPE => false,
             _ => continue,
         };
-        // Allowing and denying entries share one layout.
+        // SAFETY: allowing and denying entries share the layout of
+        // `ACCESS_ALLOWED_ACE`.
         let entry = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
-        let sid = PSID(
-            std::ptr::from_ref(&entry.SidStart)
-                .cast_mut()
-                .cast::<c_void>(),
-        );
+        let sid_start = std::mem::offset_of!(ACCESS_ALLOWED_ACE, SidStart);
+        // SAFETY: `SidStart` lies inside the entry. The SID runs on past
+        // that field, so its pointer is derived from `ace`, which covers
+        // the whole entry, rather than from a reference to the field.
+        let sid = PSID(unsafe { ace.byte_add(sid_start) });
         found.push(Ace {
             allow,
             inherit_only: header.AceFlags & INHERIT_ONLY_ACE != 0,
@@ -284,6 +302,8 @@ pub(super) fn dacl(path: &str) -> Result<Option<Vec<Ace>>> {
         return Err(Refusal::Missing(path.to_owned()).into());
     }
     check(status)?;
+    // SAFETY: `acl` is null or points into `descriptor`, which is freed
+    // only once `aces` has copied out what it needs.
     let result = match unsafe { acl.as_ref() } {
         Some(acl) => aces(acl).map(Some),
         None => Ok(None),

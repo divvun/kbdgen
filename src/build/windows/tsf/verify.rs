@@ -4,7 +4,7 @@
 
 use anyhow::{Context, Result, bail};
 
-use super::{ARCHITECTURES, EXPORTS, FORWARDER};
+use super::{ARCHITECTURES, EXPORTS};
 use crate::build::windows::kbdl::image::{Image, Reader};
 
 const IMAGE_FILE_DLL: u16 = 0x2000;
@@ -131,8 +131,9 @@ pub fn ec_view(bytes: &[u8]) -> Result<Option<Vec<u8>>> {
         .get(section)
         .context("the dynamic relocation table names no section")?;
     let table = section.raw_offset as usize + offset;
-    if reader.u32(table)? != 1 {
-        bail!("dynamic relocation table version is not 1");
+    let version = reader.u32(table)?;
+    if version != 1 {
+        bail!("dynamic relocation table version is {version}, expected 1");
     }
     let end = table + 8 + reader.u32(table + 4)? as usize;
     let mut view = bytes.to_vec();
@@ -220,33 +221,32 @@ pub fn verify_forwarder(bytes: &[u8]) -> Result<()> {
     let [_, x64, arm64] = &ARCHITECTURES;
     let image = Image::parse(bytes)?;
     if image.machine != arm64.machine {
-        bail!(
-            "{FORWARDER}: machine is 0x{:04x}, expected ARM64",
-            image.machine
-        );
+        bail!("machine is 0x{:04x}, expected ARM64", image.machine);
     }
-    if image.characteristics & IMAGE_FILE_DLL == 0 || image.entry_point != 0 {
-        bail!("{FORWARDER}: not a DLL without entry point");
+    if image.characteristics & IMAGE_FILE_DLL == 0 {
+        bail!("IMAGE_FILE_DLL is not set");
     }
-    if !image.imports(bytes)?.is_empty() {
-        bail!("{FORWARDER}: has imports");
+    if image.entry_point != 0 {
+        bail!("entry point is 0x{:x}, expected none", image.entry_point);
     }
-    check_exports(&image, bytes, Some(arm64.module))
-        .with_context(|| format!("{FORWARDER}: native view"))?;
+    let imports = image.imports(bytes)?;
+    if !imports.is_empty() {
+        bail!("imports {}, expected none", imports.join(", "));
+    }
+    check_exports(&image, bytes, Some(arm64.module)).context("native view")?;
     let Some(ec) = ec_view(bytes)? else {
-        bail!("{FORWARDER}: has no ARM64X dynamic relocations, so it is plain ARM64");
+        bail!("no ARM64X dynamic relocations, so it is plain ARM64");
     };
-    let ec_image = Image::parse(&ec)?;
+    let ec_image = Image::parse(&ec).context("Arm64EC view")?;
     if ec_image.machine != x64.machine {
         bail!(
-            "{FORWARDER}: Arm64EC view has machine 0x{:04x}, expected x64",
+            "Arm64EC view has machine 0x{:04x}, expected x64",
             ec_image.machine
         );
     }
     let chpe = chpe_metadata(&ec_image, &ec)?;
     if chpe == 0 || Reader(&ec).u32(ec_image.offset_of(chpe)?)? == 0 {
-        bail!("{FORWARDER}: Arm64EC view has no CHPE metadata");
+        bail!("Arm64EC view has no CHPE metadata");
     }
-    check_exports(&ec_image, &ec, Some(x64.module))
-        .with_context(|| format!("{FORWARDER}: Arm64EC view"))
+    check_exports(&ec_image, &ec, Some(x64.module)).context("Arm64EC view")
 }

@@ -20,6 +20,8 @@ use windows_core::{PCWSTR, PWSTR, w};
 
 use crate::locate::{Keyboard, Keyboards, is_layout_file, names_profile};
 
+use super::wide;
+
 static KEYBOARDS: Keyboards = Keyboards::new();
 
 const RT_RCDATA: PCWSTR = PCWSTR(10 as _);
@@ -35,10 +37,6 @@ pub fn keyboard(profile: u128) -> Option<Arc<Keyboard>> {
         let file = layout_file(profile)?;
         model_resource(&file)
     })
-}
-
-fn wide(text: &str) -> Vec<u16> {
-    text.encode_utf16().chain([0]).collect()
 }
 
 /// A `REG_SZ` value of subkey `subkey` (NUL-terminated) of `root`.
@@ -138,6 +136,8 @@ fn resource_bytes(module: HMODULE) -> Option<Vec<u8>> {
     if pointer.is_null() || size == 0 {
         return None;
     }
+    // SAFETY: a locked resource is `size` bytes that stay mapped until
+    // `module` is freed, after this copy.
     let bytes = unsafe { std::slice::from_raw_parts(pointer.cast::<u8>(), size) };
     Some(bytes.to_vec())
 }

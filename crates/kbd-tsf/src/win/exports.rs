@@ -33,6 +33,7 @@ impl IClassFactory_Impl for Factory_Impl {
             if ppvobject.is_null() {
                 return Err(E_POINTER.into());
             }
+            // SAFETY: as in `DllGetClassObject`.
             unsafe { ppvobject.write(std::ptr::null_mut()) };
             if !outer.is_null() {
                 return Err(CLASS_E_NOAGGREGATION.into());
@@ -68,6 +69,9 @@ pub unsafe extern "system" fn DllGetClassObject(
         if ppv.is_null() {
             return Ok(E_POINTER);
         }
+        // SAFETY: COM's caller passes each pointer either null or valid;
+        // `ppv` is not null. A null `riid` makes `query` fail with
+        // `E_POINTER`.
         unsafe { ppv.write(std::ptr::null_mut()) };
         let Some(clsid) = (unsafe { rclsid.as_ref() }) else {
             return Ok(E_POINTER);

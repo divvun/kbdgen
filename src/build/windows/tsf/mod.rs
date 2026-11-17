@@ -130,17 +130,27 @@ pub fn link_forwarder(lld: &Path) -> Result<Vec<u8>> {
         ),
         ("ec.obj", coff::object(coff::MACHINE_ARM64EC, coff::EC)),
     ] {
-        std::fs::write(dir.path().join(file), bytes).with_context(|| format!("write {file}"))?;
+        let path = dir.path().join(file);
+        std::fs::write(&path, bytes).with_context(|| format!("write {}", path.display()))?;
     }
     let output = forwarder_command(lld, dir.path())
         .output()
-        .with_context(|| format!("{} could not be started", lld.display()))?;
+        .with_context(|| format!("`{}` could not be started", lld.display()))?;
     if !output.status.success() {
         bail!(
-            "linking {FORWARDER} failed with {}: {}",
+            "`{}` failed to link {FORWARDER} with {}: {}",
+            lld.display(),
             output.status,
             String::from_utf8_lossy(&output.stderr).trim()
         );
+    }
+    for (stream, bytes) in [("stdout", &output.stdout), ("stderr", &output.stderr)] {
+        if !bytes.is_empty() {
+            tracing::trace!(
+                "rust-lld {stream}:\n{}",
+                String::from_utf8_lossy(bytes).trim_end()
+            );
+        }
     }
     let path = dir.path().join(FORWARDER);
     std::fs::read(&path).with_context(|| format!("read {}", path.display()))
@@ -161,30 +171,34 @@ pub fn build(workspace: &Path, output_path: &Path) -> Result<Vec<PathBuf>> {
         );
     }
     let lld = check_toolchain(&workspace)?;
+    tracing::debug!("Using rust-lld at {}", lld.display());
     let mut files = Vec::new();
     for architecture in &ARCHITECTURES {
-        tracing::info!("Building the text service for {}", architecture.triple);
+        let triple = architecture.triple;
+        tracing::info!("Building the text service for {triple}");
+        // Stdout carries only the paths of the files to sign.
         let status = cargo_command(&workspace, architecture)
+            .stdout(std::io::stderr())
             .status()
-            .context("cargo could not be started")?;
+            .with_context(|| format!("kbd-tsf ({triple}): cargo could not be started"))?;
         if !status.success() {
-            bail!(
-                "kbd-tsf ({}): cargo failed with {status}",
-                architecture.triple
-            );
+            bail!("kbd-tsf ({triple}): cargo failed with {status}");
         }
         let built = workspace
             .join("target")
-            .join(architecture.triple)
+            .join(triple)
             .join("release")
             .join("kbd_tsf.dll");
         let bytes = std::fs::read(&built).with_context(|| format!("read {}", built.display()))?;
         verify::verify_tip(&bytes, architecture.machine)
             .with_context(|| format!("{} is not a valid text service DLL", built.display()))?;
+        tracing::debug!("{} passed its checks", built.display());
         files.push((format!("{}.dll", architecture.module), bytes));
     }
+    tracing::info!("Linking the Arm64X forwarder {FORWARDER}");
     let forwarder = link_forwarder(&lld)?;
-    verify::verify_forwarder(&forwarder)?;
+    verify::verify_forwarder(&forwarder)
+        .with_context(|| format!("{FORWARDER} is not a valid Arm64X forwarder"))?;
     files.push((FORWARDER.to_owned(), forwarder));
 
     write_release(output_path, files)
@@ -206,15 +220,18 @@ pub fn write_release(output_path: &Path, files: Vec<(String, Vec<u8>)>) -> Resul
     }
     std::fs::create_dir_all(output_path)
         .with_context(|| format!("create {}", output_path.display()))?;
-    let output_path = dunce::canonicalize(output_path)?;
-    files
+    let output_path = dunce::canonicalize(output_path)
+        .with_context(|| format!("canonicalize {}", output_path.display()))?;
+    let paths = files
         .into_iter()
         .map(|(name, bytes)| {
             let path = output_path.join(name);
             std::fs::write(&path, bytes).with_context(|| format!("write {}", path.display()))?;
             Ok(path)
         })
-        .collect()
+        .collect::<Result<_>>()?;
+    tracing::info!("Wrote the text service to {}", output_path.display());
+    Ok(paths)
 }
 
 #[cfg(test)]
