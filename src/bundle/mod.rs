@@ -153,7 +153,7 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     let canonical_bundle_path: PathBuf =
         canonicalize(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
 
-    tracing::info!("Canonical Bundle Path: {:?}", &canonical_bundle_path);
+    tracing::info!("Reading bundle {}", canonical_bundle_path.display());
 
     let project_text = fs::read_to_string(canonical_bundle_path.join(PROJECT_FILENAME))
         .map_err(|e| Error::Io(path.to_path_buf(), e))?;
@@ -184,7 +184,7 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
 /// The v3 layouts, and the paths of the v4 ones, which are detected by
 /// `format: 4` and not read as v3.
 fn read_layouts(path: &Path) -> Result<(Layouts, Vec<(LanguageTag, PathBuf)>), Error> {
-    tracing::debug!("Reading layouts");
+    tracing::debug!("Reading layouts from {}", path.display());
     let mut paths: Vec<PathBuf> = read_dir(path)
         .map_err(|e| Error::Io(path.to_path_buf(), e))?
         .filter_map(Result::ok)
@@ -282,9 +282,7 @@ fn load_layout(path: &Path) -> Result<Loaded, Error> {
         && decimal != DEFAULT_DECIMAL
     {
         tracing::error!(
-            "{} is not supported as a decimal character, setting to {}",
-            decimal,
-            DEFAULT_DECIMAL
+            "{tag}: {decimal:?} is not a supported decimal separator, using {DEFAULT_DECIMAL:?}"
         );
         layout.decimal = Some(DEFAULT_DECIMAL.to_owned());
     }
@@ -347,7 +345,7 @@ where
 
 // [spec:kbdgen:def:bundle.resources]
 fn read_resources(path: &Path) -> Result<Resources, Error> {
-    tracing::debug!("Reading resources");
+    tracing::debug!("Reading resources from {}", path.display());
     let mut resources = Resources::default();
 
     let iter = read_dir(path)
@@ -357,28 +355,31 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
         .filter(|path| path.is_dir());
 
     for path in iter {
-        let target_name = path.file_name().map(|x| x.to_string_lossy()).unwrap();
+        let target_name = path
+            .file_name()
+            .expect("read_dir entries have a file name")
+            .to_string_lossy();
 
         match target_name.as_ref() {
-            "macos" => {
-                resources.macos = resources::MacOS::load(&path).ok();
-            }
-            "chromeos" => {
-                resources.chromeos = resources::ChromeOS::load(&path).ok();
-            }
-            "android" => {
-                resources.android = resources::Android::load(&path).ok();
-            }
-            "ios" => {
-                resources.ios = resources::IOS::load(&path).ok();
-            }
-            name => {
-                tracing::warn!("Saw resource folder with name {name} but did not parse");
-                continue;
-            }
+            "macos" => resources.macos = load_resources(&path, resources::MacOS::load),
+            "chromeos" => resources.chromeos = load_resources(&path, resources::ChromeOS::load),
+            "android" => resources.android = load_resources(&path, resources::Android::load),
+            "ios" => resources.ios = load_resources(&path, resources::IOS::load),
+            _ => tracing::warn!("Ignoring unknown resource folder {}", path.display()),
         };
     }
     Ok(resources)
+}
+
+fn load_resources<T>(path: &Path, load: fn(&Path) -> std::io::Result<T>) -> Option<T> {
+    load(path)
+        .inspect_err(|e| {
+            tracing::warn!(
+                "Ignoring unreadable resource folder {}: {e}",
+                path.display()
+            )
+        })
+        .ok()
 }
 
 /// Keyboard options that a layout's own `targets.windows` holds, never
@@ -407,7 +408,7 @@ fn reject_windows_options(path: &Path) -> Result<(), Error> {
 
 // [spec:kbdgen:req:bundle.structure.targets+1]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
-    tracing::debug!("Reading targets");
+    tracing::debug!("Reading targets from {}", path.display());
     let mut targets = Targets::default();
 
     let iter = read_dir(path)
@@ -465,10 +466,7 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
                     .into(),
                 )?
             }
-            name => {
-                tracing::warn!("Saw target with name {name} but did not parse");
-                continue;
-            }
+            _ => tracing::warn!("Ignoring unknown target file {}", path.display()),
         };
     }
 

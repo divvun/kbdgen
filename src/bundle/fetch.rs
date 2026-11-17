@@ -1,60 +1,68 @@
 use std::path::Path;
 
+use anyhow::Context;
+
 use super::project::Project;
 
 // [spec:kbdgen:req:bundle.fetch]
 pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
-    tracing::debug!("Create layouts dir");
-    std::fs::create_dir_all(target.join("layouts"))?;
-
-    tracing::debug!("Create projects dir");
-    std::fs::create_dir_all(target.join("projects"))?;
+    let layouts_dir = target.join("layouts");
+    let projects_dir = target.join("projects");
+    std::fs::create_dir_all(&layouts_dir)
+        .with_context(|| format!("create {}", layouts_dir.display()))?;
+    std::fs::create_dir_all(&projects_dir)
+        .with_context(|| format!("create {}", projects_dir.display()))?;
 
     for (id, bundle) in project.dependencies.iter() {
-        tracing::debug!("id: {}, bundle: {:?}", &id, &bundle);
-        let branch = bundle.branch.as_deref().unwrap_or_else(|| "main".into());
-        let url = format!("https://github.com/{}/archive/{}.zip", bundle.url, &branch);
+        let branch = bundle.branch.as_deref().unwrap_or("main");
+        let url = format!("https://github.com/{}/archive/{}.zip", bundle.url, branch);
 
         let tempdir = tempfile::tempdir()?;
 
-        tracing::info!("Downloading {}...", id);
-        let bytes = reqwest::get(url).await?.bytes().await?;
-        let bytes = std::io::Cursor::new(bytes);
-        let mut zipfile = zip::ZipArchive::new(bytes)?;
+        tracing::info!("Downloading {id} from {url}");
+        let response = reqwest::get(&url)
+            .await
+            .with_context(|| format!("{id}: download {url}"))?;
+        let bytes = response
+            .bytes()
+            .await
+            .with_context(|| format!("{id}: download {url}"))?;
+        let mut zipfile = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+            .with_context(|| format!("{id}: {url} is not a zip archive"))?;
 
-        tracing::info!("Unzipping {}...", id);
-        zipfile.extract(tempdir.path())?;
+        tracing::debug!("Extracting {id} to {}", tempdir.path().display());
+        zipfile
+            .extract(tempdir.path())
+            .with_context(|| format!("{id}: extract {url}"))?;
 
         let kbdgen_path = tempdir
             .path()
             .join(format!(
                 "{}-{}",
-                bundle.url.split("/").nth(1).unwrap(),
-                branch.replace("/", "-")
+                bundle.url.split('/').nth(1).unwrap(),
+                branch.replace('/', "-")
             ))
-            .join(format!("{}.kbdgen", id));
+            .join(format!("{id}.kbdgen"));
 
         for layout in &bundle.layouts {
-            let from_path = kbdgen_path.join("layouts").join(format!("{}.yaml", layout));
-            let to_path = target.join("layouts").join(format!("{}.yaml", layout));
-            tracing::info!(
-                "Copying {} to {}...",
-                from_path.display(),
-                to_path.display()
-            );
-            std::fs::copy(from_path, to_path)?;
-
-            let project_from_path = kbdgen_path.join("project.yaml");
-            let project_to_path = target.join("projects").join(format!("{}.yaml", layout));
-            tracing::info!(
-                "Copying {} to {}...",
-                project_from_path.display(),
-                project_to_path.display()
-            );
-            std::fs::copy(project_from_path, project_to_path)?;
+            copy(
+                &kbdgen_path.join("layouts").join(format!("{layout}.yaml")),
+                &layouts_dir.join(format!("{layout}.yaml")),
+            )?;
+            copy(
+                &kbdgen_path.join("project.yaml"),
+                &projects_dir.join(format!("{layout}.yaml")),
+            )?;
         }
     }
 
+    Ok(())
+}
+
+fn copy(from: &Path, to: &Path) -> anyhow::Result<()> {
+    tracing::debug!("Copying {} to {}", from.display(), to.display());
+    std::fs::copy(from, to)
+        .with_context(|| format!("copy {} to {}", from.display(), to.display()))?;
     Ok(())
 }
 

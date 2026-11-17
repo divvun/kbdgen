@@ -12,6 +12,27 @@ pub struct Resources {
     pub(crate) ios: Option<IOS>,
 }
 
+/// `icon.<tag>[.<ext>]` entries keyed by `<tag>`. Panics on a malformed tag
+/// or on any non-UTF-8 file name in the folder.
+fn read_icons(path: &Path) -> std::io::Result<IndexMap<LanguageTag, PathBuf>> {
+    Ok(std::fs::read_dir(path)?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter_map(|path| {
+            let filename = path
+                .file_name()
+                .expect("read_dir entries have a file name")
+                .to_str()
+                .expect("resource file names are UTF-8");
+            let tag = filename.strip_prefix("icon.")?.split('.').next()?;
+            let tag: LanguageTag = tag.parse().unwrap_or_else(|e| {
+                panic!("{}: {tag:?} is not a language tag: {e}", path.display())
+            });
+            Some((tag, path))
+        })
+        .collect())
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct MacOS {
     pub(crate) icons: IndexMap<LanguageTag, PathBuf>,
@@ -19,26 +40,9 @@ pub(crate) struct MacOS {
 
 impl MacOS {
     pub fn load(path: &Path) -> Result<Self, std::io::Error> {
-        let icons = std::fs::read_dir(path)?
-            .filter_map(Result::ok)
-            .map(|x| x.path())
-            .filter_map(|x| {
-                let filename = x
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .expect("file name must be stringable");
-                if filename.starts_with("icon.") {
-                    let lang_tag: LanguageTag =
-                        filename.split(".").skip(1).next().unwrap().parse().unwrap();
-                    Some((lang_tag, x))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        Ok(Self { icons })
+        Ok(Self {
+            icons: read_icons(path)?,
+        })
     }
 }
 
@@ -49,26 +53,9 @@ pub(crate) struct IOS {
 
 impl IOS {
     pub fn load(path: &Path) -> Result<Self, std::io::Error> {
-        let icons = std::fs::read_dir(path)?
-            .filter_map(Result::ok)
-            .map(|x| x.path())
-            .filter_map(|x| {
-                let filename = x
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .expect("file name must be stringable");
-                if filename.starts_with("icon.") {
-                    let lang_tag: LanguageTag =
-                        filename.split(".").skip(1).next().unwrap().parse().unwrap();
-                    Some((lang_tag, x))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        Ok(Self { icons })
+        Ok(Self {
+            icons: read_icons(path)?,
+        })
     }
 }
 
@@ -80,26 +67,9 @@ pub(crate) struct ChromeOS {
 
 impl ChromeOS {
     pub fn load(path: &Path) -> Result<Self, std::io::Error> {
-        let icons = std::fs::read_dir(path)?
-            .filter_map(Result::ok)
-            .map(|x| x.path())
-            .filter_map(|x| {
-                let filename = x
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .expect("file name must be stringable");
-                if filename.starts_with("icon.") {
-                    let lang_tag: LanguageTag =
-                        filename.split(".").skip(1).next().unwrap().parse().unwrap();
-                    Some((lang_tag, x))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        Ok(Self { icons })
+        Ok(Self {
+            icons: read_icons(path)?,
+        })
     }
 }
 
