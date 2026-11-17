@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use kbdgen::build::BuildStep;
 use kbdgen::build::android::clone_giellakbd::CloneGiellaKbd;
@@ -68,6 +69,11 @@ async fn macos_target(
 async fn main() -> anyhow::Result<()> {
     // [spec:kbdgen:req:tsf.security.signing+2]
     tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing_subscriber::filter::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
         .with_writer(std::io::stderr)
         .init();
 
@@ -101,9 +107,11 @@ async fn main() -> anyhow::Result<()> {
             bundle.reject_v4_layouts(target_command_struct.target_command.name())?;
 
             let output_path = &target_command_struct.output_path;
-            std::fs::create_dir_all(output_path)?;
-            let output_path = dunce::canonicalize(output_path).unwrap();
-            tracing::debug!("Output Path: {:?}", &output_path);
+            std::fs::create_dir_all(output_path)
+                .with_context(|| format!("create {}", output_path.display()))?;
+            let output_path = dunce::canonicalize(output_path)
+                .with_context(|| format!("resolve {}", output_path.display()))?;
+            tracing::debug!("Output path: {}", output_path.display());
 
             match &target_command_struct.target_command {
                 TargetCommand::Windows(_windows_command) => {
