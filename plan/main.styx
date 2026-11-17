@@ -1807,6 +1807,22 @@ children (
                 id ldml.version-4-alpha
                 title "Version the v4 line as 4.0.0-alpha.1"
                 kind @chore
+                sealed true
+                log (
+                    {
+                        at 2026-11-17T16:21:12.198867Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-11-17T16:23:02.828681Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
             }
         )
         log (
