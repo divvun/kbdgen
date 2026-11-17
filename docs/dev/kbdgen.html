@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.26">
-<title>KeyboardGen Developer Documentation</title>
+<title>kbdgen developer guide</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -436,29 +436,87 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>KeyboardGen Developer Documentation</h1>
+<h1>kbdgen developer guide</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#_build_system">Build System</a></li>
-<li><a href="#_target_specific_information">Target Specific information</a>
+<li><a href="#architecture">Architecture</a>
+<ul class="sectlevel2">
+<li><a href="#_the_workspace">The workspace</a></li>
+<li><a href="#_the_kbdgen_crate">The kbdgen crate</a></li>
+<li><a href="#_from_a_layout_to_the_engine">From a layout to the engine</a></li>
+<li><a href="#_how_a_target_build_runs">How a target build runs</a></li>
+<li><a href="#spec">The specification</a></li>
+<li><a href="#nplan">Planning with nplan</a></li>
+</ul>
+</li>
+<li><a href="#build-system">Build system</a>
+<ul class="sectlevel2">
+<li><a href="#_the_pipeline">The pipeline</a></li>
+<li><a href="#_logging">Logging</a></li>
+<li><a href="#_errors">Errors</a></li>
+</ul>
+</li>
+<li><a href="#testing">Testing</a>
+<ul class="sectlevel2">
+<li><a href="#_running_the_tests">Running the tests</a></li>
+<li><a href="#_golden_files">Golden files</a></li>
+<li><a href="#_test_vectors">Test vectors</a></li>
+<li><a href="#_differential_tests">Differential tests</a></li>
+<li><a href="#_windows_text_service_tests">Windows text service tests</a></li>
+<li><a href="#_checks_before_committing">Checks before committing</a></li>
+</ul>
+</li>
+<li><a href="#targets">Targets</a>
 <ul class="sectlevel1">
 <li><a href="#_windows">Windows</a>
 <ul class="sectlevel2">
-<li><a href="#_useful_sites">Useful Sites</a></li>
-<li><a href="#_klc_generation">KLC Generation</a></li>
-<li><a href="#_nomenclature">Nomenclature</a></li>
-<li><a href="#_klc_example">KLC Example</a></li>
+<li><a href="#_layout_dll_generator">Layout DLL generator</a></li>
+<li><a href="#_text_service">Text service</a></li>
+<li><a href="#_references">References</a></li>
 </ul>
 </li>
-<li><a href="#_chrome_os">Chrome OS</a></li>
-<li><a href="#_macos">MacOS</a>
+<li><a href="#_macos">macOS</a>
 <ul class="sectlevel2">
-<li><a href="#_xml_generation">XML Generation</a></li>
+<li><a href="#_code_map">Code map</a></li>
+<li><a href="#_how_a_build_runs">How a build runs</a></li>
+<li><a href="#_the_keylayout_input">The keylayout input</a></li>
+<li><a href="#_the_v3_path">The v3 path</a></li>
+<li><a href="#_the_v4_adapter">The v4 adapter</a></li>
+<li><a href="#_writer_bundle_and_installer">Writer, bundle and installer</a></li>
+<li><a href="#_tests_3">Tests</a></li>
+<li><a href="#_making_changes">Making changes</a></li>
 </ul>
 </li>
-<li><a href="#_ios">iOS</a></li>
-<li><a href="#_android">Android</a></li>
+<li><a href="#_ios">iOS</a>
+<ul class="sectlevel2">
+<li><a href="#_code_map_2">Code map</a></li>
+<li><a href="#_the_layout_list">The layout list</a></li>
+<li><a href="#_keyboard_definitions">Keyboard definitions</a></li>
+<li><a href="#_the_pbxproj_model">The pbxproj model</a></li>
+<li><a href="#_xcode_project_changes">Xcode project changes</a></li>
+<li><a href="#_build_chain">Build chain</a></li>
+<li><a href="#_tests_4">Tests</a></li>
+</ul>
+</li>
+<li><a href="#_android">Android</a>
+<ul class="sectlevel2">
+<li><a href="#_steps">Steps</a></li>
+<li><a href="#_toolchain">Toolchain</a></li>
+<li><a href="#_generateandroid">GenerateAndroid</a></li>
+<li><a href="#_testing">Testing</a></li>
+<li><a href="#_known_gaps">Known gaps</a></li>
+</ul>
+</li>
+<li><a href="#_chromeos">ChromeOS</a>
+<ul class="sectlevel2">
+<li><a href="#_where_things_are">Where things are</a></li>
+<li><a href="#_the_engine_module">The engine module</a></li>
+<li><a href="#_how_kbdgen_embeds_the_module">How kbdgen embeds the module</a></li>
+<li><a href="#_the_service_worker">The service worker</a></li>
+<li><a href="#_tests_5">Tests</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -468,543 +526,3369 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Most of this documentation is currently Windows oriented as that is
-the only implemented build at this time.</p>
+<p>This guide is for people changing kbdgen: how the workspace is laid out,
+how a target build runs, how the code is tested, and how each target&#8217;s
+generator works. <code>DEV.md</code> in the repository is the short version: building,
+running the tests and regenerating these pages.</p>
+</div>
+<div class="paragraph">
+<p>The specification in <code>docs/spec/</code> is normative; where this guide and the
+spec disagree, the spec wins. The <a href="../user/kbdgen.html">user guide</a>
+describes the command line and the formats from the outside.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_build_system">Build System</h2>
+<h2 id="architecture">Architecture</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>All builds are to implemented as io steps with no
-arguments or return types except the bundle and output path.</p>
-</div>
-<div class="paragraph">
-<p>Builds are expected to be per major target (i.e., Windows,
-MacOS, ChromeOS, iOS).</p>
-</div>
-<div class="paragraph">
-<p>A given build must implement the following trait:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code>#[async_trait(?Send)]
-pub trait BuildSteps {
-    fn populate_steps(&amp;mut self);
-    fn count(&amp;self) -&gt; usize;
-    async fn build_full(&amp;self);
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>And, subsequently, every step in the build must implement this trait:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code>#[async_trait(?Send)]
-pub trait BuildStep {
-    async fn build(&amp;self, bundle: Arc&lt;KbdgenBundle&gt;, output_path: &amp;Path);
-}</code></pre>
-</div>
-</div>
-</div>
-</div>
-<h1 id="_target_specific_information" class="sect0">Target Specific information</h1>
-<div class="sect1">
-<h2 id="_windows">Windows</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="_useful_sites">Useful Sites</h3>
-<div class="paragraph">
-<p>Windows Keyboard Layout info: <a href="https://kbdlayout.info/" class="bare">https://kbdlayout.info/</a></p>
-</div>
+<p>kbdgen is one Cargo workspace. The root package is the <code>kbdgen</code> command
+line tool; <code>crates/</code> holds the keyboard model, the engine, LDML support and
+the two host bindings. The specification in <code>docs/spec/</code> says what all of
+it must do, and <code>plan/</code> tracks which parts are done.</p>
 </div>
 <div class="sect2">
-<h3 id="_klc_generation">KLC Generation</h3>
+<h3 id="_the_workspace">The workspace</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 22.2222%;">
+<col style="width: 22.2222%;">
+<col style="width: 55.5556%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Crate</th>
+<th class="tableblock halign-left valign-top">Kind</th>
+<th class="tableblock halign-left valign-top">Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-model</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>no_std</code> library</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The keyboard model: a superset of CLDR LDML Keyboard 3.0, stored fully
+resolved, with its invariants (<code>Keyboard::validate</code>) and its <code>DVKB</code> binary
+encoding (<code>Keyboard::to_bytes</code>, <code>from_bytes</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-engine</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>no_std</code> library</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The engine. <code>Model::key</code> takes a model, the host&#8217;s <code>State</code>, the text before
+the caret and a key event, and returns the edit to make and the next state.
+It is deterministic and does no I/O. Every host runs it: the Windows text
+service, the ChromeOS extension through WebAssembly, and kbdgen itself
+when it derives dead-key tables or runs tests.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-ldml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">library</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LDML keyboard3 XML through <code>xmlem</code>: reading, resolving a document to the
+model, exporting a model to a document, and writing. Embeds the CLDR import
+files (<code>crates/kbd-ldml/data/</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-tsf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cdylib</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Windows text service, a TSF text input processor that runs
+<code>kbd-engine</code> on the model each layout DLL carries. Built for release by
+<code>kbdgen tsf</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-wasm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cdylib</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-engine</code> for WebAssembly hosts, as a C ABI of integers and byte
+buffers. kbdgen&#8217;s <code>build.rs</code> compiles it for <code>wasm32-unknown-unknown</code> and
+the ChromeOS target embeds the module as <code>engine.wasm</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbdgen</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">binary and library</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The command line, bundle loading, the format 4 layout format and its
+lowering, the format 3 migrator, and the target generators.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
-<p>See the .klc file example below for an overview.</p>
+<p>The split follows what runs where. Code that ships inside a keyboard
+(<code>kbd-model</code>, <code>kbd-engine</code>) is <code>no_std</code> and never panics, and the model
+has nothing whose order or encoding varies by platform (no hash maps, no
+floating point), so both build for every device triple and behave the same
+on each. Parsing XML and YAML happens once, at build time, in the
+std crates. All member crates deny <code>unwrap</code>, <code>expect</code>, <code>panic!</code> and slice
+indexing outside tests (see their <code>[lints]</code> and <code>clippy.toml</code>), and
+<code>tests/workspace.rs</code> checks each crate&#8217;s dependencies against
+<code>docs/spec/ldml/crate.md</code>.</p>
 </div>
 <div class="paragraph">
-<p>It is currently assumed that Windows only has the core platform (<code>primary</code>).
-.klc files <em>must</em> be encoded in UTF-16 and <em>must</em> have Windows style CRLF or MSKLC
-will refuse to read them.</p>
+<p><code>default-members</code> leaves out <code>kbd-tsf</code> and <code>kbd-wasm</code>, so a plain
+<code>cargo build</code> or <code>cargo test</code> skips them; use <code>--workspace</code> to include them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_kbdgen_crate">The kbdgen crate</h3>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>src/main.rs</code></dt>
+<dd>
+<p>The clap command line. It sets up logging, loads the bundle and dispatches
+to a target build or an <code>ldml</code> command.</p>
+</dd>
+<dt class="hdlist1"><code>src/bundle/</code></dt>
+<dd>
+<p><code>read_kbdgen_bundle</code> loads a bundle into a <code>KbdgenBundle</code>: the project, the
+format 3 layouts (parsed into the types in <code>src/bundle/layout/</code>), the paths
+of the format 4 layouts, the target files and the resources.
+<code>reject_v4_layouts</code> decides which targets accept format 4 layouts.
+<code>fetch.rs</code> is <code>kbdgen fetch</code>.</p>
+</dd>
+<dt class="hdlist1"><code>src/ldml/</code></dt>
+<dd>
+<p>Everything about layouts as keyboards: <code>yaml/</code> is format 4 (loading,
+lowering to keyboard3 documents, and import from them), <code>migrate/</code> converts
+format 3 to format 4, <code>conformance/</code> runs test vectors, and <code>cli.rs</code>,
+<code>export.rs</code>, <code>import.rs</code> and <code>compile.rs</code> implement <code>kbdgen ldml</code>.</p>
+</dd>
+<dt class="hdlist1"><code>src/build/</code></dt>
+<dd>
+<p>The target generators, one module per target, and the <code>BuildStep</code> and
+<code>BuildSteps</code> traits in <code>mod.rs</code>. <code>windows/kbdl/</code> generates and builds the
+layout DLLs; <code>windows/tsf/</code> is <code>kbdgen tsf</code>.</p>
+</dd>
+<dt class="hdlist1"><code>build.rs</code></dt>
+<dd>
+<p>Builds <code>kbd-wasm</code> for WebAssembly in a nested cargo with its own target
+directory, and leaves <code>kbd_wasm.wasm</code> in <code>OUT_DIR</code> for the ChromeOS target
+to <code>include_bytes!</code>.</p>
+</dd>
+<dt class="hdlist1"><code>examples/</code></dt>
+<dd>
+<p>Developer tools: <code>migrate-survey</code> migrates every layout of the given
+bundles in memory and reports the defects; <code>pbxproj-roundtrip</code> reads an
+Xcode <code>project.pbxproj</code> and prints it as kbdgen writes it. Run them with
+<code>cargo run --example &lt;name&gt; -- &lt;arguments&gt;</code>.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_from_a_layout_to_the_engine">From a layout to the engine</h3>
+<div class="paragraph">
+<p>A format 4 layout reaches the engine in three stages:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>src/ldml/yaml</code> loads the YAML strictly and lowers it to one LDML
+keyboard3 document per host (<code>windows</code>, <code>macOS</code>, <code>chromeOS</code>, and so on).</p>
+</li>
+<li>
+<p><code>kbd_ldml::resolve</code> turns each document into a <code>kbd_model::Keyboard</code>.</p>
+</li>
+<li>
+<p><code>Keyboard::to_bytes</code> encodes it as a <code>.dvkb</code> model, which
+<code>kbd_engine::Model::from_bytes</code> loads.</p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
-<p>The .klc file has multiple sections, and the important ones are
-LAYOUT, LIGATURE, and DEADKEY.</p>
+<p>LDML XML from <code>kbdgen ldml import</code> enters at the second stage.</p>
 </div>
 <div class="paragraph">
-<p>For the LAYOUT section, .klc expects rows for each set of keys across all supported
-layers (i.e., <code>default</code>, <code>shift</code>, etc.), in the following format:</p>
+<p>Format 3 layouts reach the model through <code>src/ldml/migrate</code>.
+<code>migrate_bundle_layout</code> converts a layout file to format 4 text in memory,
+writing nothing, and the text then takes the format 4 path. This is how
+the Windows DLLs and the ChromeOS extension get an engine model for a
+format 3 layout. When the migration is blocked by a defect, Windows builds
+the DLL without a model and warns; the text service then stays inactive for
+that layout.</p>
 </div>
 <div class="paragraph">
-<p>scancode | virtual_key | default | shift | ctrl | alt | alt + shift</p>
+<p>Each target reads layouts as follows:</p>
 </div>
-<div class="paragraph">
-<p>(note that the format of the columns beyond <code>virtual_key</code> is actually variable and
-described in the SHIFTSTATE section above, but we only support
-the format presented here)</p>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Target</th>
+<th class="tableblock halign-left valign-top">Format 4</th>
+<th class="tableblock halign-left valign-top">Format 3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windows</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DLL tables and engine model from the model (<code>windows/kbdl/adapter/</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DLL tables from the layout&#8217;s <code>windows</code> section (<code>windows/kbdl/bundle.rs</code>);
+engine model from the in-memory migration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">macOS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.keylayout</code> from the model (<code>macos/adapter/</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.keylayout</code> from the layout&#8217;s <code>macOS</code> section (<code>macos/v3.rs</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ChromeOS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the model</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the model of the in-memory migration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">iOS, Android</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">refused</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the format 3 layout, read directly</p></td>
+</tr>
+</tbody>
+</table>
 </div>
+<div class="sect2">
+<h3 id="_how_a_target_build_runs">How a target build runs</h3>
 <div class="paragraph">
-<p>If a given key has no key on a layer, it is represented with <code>-1</code>.</p>
+<p><code>kbdgen target</code> loads the bundle, checks <code>reject_v4_layouts</code>, creates the
+output directory, and then runs a list of build steps. A step implements
+<code>BuildStep</code>, whose only inputs are the loaded bundle and the output path; a
+target&#8217;s <code>BuildSteps</code> lists its steps and runs them in order with
+<code>build_full</code>, stopping at the first error. Subcommands such as
+<code>macos generate</code> or <code>android clone</code> run one step on its own. The
+<a href="#build-system">Build system</a> chapter lists each target&#8217;s steps and the conventions a
+step follows.</p>
 </div>
-<div class="paragraph">
-<p>Only ASCII keys can be represented as-is. All other keys must be converted to
-Unicode hex.</p>
 </div>
+<div class="sect2">
+<h3 id="spec">The specification</h3>
 <div class="paragraph">
-<p>The creation of .klc files is performed as follows:</p>
+<p><code>docs/spec/</code> is the normative description of kbdgen:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>a .klc file is created per <code>language-tag</code>, i.e., per <code>layout</code> file</p>
+<p><code>docs/spec/*.md</code> covers the bundle, the format 3 layout, the command line
+and pipeline, and each target: <code>kbdl.md</code> (Windows layout DLLs), <code>tsf.md</code>
+(the text service), <code>macos.md</code>, <code>ios.md</code> with <code>pbxproj.md</code>, <code>android.md</code>
+and <code>chromeos.md</code>.</p>
 </li>
 <li>
-<p>various metadata required by .klc is generated</p>
-</li>
-<li>
-<p>the keymap for the <code>layouts</code> are expected to be in the ISO keyboard format:
-<a href="https://en.wikipedia.org/wiki/ISO/IEC_9995#ISO/IEC_9995-1" class="bare">https://en.wikipedia.org/wiki/ISO/IEC_9995#ISO/IEC_9995-1</a>
-A variable called <code>cursor</code> is an incrementing integer that
-keeps track of which key we&#8217;re on</p>
-</li>
-<li>
-<p>the generation occurs in two steps. The first step, for every key, creates
-a <code>WindowsLayerSet</code>, which lists the set of the key on
-every layer, and notes any missing characters (nulls) and converts them to
-<code>None</code>. This step also converts any Unicode escapes into Unicode characters</p>
-</li>
-<li>
-<p>the <code>WindowsLayerSet</code> is used to calculate the status of <code>caps_mode</code>,
-which is one of the expected .klc columns and roughly corresponds to
-whether a given key is related to the <code>shift</code> layer, <code>alt</code> layer,
-or both</p>
-</li>
-<li>
-<p>the second step, the final .klc key is created, including any available information
-on its dead key or ligature status. Dead keys must be formatted such as <code>@</code>,
-and ligatures as <code>%%</code></p>
-</li>
-<li>
-<p>both steps validate to make sure the incoming characters are within BMP</p>
-</li>
-<li>
-<p>SGCap rows are added</p>
-</li>
-<li>
-<p>space and decimal rows are added</p>
+<p><code>docs/spec/ldml/*.md</code> covers the model, the engine, LDML XML, format 4,
+the migration, the adapters from the model to each target, the
+<code>kbdgen ldml</code> commands and the tests. <code>ldml/overview.md</code> explains how
+these fit together, and <code>ldml/crate.md</code> the workspace.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Finally, after all this, PahkatClient is used to download the MS KLC installer
-and run on the resulting .klc files. This step only works on Windows.</p>
+<p>Each rule is a block quote that starts with its id:</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_nomenclature">Nomenclature</h3>
-<div class="paragraph">
-<p><strong>BMP</strong> - Basic Multilingual Plane. The true encoding Windows .klc actually expects: <a href="https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane" class="bare">https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane</a></p>
-</div>
-<div class="paragraph">
-<p>This means characters &gt; <code>0xFFFF</code> cannot be represented in .klc at all. Not to be confused with keys,
-as there are keys that require multiple UTF-16 codepoints to represent (see ligatures),
-but no character can be &gt; <code>0xFFFF</code>.</p>
-</div>
-<div class="paragraph">
-<p><strong>Ligatures</strong> - ligatures are a Windows-specific term for keys that require 2 or 3 UTF-16 codepoints to represent.
-This is required for certain languages.</p>
-</div>
-<div class="paragraph">
-<p>See also: <a href="https://kbdlayout.info/features/ligatures" class="bare">https://kbdlayout.info/features/ligatures</a></p>
-</div>
-<div class="paragraph">
-<p><strong>SGCap</strong> - "Some keyboards do not associate the CapsLock and Shift keys together for all keystrokes;
-instead, pressing the CapsLock key defines an additional two shift states for specific keys.
-Therefore, some languages cannot by typed without the CapsLock key. The "SG" in the name
-orginiates from the first keyboard layout to use the functionality, the Swiss German
-keyboard layout."</p>
-</div>
-<div class="paragraph">
-<p>(Copied from: <a href="https://kbdlayout.info/features/SGCAPS" class="bare">https://kbdlayout.info/features/SGCAPS</a>)</p>
-</div>
-<div class="paragraph">
-<p>While alt caps is mentioned as a potential layer, it does not seem to be used.
-Currently, we accept the keys but do not write them anywhere.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_klc_example">KLC Example</h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code>KBD	kbdse-FI	"Davvisámegiella (Suopma)"
-
-COPYRIGHT	"(c) 2017 Divvun/Giellatekno/UiT"
-
-COMPANY	"UiT Norgga árktalaš universitehta"
-
-LOCALENAME	"se-Latn-FI"
-
-LOCALEID	"00000c3b"
-
-VERSION	1.0
-
-SHIFTSTATE
-
-0 // 4
-1 // 5 Shift
-2 // 6 Ctrl
-6 // 7 Alt
-7 // 8 Alt + Shift
-
-LAYOUT
-
-29	OEM_3	4	00a7	00bd	-1	|	-1
-02	1	4	1	!	-1	-1	-1
-03	2	4	2	"	-1	@	-1
-04	3	4	3	#	-1	00a3	-1
-05	4	4	4	00a4	-1	$	-1
-06	5	4	5	%	-1	20ac	-1
-07	6	4	6	&amp;	-1	-1	-1
-08	7	4	7	/	-1	{	-1
-09	8	4	8	(	-1	[	-1
-0a	9	4	9	)	-1	]	-1
-0b	0	4	0	=	-1	}	-1
-0c	OEM_MINUS	4	+	?	-1	\	-1
-0d	OEM_PLUS	4	@00b4	@`	-1	-1	-1
-10	Q	1	00e1	00c1	-1	q	Q
-11	W	1	0161	0160	-1	w	W
-12	E	5	e	E	-1	20ac	-1
-13	R	5	r	R	-1	-1	-1
-14	T	1	t	T	-1	0167	0166
-15	Y	5	y	Y	-1	-1	-1
-16	U	5	u	U	-1	-1	-1
-17	I	1	i	I	-1	00ef	00cf
-18	O	1	o	O	-1	00f5	00d5
-19	P	5	p	P	-1	-1	-1
-1a	OEM_4	1	00e5	00c5	-1	@00a8	@^
-1b	OEM_6	1	014b	014a	-1	@~	@02c7
-1e	A	1	a	A	-1	00e2	00c2
-1f	S	5	s	S	-1	-1	-1
-20	D	5	d	D	-1	-1	-1
-21	F	5	f	F	-1	-1	-1
-22	G	1	g	G	-1	01e7	01e6
-23	H	1	h	H	-1	01e5	01e4
-24	J	5	j	J	-1	-1	-1
-25	K	1	k	K	-1	01e9	01e8
-26	L	5	l	L	-1	-1	-1
-27	OEM_1	1	00f6	00d6	-1	00f8	00d8
-28	OEM_7	1	00e4	00c4	-1	00e6	00c6
-2b	OEM_5	1	0111	0110	-1	'	*
-56	OEM_102	1	017e	017d	-1	01ef	01ee
-2c	Z	1	z	Z	-1	0292	01b7
-2d	X	1	010d	010c	-1	x	X
-2e	C	5	c	C	-1	-1	-1
-2f	V	5	v	V	-1	-1	-1
-30	B	5	b	B	-1	-1	-1
-31	N	5	n	N	-1	-1	-1
-32	M	5	m	M	-1	00b5	-1
-33	OEM_COMMA	4	,	;	-1	&lt;	-1
-34	OEM_PERIOD	4	.	:	-1	&gt;	-1
-35	OEM_2	4	-	_	-1	-1	-1
-39	SPACE	0	0020	0020	0020	-1	-1
-53	DECIMAL	0	.	.	-1	-1	-1
-
-DEADKEY 00b4
-
-0061	00e1
-0041	00c1
-00e5	01fb
-00c5	01fa
-00e6	01fd
-00c6	01fc
-0063	0107
-0043	0106
-0065	00e9
-0045	00c9
-0067	01f5
-0047	01f4
-0069	00ed
-0049	00cd
-006b	1e31
-004b	1e30
-006c	013a
-004c	0139
-006d	1e3f
-004d	1e3e
-006e	0144
-004e	0143
-006f	00f3
-004f	00d3
-00f8	01ff
-00d8	01fe
-0070	1e55
-0050	1e54
-0072	0155
-0052	0154
-0073	015b
-0053	015a
-0075	00fa
-0055	00da
-0076	01d8
-0056	01d7
-0077	1e83
-0057	1e82
-0079	00fd
-0059	00dd
-007a	017a
-005a	0179
-0020	00b4
-
-DEADKEY 0060
-
-0061	00e0
-0041	00c0
-0065	00e8
-0045	00c8
-0069	00ec
-0049	00cc
-006e	01f9
-004e	01f8
-006f	00f2
-004f	00d2
-0075	00f9
-0055	00d9
-0076	01dc
-0056	01db
-0077	1e81
-0057	1e80
-0079	1ef3
-0059	1ef2
-0020	0060
-
-DEADKEY 00a8
-
-0061	00e4
-0041	00c4
-0065	00eb
-0045	00cb
-0068	1e27
-0048	1e26
-0069	00ef
-0049	00cf
-006f	00f6
-004f	00d6
-0074	1e97
-0075	00fc
-0055	00dc
-0077	1e85
-0057	1e84
-0078	1e8d
-0058	1e8c
-0079	00ff
-0059	0178
-0020	00a8
-
-DEADKEY 005e
-
-0061	00e2
-0041	00c2
-0063	0109
-0043	0108
-0065	00ea
-0045	00ca
-0067	011d
-0047	011c
-0068	0125
-0048	0124
-0069	00ee
-0049	00ce
-006a	0135
-004a	0134
-006f	00f4
-004f	00d4
-0073	015d
-0053	015c
-0075	00fb
-0055	00db
-0077	0175
-0057	0174
-0079	0177
-0059	0176
-0020	005e
-
-DEADKEY 007e
-
-0061	00e3
-0041	00c3
-0069	0129
-0049	0128
-006e	00f1
-004e	00d1
-006f	00f5
-004f	00d5
-0075	0169
-0055	0168
-0020	007e
-
-DEADKEY 02c7
-
-0061	01ce
-0041	01cd
-0063	010d
-0043	010c
-0064	010f
-0044	010e
-0065	011b
-0045	011a
-0067	01e7
-0047	01e6
-0068	021f
-0048	021e
-0069	01d0
-0049	01cf
-006a	01f0
-006b	01e9
-004b	01e8
-006c	013e
-004c	013d
-006e	0148
-004e	0147
-006f	01d2
-004f	01d1
-0072	0159
-0052	0158
-0073	0161
-0053	0160
-0074	0165
-0054	0164
-0075	01d4
-0055	01d3
-0076	01da
-0056	01d9
-007a	017e
-005a	017d
-0292	01ef
-01b7	01ee
-0020	02c7
-
-
-KEYNAME
-
-01	Esc
-0e	Backspace
-0f	Tab
-1c	Enter
-1d	Ctrl
-2a	Shift
-36	"Right Shift"
-37	"Num *"
-38	Alt
-39	Space
-3a	"Caps Lock"
-3b	F1
-3c	F2
-3d	F3
-3e	F4
-3f	F5
-40	F6
-41	F7
-42	F8
-43	F9
-44	F10
-45	Pause
-46	"Scroll Lock"
-47	"Num 7"
-48	"Num 8"
-49	"Num 9"
-4a	"Num -"
-4b	"Num 4"
-4c	"Num 5"
-4d	"Num 6"
-4e	"Num +"
-4f	"Num 1"
-50	"Num 2"
-51	"Num 3"
-52	"Num 0"
-53	"Num Del"
-54	"Sys Req"
-57	F11
-58	F12
-7c	F13
-7d	F14
-7e	F15
-7f	F16
-80	F17
-81	F18
-82	F19
-83	F20
-84	F21
-85	F22
-86	F23
-87	F24
-
-KEYNAME_EXT
-
-1c	"Num Enter"
-1d	"Right Ctrl"
-35	"Num /"
-37	"Prnt Scrn"
-38	"Right Alt"
-45	"Num Lock"
-46	Break
-47	Home
-48	Up
-49	"Page Up"
-4b	Left
-4d	Right
-4f	End
-50	Down
-51	"Page Down"
-52	Insert
-53	Delete
-54	<b class="conum">(00)</b>
-56	Help
-5b	"Left Windows"
-5c	"Right Windows"
-5d	Application
-
-DESCRIPTIONS
-
-0c3b	Davvisámegiella (Suopma)
-
-LANGUAGENAMES
-
-0c3b	Davvisámegiella (Suopma)
-
-ENDKBD</code></pre>
+<pre class="highlight"><code class="language-markdown" data-lang="markdown">&gt; [spec:kbdgen:req:ldml.cli.test]
+&gt; `test` MUST run every `tests/*.yaml` of the bundle (`ldml.test.bundle`).</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The id&#8217;s kind is <code>def</code> (a definition), <code>req</code> (a requirement), <code>sem</code>
+(behaviour), <code>syn</code> (syntax) or <code>thm</code> (a consequence of other rules, such as
+the struct sizes that follow from the Windows table layout). A <code>+N</code> suffix, as in <code>ldml.yaml.coexistence+2</code>, is the rule&#8217;s
+version, raised whenever its meaning changes.</p>
+</div>
+<div class="paragraph">
+<p>Code says which rules it implements with a comment carrying the same id,
+on the item that implements it. A test says which rules it verifies with
+<code>/test</code>, or <code>/test/golden</code> for a golden-file test:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-rust" data-lang="rust">/// The `cargo rustc` invocation for one crate and variant.
+// [spec:kbdgen:req:kbdl.build]
+pub fn cargo_command(crate_dir: &amp;Path, name: &amp;str, variant: &amp;Variant) -&gt; Command {
+
+// [spec:kbdgen:req:kbdl.build/test]
+#[test]
+fn cargo_invocation_per_variant() {</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>An annotation names the rule version it was checked against. When a rule&#8217;s
+version is raised, every annotation of it is updated once the code has
+been checked against the new text. <code>.config/nspec/config.styx</code> says where
+the spec and the code are, and which rules need a golden test.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="nplan">Planning with nplan</h3>
+<div class="paragraph">
+<p>The work is planned with nplan, in the repository:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>plan/main.styx</code></dt>
+<dd>
+<p>The work breakdown: a tree of nodes whose ids follow the tree with dots
+(<code>targets.windows.dll-gen</code>). Each node has a title, a kind (<code>feat</code>, <code>fix</code>
+and so on), the nodes it depends on, and the spec rules it <code>implements</code>.
+The top level is <code>input</code> (the bundle and command line), <code>targets</code>,
+<code>ldml</code> (the model, engine and formats) and <code>quality</code>.</p>
+</dd>
+<dt class="hdlist1"><code>plan/.state.styx</code></dt>
+<dd>
+<p>Each node&#8217;s status. nplan derives it from spec coverage and from the
+trailers of commits; it is not edited by hand.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>The everyday commands:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>nplan next</code> shows the next ready node, with the rules it would cover.</p>
+</li>
+<li>
+<p><code>nplan start &lt;id&gt;</code> marks a node as in progress.</p>
+</li>
+<li>
+<p><code>nplan check</code> runs the checks a commit is gated on (see <a href="#testing">Testing</a>).</p>
+</li>
+<li>
+<p><code>nplan commit -m &lt;message&gt;</code> commits through nplan: it checks that the
+plan state is current, derives the Conventional Commits type from the
+node&#8217;s kind, and adds <code>nplan-id:</code> and <code>nplan-rule:</code> trailers that tie
+the commit to the node and the rules it touched.</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_chrome_os">Chrome OS</h2>
+<h2 id="build-system">Build system</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>This chapter covers how <code>kbdgen target</code> runs a target&#8217;s build, and the
+conventions every build step follows for logging and errors.</p>
+</div>
+<div class="sect2">
+<h3 id="_the_pipeline">The pipeline</h3>
+<div class="paragraph">
+<p><code>kbdgen target -b &lt;BUNDLE&gt; -o &lt;OUT&gt; &lt;PLATFORM&gt;</code> runs, in <code>src/main.rs</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>read_kbdgen_bundle</code> loads the whole bundle. Any error ends the run here,
+before anything is written.</p>
+</li>
+<li>
+<p><code>KbdgenBundle::reject_v4_layouts</code> fails when the bundle has a format 4
+layout and the target cannot build one. Windows, macOS and ChromeOS can;
+iOS and Android cannot.</p>
+</li>
+<li>
+<p>The output directory is created with its parents and canonicalised.</p>
+</li>
+<li>
+<p>The target&#8217;s steps run.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The steps implement two traits from <code>src/build/mod.rs</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-rust" data-lang="rust">#[async_trait(?Send)]
+pub trait BuildSteps {
+    fn new(bundle: KbdgenBundle, output_path: PathBuf) -&gt; Self
+    where
+        Self: Sized;
 
+    fn steps(&amp;self) -&gt; &amp;[Box&lt;dyn BuildStep&gt;];
+    fn bundle(&amp;self) -&gt; &amp;KbdgenBundle;
+    fn output_path(&amp;self) -&gt; &amp;Path;
+
+    async fn build_full(&amp;self) -&gt; Result&lt;()&gt; {
+        for step in self.steps() {
+            step.build(self.bundle(), self.output_path()).await?;
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait(?Send)]
+pub trait BuildStep {
+    async fn build(&amp;self, bundle: &amp;KbdgenBundle, output_path: &amp;Path) -&gt; Result&lt;()&gt;;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A step&#8217;s only inputs are the bundle and the canonical output path.
+Whatever a later step needs from an earlier one, it finds in the output
+directory: <code>macos installer</code> packages the <code>.bundle</code> that <code>macos generate</code>
+left there, and the iOS and Android steps all work in <code>OUT/repo</code>. That is
+what lets a subcommand run a single step.</p>
+</div>
+<div class="paragraph">
+<p><code>build_full</code> awaits each step in turn and stops at the first error. The
+steps of each target:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Command</th>
+<th class="tableblock halign-left valign-top">Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>windows</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateKbdl</code>, <code>BuildKbdl</code> (<code>WindowsBuild</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>chromeos</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateChromeOs</code> (<code>ChromeOsBuild</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>macos build</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateMacOs</code>, then <code>GenerateInstaller</code> unless <code>--no-installer</code> is given
+or kbdgen was built for another OS than macOS. <code>main.rs</code> runs these
+directly; macOS has no <code>BuildSteps</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>android build</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CloneGiellaKbd</code>, <code>DownloadDependencies</code>, <code>GenerateAndroid</code>
+(<code>AndroidBuild</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ios build</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CloneGiellaKbd</code>, <code>GenerateIos</code>, <code>GenerateXcode</code>, <code>FastlaneProvisioning</code>,
+<code>PodInstall</code>, <code>BuildXcarchive</code> (<code>IosBuild</code>)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>macos generate</code>, <code>macos installer</code>, <code>android clone</code> and
+<code>android generate</code> each run one of these steps. <code>ios print-pkg-ids</code> and
+<code>ios init</code> run no step.</p>
+</div>
+<div class="sect3">
+<h4 id="_writing_a_step">Writing a step</h4>
+<div class="ulist">
+<ul>
+<li>
+<p>Compute everything, then write. <code>GenerateKbdl</code> generates every layout
+crate in memory before writing the first, and <code>GenerateChromeOs</code> builds
+the models, manifest and messages before it writes the extension. A
+bad layout then fails the step without leaving half an output.</p>
+</li>
+<li>
+<p>Check external tools' exit status, and capture their output rather than
+letting it interleave with kbdgen&#8217;s log: log it at <code>trace</code> on success and
+put stderr into the error on failure (<code>build_layout</code> in
+<code>src/build/windows/kbdl/build.rs</code> does this for cargo).</p>
+</li>
+<li>
+<p>Gate on the host only where the tool exists on one OS. The macOS
+installer step in <code>macos build</code> and macOS icon conversion are the only
+such places; the Windows DLL build runs on any host.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>To add a target: add a module under <code>src/build/</code> with a <code>BuildStep</code> per
+step and a <code>BuildSteps</code> for the full build; add a <code>TargetCommand</code> variant
+and its <code>name()</code> in <code>src/main.rs</code>; decide in <code>reject_v4_layouts</code> whether it
+accepts format 4 layouts; and specify it in <code>docs/spec/</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_logging">Logging</h3>
+<div class="paragraph">
+<p>kbdgen logs with <code>tracing</code>. <code>main.rs</code> installs a <code>tracing_subscriber</code>
+formatter that writes to stderr and filters with <code>RUST_LOG</code>, defaulting to
+<code>info</code>. Stdout is reserved for a command&#8217;s results, such as the paths
+<code>kbdgen tsf</code> prints for signing; use <code>println!</code> only for those. When a
+child process would write to stdout, capture its output or send it to
+stderr, as <code>kbdgen tsf</code> does for cargo with
+<code>.stdout(std::io::stderr())</code>.</p>
+</div>
+<div class="paragraph">
+<p>The levels are used like this across the targets:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 44.4444%;">
+<col style="width: 44.4445%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Level</th>
+<th class="tableblock halign-left valign-top">For</th>
+<th class="tableblock halign-left valign-top">Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>error</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing. A failure is returned as an error, and <code>main</code> prints it.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>warn</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The output differs from what the bundle asks for, or something in it was
+ignored or skipped. The user should look.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Ignoring unknown target file …</code>; <code>Skipping the installer: pkgbuild and
+productbuild only exist on macOS</code>; Windows table entries that cannot be
+represented and are omitted</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>info</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One line per milestone a user follows.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Reading bundle …</code>; <code>Generating the Windows layout crates</code>;
+<code>Building kbdse-NO for x64</code>; <code>Running pod install in …</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-file and per-command detail.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Wrote …</code>; <code>Running …</code>; <code>Skipping layout se: it has no macOS layers</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>trace</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bulky raw output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cargo, rust-lld and gradlew output; the generated <code>distribution.xml</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Messages name what they are about (the layout, the file, the variant) and
+print paths with <code>display()</code>, not <code>{:?}</code>. The Windows, macOS and ChromeOS
+generators collect each layout&#8217;s warnings and notes in a <code>Diagnostics</code>
+value (<code>src/build/windows/kbdl/diag.rs</code>), which logs each one with the
+layout&#8217;s name and also keeps it, so the golden tests can pin them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_errors">Errors</h3>
+<div class="paragraph">
+<p>Build steps and <code>main</code> return <code>anyhow::Result</code>. Modules whose callers need
+to tell errors apart define them with <code>thiserror</code>: <code>bundle::Error</code>,
+<code>ldml::LdmlError</code> and <code>ldml::compile::CompileError</code> in kbdgen, and the
+error types of <code>kbd-ldml</code> and <code>kbd-engine</code>. <code>main</code> returns the error, and
+anyhow prints it with its chain of causes.</p>
+</div>
+<div class="paragraph">
+<p>The house style, as in <code>src/build/windows/kbdl/build.rs</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-rust" data-lang="rust">let crate_dir = dunce::canonicalize(&amp;crate_dir)
+    .with_context(|| format!("{name}: crate directory {} is missing", crate_dir.display()))?;
+for variant in &amp;VARIANTS {
+    tracing::info!("Building {name} for {}", variant.name);
+    let output = cargo_command(&amp;crate_dir, name, variant)
+        .output()
+        .with_context(|| format!("{name} ({}): cargo could not be started", variant.name))?;
+    let stderr = String::from_utf8_lossy(&amp;output.stderr);
+    if !output.status.success() {
+        bail!(
+            "{name} ({}): cargo failed with {}:\n{}",
+            variant.name,
+            output.status,
+            stderr.trim_end()
+        );
+    }
+    // ...
+    std::fs::write(&amp;target, &amp;bytes).with_context(|| format!("write {}", target.display()))?;
+}</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Every I/O error gets context naming the path: <code>write {path}</code>,
+<code>create {path}</code>, <code>read {path}</code>. The context is the action and its object,
+not "failed to …"; the cause already says what went wrong.</p>
+</li>
+<li>
+<p>Messages start lower case, have no full stop, and lead with the subject:
+the layout, the variant, or the file (<code>kbdse-NO (x64): cargo failed …</code>).</p>
+</li>
+<li>
+<p>When the fix is known, the message gives it: <code>install it with
+rustup target add …</code>, <code>run the macOS generate step first</code>,
+<code>pass --force to replace it</code>.</p>
+</li>
+<li>
+<p>A tool that cannot be started says what to install
+(<code>`xcodebuild` could not be started; install Xcode</code>). A tool that
+fails gives its command, its exit status and its stderr.</p>
+</li>
+<li>
+<p>Nothing a bundle or the environment can cause may panic. <code>expect</code> is for
+invariants the code itself guarantees, and its message states the
+invariant (<code>read_kbdgen_bundle only accepts bundles with a UTF-8 stem</code>).</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_macos">MacOS</h2>
+<h2 id="testing">Testing</h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="_xml_generation">XML Generation</h3>
-
+<h3 id="_running_the_tests">Running the tests</h3>
+<div class="paragraph">
+<p>The tests run with <a href="https://nexte.st">cargo-nextest</a>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo install cargo-nextest --locked
+cargo nextest run --workspace</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>--workspace</code> is needed: <code>kbd-tsf</code> and <code>kbd-wasm</code> are not default members,
+so without it their tests do not run. To run some tests only, pass a
+filter: <code>cargo nextest run --workspace keylayout</code>.</p>
+</div>
+<div class="paragraph">
+<p>Most tests sit next to the code, in <code>#[cfg(test)]</code> modules. The others:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>tests/ldml_cli.rs</code> runs the <code>kbdgen</code> binary (<code>ldml</code> commands, and
+<code>target</code> builds of format 4 layouts) and checks exit status and output
+files.</p>
+</li>
+<li>
+<p><code>tests/workspace.rs</code> checks each crate&#8217;s dependencies against
+<code>docs/spec/ldml/crate.md</code>.</p>
+</li>
+<li>
+<p><code>tests/ldml_kmc.rs</code> validates exported LDML with Keyman&#8217;s <code>kmc</code>.</p>
+</li>
+<li>
+<p><code>crates/kbd-engine/tests/targets.rs</code> builds <code>kbd-model</code> and <code>kbd-engine</code>
+for every device triple.</p>
+</li>
+<li>
+<p><code>crates/kbd-tsf/tests/</code> holds the text service tests: <code>self_contained.rs</code>
+runs everywhere, <code>vm.rs</code> and <code>acceptance.rs</code> only on Windows.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="_ignored_tests">Ignored tests</h4>
+<div class="paragraph">
+<p>Tests that need extra tools or a particular machine are marked
+<code>#[ignore]</code>, with a reason. <code>--run-ignored all</code> adds them to a run, and
+<code>--run-ignored only</code> with a filter runs one:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo nextest run --workspace --run-ignored only -E 'test(fixture_dlls_hold_their_golden_tables)'</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 42.8571%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Test</th>
+<th class="tableblock halign-left valign-top">Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fixture_dlls_hold_their_golden_tables</code>,
+<code>built_vro_dlls_verify_and_embed_the_model</code> (<code>src/build/windows/kbdl/</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The three Windows Rust targets. Runs on any host.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>device_crates_build_for_every_device_triple</code>
+(<code>crates/kbd-engine/tests/targets.rs</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Rust targets of every device triple in <code>ldml.crate.targets</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>exported_fixtures_pass_kmc</code> (<code>tests/ldml_kmc.rs</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js. It runs <code>npx -y @keymanapp/kmc@18</code>, or the executable that
+<code>KBDGEN_KMC</code> names.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>real_dlls_type_what_the_simulation_types</code>
+(<code>src/build/windows/kbdl/differential/windows.rs</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windows, in an elevated interactive session. It installs layouts.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-tsf/tests/vm.rs</code> and <code>acceptance.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A Windows 11 machine prepared as described below.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>On macOS and Linux the Windows-only tests are not compiled, so
+<code>--run-ignored all</code> is safe there. On Windows, select tests by name.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_golden_files">Golden files</h3>
+<div class="paragraph">
+<p>Golden files pin generated output byte for byte. A golden test generates
+from fixed fixture layouts and compares the result with the file:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 37.5%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Generator</th>
+<th class="tableblock halign-left valign-top">Directory</th>
+<th class="tableblock halign-left valign-top">Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Windows</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/windows/kbdl/testdata/golden/&lt;fixture&gt;/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The generated crate (<code>Cargo.toml.golden</code>, <code>lib.rs.golden</code>), the <code>.res</code>
+file, <code>diagnostics.txt</code>, and <code>kbdtables.txt</code>, the tables decoded from the
+built DLLs</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">macOS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/macos/testdata/golden/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;fixture&gt;.keylayout</code> and <code>&lt;fixture&gt;.diag</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ChromeOS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/testdata/golden/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>manifest.json</code>, <code>_locales/</code> and <code>diagnostics.txt</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>When a change to a generator is intended, regenerate the files with
+<code>KBDGEN_BLESS</code> set. Each golden test then writes its current output over its
+file before comparing, so the run passes and <code>git diff</code> shows exactly what
+changed:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">KBDGEN_BLESS=1 cargo nextest run --workspace</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>kbdtables.txt</code> comes from built DLLs, in an ignored test, so rewriting it
+needs that test too:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">KBDGEN_BLESS=1 cargo nextest run --workspace --run-ignored only -E 'test(fixture_dlls_hold_their_golden_tables)'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Read the diff before committing it. A failing golden test prints which
+file differs and where; a missing file asks for <code>KBDGEN_BLESS=1</code> to create
+it.</p>
+</div>
+<div class="paragraph">
+<p>The DLL bytes themselves are not golden: code generation changes with the
+Rust release, while the decoded tables do not.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_test_vectors">Test vectors</h3>
+<div class="paragraph">
+<p>The engine is tested with typing vectors in the format of a bundle&#8217;s
+<code>tests/*.yaml</code> (described in the user guide). kbdgen&#8217;s own are in
+<code>crates/kbd-engine/tests/golden/</code>: layouts in <code>layouts/</code> and <code>v3/</code>, LDML
+keyboards in <code>keyboards/</code>, and the vectors in <code>tests/</code>.
+<code>src/ldml/conformance/tests/</code> runs them, together with the CLDR 48
+keyboards and keyboardTest3 vectors vendored in
+<code>crates/kbd-ldml/testdata/cldr/48/</code>. These files are inputs written by
+hand, not output, so <code>KBDGEN_BLESS</code> does not touch them. Add a vector file
+to <code>tests/</code> to cover a new engine behaviour.</p>
+</div>
+<div class="paragraph">
+<p>The same directory has the round-trip tests (<code>roundtrip.rs</code>: XML, the
+model, format 4 YAML and the binary model, each written, read back and
+written again) and the property tests (<code>robust.rs</code>: decoding arbitrary
+bytes and typing arbitrary keys never panic).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_differential_tests">Differential tests</h3>
+<div class="paragraph">
+<p>The Windows, macOS and ChromeOS generators each have a test that types on
+what the generator wrote and on <code>kbd-engine</code> with the same model, and
+requires the same text. Windows and macOS keep a list of the differences
+their native formats cannot avoid (<code>exceptions.rs</code> in each <code>differential/</code>
+directory); a difference must match an entry there, and any other fails
+the test. ChromeOS runs the engine itself, so it allows none.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Windows (<code>src/build/windows/kbdl/differential/</code>)</dt>
+<dd>
+<p>Simulates <code>ToUnicodeEx</code> on the generated <code>KBDTABLES</code>: every layer at each
+of the 49 ISO positions and the space bar, then every dead-key path. Runs
+on every host. On Windows, <code>windows.rs</code> also loads the built DLLs and
+checks the real <code>ToUnicodeEx</code> against both (ignored; see above).</p>
+</dd>
+<dt class="hdlist1">macOS (<code>src/build/macos/differential/</code>)</dt>
+<dd>
+<p>Reads the written <code>.keylayout</code> back and simulates it. Runs on every host;
+nothing calls macOS. It also checks a format 3 layout&#8217;s <code>.keylayout</code>
+against the one built from its migration.</p>
+</dd>
+<dt class="hdlist1">ChromeOS (<code>src/build/chromeos/differential/</code>)</dt>
+<dd>
+<p>Generates the extension, then <code>harness/typing_test.ts</code> loads its
+<code>background.js</code>, <code>engine.wasm</code> and models in Deno, behind a fake
+<code>chrome.input.ime</code> and text field, and types every case. This needs
+<a href="https://deno.com">Deno</a>: <code>deno</code> on <code>PATH</code>, or its path in <code>DENO</code>. Without
+it, the test prints that it is skipping and passes, so check its output
+when you change the ChromeOS target.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>The migration is checked the same way: <code>src/ldml/migrate</code> runs each
+migrated layout through the engine against what the format 3 platforms
+typed, and reports every difference as a defect.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_windows_text_service_tests">Windows text service tests</h3>
+<div class="paragraph">
+<p>The text service only runs inside Windows, so its end-to-end tests run on
+a Windows 11 machine (a VM is fine) with a user signed in at the desktop.
+They type with <code>SendInput</code> and switch input methods, so they take over the
+desktop while they run.</p>
+</div>
+<div class="paragraph">
+<p>The VM test (<code>crates/kbd-tsf/tests/vm.rs</code>, with the scripts in
+<code>crates/kbd-tsf/tests/vm/</code>) builds the text service under a test CLSID,
+checks that registration refuses misnamed and misplaced DLLs, registers
+the fixture layouts,
+types each case into Win32, RichEdit, WPF and console windows in 32- and
+64-bit processes, and removes everything again. Run it elevated, for
+example over SSH, while the same user is signed in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bat" data-lang="bat">kbdgen target -b crates/kbd-tsf/tests/vm/fixture.kbdgen -o C:\kbd-vm windows
+set KBD_TSF_VM_LAYOUT=C:\kbd-vm
+cargo test -p kbd-tsf --test vm -- --ignored --nocapture</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The acceptance test (<code>crates/kbd-tsf/tests/acceptance.rs</code>) installs the
+keyboard as a user gets it, with Inno Setup 6 and kbdi, types each case
+through the installed text service, and uninstalls it. Its file header
+lists the setup and the variables <code>KBD_TSF_ACCEPTANCE_ISS</code> and
+<code>KBD_TSF_ACCEPTANCE_KBDI</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_checks_before_committing">Checks before committing</h3>
+<div class="paragraph">
+<p><code>nplan check</code> runs the checks a commit is gated on, as configured in
+<code>.config/nplan/config.styx</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Check</th>
+<th class="tableblock halign-left valign-top">Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">format</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cargo fmt --all -- --check</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">lint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cargo clippy --workspace --all-targets</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cargo nextest run --workspace</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>nplan check --fix</code> runs <code>cargo fmt --all</code> when formatting fails. A passing
+check is recorded against the content it checked, and <code>nplan commit</code>
+skips checks whose content has not changed since, so running
+<code>nplan check</code> while working keeps commits fast.</p>
+</div>
+<div class="paragraph">
+<p>Tests also count towards spec coverage: a test that verifies a rule
+carries its id with <code>/test</code> (see <a href="#spec">The specification</a>).</p>
+</div>
+</div>
+</div>
+</div>
+<h1 id="targets" class="sect0">Targets</h1>
+<div class="openblock partintro">
+<div class="content">
+<div class="paragraph">
+<p>One chapter per target generator under <code>src/build/</code>: what it reads, the
+steps it runs, and how it is tested.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_windows">Windows</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Windows target has two parts:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the <strong>layout DLL generator</strong>, <code>src/build/windows/kbdl</code>, which
+<code>kbdgen target … windows</code> runs. It writes a <code>no_std</code> Rust crate per layout and builds it
+into a keyboard layout DLL for x86, x64, arm64 and WOW64. The DLL is
+specified in <code>docs/spec/kbdl.md</code> (rules <code>kbdl.<strong></code>), and the derivation of its
+input from a v4 layout in <code>docs/spec/ldml/kbdl.md</code> (<code>ldml.kbdl.</strong></code>).</p>
+</li>
+<li>
+<p>the <strong>text service</strong>, the crate <code>crates/kbd-tsf</code>: a TSF text input processor
+that runs <code>kbd-engine</code> on the compiled keyboard each layout DLL carries.
+<code>kbdgen tsf</code> builds it, from <code>src/build/windows/tsf</code>. It is specified in
+<code>docs/spec/tsf.md</code> (<code>tsf.*</code>).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The specs are normative and exhaustive; this chapter is a map of the code.
+Code cites the rules it implements as <code>[spec:kbdgen:req:kbdl.build]</code> and
+the tests that verify them as <code>[spec:kbdgen:req:kbdl.build/test]</code>, so
+searching for a rule id finds both.</p>
+</div>
+<div class="sect2">
+<h3 id="_layout_dll_generator">Layout DLL generator</h3>
+<div class="sect3">
+<h4 id="_pipeline">Pipeline</h4>
+<div class="paragraph">
+<p><code>WindowsBuild</code> in <code>src/build/windows/mod.rs</code> runs two build steps, both in
+<code>kbdl/mod.rs</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>GenerateKbdl</code> calls <code>generate_bundle</code>, which, for each layout with Windows
+output in bundle layout order, derives the generator input and the encoded
+engine model (<code>source_layout</code>), then generates the crate files
+(<code>generate</code>). Any error fails the whole bundle before anything is written.
+<code>write</code> then puts each crate in <code>&lt;out&gt;/build/&lt;name&gt;/</code>, removing stale files
+but keeping cargo&#8217;s <code>target</code> and <code>target-wow64</code>.</p>
+</li>
+<li>
+<p><code>BuildKbdl</code> lists the crates again with <code>layout_names</code>, which for v4
+layouts only lowers and resolves, so no diagnostic is reported twice. It
+checks the toolchain once, then builds every crate for every variant.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>generate</code> is the core, and does no I/O:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-rust" data-lang="rust">pub fn generate(
+    input: &amp;LayoutInput,
+    model: Option&lt;&amp;[u8]&gt;,
+    diag: &amp;mut Diagnostics,
+) -&gt; Result&lt;GeneratedLayout&gt; {
+    check_metadata(&amp;input.metadata)?;
+    let tables = tables::build(input, diag)?;
+    let version = resources::file_version(&amp;input.metadata, diag);
+    Ok(GeneratedLayout {
+        name: input.metadata.name.clone(),
+        cargo_toml: source::cargo_toml(&amp;input.metadata.name),
+        lib_rs: source::lib_rs(&amp;tables),
+        res: resources::res_file(&amp;input.metadata, version, model),
+    })
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Warnings and information go through <code>diag::Diagnostics</code>, which logs each
+message with the keyboard name as it is raised and keeps it, so tests and
+golden files can see what was reported. Fatal conditions are returned as
+errors.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_input">Input</h4>
+<div class="paragraph">
+<p><code>input.rs</code> defines <code>LayoutInput</code>, the format-independent input of
+<code>kbdl.input</code>: metadata, the decimal separator, a value or "no key" per
+<code>Layer</code> at each of the 49 positions <code>E00</code>…<code>B11</code>, up to three extra
+modifiers, the dead-key tree (<code>DeadKeyNode</code>, a leaf or a branch whose <code>" "</code>
+child is the standalone output), dead-key names, key-name overrides, and the
+Shift Lock and LRM/RLM flags. Two producers fill it.</p>
+</div>
+<div class="paragraph">
+<p><strong>v3 layouts</strong> (<code>bundle.rs</code>, <code>kbdl.input.bundle</code>) read the layout&#8217;s <code>windows</code>
+section and its <code>transforms</code>. v3 cannot express extra modifiers, names,
+flags or <code>B11</code>, so those stay empty. The engine model of a v3 layout comes
+from <code>v3_model</code> in <code>mod.rs</code>: the layout file is migrated in memory
+(<code>ldml::migrate</code>) and its <code>windows</code> keyboard encoded. When the migration
+fails, is blocked or has no <code>windows</code> keyboard, the DLL is built without the
+model and a warning says why (<code>ldml.kbdl.model-resource</code>).</p>
+</div>
+<div class="paragraph">
+<p><strong>v4 layouts</strong> (<code>adapter/</code>, <code>ldml.kbdl.*</code>) start from the compiled model.
+<code>adapter::load</code> lowers the layout&#8217;s host documents and compiles the
+<code>windows</code> one; <code>adapter::adapt</code> then derives the input:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>layers.rs</code> gives each <code>kbdl</code> layer the engine&#8217;s modifier state for it
+(<code>layer_states</code>) and takes the hardware layer the engine would select, then
+the key at each position by scan code and its value. <code>kbd-engine</code> exposes
+no layer-selection API, so this repeats the engine&#8217;s selection; a test
+checks that the two agree.</p>
+</li>
+<li>
+<p><code>dead_tree.rs</code> builds each dead key&#8217;s tree by running <code>kbd-engine</code>: press
+the dead key, then each distinct value of the layers, and record what is
+committed or left pending (<code>ldml.kbdl.dead-tree</code>). The DLL&#8217;s dead keys
+therefore compose as the engine does wherever the tables can.</p>
+</li>
+<li>
+<p><code>classify.rs</code> reports, once per layout, what only the text service
+provides (<code>ldml.kbdl.classify</code>).</p>
+</li>
+<li>
+<p><code>windows_inputs</code> in <code>adapter/mod.rs</code> copies the Windows-only options of
+the model: extra modifiers, the flags, dead-key names, key names and the
+decimal separator.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The model the DLL embeds is the encoding of the same compiled layout, so the
+DLL and the text service derive from one source. Metadata comes from
+<code>bundle::metadata</code> for both formats (<code>kbdl.metadata.bundle</code>,
+<code>kbdl.metadata.locale</code>): the keyboard name <code>kbd&lt;id&gt;</code> or <code>kbd</code> and the first
+five characters of the tag, the display name for the primary language
+subtag, the LCID from <code>iso639::lcid</code> and the tag, the project&#8217;s
+<code>organisation</code> and <code>copyright</code>, and the Windows target&#8217;s <code>version</code> and
+<code>build</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_tables">Tables</h4>
+<div class="paragraph">
+<p><code>tables::build</code> computes <code>Tables</code>, the contents of the <code>KBDTABLES</code> of <code>kbd.h</code>,
+from the input:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the modifier bindings and character-table columns (<code>kbdl.layers</code>,
+<code>kbdl.modifiers</code>), with up to three extra modifiers bound to spare
+virtual keys</p>
+</li>
+<li>
+<p>one character row per position, with Caps Lock attributes, the SGCAPS
+rows and the dead rows that follow them (<code>kbdl.vk-chars</code>, <code>kbdl.caps</code>)</p>
+</li>
+<li>
+<p>dead keys: the dead id of each dead state, one <code>aDeadKey</code> group per state,
+and chained states, falling back to Private Use units downward from
+<code>U+F8FF</code> (<code>kbdl.dead-keys*</code>)</p>
+</li>
+<li>
+<p>ligatures of 2 to 16 UTF-16 units (<code>kbdl.ligatures</code>)</p>
+</li>
+<li>
+<p>the scan-code maps, with the keys of extra modifiers rebound
+(<code>kbdl.scancodes*</code>), key names with overrides, and the locale flags</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Most warnings come from here. <code>build</code> ends with <code>check_invariants</code>
+(<code>kbdl.tables.invariants</code>), so a generator bug fails generation instead of
+producing a DLL that Windows misreads.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_source">Source</h4>
+<div class="paragraph">
+<p><code>source.rs</code> writes <code>Cargo.toml</code> and <code>lib.rs</code> (<code>kbdl.crate</code>, <code>kbdl.source</code>).
+<code>lib.rs</code> is ASCII and byte-for-byte deterministic: every piece of layout text
+is written as hexadecimal UTF-16 literals (<code>kbdl.escaping</code>). It holds:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the <code>kbd.h</code> structures as <code>#[repr(C)]</code> types, with variable-length members
+as const-generic arrays (<code>kbdl.structs</code>)</p>
+</li>
+<li>
+<p>a pointer slot <code>P&lt;T&gt;</code>, which under the <code>wow64</code> feature is a 32-bit pointer
+padded to 8 bytes, so a 32-bit build has the 64-bit table layout that
+WOW64 needs (<code>kbdl.structs.pointers</code>, <code>kbdl.wow64</code>)</p>
+</li>
+<li>
+<p><code>const</code> assertions of every size and offset, so a layout mismatch fails
+compilation (<code>kbdl.structs.layout</code>)</p>
+</li>
+<li>
+<p>the tables as immutable statics, and the one export, <code>KbdLayerDescriptor</code>
+(<code>kbdl.export</code>)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>There is no <code>.def</code> file: rust-lld ignores a <code>/DEF</code> given after rustc&#8217;s own,
+and rustc already exports <code>KbdLayerDescriptor</code> under that name on every
+target.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_resources">Resources</h4>
+<div class="paragraph">
+<p><code>resources.rs</code> writes <code>&lt;name&gt;.res</code> directly, without <code>rc.exe</code>
+(<code>kbdl.resources*</code>). It holds an empty entry, the <code>RT_VERSION</code> resource, the
+engine model as <code>RT_RCDATA</code> 1 when the layout has one (<code>tsf.data.resource</code>),
+and string table blocks with strings 1000 (description) and 1100 (language
+name) under the layout&#8217;s LCID, and 1200 (locale name) under <code>0x0409</code>. The
+bytes are what <code>rc.exe</code> writes for the equivalent script. <code>file_version</code>
+turns the target&#8217;s <code>version</code> and <code>build</code> into <code>a.b.c.d</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_build_and_image_verification">Build and image verification</h4>
+<div class="paragraph">
+<p><code>build.rs</code> builds each crate for the four <code>VARIANTS</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Variant</th>
+<th class="tableblock halign-left valign-top">Target</th>
+<th class="tableblock halign-left valign-top">Features</th>
+<th class="tableblock halign-left valign-top">Target directory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>x86</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>i686-pc-windows-msvc</code></p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>target</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>x64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>x86_64-pc-windows-msvc</code></p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>target</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>arm64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>aarch64-pc-windows-msvc</code></p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>target</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wow64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>i686-pc-windows-msvc</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wow64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>target-wow64</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>check_toolchain</code> first checks that <code>cargo</code> and <code>rustc</code> start, that rustc
+is 1.85 or later (edition 2024), that the directory
+<code>rustc --print target-libdir --target &lt;triple&gt;</code> prints exists for the three
+triples, and that <code>rust-lld</code> is in
+<code>&lt;sysroot&gt;/lib/rustlib/&lt;host&gt;/bin</code>. The probes are a closure, so
+<code>check_toolchain_with</code> is unit-tested with fake <code>cargo</code> and <code>rustc</code>. They run
+in <code>&lt;out&gt;/build</code>, which holds the crate directories the builds run in, so a
+rustup override applies to both.</p>
+</div>
+<div class="paragraph">
+<p><code>cargo_command</code> then runs, in the crate directory, for example for x64:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo rustc --release --lib --target x86_64-pc-windows-msvc \
+  --target-dir &lt;crate&gt;/target -- -C linker=rust-lld \
+  -C link-arg=/NOENTRY -C link-arg=/NODEFAULTLIB -C link-arg=/SUBSYSTEM:NATIVE \
+  -C link-arg=&lt;crate&gt;/&lt;name&gt;.res \
+  -C link-arg=/MERGE:.rdata=.data -C link-arg=/MERGE:.text=.data \
+  -C link-arg=/MERGE:.bss=.data -C link-arg=/SECTION:.data,RE \
+  -C link-arg=/DEBUG:NONE -C link-arg=/Brepro</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The merges put code and data in one read-execute <code>.data</code> section, because
+Windows 11&#8217;s <code>LoadKeyboardLayout</code> rejects a layout DLL whose code and data
+lie in separate sections (<code>kbdl.image</code>). <code>/NODEFAULTLIB</code> drops <code>msvcrt.lib</code>,
+which non-Windows hosts lack, so the build needs no MSVC on any host. The
+environment is scrubbed of <code>RUSTFLAGS</code> and the cargo variables that would
+change the link or the profile (<code>kbdl.build.environment</code>).</p>
+</div>
+<div class="paragraph">
+<p><code>image::verify</code> reads each DLL&#8217;s PE headers and fails unless the machine,
+the DLL flag, entry point 0, the native subsystem, exactly the sections
+<code>.data</code> (executable, readable, not writable), <code>.rsrc</code> and <code>.reloc</code>, no
+imports, and the single export <code>KbdLayerDescriptor</code> at ordinal 1 are as
+<code>kbdl.image.verify</code> requires. The DLL is then copied to
+<code>&lt;out&gt;/&lt;variant&gt;/&lt;name&gt;.dll</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_tests">Tests</h4>
+<div class="paragraph">
+<p>Run the generator&#8217;s tests with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test --lib build::windows::kbdl</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Golden tests</strong> (<code>kbdl/golden/</code>) generate four fixtures and compare their
+<code>Cargo.toml</code>, <code>lib.rs</code>, <code>.res</code> and diagnostics with files under
+<code>kbdl/testdata/golden/&lt;fixture&gt;/</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>vro</code> - the v4 Võro layout, <code>crates/kbd-engine/tests/golden/layouts/vro.yaml</code></p>
+</li>
+<li>
+<p><code>vro-v3</code> and <code>se-NO-v3</code> - the v3 layouts of
+<code>crates/kbd-engine/tests/golden/v3/</code>, whose tables come from
+<code>kbdl.input.bundle</code> and models from migration</p>
+</li>
+<li>
+<p><code>features</code> - <code>kbdl/testdata/features.yaml</code>, a v4 layout with chained and
+named dead keys, ligatures, an extra modifier, SGCAPS, the 49th key, Shift
+Lock, LRM/RLM, a decimal separator and key-name overrides</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>fixture_dlls_hold_their_golden_tables</code> is ignored by default because it
+needs the three Windows targets. It runs both build steps on each fixture,
+verifies every variant&#8217;s image, and decodes the <code>KBDTABLES</code> that
+<code>KbdLayerDescriptor</code> returns by following every pointer
+(<code>golden/kbdtables.rs</code>), comparing the result with <code>kbdtables.txt</code>. The DLL
+bytes are not golden: they are reproducible for one toolchain, but code
+generation changes between Rust releases, while the decoded tables do not.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test --lib build::windows::kbdl::golden -- --include-ignored
+KBDGEN_BLESS=1 cargo test --lib build::windows::kbdl::golden -- --include-ignored</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The second command rewrites the golden files; review the diff.</p>
+</div>
+<div class="paragraph">
+<p><strong>Differential tests</strong> (<code>kbdl/differential/</code>, <code>tsf.test.differential</code>) check
+that the DLL types what the text service types. For every fixture layout (the
+v4 and v3 golden layouts of <code>kbd-engine</code> and <code>kbdl/testdata/vro-v3.yaml</code>)
+they compare <code>kbd-engine</code>, on the model embedded in the generated <code>.res</code>,
+with <code>simulate::Dll</code>, which applies the generated tables as <code>ToUnicodeEx</code>
+does. The cases are every layer at each of the 49 positions and the space
+bar, then every dead-key path up to four keys. Each difference must be one
+of the exceptions listed in <code>exceptions.rs</code>, each documented in the spec,
+such as Caps+Shift on <code>CAPLOK</code> keys or multi-unit dead-key outputs.
+<code>each_listed_exception_explains_a_difference</code> and
+<code>corrupted_tables_are_not_explained</code> keep that list honest. The same module
+checks that every built <code>.res</code> decodes to the layout&#8217;s model
+(<code>tsf.test.engine</code>) and how embedded model versions load
+(<code>tsf.data.version</code>).</p>
+</div>
+<div class="paragraph">
+<p>On Windows, <code>differential/windows.rs</code> checks the simulation against the real
+<code>ToUnicodeEx</code>: it installs each fixture&#8217;s DLL under a test KLID (<code>a0f00409</code>
+upwards, as <code>kbdzf&lt;n&gt;.dll</code> in <code>System32</code>), types every case, and removes
+them again. Run it elevated, in an interactive session:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test real_dlls -- --ignored</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Adapter tests</strong> (<code>adapter/tests/</code>) check each <code>ldml.kbdl.*</code> rule on small
+layouts, the embedded model, and the v4 Võro layout against its v3
+counterpart through the tables both produce. <code>migrated.rs</code> compares a v3
+layout&#8217;s DLL with the DLL of its migration; the migration tests in
+<code>src/ldml/migrate/tests</code> use it to split the differences into those the
+migration&#8217;s defects explain and the rest.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_text_service">Text service</h3>
+<div class="sect3">
+<h4 id="_crate_structure">Crate structure</h4>
+<div class="paragraph">
+<p><code>crates/kbd-tsf</code> builds <code>kbd_tsf.dll</code>, a <code>cdylib</code> with <code>windows</code> and
+<code>windows-core</code> 0.62. Everything that needs no TSF call is in host-independent
+modules, tested on every host; <code>src/win/</code>, compiled only on Windows, adapts
+TSF and ETW to them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Module</th>
+<th class="tableblock halign-left valign-top">Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keys.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key identity: scan code and extended flag, never the virtual key, which comes from the hidden US dummy layout beneath the text service. Modifier state, AltGr, extra modifiers, Shift Lock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>claim.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Which key events are eaten: a key down exactly when the engine&#8217;s action is not <code>Pass</code>, a key up exactly when its key down was.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>document.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-context state: the engine <code>State</code>, the text cache for contexts whose text cannot be read, whether a preedit is shown, and the key, pass and reset logic.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>planner.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Turns an engine <code>Action</code> and the context&#8217;s mode into text operations, with no TSF calls.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TextContext</code>, the trait those operations run against.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>locate.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Finding and decoding a profile&#8217;s keyboard data, the per-process cache, and the <code>Reason</code> a profile is inert.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>registration.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">What <code>DllRegisterServer</code> decides: the <code>InprocServer32</code> path per architecture, where the DLLs may lie, and the package grants their DACLs need.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>guard.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Panic containment and the poisoned flag.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diag.rs</code>, <code>etw.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diagnostic events, the per-thread gate, and their TraceLogging encoding.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>server.rs</code>, <code>guid.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Object and lock counts for <code>DllCanUnloadNow</code>; the CLSID and GUID parsing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/exports.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The four exports and the class factory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/tip.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The text input processor object, its per-thread state, and activation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/input.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The key event sink and preserved keys.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/session.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edit sessions, <code>TextContext</code> over <code>ITfContext</code>, and the <code>SendInput</code> fallback.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/events.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The sinks that reset the engine: focus, foreign edits, composition end, compartments, profile switches.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/display.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The display attribute of the preedit, a dotted underline.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/data.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reading the keyboard data from the registry and the layout DLL.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/register.rs</code>, <code>win/facts.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Registration, and the facts it decides on.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>win/trace.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The ETW writer.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The crate&#8217;s Clippy configuration denies <code>panic!</code>, <code>unwrap</code>, <code>expect</code>,
+indexing and <code>unreachable!</code>, since any panic takes the host application&#8217;s
+keyboard input with it.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_com_entry_points">COM entry points</h4>
+<div class="paragraph">
+<p>The DLL exports exactly <code>DllGetClassObject</code>, <code>DllCanUnloadNow</code>,
+<code>DllRegisterServer</code> and <code>DllUnregisterServer</code> (<code>tsf.component.crate</code>).
+<code>DllGetClassObject</code> serves only the CLSID
+<code>{5E668C8A-2FB8-41D2-90B1-9C132653FA9D}</code>. Building with <code>KBD_TSF_CLSID</code> set
+to another GUID compiles that one in instead, which the Windows tests use to
+register a build beside an installed text service. <code>build.rs</code> silences the
+linker&#8217;s LNK4104 warning about the exports.</p>
+</div>
+<div class="paragraph">
+<p>The <code>Tip</code> object (<code>win/tip.rs</code>) implements <code>ITfTextInputProcessorEx</code> and the
+sinks of <code>tsf.component.interfaces</code>: thread manager events, key events,
+text edits, compositions, compartments, the display attribute provider and
+language profile switches. Every Divvun keyboard is a profile of this one
+CLSID, so switching between them does not reactivate it; the profile sink
+loads the new profile&#8217;s keyboard data instead.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_keyboard_data_and_the_engine">Keyboard data and the engine</h4>
+<div class="paragraph">
+<p>On activation and on each profile switch, <code>win/data.rs</code> looks under
+<code>HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts</code> for the layout
+whose <code>Layout Product Code</code> is the profile GUID, loads its <code>Layout File</code> from
+<code>System32</code> as a resource-only image, and decodes <code>RT_RCDATA</code> 1 with
+<code>Model::from_bytes</code> (<code>tsf.data.locate</code>). Results are cached per process. A
+profile whose data cannot be loaded is <strong>inert</strong>: it eats no keys, and keeps
+the <code>locate::Reason</code> for diagnostics (<code>tsf.data.inert</code>).</p>
+</div>
+<div class="paragraph">
+<p>Each context has a <code>Document</code> with one engine <code>State</code>. For each key,
+<code>Model::key(&amp;State, &amp;Context, &amp;KeyEvent)</code> gives an <code>Action</code>, and the planner
+turns it into text operations:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>in a context whose text can be read, a <code>SetText</code> over the range before the
+caret, inside a read-write edit session (<code>tsf.edit.apply</code>)</p>
+</li>
+<li>
+<p>in a <strong>transitory</strong> context, such as a Win32 <code>EDIT</code>, which returns no text
+before the caret: insertions with <code>SetText</code> at the selection, and edits
+that delete with one <code>SendInput</code> of Backspaces and Unicode characters. The
+engine&#8217;s context is then a cache of what the text service typed
+(<code>tsf.edit.inject</code>, <code>tsf.edit.cache</code>).</p>
+</li>
+<li>
+<p>a non-empty preedit as a TSF composition, in contexts whose text can be
+read (<code>tsf.edit.preedit</code>)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>TSF calls <code>OnKeyDown</code> only for keys <code>OnTestKeyDown</code> ate, so <code>OnTestKeyDown</code>
+decides every key in a read-only synchronous session, without changing
+engine state, and <code>OnKeyDown</code> applies the kept decision
+(<code>tsf.keys.phases</code>). The engine is pure, so that decision is exact. TSF
+calls no key sink while Alt is held, so AltGr and Ctrl+Alt chords arrive as
+preserved keys (<code>tsf.keys.preserved</code>). The engine is reset whenever the
+document changes in a way the text service did not cause
+(<code>tsf.edit.reset</code>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_registration">Registration</h4>
+<div class="paragraph">
+<p><code>DllRegisterServer</code> writes the CLSID&#8217;s <code>InprocServer32</code> and the TSF
+categories; profiles are registered by <code>kbdi</code>, not the text service
+(<code>tsf.register.server</code>). <code>registration.rs</code> decides first and <code>win/facts.rs</code>
+gathers what it decides on. Registration refuses, writing nothing, unless
+the DLL is named as <code>kbdgen tsf</code> names it, lies in a directory named for its
+own <code>kbd-tsf</code> version under the 64-bit <code>%ProgramFiles%</code>, and every file the
+registration loads grants read and execute to <code>ALL APPLICATION PACKAGES</code> and
+<code>ALL RESTRICTED APPLICATION PACKAGES</code> (<code>tsf.arch.registration</code>,
+<code>tsf.register.upgrade</code>, <code>tsf.security.appcontainer</code>). To register a local
+build, copy it to <code>%ProgramFiles%\Divvun\Text Service\&lt;version&gt;</code> first.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_diagnostics">Diagnostics</h4>
+<div class="paragraph">
+<p>The text service records no typed text, context text or key identities
+(<code>tsf.component.logging</code>). Its only output is ETW TraceLogging events from
+the provider <code>Divvun.Keyboard.TextService</code>
+(<code>{B7732613-C499-504F-2AB7-FF5A4E513A9B}</code>), listed in
+<code>tsf.component.events</code>; the
+<a href="../user/kbdgen.html#windows-trace">user guide</a> shows how to collect
+them.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>diag::Event</code> is <code>Copy + 'static</code>, checked at compile time, so no event can
+hold a string read at run time.</p>
+</li>
+<li>
+<p>A per-thread gate drops every event on a thread where the text service is
+not activated, or is activated in secure or immersive mode. Only the
+registration exports are exempt.</p>
+</li>
+<li>
+<p><code>etw.rs</code> encodes events as <code>TraceLoggingProvider.h</code> defines them.
+<code>win/trace.rs</code> registers the provider only while it writes one event, with
+no enable callback: the DLL has no <code>DllMain</code> and COM may unload it without
+asking <code>DllCanUnloadNow</code>, so a longer registration would outlive it.
+Microsoft&#8217;s <code>tracelogging</code> crate is not used because it links
+<code>OneCore_apiset.lib</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>tests/self_contained.rs</code> scans the sources for anything that talks to other
+processes, the network or files, starts processes, writes the registry
+outside registration, creates windows, or logs other than through the gate
+(<code>tsf.component.self-contained</code>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_panic_containment">Panic containment</h4>
+<div class="paragraph">
+<p>TSF loads the text service into every process the user types in, and an
+unwind that reaches an <code>extern "system"</code> function aborts the process. Every
+export and COM method therefore runs its body through <code>guard::contain</code>,
+which turns a panic into <code>E_UNEXPECTED</code>, writes a <code>Panicked</code> event with the
+panic&#8217;s location but never its message, and poisons the text service for
+the process: from then on it passes every key and requests no edit session
+(<code>tsf.component.panic</code>). This needs <code>panic = "unwind"</code>, the release default,
+which the workspace keeps.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_building">Building</h4>
+<div class="paragraph">
+<p><code>kbdgen tsf -w &lt;workspace&gt; -o &lt;out&gt;</code> (<code>src/build/windows/tsf/mod.rs</code>) runs
+the toolchain check of the layout build, then for each of
+<code>i686-pc-windows-msvc</code>, <code>x86_64-pc-windows-msvc</code> and
+<code>aarch64-pc-windows-msvc</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo rustc --package kbd-tsf --release --lib --target &lt;triple&gt; \
+  --target-dir &lt;workspace&gt;/target -- -C target-feature=+crt-static</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The C runtime is linked statically, because the text service loads into
+processes on machines without the Visual C++ runtime. The DLL links <code>std</code>,
+which needs MSVC and the Windows SDK, so this runs on Windows.
+<code>verify::verify_tip</code> checks each DLL&#8217;s machine, the DLL flag, exactly the
+four exports with none forwarded, and no C runtime among its imports; the
+DLL is renamed <code>divvun_tip_x86.dll</code>, <code>divvun_tip_x64.dll</code> or
+<code>divvun_tip_arm64.dll</code>.</p>
+</div>
+<div class="paragraph">
+<p>For Windows on Arm, <code>divvun_tip.dll</code> is an Arm64X pure forwarder whose native
+exports forward to <code>divvun_tip_arm64</code> and whose x64 exports forward to
+<code>divvun_tip_x64</code> (<code>tsf.arch.arm64x</code>). A merged Arm64X Rust DLL crashes in x64
+processes (rust-lang/rust#145154). <code>coff.rs</code> writes the native and Arm64EC
+load configuration objects, with the data of LLD&#8217;s own test inputs, so no C
+compiler or assembler is needed; <code>link_forwarder</code> links them with
+<code>rust-lld -flavor link -machine:arm64x</code> and two generated <code>.def</code> files, and
+<code>verify::verify_forwarder</code> checks both views. This part runs on any host,
+and so do its tests:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test --lib build::windows::tsf</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>write_release</code> writes the four files only when all have passed, and
+<code>kbdgen tsf</code> prints their paths to stdout for signing
+(<code>tsf.security.signing</code>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_tests_2">Tests</h4>
+<div class="paragraph">
+<p><code>kbd-tsf</code> is not a default workspace member, so name it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test -p kbd-tsf</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On every host this runs the unit tests in <code>src/tests/</code> against a fixture
+keyboard (<code>tests/fixture.rs</code>) and an in-memory context (<code>tests/fake.rs</code>):
+key identity, AltGr, extra modifiers, Shift Lock, edits, preedits, the
+cache, resets and registration decisions (<code>tsf.test.host</code>). It also runs
+<code>tests/self_contained.rs</code>. On Windows it adds <code>src/win/tests.rs</code>: the
+exports, the interfaces the object answers to, the display attribute, and a
+forced panic in every entry point, which must return <code>E_UNEXPECTED</code> and
+poison the service.</p>
+</div>
+<div class="paragraph">
+<p>The VM and acceptance tests type through TSF, which needs a desktop. They
+run on a Windows 11 machine, elevated, over SSH or a console, while the same
+user is signed in interactively: each drives the signed-in session through a
+scheduled task and sends scan codes with <code>SendInput</code>.</p>
+</div>
+<div class="paragraph">
+<p>The <strong>VM test</strong> (<code>tests/vm.rs</code>, <code>tests/vm/</code>, <code>tsf.test.vm</code>) tests a build
+that its script registers itself, without the installers:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bat" data-lang="bat">kbdgen target -b crates/kbd-tsf/tests/vm/fixture.kbdgen -o &lt;out&gt; windows
+set KBD_TSF_VM_LAYOUT=&lt;out&gt;
+cargo test -p kbd-tsf --test vm -- --ignored --nocapture</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>run-vm.ps1</code> builds the x64 and x86 DLLs under a test CLSID and checks where
+<code>DllRegisterServer</code> refuses: a misnamed DLL, one outside a version
+directory, one outside <code>%ProgramFiles%</code>, and one without the restricted
+packages' grant. It then registers both, installs each fixture layout (Võro,
+and the emoji layout <code>und-Zsye</code> of <code>tsf.test.emoji</code>) under a test KLID and
+profile, and types every case into a Win32 <code>EDIT</code>, a RichEdit and a WPF
+<code>TextBox</code> from 64-bit PowerShell, an <code>EDIT</code> and a WPF <code>TextBox</code> from 32-bit
+PowerShell, an <code>EDIT</code> with the layout DLL alone, and a console switched to
+the profile with Win+Space (<code>TsfDriver.cs</code>, <code>ConsoleReader.cs</code>,
+<code>type.ps1</code>). Finally it removes everything and reports what is left.
+<code>vm.rs</code> holds the cases and checks the output.</p>
+</div>
+<div class="paragraph">
+<p>The <strong>acceptance test</strong> (<code>tests/acceptance.rs</code>, <code>tests/acceptance/</code>,
+<code>tsf.test.acceptance</code>) installs a keyboard as a user gets it. It also needs
+Inno Setup 6, a kbdi checkout, divvun-actions' <code>divvun-tip.iss</code>, and the
+keyboard installer script divvun-actions generates for
+<code>tests/acceptance/fixture.kbdgen</code>, saved as <code>install.all.iss</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bat" data-lang="bat">set KBD_TSF_ACCEPTANCE_ISS=&lt;dir with divvun-tip.iss and install.all.iss&gt;
+set KBD_TSF_ACCEPTANCE_KBDI=&lt;kbdi checkout&gt;
+cargo test -p kbd-tsf --test acceptance -- --ignored --nocapture</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>acceptance.ps1</code> builds kbdgen, the fixture&#8217;s layout DLLs, the text service
+(<code>kbdgen tsf</code>) and kbdi under a test CLSID, and both installers under test
+AppIds. It records the machine&#8217;s state, runs the keyboard installer
+silently, and types the cases of <code>acceptance/cases.rs</code> through the profile
+kbdi enabled, into the controls of the VM test, a console, and an <code>EDIT</code>
+with the layout DLL alone. It then uninstalls, installs again and uninstalls
+while a process holds the text service loaded (<code>hold.ps1</code>), and checks that
+the state is as before. The expected text is what <code>kbd-engine</code> types on the
+model embedded in the built x64 layout DLL.</p>
+</div>
+<div class="paragraph">
+<p>Neither test loads the arm64 DLL or the Arm64X forwarder, which needs a
+Windows on Arm machine.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_references">References</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>docs/spec/kbdl.md</code>, <code>docs/spec/ldml/kbdl.md</code> and <code>docs/spec/tsf.md</code>, with
+the sources each one lists</p>
+</li>
+<li>
+<p><code>docs/spec/ldml/engine.md</code>, the engine both the adapter and the text service
+run</p>
+</li>
+<li>
+<p>Windows keyboard layouts and their features, such as SGCAPS and
+ligatures: <a href="https://kbdlayout.info/" class="bare">https://kbdlayout.info/</a></p>
+</li>
+<li>
+<p>Microsoft&#8217;s keyboard layout samples (<code>kbdus</code>, <code>kbdfr</code>, <code>kbdgr</code>):
+<a href="https://github.com/microsoft/Windows-driver-samples/tree/main/input/layout" class="bare">https://github.com/microsoft/Windows-driver-samples/tree/main/input/layout</a></p>
+</li>
+<li>
+<p><code>kbd.h</code> in ReactOS and Wine:
+<a href="https://github.com/reactos/reactos/blob/master/sdk/include/ndk/kbd.h" class="bare">https://github.com/reactos/reactos/blob/master/sdk/include/ndk/kbd.h</a>,
+<a href="https://github.com/wine-mirror/wine/tree/master/include" class="bare">https://github.com/wine-mirror/wine/tree/master/include</a></p>
+</li>
+<li>
+<p><code>KBDTABLES</code> in the <code>windows</code> crate:
+<a href="https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/UI/Input/KeyboardAndMouse/struct.KBDTABLES.html" class="bare">https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/UI/Input/KeyboardAndMouse/struct.KBDTABLES.html</a></p>
+</li>
+<li>
+<p>Resource formats:
+<a href="https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource" class="bare">https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource</a>,
+<a href="https://learn.microsoft.com/en-us/windows/win32/menurc/resource-file-formats" class="bare">https://learn.microsoft.com/en-us/windows/win32/menurc/resource-file-formats</a></p>
+</li>
+<li>
+<p>Text Services Framework:
+<a href="https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework" class="bare">https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework</a></p>
+</li>
+<li>
+<p>Input method requirements for Store apps:
+<a href="https://learn.microsoft.com/en-us/windows/apps/develop/input/input-method-editor-requirements" class="bare">https://learn.microsoft.com/en-us/windows/apps/develop/input/input-method-editor-requirements</a></p>
+</li>
+<li>
+<p>Microsoft&#8217;s sample IME, <code>Samples/IME/cpp/SampleIME</code> in
+<a href="https://github.com/microsoft/Windows-classic-samples">Windows-classic-samples</a>,
+and Keyman&#8217;s TSF text service, <code>windows/src/engine/kmtip</code> in
+<a href="https://github.com/keymanapp/keyman">keymanapp/keyman</a></p>
+</li>
+<li>
+<p>Arm64X: <a href="https://learn.microsoft.com/en-us/windows/arm/arm64x-pe" class="bare">https://learn.microsoft.com/en-us/windows/arm/arm64x-pe</a>,
+<a href="https://learn.microsoft.com/en-us/windows/arm/arm64x-build" class="bare">https://learn.microsoft.com/en-us/windows/arm/arm64x-build</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_macos">macOS</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The macOS target writes one Apple <code>.keylayout</code> per layout into a
+keyboard-layout bundle, and can package the bundle as a <code>.pkg</code>. Layouts come
+from two places: the <code>macOS</code> section of a v3 layout, and the <code>macOS</code> keyboard
+of a compiled v4 layout. Both are turned into the same plain-data
+<strong>keylayout input</strong>, and one writer turns that into XML. So v3 output stays
+exactly as it was, and the two paths can be compared document by document.</p>
+</div>
+<div class="paragraph">
+<p>The rules live in two spec files:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>docs/spec/macos.md</code>: the document, key maps, dead keys and transforms
+as the v3 path writes them (<code>keylayout.*</code>), and the bundle and
+installer (<code>macbundle.*</code>);</p>
+</li>
+<li>
+<p><code>docs/spec/ldml/macos.md</code>: the keylayout input, the v4 adapter, what it
+reports, and the tests (<code>ldml.macos.*</code>), including three open questions.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="_code_map">Code map</h3>
+<div class="paragraph">
+<p>All of it is under <code>src/build/macos/</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">File</th>
+<th class="tableblock halign-left valign-top">Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mod.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exports <code>GenerateMacOs</code> and <code>GenerateInstaller</code>, the two build steps.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>generate_macos.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateMacOs</code> and <code>generate_bundle</code>: picks the v3 path or the adapter
+per layout, writes each document, and fills the bundle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>input.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>KeylayoutInput</code>, <code>KeyMap</code>, <code>Key</code>, <code>Binding</code> and <code>When</code>
+(<code>ldml.macos.input</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>v3.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The v3 path: a <code>macOS</code> section to a keylayout input.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>adapter/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The v4 adapter: <code>mod.rs</code> (<code>load</code>, <code>adapt</code>, key map assembly),
+<code>layers.rs</code> (key maps, cells, values), <code>modifiers.rs</code> (modifier terms),
+<code>dead_keys.rs</code> (states from the engine), <code>classify.rs</code> (what is lost).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>writer.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Keylayout input to XML, from <code>resources/template-macos-layout.xml</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keymap.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MACOS_KEYS</code> (ISO position to key code) and <code>MACOS_HARDCODED</code> (the fixed
+non-ISO keys).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>layers.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The v3 layer-to-modifier-term table.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>util.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keyboard_name</code>, <code>keyboard_id</code> (CRC-HQX) and <code>run</code>, which runs an external
+tool with its output captured.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>macos_bundle.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MacOsBundle</code>: <code>Info.plist</code>, <code>InfoPlist.strings</code>, <code>.keylayout</code> files and
+icons.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>package_macos.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateInstaller</code>: <code>pkgbuild</code>, <code>distribution.xml</code>, <code>productbuild</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test-only (<code>#[cfg(test)]</code>): reads a <code>.keylayout</code> back, simulates it and
+compares it with the engine and with the v3 path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>testdata/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>features.yaml</code> and the golden <code>.keylayout</code>/<code>.diag</code> files.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_how_a_build_runs">How a build runs</h3>
+<div class="paragraph">
+<p><code>src/main.rs</code> dispatches <code>target macos</code>. <code>KbdgenBundle::reject_v4_layouts</code>
+lets <code>macos</code> through with v4 layouts. <code>macos build</code> runs <code>GenerateMacOs</code>,
+then <code>GenerateInstaller</code> unless <code>--no-installer</code> is given or the binary was
+not compiled for macOS (<code>cfg!(target_os = "macos")</code>), in which case it
+warns. <code>generate</code> and <code>installer</code> run one step each.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>GenerateMacOs::build
+  macos_target()                  targets/macos.yaml, or an error
+  generate_bundle()               v3 and v4 tags together, sorted byte-wise
+    layout_input()
+      v3::layout_input()          v3 layout with a macOS section
+      adapter::load(), adapt()    v4 layout with a macOS host document
+    writer::write()               one String per layout
+  MacOsBundle::new(), add_key_layout(), write_all()
+GenerateInstaller::build          packages &lt;out&gt;/&lt;bundleId&gt;.bundle as it is</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Every document is generated in memory before <code>MacOsBundle::new</code> creates a
+directory, so a layout that fails writes nothing. <code>generate_bundle</code> also
+rejects two layouts with one keyboard name.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_keylayout_input">The keylayout input</h3>
+<div class="paragraph">
+<p><code>KeylayoutInput</code> is one document in emission order: the keyboard name,
+tag and display names, the default map index, the key maps and the
+terminators. A <code>KeyMap</code> holds the <code>keys</code> attributes of its <code>&lt;modifier&gt;</code>
+elements and its keys in order. A <code>Key</code> is a key code with a <code>Binding</code>:
+<code>Output(text)</code>, or <code>Action { id, whens }</code>. A <code>When</code> has a state and an
+output, a next state, or both. All texts are already decoded; the writer
+copies them.</p>
+</div>
+<div class="paragraph">
+<p>A map with no modifier terms is only reachable as the default index, and
+the writer gives it no <code>&lt;keyMapSelect&gt;</code> (the DTD requires one <code>&lt;modifier&gt;</code>
+in each). v3 never produces one; the adapter does for an <code>other</code> layer.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_v3_path">The v3 path</h3>
+<div class="paragraph">
+<p><code>v3::layout_input</code> returns <code>None</code> without a <code>macOS</code> section. Otherwise:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>initialize_key_transition_map</code> splits each layer into tokens, requires
+48, and assigns them to <code>MACOS_KEYS</code> in ISO order. Transitions are kept per
+layer in an <code>IndexMap</code> from the raw token to its positions, which is what
+groups the <code>&lt;key&gt;</code> elements by token, in order of first occurrence
+(<code>keylayout.keymaps.tokens</code>).</p>
+</li>
+<li>
+<p>Only when the layout has <code>transforms</code> and <code>macOS.deadKeys</code> has an entry
+for one of its layers:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p><code>register_dead_keys</code> makes every top-level transform a <code>dead_keyNNN</code>
+state, with its <code>' '</code> child as the terminator;</p>
+</li>
+<li>
+<p><code>process_transforms</code> turns each matching position on a layer with a
+<code>deadKeys</code> entry into an action with a <code>none</code> output plus one <code>when</code> per
+dead key;</p>
+</li>
+<li>
+<p><code>create_dead_key_actions</code> replaces each dead-key token with an action
+whose only <code>when</code> is <code>none</code> → <code>next</code>.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p><code>key_maps</code> adds the fixed keys, code 65 with <code>decimal</code>, and code 49 with
+a space, and takes each map&#8217;s term from <code>layers::layer_attributes</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Action ids come from one counter as the steps run, so replaced actions
+leave gaps; that is part of the specified output. Behaviours the spec pins
+and the tests keep: <code>macOS.space</code> is ignored, <code>\u{0}</code> is an ordinary
+output, a dead-key token repeated on one layer ends up at the last
+position only (<code>keylayout.actions.dead-key-next</code>), and a nested transform
+panics (<code>layout.transforms.dead-key-entries</code>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_v4_adapter">The v4 adapter</h3>
+<div class="paragraph">
+<p><code>adapter::load</code> lowers the layout&#8217;s file (<code>ldml::layouts::host_documents</code>)
+and returns <code>None</code> when no document is for the <code>macOS</code> host, which happens
+when the layout has neither a <code>hardware.macOS</code> nor a <code>hardware.default</code>
+variant. Otherwise it compiles the layout (<code>compiled_layouts</code>).</p>
+</div>
+<div class="paragraph">
+<p><code>adapter::adapt</code> takes the <code>macOS</code> keyboard of the compiled layout:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>layers::derive</code> makes one <code>MapPlan</code> per hardware layer macOS can select.
+<code>selectable_sets</code> drops sets with an extra modifier, and <code>caps</code> sets
+when Caps Lock is bound as an extra modifier, and warns about sided
+sets. Each plan has a cell for each of the 48 ISO positions that types
+something, located by scan code through the Windows KBDL tables
+(<code>POSITION_NAMES</code>, <code>POSITION_KEYS</code>) and coded through <code>MACOS_KEYS</code>, plus
+the space bar at scan code <code>39</code>. Each distinct value, text or a single
+dead-key marker, is interned in <code>Derived::values</code> with the first key
+press that gives it, which the dead-key probe reuses.</p>
+</li>
+<li>
+<p><code>modifiers::terms</code> writes each layer&#8217;s terms. A set that a v3 layer
+migrates to gets that layer&#8217;s v3 term, so migrated layouts keep their
+modifier maps; others get a term built from their components, with
+<code>command?</code> on typing sets.</p>
+</li>
+<li>
+<p><code>dead_keys::derive</code> loads the keyboard into <code>kbd_engine</code> (<code>Nfc</code>,
+<code>CancelOrPass</code>, host <code>MacOs</code>). Pressing each dead key from the reset state
+must commit nothing and leave exactly its marker pending, else the layout
+fails. From each state it presses every value and compares the result
+with what the <code>.keylayout</code> would do by default: type the terminator, then
+the value. A difference becomes a <code>when</code>; a result that leaves a single
+marker and commits nothing becomes <code>next</code>, and a state found that way is
+probed too, which is how chained dead keys appear. Anything else is
+omitted with a warning. States are numbered in <code>deadKeys</code> order.</p>
+</li>
+<li>
+<p><code>classify::classify</code> counts what the <code>.keylayout</code> cannot express, and
+<code>classify::report</code> turns that into one warning per feature, or the single
+information message.</p>
+</li>
+<li>
+<p><code>key_map</code> assembles each map: the cells grouped by value, the fixed keys,
+the decimal key and the space bar. A value with <code>when</code> elements, or a dead key, is
+an action, numbered in emission order.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Warnings go to <code>Diagnostics</code>, the type the Windows KBDL adapter uses
+(<code>crate::build::windows::kbdl::diag</code>). It logs each message through
+<code>tracing</code> as it is recorded, which is why the log names that module, and
+keeps them for the tests. <code>generate_bundle</code> only keeps <code>Adapted::input</code>.
+The adapter also reuses <code>starts_with_marker</code> and <code>is_generated_backspace</code>
+from the Windows adapter.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_writer_bundle_and_installer">Writer, bundle and installer</h3>
+<div class="paragraph">
+<p><code>writer::write</code> parses the embedded template with <code>xmlem</code>, sets the
+keyboard&#8217;s <code>id</code> (<code>util::keyboard_id</code>) and <code>name</code>, appends each map and its
+actions, removes <code>&lt;actions&gt;</code> when empty (macOS refuses an empty one), adds
+<code>&lt;terminators&gt;</code> when there is a state, and prints with two-space indent in
+hex entity mode.</p>
+</div>
+<div class="paragraph">
+<p><code>MacOsBundle</code> serializes <code>Info.plist</code> with the <code>plist</code> crate; <code>KLInfo_*</code>
+entries are a flattened <code>IndexMap</code>, so they follow the <code>CFBundle*</code> keys in
+the order layouts were added. <code>InfoPlist.strings</code> lines use Rust <code>Debug</code>
+quoting, not Apple&#8217;s escaping. Icons are converted with <code>convert</code> and
+<code>iconutil</code> in a temporary <code>.iconset</code> directory, on macOS hosts only.</p>
+</div>
+<div class="paragraph">
+<p><code>GenerateInstaller</code> checks that the bundle exists, runs <code>pkgbuild</code> into a
+temporary directory, writes <code>distribution.xml</code> there with <code>xmlem</code>, and runs
+<code>productbuild</code> into <code>&lt;out&gt;/&lt;bundleId&gt;.pkg</code>. Every external tool goes through
+<code>util::run</code>, which keeps the tool&#8217;s output off kbdgen&#8217;s stdout and puts its
+stderr in the error.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_tests_3">Tests</h3>
+<div class="paragraph">
+<p>Run them with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-shell" data-lang="shell">cargo test --lib build::macos</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Test</th>
+<th class="tableblock halign-left valign-top">What it checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>adapter::tests::golden_layouts_write_their_golden_keylayouts</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ldml.macos.test.golden</code>. The adapter&#8217;s <code>.keylayout</code> and its warnings for
+<code>crates/kbd-engine/tests/golden/layouts/vro.yaml</code> and
+<code>src/build/macos/testdata/features.yaml</code> must equal
+<code>src/build/macos/testdata/golden/{vro,features}.{keylayout,diag}</code> byte for
+byte. <code>features.yaml</code> exercises a chained dead key, an empty standalone, an
+<code>other</code> layer, a left-Option layer, a native Command layer, a long press
+and a display.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential::tests::fixture_keylayouts_type_what_the_engine_types</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ldml.macos.test.typing</code>. Every layout in
+<code>crates/kbd-engine/tests/golden/layouts/</code>, and every v3 layout in
+<code>crates/kbd-engine/tests/golden/v3/</code> migrated in memory, is adapted,
+written, parsed back (<code>parse.rs</code>) and simulated (<code>simulate.rs</code>, the
+<code>ldml.macos.semantics</code> model of TN2056). Each ISO key and the space bar,
+in every Shift, Caps Lock, Option and Control state, and dead-key paths up
+to three keys, must type what <code>kbd_engine</code> types.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential::tests::each_listed_exception_explains_a_difference</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Each documented exception (<code>exceptions.rs</code>) explains a difference in a
+small synthetic layout. An exception is accepted when removing that
+feature from the model makes the engine type what the <code>.keylayout</code> types.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential::tests::corrupted_keylayouts_are_not_explained</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The comparison catches a deliberately broken document.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential::tests::v3_fixtures_match_their_migrations</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ldml.macos.test.differential</code>. For <code>vro</code>, <code>se-NO</code> and a synthetic
+dead-key-after-dead-key layout, the v3 path&#8217;s document and the adapter&#8217;s
+document for the migrated layout match, maps paired by their terms and
+states by the dead keys entering them. Every difference must carry one of
+the explanations in <code>migrated.rs</code>, and each explanation must occur.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential::tests::plain_v3_layouts_migrate_byte_for_byte</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A v3 layout without dead keys gives the same bytes either way.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>differential::tests::written_keylayouts_read_back_unchanged</code>, <code>simulated_dead_keys_compose_chain_and_terminate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The parser inverts the writer; the simulator follows the semantics rule.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>v3::tests::*</code>, <code>generate_macos::tests::*</code>, <code>util::tests::*</code>, <code>adapter::modifiers::tests::*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unit tests of the v3 rules, the bundle (layout order, missing target),
+names, ids, <code>run</code>, and modifier terms.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>To accept a deliberate change to a golden file, rerun the golden test with
+<code>KBDGEN_BLESS</code> set and review the diff:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-shell" data-lang="shell">KBDGEN_BLESS=1 cargo test --lib build::macos::adapter::tests::golden_layouts_write_their_golden_keylayouts</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The typing and differential tests print a line per fixture, which
+<code>--nocapture</code> shows:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>layouts/vro: 1820 cases, 1820 equal, 0 unexplained
+v3/se-NO: 5128 cases, 5128 equal, 0 unexplained
+se-NO: 73 × UnlistedLayer, e.g. ["anyShift? caps? anyOption? anyControl"] code 10: v3 {"none": (Some("0"), None)}, migrated {"dead_key011": (Some("°"), None), "none": (Some("0"), None)}</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_making_changes">Making changes</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>A change to the v3 path changes v3 output, which <code>docs/spec/macos.md</code>
+pins; the differential tests will show it against the migrated layouts.</p>
+</li>
+<li>
+<p>A new v4 feature the <code>.keylayout</code> cannot express needs a <code>Classification</code>
+category and its warning in <code>classify.rs</code>. If it makes typing differ, it
+also needs an <code>Exception</code> in <code>differential/exceptions.rs</code>, with its
+synthetic layout in <code>differential/tests.rs</code>.</p>
+</li>
+<li>
+<p>To try a change on a real bundle, run
+<code>kbdgen target -b &lt;bundle&gt; -o &lt;out&gt; macos generate</code> and read the
+<code>.keylayout</code> files under <code>&lt;out&gt;/&lt;bundleId&gt;.bundle/Contents/Resources</code>.</p>
+</li>
+</ul>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_ios">iOS</h2>
 <div class="sectionbody">
-
+<div class="paragraph">
+<p>The iOS target does not write an app of its own. It clones the
+<code>giellakbd-ios</code> template, writes the keyboards' data into it, rewrites the
+template&#8217;s Xcode project and plists, and drives fastlane, CocoaPods and
+<code>xcodebuild</code> to sign, archive and export the app. Only v3 layouts are read:
+<code>KbdgenBundle::reject_v4_layouts</code> stops every <code>ios</code> command when the bundle
+has a v4 layout.</p>
+</div>
+<div class="paragraph">
+<p>The rules are in <code>docs/spec/ios.md</code> (<code>ios.*</code> for the layout list, JSON,
+package ids and build chain; <code>xcode.*</code> for the project changes) and
+<code>docs/spec/pbxproj.md</code> (<code>pbxproj.*</code>, the project model and its
+serializer).</p>
+</div>
+<div class="sect2">
+<h3 id="_code_map_2">Code map</h3>
+<div class="paragraph">
+<p>All of it is under <code>src/build/ios/</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">File</th>
+<th class="tableblock halign-left valign-top">Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mod.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IosBuild</code> and its step list, <code>ios_layouts</code>, package ids (<code>pkg_id</code>,
+<code>IosProjectExt::all_pkg_ids</code>), <code>init</code>, and <code>ensure_success</code>, which turns a
+failed command into an error quoting the last 20 lines of its stderr (or
+stdout when stderr is empty).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clone_giellakbd.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CloneGiellaKbd</code>: <code>git clone</code> of the template into <code>&lt;out&gt;/repo</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>generate_ios.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateIos</code>: <code>Keyboard/Models/KeyboardDefinitions.json</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>generate_xcode.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateXcode</code>: keyboard targets, plists, localizations and app icons.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pbxproj.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <code>project.pbxproj</code> model, reading it through <code>plutil</code>, and the
+mutations <code>generate_xcode.rs</code> and provisioning use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>serialize_pbxproj.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Pbxproj::to_pbxproj_string</code>, which writes the model in Xcode&#8217;s format.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xcode_structures.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed structs for the plists and JSON kbdgen rewrites.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xcodebuild.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FastlaneProvisioning</code>, <code>BuildXcarchive</code>, and the <code>fastlane</code> runner with
+its environment.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pod_install.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PodInstall</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>testdata/every-kind.pbxproj</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The golden serialization.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>ios print-pkg-ids</code> and <code>ios init</code> are handled in <code>src/main.rs</code>;
+<code>ios build</code> runs <code>IosBuild::build_full</code>, which awaits the steps in order and
+stops at the first error.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_layout_list">The layout list</h3>
+<div class="paragraph">
+<p><code>ios_layouts</code> is the one list of iOS layouts: those with an <code>iOS</code> section,
+sorted by lower-cased <code>displayNames.en</code>, then by tag. It fails, listing
+every problem, when one lacks <code>keyNames</code> or <code>displayNames.en</code>.
+<code>GenerateIos</code> and <code>GenerateXcode</code> must both use it: a keyboard finds its
+entry in <code>KeyboardDefinitions.json</code> by <code>DivvunKeyboardIndex</code>, its position
+in this list.</p>
+</div>
+<div class="paragraph">
+<p>Package ids (<code>ios.pkg-ids</code>) are <code>&lt;packageId&gt;.&lt;tag&gt;</code>, except under
+<code>no.uit.giella.keyboards.Sami</code>, where <code>legacy_divvun_keyboard_id</code> maps the
+Sami tags to the names first published. The last segment
+(<code>keyboard_name</code>) names the Xcode target and <code>Keyboard/&lt;folder&gt;</code>.
+<code>all_pkg_ids</code> adds the base id and sorts.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_keyboard_definitions">Keyboard definitions</h3>
+<div class="paragraph">
+<p><code>GenerateIos</code> maps each layout of <code>ios_layouts</code> to an
+<code>IosKeyboardDefinitions</code> and writes the array with
+<code>serde_json::to_string_pretty</code>. The struct&#8217;s field order is the JSON key
+order (<code>ios.keyboard-json</code>). Rows come from <code>generate_platform</code>: trim the
+layer, split it on <code>\n</code>, split each row with <code>util::split_keys</code>, and turn a
+token matching <code>SPECIAL_KEY</code> into an <code>IosButton</code> (<code>ios.rows</code>); everything
+else stays a string. No <code>\u{…}</code> decoding is done anywhere on this path.</p>
+</div>
+<div class="paragraph">
+<p><code>process_transforms</code> flattens each top-level transform into one object.
+A nested transform hits <code>todo!</code>, which the spec pins
+(<code>layout.transforms.dead-key-entries</code>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_pbxproj_model">The pbxproj model</h3>
+<div class="paragraph">
+<p><code>Pbxproj::from_path</code> copies the project to a temporary <code>tmp.pbxproj</code>, runs
+<code>plutil -convert json</code> on the copy, and deserializes the JSON into
+<code>Pbxproj</code>: the top-level fields and <code>objects</code>, a <code>BTreeMap</code> from
+<code>ObjectId</code> to <code>Object</code>, an enum tagged by <code>isa</code> with one variant per
+modelled kind (<code>pbxproj.model</code> lists the 18). The structs reject unknown
+fields, except the build phases, so a template that starts using a new
+field fails loudly instead of losing it. Reading needs <code>plutil</code>, so it only
+works on macOS.</p>
+</div>
+<div class="paragraph">
+<p>Reading normalizes order: objects by id, and id lists as sorted sets
+(<code>BTreeSet</code>, <code>pbxproj.model.ordering</code>). <code>buildSettings</code> is an <code>IndexMap</code> in the order
+<code>plutil</code> produced, which need not be the file&#8217;s.</p>
+</div>
+<div class="paragraph">
+<p><code>serialize_pbxproj.rs</code> writes the model back in the old-style plist format
+Xcode uses: a section per kind, even when empty, objects in id order, and
+fixed quoting rules per field (<code>pbxproj.serialize</code>, <code>pbxproj.quoting</code>).
+kbdgen does not know object names, so most comments are the placeholder
+<code>TODO</code>; Xcode ignores comments when reading and rewrites them when it next
+saves the project.</p>
+</div>
+<div class="paragraph">
+<p>New objects get random 24-character hex ids (<code>ObjectId::new_random</code>). The
+example <code>pbxproj-roundtrip</code> reads a project and prints it re-serialized,
+which is the quickest way to check the model against a new template:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-shell" data-lang="shell">cargo run --example pbxproj-roundtrip -- repo/GiellaKeyboard.xcodeproj/project.pbxproj</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_xcode_project_changes">Xcode project changes</h3>
+<div class="paragraph">
+<p><code>GenerateXcode::build</code> reads <code>repo/GiellaKeyboard.xcodeproj/project.pbxproj</code>
+and, when the bundle has <code>targets/ios.yaml</code>, runs <code>configure_targets</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>For each project locale (<code>en</code> written <code>Base</code>), write
+<code>HostingApp/&lt;locale&gt;.lproj/InfoPlist.strings</code>, and add
+<code>&lt;locale&gt;.lproj/About.txt</code> to the <code>About.txt</code> variant group when the
+template has that file (<code>add_localized_about</code>).</p>
+</li>
+<li>
+<p>For each layout of <code>ios_layouts</code>, in order: write
+<code>Keyboard/&lt;folder&gt;/Info.plist</code> from the template&#8217;s <code>Keyboard/Info.plist</code>
+(<code>keyboard_plist</code>); add a reference to it in group <code>Keyboard/&lt;folder&gt;</code>
+(<code>create_plist_file_reference</code>, <code>add_path</code>, <code>add_ref_to_group</code>); clone
+target <code>Keyboard</code> as <code>&lt;folder&gt;</code> (<code>duplicate_target</code>: new ids for the
+target, its configuration list, its configurations and its <code>.appex</code>; same
+build phases; <code>INFOPLIST_FILE</code> and <code>PRODUCT_NAME</code> set); set
+<code>PRODUCT_BUNDLE_IDENTIFIER</code> and <code>DEVELOPMENT_TEAM</code>; and embed the <code>.appex</code>
+in <code>HostingApp</code> (<code>add_appex_to_target_embedded_binaries</code>, which finds the
+phase named <code>Embed App Extensions</code> or <code>Embed Foundation Extensions</code>).</p>
+</li>
+<li>
+<p>Rewrite <code>HostingApp/Info.plist</code>, both <code>.entitlements</code> files and
+<code>HostingApp/Settings.bundle/Root.plist</code>.</p>
+</li>
+<li>
+<p>Give <code>HostingApp</code> the base id and team, then remove target <code>Keyboard</code>
+(<code>remove_target</code>, <code>remove_appex_from_target_embedded_binaries</code>).</p>
+</li>
+<li>
+<p>Add the locales to <code>knownRegions</code>, and an <code>InfoPlist.strings</code> variant
+group to the resources of <code>HostingApp</code> and to <code>HostingApp/Supporting Files</code>
+(<code>add_locales</code>).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With or without the target, <code>generate_icons</code> then renders the default icon
+for every entry of the template&#8217;s <code>AppIcon.appiconset/Contents.json</code>, in
+parallel with <code>rayon</code>, and the project is written back.</p>
+</div>
+<div class="paragraph">
+<p>The plists go through the structs in <code>xcode_structures.rs</code>: anything the
+template has that a struct does not model is dropped when the file is
+written. When the template gains a key, add it to the struct. A key a
+struct requires but the template lacks makes the step fail.</p>
+</div>
+<div class="paragraph">
+<p><code>remove_target</code> leaves the removed target&#8217;s configuration list and
+configurations, and the build file that embedded its <code>.appex</code>, in the
+project unreferenced; Xcode ignores them. A cloned target keeps the source
+target&#8217;s <code>productName</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_build_chain">Build chain</h3>
+<div class="paragraph">
+<p><code>IosBuild::new</code> lists the steps:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>CloneGiellaKbd</code>: <code>git clone <a href="https://github.com/divvun/giellakbd-ios.git" class="bare">https://github.com/divvun/giellakbd-ios.git</a>
+repo</code> in the output directory. It fails when <code>repo</code> exists.</p>
+</li>
+<li>
+<p><code>GenerateIos</code>, then <code>GenerateXcode</code>, as above. Neither checks for
+<code>targets/ios.yaml</code> up front; without it <code>GenerateXcode</code> only renders the
+icons, and the next step fails.</p>
+</li>
+<li>
+<p><code>FastlaneProvisioning</code>: requires <code>appStoreKeyJson</code> and <code>teamId</code>. For
+every id of <code>all_pkg_ids</code> it spawns <code>fastlane match appstore</code> and
+<code>fastlane sigh</code> (writing <code>&lt;id&gt;.mobileprovision</code>) as independent tokio
+tasks, at most 12 running at once (a <code>Semaphore</code>), all in <code>repo</code>, and
+awaits them in spawn order. <code>embed_profiles</code> then decodes each profile with
+<code>security cms -D -i</code>, sets <code>PROVISIONING_PROFILE</code> and
+<code>PROVISIONING_PROFILE_SPECIFIER</code> on its target (re-reading and rewriting
+the project), and writes <code>repo/opts.plist</code> for the export.</p>
+</li>
+<li>
+<p><code>PodInstall</code>: <code>pod install --repo-update --project-directory=&lt;repo&gt;</code>.</p>
+</li>
+<li>
+<p><code>BuildXcarchive</code>: requires <code>teamId</code> and <code>codeSignId</code>. <code>xcodebuild archive</code>
+with the workspace <code>GiellaKeyboard.xcworkspace</code>, scheme <code>HostingApp</code>,
+configuration <code>Release</code>, destination <code>generic/platform=iOS</code>, one job per
+CPU, and <code>CODE_SIGN_IDENTITY</code>/<code>DEVELOPMENT_TEAM</code> overrides; its stdout is
+piped into <code>xcbeautify</code>. Then <code>xcodebuild -exportArchive</code> into <code>&lt;out&gt;/ipa</code>
+with <code>repo/opts.plist</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>fastlane_env</code> passes the target&#8217;s credentials to every fastlane run as
+<code>MATCH_GIT_URL</code>, <code>MATCH_PASSWORD</code>, <code>FASTLANE_USER</code>, <code>PRODUCE_USERNAME</code>,
+<code>FASTLANE_PASSWORD</code> and <code>APP_STORE_KEY_JSON</code>, on top of kbdgen&#8217;s own
+environment. The environment overrides of the target fields themselves
+(<code>TEAM_ID</code>, <code>CODE_SIGN_ID</code>, …) are applied when the bundle is loaded
+(<code>bundle.structure.targets.env</code>).</p>
+</div>
+<div class="paragraph">
+<p><code>init</code> (<code>ios.build-chain.init</code>) runs <code>fastlane produce</code> for the app and
+the app group, then one task per id that creates the App ID (except the
+base id), enables app groups and associates the group.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_tests_4">Tests</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-shell" data-lang="shell">cargo test --lib build::ios</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Test</th>
+<th class="tableblock halign-left valign-top">What it checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>serialize_pbxproj::tests::serializes_every_kind</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The golden fixture. A model built in the test, with every kind and the
+awkward cases (Swift package products, quoted names, build-file settings,
+nested attributes, array build settings), must serialize to
+<code>testdata/every-kind.pbxproj</code> byte for byte.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pbxproj::tests::reads_what_it_writes_through_plutil</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">macOS only. Reading the golden file through <code>plutil</code> and writing it again
+gives the same lines. Lines are compared sorted, because <code>plutil</code> reorders
+<code>buildSettings</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pbxproj::tests::*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reading failures (<code>plutil</code> errors, non-dictionary <code>attributes</code>), a
+missing target, and <code>add_localized_about</code> adding each locale once.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tests::*</code> in <code>mod.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The order of <code>ios_layouts</code> and of <code>KeyboardDefinitions.json</code>, the
+incomplete-layout error, package ids and the legacy table, the
+preconditions of <code>init</code>, and the error text of a failed command.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>generate_xcode::tests::*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keyboard_plist</code> field by field, a template without
+<code>LSApplicationQueriesSchemes</code>, missing icon resources, and icon sizes.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Nothing runs the external commands: <code>git</code>, fastlane, CocoaPods and
+<code>xcodebuild</code> are only exercised by a real <code>ios build</code>. The generation steps
+need no credentials, but no subcommand runs them alone. To check them
+against a fresh template, clone it into <code>&lt;out&gt;/repo</code> and call
+<code>GenerateIos.build(&amp;bundle, out)</code> and then <code>GenerateXcode.build(&amp;bundle, out)</code>
+from a small program that depends on the <code>kbdgen</code> crate.
+<code>xcodebuild -list -project &lt;out&gt;/repo/GiellaKeyboard.xcodeproj</code> should then
+show one target per layout in place of <code>Keyboard</code>.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_android">Android</h2>
 <div class="sectionbody">
-
+<div class="paragraph">
+<p>The Android target lives in <code>src/build/android/</code>. It does not write an app:
+it patches a clone of <a href="https://github.com/divvun/giellakbd-android">giellakbd-android</a>
+(an Android Open Source Project LatinIME fork) with resource files for each
+layout, and builds that clone with its own Gradle wrapper. The rules are in
+<code>docs/spec/android.md</code> (<code>android.*</code>); the layout fields it reads are in
+<code>docs/spec/layout.md</code> (<code>layout.schema.targets</code>, <code>layout.transforms.*</code>), and
+<code>targets/android.yaml</code> with its environment overrides in
+<code>docs/spec/bundle.md</code> (<code>bundle.structure.targets*</code>).</p>
+</div>
+<div class="paragraph">
+<p>The target reads v3 layouts only. <code>KbdgenBundle::reject_v4_layouts</code>
+(<code>src/bundle/mod.rs</code>) stops <code>kbdgen target … android</code> on the first v4 layout
+before any step runs. <code>docs/spec/ldml/android.md</code> specifies an adapter from
+the compiled model, the <em>Android layout input</em> shared by v3 and v4; none of
+it is implemented yet.</p>
+</div>
+<div class="sect2">
+<h3 id="_steps">Steps</h3>
+<div class="paragraph">
+<p><code>src/main.rs</code> loads the bundle, rejects v4 layouts, creates and
+canonicalises the output directory, then runs:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Command</th>
+<th class="tableblock halign-left valign-top">Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>android build</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AndroidBuild::build_full</code>: <code>CloneGiellaKbd</code>, <code>DownloadDependencies</code>,
+<code>GenerateAndroid</code>, in order, stopping at the first error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>android clone</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CloneGiellaKbd</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>android generate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateAndroid</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Every step takes the bundle and the canonical output directory, <code>{out}</code>.
+The checkout is <code>{out}/repo</code> (<code>REPOSITORY_FOLDER</code>), and most files go under
+<code>{out}/repo/app/src/main</code> (<code>MAIN_FOLDER</code>).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">File</th>
+<th class="tableblock halign-left valign-top">What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mod.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AndroidBuild</code>, the step list, and <code>DownloadDependencies</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clone_giellakbd.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs <code>git clone <a href="https://github.com/divvun/giellakbd-android" class="bare">https://github.com/divvun/giellakbd-android</a> repo</code> in
+<code>{out}</code>. A failed clone is not an error when <code>{out}/repo</code> is already a
+directory: later steps use that checkout as it is.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dependencies.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fetches the native libraries (below) and unpacks them with <code>tar -xzf</code>
+into <code>app/src/main</code>, where the archives' <code>jniLibs/&lt;abi&gt;/</code> land.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>generate_android.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateAndroid</code>: every resource file, the icons, <code>app/local.gradle</code> and
+the Gradle build.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The layout model is in <code>src/bundle/layout/</code>: <code>AndroidTarget</code> (<code>config</code>,
+<code>primary</code>, <code>tablet-600</code>), <code>AndroidPlatform</code>, <code>AndroidConfig</code> and
+<code>android::AndroidKbdLayer</code> (<code>default</code>, <code>shift</code>). <code>longpress</code> and
+<code>transforms</code> are top-level fields of <code>Layout</code>. <code>targets/android.yaml</code> is
+<code>bundle::target::Android</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_toolchain">Toolchain</h3>
+<div class="paragraph">
+<p>Each external tool is started with <code>std::process::Command</code> and its output
+captured; a non-zero exit becomes an error carrying the command&#8217;s stderr.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>git</strong> - the clone, above.</p>
+</li>
+<li>
+<p><strong>GitHub REST API</strong> - <code>dependencies.rs</code> sends an unauthenticated
+<code>GET https://api.github.com/repos/{org}/{repo}/releases?per_page=100</code>
+(<code>User-Agent: kbdgen-rust-client</code>) with <code>reqwest</code>, skips drafts and
+prereleases, and takes the first asset whose name contains the filter,
+case-insensitively, from the newest release that has one. It walks the
+releases rather than asking for <code>latest</code> because these repositories cut
+several release trains, and the newest release may not carry the asset.
+For <code>divvun/divvunspell</code> the filter is <code>android-jnilibs</code>; for
+<code>divvun/pahkat</code> it is <code>android</code>. In a run on 2026-11-17 they matched
+<code>libdivvunspell-android-jniLibs-v1.0.0-beta.6.tgz</code> and
+<code>libpahkat-android-v2.3.1.tgz</code>.</p>
+</li>
+<li>
+<p><strong>tar</strong> - <code>tar -xzf &lt;download&gt; -C app/src/main</code>.</p>
+</li>
+<li>
+<p><strong>ImageMagick</strong> - only when the bundle has <code>resources/android/icon.png</code>:
+<code>convert -resize {d}x{d} &lt;icon&gt; res/drawable-{density}/ic_launcher_keyboard.png</code>
+for mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144 and xxxhdpi 192. <code>-resize</code>
+keeps the aspect ratio.</p>
+</li>
+<li>
+<p><strong>Gradle</strong> - only when <code>targets/android.yaml</code> exists:
+<code>gradlew assembleRelease -Dorg.gradle.jvmargs=-Xmx4096M --info --stacktrace</code>
+in <code>{out}/repo</code>, through <code>cmd /C gradlew</code> on Windows and the canonical
+path of <code>{out}/repo/gradlew</code> elsewhere. stdout and stderr are logged at
+trace level; on failure the error carries stderr. The Android SDK and
+JDK are whatever Gradle finds (<code>ANDROID_HOME</code>, <code>local.properties</code>,
+<code>JAVA_HOME</code>).</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_generateandroid">GenerateAndroid</h3>
+<div class="paragraph">
+<p><code>GenerateAndroid::build</code> does this, in order:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Warns if no layout has an <code>android</code> section, then carries on.</p>
+</li>
+<li>
+<p>Creates <code>assets/layouts</code>, <code>res/xml</code> and <code>res/xml-sw600dp</code>, and lists the
+app&#8217;s <code>res/values-*</code> directories, which decide the languages it writes
+names for.</p>
+</li>
+<li>
+<p>Reads <code>res/xml/method.xml</code> and <code>res/xml/spellchecker.xml</code> and removes the
+first <code>&lt;subtype&gt;</code> of each (<code>read_without_first_subtype</code>).</p>
+</li>
+<li>
+<p>For each layout, in bundle layout order:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Flattens its <code>transforms</code> (<code>flatten_transforms</code>) into
+<code>{dead key: {next: output}}</code>. This runs before the <code>android</code> check, so it
+runs for every layout.</p>
+</li>
+<li>
+<p>Skips the layout if it has no <code>android</code> section.</p>
+</li>
+<li>
+<p>Derives the keyboard name from <code>displayNames.en</code> (<code>keyboard_name</code>):
+lowercase, <code>(</code> and <code>)</code> dropped, anything outside <code>[a-z0-9]</code> becomes <code>x</code>.</p>
+</li>
+<li>
+<p>Writes <code>assets/layouts/{tag}.json</code> (<code>assets_layout</code>): the transforms and
+the speller with <code>android.config</code>, else <code>{"transforms": {}, "speller": null}</code>.</p>
+</li>
+<li>
+<p>Writes the rows and row keys of <code>primary</code> to <code>res/xml</code> and of
+<code>tablet-600</code> to <code>res/xml-sw600dp</code> (<code>create_and_write_rows_keys_for_layer</code>),
+then <code>res/xml/kbd_{name}.xml</code> and <code>res/xml/keyboard_layout_set_{name}.xml</code>.</p>
+</li>
+<li>
+<p>Sets <code>english_ime_name</code> in <code>res/values/strings-appname.xml</code> and appends
+the <code>subtype_{sub}</code> string to <code>res/values/strings.xml</code>
+(<code>create_and_write_values_strings</code>), <code>{sub}</code> being the tag lowercased
+with <code>-</code> as <code>_</code>. Then adds the localised <code>subtype_{sub}</code> strings where
+<code>res/values-{lang}</code> exists, unless one is already there.</p>
+</li>
+<li>
+<p>Appends a <code>&lt;subtype&gt;</code> to <code>method.xml</code> (<code>append_method_subtype</code>) and to
+<code>spellchecker.xml</code>.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Appends <code>english_ime_name</code> from each <code>project.yaml</code> locale to
+<code>res/values-{locale}/strings-appname.xml</code>, where <code>res/values-{locale}</code>
+exists.</p>
+</li>
+<li>
+<p>Writes <code>method.xml</code> and <code>spellchecker.xml</code>.</p>
+</li>
+<li>
+<p>Generates the launcher icons (<code>generate_icons</code>).</p>
+</li>
+<li>
+<p>Writes <code>app/local.gradle</code> (<code>generate_gradle_local</code>) and runs Gradle
+(<code>run_gradle</code>), or warns that <code>targets/android.yaml</code> is missing.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>XML is read, queried and written with <code>xmlem</code>. Every file kbdgen touches is
+written back pretty-printed, so <code>git diff</code> in the checkout shows whole
+files reformatted, and text such as a <code>&lt;string&gt;</code> value gains surrounding
+whitespace, which the Android resource compiler trims.</p>
+</div>
+<div class="sect3">
+<h4 id="_rows_and_keys">Rows and keys</h4>
+<div class="paragraph">
+<p><code>resources/template-android-rows.xml</code> and
+<code>resources/template-android-rowkeys.xml</code>, compiled in with <code>include_str!</code>,
+are the starting documents. Each line of a layer is split on whitespace
+(<code>util::split_keys</code>); line <em>i</em> of every layer goes into
+<code>rowkeys_{name}{i+1}.xml</code>, the <code>default</code> layer into its <code>&lt;default&gt;</code> element
+and <code>shift</code> into its <code>&lt;case&gt;</code> for the shifted states. The rows file gets
+one <code>&lt;Row&gt;</code> per line between the template&#8217;s <code>key_styles_common</code> and
+<code>row_qwerty4</code> includes, with <code>latin:keyWidth</code> <code>100/L</code> percent on phones and
+<code>90/L</code> on tablets, <code>L</code> being the longest <code>default</code> line.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-left valign-top">Line 1 (the number row)</th>
+<th class="tableblock halign-left valign-top">Other lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>\s{shift}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keyStyle="shiftKeyStyle"</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the same, with the row&#8217;s remaining width shared among the <code>\s</code> tokens</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>\s{backspace}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keyStyle="deleteKeyStyle"</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the same, with <code>keyWidth="fillRight"</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">anything else</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keySpec</code>; for the first ten positions, <code>keyHintLabel</code> and
+<code>additionalMoreKeys</code> set to the digit <code>1</code>…<code>9</code>, <code>0</code>; a <code>longpress</code> entry
+adds <code>moreKeys</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keySpec</code>; a <code>longpress</code> entry adds <code>keyHintLabel</code> (its first key) and
+<code>moreKeys</code> (all, joined with <code>,</code>)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Every token equal to a top-level <code>transforms</code> key also gets
+<code>latin:deadKey="True"</code>, and <code>preserveCase</code> is added for the tag <code>lut</code> only.
+Tokens are written undecoded: <code>\u{...}</code> reaches the app as written, and
+other <code>\s{...}</code> tokens become <code>keySpec</code> values.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_testing">Testing</h3>
+<div class="paragraph">
+<p>The unit tests need no network or SDK:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test -p kbdgen --lib build::android</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>They cover the keyboard name, the number-row hints, the key attributes,
+the empty long-press error, the <code>assets/layouts</code> JSON, the removal of the
+first subtype, a failing <code>gradlew</code> (Unix only, with a stub script) and a
+clone over an existing checkout.</p>
+</div>
+<div class="paragraph">
+<p>An end-to-end run needs network access, the Android SDK and a JDK. Copy a
+v3 bundle with an <code>android</code> section, such as <code>sme.kbdgen</code> from <code>keyboard-sme</code>,
+and run <code>android build</code>; the release APK lands in
+<code>{out}/repo/app/build/outputs/apk/release/</code>. Without a <code>targets/android.yaml</code>
+<code>android generate</code> writes the resources and skips Gradle, which is the
+quicker loop for generator changes; <code>git -C {out}/repo status</code> and <code>diff</code>
+show what changed.</p>
+</div>
+<div class="paragraph">
+<p>Reset the checkout between runs with
+<code>git -C {out}/repo checkout -- . &amp;&amp; git -C {out}/repo clean -fd</code>. Without
+that, a second <code>generate</code> appends <code>english_ime_name</code> again to each
+<code>values-{locale}/strings-appname.xml</code>, and Gradle&#8217;s resource merger fails
+with <code>Found item String/english_ime_name more than one time</code>. With more
+than one layout the subtypes duplicate too, since each run removes one and
+adds one per layout. <code>android.metadata</code> and <code>android.metadata.strings</code>
+specify this behaviour.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_known_gaps">Known gaps</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><code>flatten_transforms</code> handles one level of branching; a deeper one hits
+<code>todo!("Recursion required ahead")</code> and panics, for any layout in the
+bundle, after some files of earlier layouts are written
+(<code>layout.transforms.dead-key-entries</code>).</p>
+</li>
+<li>
+<p>A second <code>generate</code> on one checkout breaks the Gradle build, as above.</p>
+</li>
+<li>
+<p>Layouts whose English names give the same keyboard name overwrite each
+other&#8217;s files.</p>
+</li>
+<li>
+<p>No v4 support: <code>docs/spec/ldml/android.md</code> is unimplemented.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_chromeos">ChromeOS</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The ChromeOS target writes a Manifest V3 input-method extension whose
+service worker runs <code>kbd-engine</code>, compiled to WebAssembly, on each layout&#8217;s
+compiled <code>chromeOS</code> keyboard. Nothing is translated into a native table, so
+the extension types what the engine types. The rules are in two specs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>docs/spec/chromeos.md</code> (<code>chromeos.*</code>): the extension&#8217;s files, the
+manifest, the locales, the icon, and how kbdgen embeds the engine.</p>
+</li>
+<li>
+<p><code>docs/spec/ldml/chromeos.md</code> (<code>ldml.chromeos.*</code>): which layouts are
+built, the module&#8217;s ABI, how key events, modifiers, edits and context
+map onto the engine, what is reported, and the tests.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The Windows text service is the reference host (<code>docs/spec/tsf.md</code>); the
+ChromeOS spec says where ChromeOS differs from it.</p>
+</div>
+<div class="sect2">
+<h3 id="_where_things_are">Where things are</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Path</th>
+<th class="tableblock halign-left valign-top">What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/mod.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ChromeOsBuild</code>, with the one step <code>GenerateChromeOs</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/source.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The layouts (<code>ldml.chromeos.input</code>): every v4 layout, and every v3 layout
+with a <code>chromeOS</code> section, migrated in memory with <code>migrate_bundle_layout</code>.
+Each <code>chromeOS</code> host document is compiled, its keyboard encoded as the
+engine reads it, and its <code>targets.chromeOS</code> <code>locale</code> and <code>xkbLayout</code> read.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/classify.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The warnings of <code>ldml.chromeos.classify</code>. <code>REACHABLE_SCAN_CODES</code> must
+equal the values of <code>SCAN_CODES</code> in <code>background.js</code>; a test compares them.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/manifest.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>manifest.json</code> and <code>_locales/*/messages.json</code>, and the check of <code>build</code>
+as a Chrome extension version.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/generate_chromeos.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateChromeOs</code>: every check, then every write. <code>ENGINE_WASM</code> is the
+module the build script compiled (<code>include_bytes!</code>), and
+<code>SERVICE_WORKER_JS</code> is <code>extension/background.js</code> (<code>include_str!</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/extension/background.js</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The service worker, written to every extension unchanged.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/tests.rs</code>, <code>testdata/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The generator&#8217;s tests and golden files.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/differential/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The typing test: a Rust driver and a Deno harness.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-wasm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The engine module.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>build.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Builds <code>crates/kbd-wasm</code> for <code>wasm32-unknown-unknown</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>GenerateChromeOs</code> fails before writing anything: on a missing
+<code>targets/chromeos.yaml</code>, a <code>project.yaml</code> without an <code>en</code> locale, a layout
+that does not migrate or compile, no layouts, a non-PNG icon, or a
+<code>build</code> Chrome would refuse. Only then does it write <code>background.js</code>,
+<code>engine.wasm</code>, <code>models/</code> (emptied first), <code>manifest.json</code>, <code>_locales/</code>
+(emptied first) and <code>icon.png</code>, removing a stale <code>icon.png</code> when the bundle
+has none.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_engine_module">The engine module</h3>
+<div class="paragraph">
+<p><code>crates/kbd-wasm</code> is a <code>cdylib</code> over <code>kbd-engine</code> and <code>kbd-model</code>. It
+builds for <code>wasm32-unknown-unknown</code> with no imports, and exports <code>memory</code>
+and a C ABI of integers; there is no <code>wasm-bindgen</code> and no generated
+JavaScript, so a host needs only <code>WebAssembly.instantiate(bytes, {})</code>.</p>
+</div>
+<div class="paragraph">
+<p>Text crosses the boundary as UTF-8 in two buffers the module owns. The host
+calls <code>kbd_input(len)</code>, writes <code>len</code> bytes at the address it returns, then
+makes the call that reads them. Results are read from the output buffer
+before the next call. Any call may grow the memory, so the host takes a
+fresh view of <code>memory.buffer</code> after each one.</p>
+</div>
+<div class="paragraph">
+<p>A loaded model is a <em>session</em>: the model and its engine <code>State</code>, named by a
+handle of at least 1. <code>kbd_key</code> runs <code>Model::key</code> with the session&#8217;s state
+and keeps the next state, so the host never holds engine state; it only
+resets it.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Export</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_input(len) -&gt; addr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sizes the input buffer to <code>len</code> zero bytes and gives its address.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_load(len) -&gt; handle</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Loads the <code>DVKB</code> model in the first <code>len</code> input bytes into a new
+session. 0 on failure, with the error message as output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_unload(handle)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drops the session; its handle is reused.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_key(handle, key, modifiers, context_len, flags) -&gt; i32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sends a key, with the UTF-8 context before the caret in the first
+<code>context_len</code> input bytes. Returns <code>0</code> pass, <code>1</code> edit, <code>-1</code> no such
+session, <code>-2</code> unknown key or modifier bit, <code>-3</code> context not UTF-8, <code>-4</code>
+the instance is busy.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_output() -&gt; addr</code>, <code>kbd_output_len() -&gt; len</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The output buffer: after an edit, the inserted text then the preedit.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_insert_len() -&gt; len</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">How many bytes of the output are the inserted text.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_delete() -&gt; n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">How many scalar values the edit deletes before the caret.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_reset(handle)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resets the session&#8217;s state.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_pending(handle) -&gt; n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">How many markers are pending (<code>Model::pending_markers</code>): whether a
+<code>Commit</code> would type anything.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_context_len(handle) -&gt; n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Model::context_len</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_extra_modifiers(handle) -&gt; bits</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The keys bound as extra modifiers, two bits per slot from <code>extra1</code>: 1
+Right Ctrl, 2 Caps Lock, 3 <code>B00</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd_shift_lock(handle) -&gt; 0 or 1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Whether Caps Lock works as Shift Lock on this keyboard.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>key</code> is a scan code below <code>0x100</code>, or <code>0x100</code> <code>Decimal</code>, <code>0x101</code>
+<code>Backspace</code>, <code>0x102</code> <code>Commit</code>. <code>modifiers</code> has one bit per <code>ModifierState</code>
+field: bit 0 <code>shift_l</code>, 1 <code>shift_r</code>, 2 <code>caps</code>, 3 <code>ctrl_l</code>, 4 <code>ctrl_r</code>, 5
+<code>alt_l</code>, 6 <code>alt_r</code>, 7 <code>altgr</code>, 8 <code>cmd</code>, 9 to 11 <code>extra1</code> to <code>extra3</code>.
+<code>flags</code> bit 0 is <code>at_start</code> and bit 1 <code>authoritative</code>. Every session runs
+with <code>OutputForm::Nfc</code>, <code>BackspacePolicy::CancelOrPass</code> and host
+<code>chromeOS</code>.</p>
+</div>
+<div class="paragraph">
+<p>No export may panic. The crate denies <code>panic</code>, <code>unwrap</code>, <code>expect</code>,
+indexing and <code>unreachable!</code>; every failure is a return code. All state is
+one thread-local <code>Instance</code>, which <code>with_instance</code> borrows, giving a
+fallback value instead of panicking if it cannot. The only unsafe construct
+is <code>no_mangle</code> on the exports, all prefixed <code>kbd_</code>, and no export
+dereferences a raw pointer: the host reads and writes the module&#8217;s own
+<code>Vec</code> buffers through <code>memory</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>background.js</code> repeats the key codes, modifier bits, flags and results
+as constants. Change the ABI in both; the typing test fails if they
+disagree.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_how_kbdgen_embeds_the_module">How kbdgen embeds the module</h3>
+<div class="paragraph">
+<p><code>build.rs</code> runs a nested cargo:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo build --package kbd-wasm --release --locked \
+  --target wasm32-unknown-unknown \
+  --manifest-path &lt;workspace&gt;/Cargo.toml \
+  --target-dir $OUT_DIR/kbd-wasm \
+  --config 'profile.release.opt-level="s"' --config profile.release.lto=true \
+  --config profile.release.codegen-units=1 --config 'profile.release.panic="abort"' \
+  --config profile.release.strip=true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and copies <code>wasm32-unknown-unknown/release/kbd_wasm.wasm</code> to
+<code>$OUT_DIR/kbd_wasm.wasm</code>, which <code>generate_chromeos.rs</code> includes.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The nested build has its own target directory, because the outer build
+holds the lock on its own and the nested one would wait forever.</p>
+</li>
+<li>
+<p>The size settings are passed with <code>--config</code>, so they apply to the nested
+build only.</p>
+</li>
+<li>
+<p>It removes <code>CARGO_ENCODED_RUSTFLAGS</code>, <code>RUSTFLAGS</code>, <code>CARGO_BUILD_RUSTFLAGS</code>,
+<code>RUSTC_WORKSPACE_WRAPPER</code>, <code>CARGO_TARGET_DIR</code> and <code>CARGO_BUILD_TARGET</code>
+from its environment: they belong to the host build, or to clippy when
+this runs under <code>cargo clippy</code>.</p>
+</li>
+<li>
+<p>It reruns only when <code>crates/kbd-wasm</code>, <code>crates/kbd-engine/src</code>,
+<code>crates/kbd-engine/Cargo.toml</code>, <code>crates/kbd-model/src</code>,
+<code>crates/kbd-model/Cargo.toml</code> or <code>Cargo.lock</code> change.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Building from the same workspace keeps the engine in every extension in
+step with the model encoding that kbdgen writes, and lets a released binary
+generate an extension without a Rust toolchain. No built module is checked
+in. Without the target installed, the build script panics with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>kbdgen: building kbd-wasm for wasm32-unknown-unknown failed with &lt;status&gt;. The ChromeOS target embeds kbd-engine compiled to WebAssembly; if the target is missing, install it with `rustup target add wasm32-unknown-unknown`</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The module is about 230 KB.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_service_worker">The service worker</h3>
+<div class="paragraph">
+<p><code>background.js</code> registers every listener synchronously on its first
+evaluation, as a Manifest V3 service worker must. It never logs typed text
+or keys.</p>
+</div>
+<div class="sect3">
+<h4 id="_loading">Loading</h4>
+<div class="paragraph">
+<p><code>loadEngine</code> fetches <code>engine.wasm</code> once and instantiates it; <code>loadSession</code>
+fetches <code>models/&lt;engine id&gt;.dvkb</code>, loads it and reads the extra-modifier
+keys and Shift Lock from it. <code>onActivate</code> starts loading the activated
+input method. A key that arrives before its session has loaded, or while
+earlier keys still wait, is queued on one promise chain: the listener
+returns <code>undefined</code>, and the key is answered later with
+<code>keyEventHandled(requestId, handled)</code>, so keys apply in arrival order.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_keys">Keys</h4>
+<div class="paragraph">
+<p>A key down is classified by <code>KeyboardEvent.code</code>, never by <code>key</code>
+(<code>ldml.chromeos.keys</code>):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Shift, Ctrl, Alt, Meta/OS (the Search key) and Caps Lock are modifiers:
+they pass and reset nothing.</p>
+</li>
+<li>
+<p><code>Backspace</code> is <code>Backspace</code>. <code>NumpadDecimal</code> is <code>Decimal</code>, unless its
+<code>key</code> is <code>Delete</code> (Num Lock off).</p>
+</li>
+<li>
+<p>A code in <code>SCAN_CODES</code>, the PC/AT set 1 scan codes without <code>E0</code>, is sent
+as that scan code.</p>
+</li>
+<li>
+<p>Any other code, such as the arrows, <code>Delete</code> or <code>NumpadEnter</code>, is a frame
+key: it passes and resets the state.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Key ups pass. Every key down and up updates the set of keys seen held,
+which gives modifiers their side, and the Shift Lock state (Caps Lock sets
+it, Shift clears it). <code>modifierBits</code> turns a captured event into <code>kbd_key</code>
+bits: Right Alt is <code>alt_r</code> and <code>altgr</code> whether the XKB layout beneath
+reports it as AltGr or as Alt, Left Alt is <code>alt_l</code> (which the engine passes
+on ChromeOS), Search held is <code>cmd</code>, Caps Lock is <code>caps</code> or, on a Shift Lock
+keyboard, the Shift Lock state, and a held Caps Lock or <code>IntlBackslash</code>
+bound as an extra modifier sets its <code>extra</code> bit (<code>ldml.chromeos.modifiers</code>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_edits">Edits</h4>
+<div class="paragraph">
+<p><code>handle</code> sends an engine key with the context and applies the result
+(<code>ldml.chromeos.semantics</code>):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>No focused field, or a modifier: the key passes.</p>
+</li>
+<li>
+<p>A frame key, or an engine key the engine passes: <code>pass</code> sends <code>Commit</code>
+first if a composition is shown or <code>kbd_pending</code> is non-zero, applies its
+edit, then resets. The listener returns <code>false</code>.</p>
+</li>
+<li>
+<p>An edit: <code>apply</code> calls, as needed and in this order, <code>clearComposition</code>
+(when text changes under a shown composition, or the preedit empties),
+<code>deleteSurroundingText</code> with offset −<em>u</em> and length <em>u</em>, <code>commitText</code> of
+the inserted text, and <code>setComposition</code> of the preedit with the cursor at
+its end. <em>u</em> is the UTF-16 length of the last <code>delete</code> scalar values of
+the context, since ChromeOS counts UTF-16 units. The listener returns
+<code>true</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A password field gets an empty context and no flags, and shows no preedit.
+An exception, or a rejected IME call, resets the session and forgets the
+context.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_context">Context</h4>
+<div class="paragraph">
+<p>ChromeOS reports the text around the caret only afterwards, through
+<code>onSurroundingTextChanged</code>, at most 100 characters each way, and does not
+say whether that text includes the composition (<code>ldml.chromeos.context</code>).
+So <code>field</code> keeps its own view:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>text</code>, the committed text before the caret, at most 128 scalar values
+(<code>MAX_CONTEXT</code>; a model&#8217;s <code>context_len</code> is at most 64). Each edit updates
+it; a passing key keeps it, since a change brings a notification.</p>
+</li>
+<li>
+<p><code>snapshots</code>, the states the glue&#8217;s own IME calls lead to, oldest first,
+at most 64.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>reconcile</code> matches each reading, the text before the focus, against the
+snapshots from newest to oldest, with the composition stripped and not;
+two texts agree when one ends with the other. A reading of the newest
+snapshot completes the context and makes it authoritative; a reading of an
+older one lags and is dropped; any other reading replaces the context,
+keeping the engine state. A reading with a selection makes the next key
+reset and start from an empty context. <code>at_start</code> is set when the
+reading&#8217;s offset is 0.</p>
+</div>
+<div class="paragraph">
+<p><code>onFocus</code>, <code>onBlur</code>, <code>onActivate</code> and <code>onDeactivated</code> forget the held keys,
+reset every session and forget the context. <code>onReset</code>, which ChromeOS sends
+when it ends the input session, resets the sessions and forgets the
+context. All of this lives in the service worker&#8217;s globals, so when Chrome
+stops an idle worker a pending dead key goes with it.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_tests_5">Tests</h3>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test -p kbdgen --lib build::chromeos
+cargo test -p kbd-wasm</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>kbd-wasm</code> is not a default workspace member, so a plain <code>cargo test</code> skips
+it. Its tests call the exports natively, through the input and output
+buffers by address, as a host does on wasm.</p>
+</div>
+<div class="paragraph">
+<p><code>tests.rs</code> checks the generated files, the errors (each before anything is
+written), the icon, regeneration over an earlier extension, the warnings,
+and that <code>REACHABLE_SCAN_CODES</code> matches <code>background.js</code>. The manifest,
+every <code>_locales/*/messages.json</code> and the warnings of a mixed v3 and v4
+bundle are compared with <code>testdata/golden/</code> byte for byte; after an
+intended change, rewrite them with</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">KBDGEN_BLESS=1 cargo test -p kbdgen --lib build::chromeos::tests</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_typing_test">The typing test</h4>
+<div class="paragraph">
+<p><code>differential::the_extension_types_what_the_engine_types</code>
+(<code>ldml.chromeos.test.typing</code>) runs the generated extension&#8217;s own
+<code>background.js</code>, <code>engine.wasm</code> and model in Deno, against <code>kbd-engine</code>
+running natively on the same model. It needs <code>deno</code> on <code>PATH</code>, or its path
+in <code>DENO</code>; without it the test prints</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>skipping the ChromeOS typing test: deno is not on PATH and DENO is not set; install Deno to run src/build/chromeos/differential/harness/typing_test.ts</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and passes.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test -p kbdgen --lib the_extension_types_what_the_engine_types -- --nocapture</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The Rust side (<code>differential/mod.rs</code>) generates an extension for each of
+seven fixtures: the golden v4 Võro and <code>und-x-mods</code> layouts, the golden v3
+<code>se-NO</code>, the v3 ChromeOS Võro fixture in <code>testdata/vro-v3.yaml</code>, the macOS
+and Windows feature fixtures as <code>chromeOS</code> variants, and a <code>context</code>
+fixture whose edits delete (text transforms, an astral character,
+normalization). For each it builds the cases:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>every position of the form under no modifier, either Shift, Caps Lock,
+Caps Lock with Shift, AltGr reported as Alt and as AltGr, AltGr with
+Shift or Caps Lock, Left Alt, either Ctrl, Ctrl with AltGr, Search, and
+each bound extra-modifier key;</p>
+</li>
+<li>
+<p>the decimal key and Backspace on their own;</p>
+</li>
+<li>
+<p>every dead-key path up to three keys, continued once from each distinct
+pending state: each pending state is ended by every position (plain,
+with Shift, with Caps Lock and with AltGr), and by Backspace, the decimal
+key, an arrow and Enter;</p>
+</li>
+<li>
+<p>for the <code>context</code> fixture, every pair of positions.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each case is the key downs and ups ChromeOS would send. <code>Host</code> plays it on
+the engine natively, following <code>ldml.chromeos.semantics</code>, for the expected
+committed text, composition and handled keys. The cases go to a JSON file,
+and the driver runs, in <code>differential/harness/</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">KBDGEN_CHROMEOS_CASES=&lt;cases.json&gt; deno test --allow-read --allow-env typing_test.ts</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>typing_test.ts</code> installs a fake <code>chrome.input.ime</code> and imports each
+extension&#8217;s <code>background.js</code> afresh (a query string makes each import a new
+module instance). Its fake text field applies the IME calls and reports the
+text before the caret after each key, in two modes: with the composition
+and on time, and without the composition and one key late. Every case must
+give the same handled keys, text and composition as the engine, and the
+field also flags calls ChromeOS would refuse or misapply: a wrong context
+or engine ID, a <code>deleteSurroundingText</code> reaching past the text or made
+while a composition is shown, and a composition cursor not at its end. A
+run on 2026-11-17:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>composition shown, on time, layouts/vro: 4688 of 4688 cases agree
+composition shown, on time, layouts/und-x-mods: 835 of 835 cases agree
+composition shown, on time, v3/se-NO: 688 of 688 cases agree
+composition shown, on time, chromeos/vro-v3: 6688 of 6688 cases agree
+composition shown, on time, macos/features: 1288 of 1288 cases agree
+composition shown, on time, windows/features: 2130 of 2130 cases agree
+composition shown, on time, context: 3091 of 3091 cases agree
+composition hidden, one key late, layouts/vro: 4688 of 4688 cases agree
+...
+38816 case runs, 0 failures</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without <code>KBDGEN_CHROMEOS_CASES</code> the Deno test is ignored, so the harness is
+run through cargo. After editing <code>typing_test.ts</code>, type-check it with
+<code>deno check</code> in <code>differential/harness/</code>, whose <code>deno.json</code> turns on strict
+mode.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
