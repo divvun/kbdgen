@@ -1,103 +1,409 @@
-= Bundle
+[[bundle]]
+== Bundles
 
-\.kbdgen bundles are folders with the .kbdgen extension which describe keyboards for a 
-language or language family. They're expected to contain 4 pieces:
+A bundle is a directory, by convention named `<name>.kbdgen`, that holds
+everything kbdgen needs to build the keyboards of one project: the layouts,
+the settings of each target platform, and resources such as icons. Every
+command that works on a bundle takes its path with `-b` (`--bundle-path`).
 
-*project.yaml
-*layouts folder
-*targets folder
-*resources
+The `keyboard-*` repositories of the GiellaLT project are complete, real
+bundles; https://github.com/giellalt/keyboard-sme[keyboard-sme] holds
+`sme.kbdgen`, for Northern Sami.
 
-You can see an example of a .kbdgen bundle here: https://github.com/giellalt/keyboard-sme
+[[bundle-contents]]
+=== What a bundle contains
 
-== Layouts
+[source,text]
+----
+sme.kbdgen/
+├── project.yaml        names, author, copyright; dependencies for kbdgen fetch
+├── layouts/            one file per keyboard layout, named by language tag
+│   ├── se.yaml
+│   ├── se-FI.yaml
+│   └── se-NO.yaml
+├── targets/            one file per target platform
+│   ├── windows.yaml
+│   ├── macos.yaml
+│   └── ios.yaml
+├── resources/          icons and other files, one directory per target
+│   ├── macos/
+│   │   ├── icon.png
+│   │   └── icon.se-NO.png
+│   └── ios/
+│       └── icon.png
+├── projects/           optional: written by kbdgen fetch
+└── tests/              optional: typing tests for kbdgen ldml test
+----
 
-A layout is a file that describes keyboard layouts, including associated keymaps, 
-dead keys, and transforms, as well as any configuration information, for all 
-supported targets.
+`project.yaml` and the directories `layouts/`, `targets/` and `resources/`
+must all exist, even when a directory is empty. If one is missing or cannot
+be read, `kbdgen target` and `kbdgen fetch` stop with an error before doing
+anything else.
 
-With the new `kbdgen`, the layout format has been changed as described below.
+* In `layouts/` and `targets/`, kbdgen reads only files whose extension is
+  exactly `.yaml`. It skips everything else without a word, including
+  `.yml` files.
+* `projects/` is where `kbdgen fetch` copies the `project.yaml` of each
+  dependency (<<bundle-fetch>>); the iOS target reads it.
+* `tests/` holds the typing tests that `kbdgen ldml test` runs
+  (<<testing>>).
 
-Layouts are described in .yaml files, with one `layout` file per 
-`language tag` (i.e., `se-FI` (Northern Sami (Finland)))
+The bundle's name is its directory name without the extension: `sme.kbdgen`
+is the bundle `sme`. Some targets use it in identifiers, so pick it once and
+keep it.
 
-The `layout` may be described for multiple `targets` (windows, macOS, etc.), 
-i.e., groupings of `platforms`.
+[[bundle-project]]
+=== project.yaml
 
-A given `target` may support one or more `platforms` (`iPad-9in`, `iPad-12in`).
+`project.yaml` describes the project as a whole.
 
-Within a `platform` are the supported keyboard `layers`, i.e., 
-`default`, `shift`, `caps` (for caps lock), etc.
+[source,yaml]
+----
+locales:
+  en:
+    name: Sami Keyboards
+    description: Keyboards for the Sami languages.
+  se:
+    name: Sámi boallobeavddit
+    description: Boallobeavddit sámegielaide.
+author: Example Author
+copyright: (c) 2026 Example Organisation
+email: feedback@example.org
+organisation: Example Organisation
+dependencies:
+  sme:
+    url: giellalt/keyboard-sme
+    layouts: [se, se-FI]
+  smj:
+    url: giellalt/keyboard-smj
+    branch: main
+    layouts: [smj-NO, smj-SE]
+----
 
-Layouts also have associated `deadKeys` information, which is for keys that do not
-themselves result in a key printed, but will print a key in combination with some
-other key. For `deadKeys`, there must be a corresponding `transforms` entry for the
-' ' key, and referrs to `deadKey` usage with a `space` (i.e., a termination).
+[cols="1,1,4",options="header"]
+|===
+|Field |Required |Meaning
 
-There's also the `space` category.
+|`locales`
+|yes
+|The name and description of the keyboard package, in each language of the
+user interface, keyed by language code. Each entry needs both `name` and
+`description`. The iOS, Android and ChromeOS targets use these for the app or
+extension; ChromeOS needs an `en` entry.
 
-=== Deadkeys
+|`author`
+|yes
+|The author.
 
-`deadKeys` can be nested:
+|`copyright`
+|yes
+|The copyright line. Windows writes it into each layout's version
+information.
 
-```
-'a':
-  'b': ['c']
+|`email`
+|yes
+|A contact address.
 
-'a':
-  'b':
-    'c': ['d']
-```
+|`organisation`
+|yes
+|The organisation. Windows writes it into each layout's version information
+as the company.
 
-Or with a more authentic example:
+|`dependencies`
+|no
+|Other bundles to copy layouts from with `kbdgen fetch`
+(<<bundle-fetch>>).
+|===
 
-```
-transforms:
-  '-':
-    ' ': '-'
-    a: ā
-    e: ē
-    '´':
-      ' ': '-´'
-      a: ā́
-      e: ḗ
-```
+Any plain value is read as text, so `copyright: 2026` is fine here. Fields
+kbdgen does not know are ignored.
 
-=== Layers
+[[bundle-fetch]]
+==== Dependencies and kbdgen fetch
 
-Layers are expected to be whitespace separated strings listing the keymap of 
-characters in correspondence with appropriate format for the expected
-`platform`-`layer` combination.
+A bundle can collect layouts that live in other repositories. Each entry under
+`dependencies` names the source bundle and the layouts to copy:
 
-Newlines are permitted for readability, but the keys must be in the correct order,
-and having more or fewer keys than expected will result in an error.
+* the entry's key is the name of the source bundle: `sme` for `sme.kbdgen`;
+* `url` is the GitHub repository, as `owner/repository`;
+* `layouts` lists the language tags of the layouts to copy;
+* `branch` is the branch to copy from; it defaults to `main`.
 
-Special keys are supported, and must be contained within `\s{}`.
-Unrepresentable unicode characters must be contained within `u{}`.
+[source,sh]
+----
+kbdgen fetch -b divvun.kbdgen
+----
 
-=== Additional Info
+For each dependency, in order, `kbdgen fetch` downloads
+`https://github.com/<url>/archive/<branch>.zip`, finds `<key>.kbdgen` in it,
+and for each listed layout copies
 
-`displayNames`, at the top of the `layout` file, are the name of the 
-given keyboard in each of the relevant languages. This is often used in parts of 
-UI or for naming.
+* its `layouts/<tag>.yaml` to `layouts/<tag>.yaml` of your bundle, and
+* its `project.yaml` to `projects/<tag>.yaml` of your bundle,
 
-Each `target` may have an associated `config` describing some `target`-specific
-settings.
+replacing files that are already there. It creates `layouts/` and
+`projects/` if needed. A `url` without a `/` or a failed download stops the
+command with an error naming the dependency, and a missing layout with one
+naming the file. Files copied before the error stay.
 
-Additionally, various keyboards may require these:
+[[bundle-targets]]
+=== Target files
 
-`longpress` - used for mobile keyboards, the set of keys that become available
-if a key is pressed for a long time.
+Each file in `targets/` configures one target platform, and its name says
+which: `windows.yaml`, `macos.yaml`, `ios.yaml`, `android.yaml` and
+`chromeos.yaml`. kbdgen warns about any other name and ignores the file. That
+includes `chrome.yaml`, the name older bundles use: rename it to
+`chromeos.yaml`. Without its file a target is unconfigured; the chapter on
+each target says what it needs.
 
-`transforms` - used in combination with `deadKeys`, describes the final character
-that should be printed once a series of keys is pressed.
+These are the fields. The target chapters explain what each one does.
 
-`keyNames` - descriptions of named keys (`space` and `return`) in the language in
-question.
+[cols="1,3,3",options="header"]
+|===
+|File |Required |Optional
 
-== Targets
+|`windows.yaml`
+|`appName`, `version`, `build`, `url`, `uuid`
+|—
 
-Target files are .yaml files that are specific to the given target and hold additional
-per target configuration.
+|`macos.yaml`
+|`packageId`, `bundleName`, `version`, `build`, `codeSignId`
+|—
 
-For a given build to succeed for a target, the target file must be present.
+|`ios.yaml`
+|`packageId`, `bundleName`, `version`, `build` (a whole number)
+|`codeSignId`, `teamId`, `provisioningProfileId`, `sentryDsn`,
+`appStoreKeyJson`, `matchGitUrl`, `matchPassword`, `fastlaneUser`,
+`fastlanePassword`
+
+|`android.yaml`
+|`packageId`, `version`, `build` (a whole number)
+|`keyStore`, `keyAlias`, `playStoreAccount`, `playStoreP12`,
+`storePassword`, `keyPassword`
+
+|`chromeos.yaml`
+|`appId`, `version`, `build`
+|—
+|===
+
+In `windows.yaml`, `version` and `build` make up the version of the layout
+DLLs; `appName`, `url` and `uuid` must be present, but nothing kbdgen builds
+uses them.
+
+.targets/windows.yaml
+[source,yaml]
+----
+appName: Northern Sami Keyboards
+version: 1.0.6
+build: 1
+url: https://example.org/keyboards
+uuid: 108880AA-3489-4E88-9BA3-8A14B159B13B
+----
+
+.targets/ios.yaml
+[source,yaml]
+----
+packageId: org.example.keyboards.sme
+bundleName: Northern Sami Keyboards
+version: '1.0'
+build: 2
+teamId: ABCDE12345
+codeSignId: 'iPhone Distribution: Example Organisation (ABCDE12345)'
+----
+
+Some rules hold for every target file:
+
+* Fields kbdgen does not know are ignored, so a misspelt optional field is
+  silently missing. Check the spelling against the table.
+* `windows.yaml`, `macos.yaml` and `chromeos.yaml` read any plain value as
+  text: `version: 1.0` is the version `1.0`.
+* `ios.yaml` and `android.yaml` are stricter. Their text fields must be YAML
+  strings, so quote anything YAML would read as a number:
+  `version: '1.0'`. `version: 0.1.0` needs no quotes, as it is not a number.
+  Unquoted, kbdgen stops with an error such as
+  `+version: invalid type: floating point `1.0`, expected a string+`.
+* A `windows.yaml` with a top-level `shiftLock`, `lrmRlm` or `keyNames` is an
+  error. These are options of each keyboard, so they belong in the layout
+  file as `targets.windows.shiftLock` and so on (<<layouts-targets>>).
+
+[[bundle-targets-env]]
+==== Settings from the environment
+
+Signing and store credentials do not belong in a repository. For iOS and
+Android, kbdgen reads them from environment variables, which replace the
+field of the same meaning in `ios.yaml` or `android.yaml`. A variable that is
+set replaces the field even when it is empty; a variable that is not set
+leaves the file's value. This only happens when the target file exists.
+
+[cols="1,1",options="header"]
+|===
+|Variable |Replaces
+
+2+|*iOS* (`ios.yaml`)
+|`MATCH_GIT_URL` |`matchGitUrl`
+|`MATCH_PASSWORD` |`matchPassword`
+|`PRODUCE_USERNAME` |`fastlaneUser`
+|`FASTLANE_USER` |`fastlaneUser`
+|`FASTLANE_PASSWORD` |`fastlanePassword`
+|`APP_STORE_KEY_JSON` |`appStoreKeyJson`
+|`TEAM_ID` |`teamId`
+|`CODE_SIGN_ID` |`codeSignId`
+
+2+|*Android* (`android.yaml`)
+|`ANDROID_KEYSTORE` |`keyStore`
+|`ANDROID_KEYALIAS` |`keyAlias`
+|`PLAY_STORE_ACCOUNT` |`playStoreAccount`
+|`PLAY_STORE_P12` |`playStoreP12`
+|`STORE_PW` |`storePassword`
+|`KEY_PW` |`keyPassword`
+|===
+
+When both `PRODUCE_USERNAME` and `FASTLANE_USER` are set, `FASTLANE_USER`
+wins.
+
+[source,sh]
+----
+MATCH_PASSWORD='…' FASTLANE_USER=builder@example.org \
+  kbdgen target -b sme.kbdgen -o build ios build
+----
+
+[[bundle-resources]]
+=== Resources
+
+`resources/` has one directory per target: `macos`, `ios`, `chromeos` and
+`android`. kbdgen warns about any other directory and ignores it, and
+ignores plain files directly in `resources/`. A ChromeOS directory may also
+be called `chrome`, as older bundles name it, but a bundle may not have both
+`chrome` and `chromeos`.
+
+The resources kbdgen reads are icons:
+
+* `icon.<ext>`, such as `icon.png`, is the target's default icon;
+* `icon.<tag>.<ext>`, such as `icon.se-NO.png`, is the icon of the layout
+  whose language tag is `<tag>`.
+
+Which icons each target uses:
+
+[cols="1,4",options="header"]
+|===
+|Directory |Icons used
+
+|`macos`
+|Each layout gets `icon.<tag>.<ext>` for its own tag, else the default
+`icon.<ext>`. kbdgen converts them to `.icns` when it runs on a Mac.
+
+|`ios`
+|Only the default `icon.<ext>`: the app has one icon for all its keyboards.
+
+|`chromeos` (or `chrome`)
+|Only the default icon, which must be a `.png`: the extension has one icon.
+
+|`android`
+|Only `icon.png`.
+|===
+
+In `macos`, `ios` and `chromeos` these are errors:
+
+* a `<tag>` that is not a language tag: `icon.se_FI.png` (write
+  `icon.se-FI.png`);
+* two icons for one tag: `icon.se-FI.png` and `icon.se-fi.icns`;
+* two default icons: `icon.png` and `icon.icns`.
+
+[[bundle-layouts]]
+=== Layouts
+
+Each file in `layouts/` is one keyboard layout, and its name is the layout's
+language tag (BCP 47): `se.yaml`, `se-FI.yaml`, `smj-NO.yaml`. kbdgen
+normalises the case, so `se-fi.yaml` is the layout `se-FI`. A name that is
+not a language tag, such as `se_FI.yaml`, stops loading with
+`Failed to parse language tag`.
+
+A layout file comes in one of two formats:
+
+* *Format 4*, with `format: 4` at the top: the current format, described in
+  <<layouts>>.
+* *Format 3*, with no `format` field: the format that the iOS and Android
+  targets still need, described in <<layouts-v3>>. `kbdgen ldml migrate`
+  converts it to format 4 (<<layouts-v3-migrate>>).
+
+One bundle may hold layouts in both formats. Any other value of `format` is
+an error.
+
+Every layout must have its *autonym*: a `displayNames` entry, the layout's
+name in its own language, keyed by the primary language subtag of its tag.
+For `se-FI.yaml` that key is `se`:
+
+[source,yaml]
+----
+displayNames:
+  se: Davvisámegiella (Suopma)
+  en: Northern Sami (Finland)
+----
+
+An entry under the full tag `se-FI` alone does not count. Without the
+autonym, loading stops with
+`+Missing mandatory display name for language tag: `se-FI`+` for a format 3
+layout, or `displayNames has no autonym, a name for se` for a format 4 one.
+
+How kbdgen reads `layouts/`:
+
+* It reads the files in the order of their file names, compared byte by
+  byte, and stops at the first one that is broken.
+* An empty file is an error: a layout must be a YAML mapping.
+* If two files name the same tag after normalisation (`se-FI.yaml` and
+  `se-fi.yaml`), the later one replaces the earlier. Avoid this.
+* Everything kbdgen builds visits the layouts in the order of their tags,
+  compared byte by byte: `se`, `se-FI`, `sma`, `sme`. That order is the same
+  on every run.
+* Whenever kbdgen loads the bundle, it parses every layout file and checks
+  format 3 layouts against their schema, so a broken file stops every
+  command. It checks format 4 layouts in full only when something builds
+  them; run `kbdgen ldml compile` to check them without building a target
+  (<<layouts-checking>>).
+
+[[bundle-formats]]
+=== Which targets build which format
+
+[cols="2,1,3",options="header"]
+|===
+|Command |Format 4 |Format 3
+
+|`kbdgen target windows`
+|yes
+|yes
+
+|`kbdgen target macos`
+|yes
+|yes
+
+|`kbdgen target chromeos`
+|yes
+|yes, converted to format 4 in memory
+
+|`kbdgen target ios`
+|no
+|yes
+
+|`kbdgen target android`
+|no
+|yes
+
+|`kbdgen ldml export`, `compile`
+|yes
+|no: migrate the layout first, or leave it out with `--layout`
+
+|`kbdgen ldml test`
+|yes
+|yes, converted to format 4 in memory
+|===
+
+The iOS and Android targets refuse the whole bundle when any of its layouts
+is in format 4:
+
+[source,text]
+----
+Error: layout se-FI is a v4 layout (`format: 4`); the ios target cannot build v4 layouts yet
+----
+
+So a bundle that you build for iOS or Android must keep all of its layouts in
+format 3 for now, including the layouts that `kbdgen fetch` copies into it.

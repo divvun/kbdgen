@@ -1,0 +1,447 @@
+[[layouts-v3]]
+== Format 3 layouts
+
+A layout file without a `format` field is in format 3. The iOS and Android
+targets build only this format, and many existing bundles use it. The desktop
+targets build both formats (<<bundle-formats>>). This chapter is a reference
+for reading and maintaining format 3 layouts; <<layouts-v3-migrate>> shows
+how to convert them to format 4.
+
+Format 3 is lenient where format 4 is strict: kbdgen ignores fields it does
+not know, so a misspelt field or section, such as `macos` for `macOS`, is
+silently left out of the build. It does check that required fields are
+there, that layer names are known, and that text is text: an unquoted number
+where text belongs is an error.
+
+[[layouts-v3-structure]]
+=== Structure
+
+A format 3 layout has some fields shared by all platforms and one section per
+platform:
+
+[source,yaml]
+----
+displayNames:
+  se: Davvisámegiella (Suopma)
+  en: Northern Sami (Finland)
+  fi: Pohjoissaame (Suomi)
+decimal: ','
+keyNames:
+  space: gaska
+  return: linnjá\u{AD}molsun
+longpress:
+  a: å æ ä à â ã
+  o: ø ö ó ò ô õ
+  '.': ', ; : ? !'
+transforms:
+  ´:
+    ' ': ´
+    a: á
+    A: Á
+    e: é
+    E: É
+  ¨:
+    ' ': ¨
+    a: ä
+    A: Ä
+    u: ü
+    U: Ü
+  ˇ:
+    ' ': ˇ
+    c: č
+    C: Č
+    z: ž
+    Z: Ž
+----
+
+[cols="1,4",options="header"]
+|===
+|Field |Meaning
+
+|`displayNames`
+|Required. The keyboard's name by language tag; it must include the
+autonym (<<bundle-layouts>>). The iOS and Android targets also need an
+English name, `en`.
+
+|`decimal`
+|What the decimal key of the numeric keypad types: `.` or `,`. kbdgen
+replaces anything else by `.`, with a warning.
+
+|`keyNames`
+|The labels of the `space` and `return` keys of touch keyboards. When
+present, both are required. The iOS target needs it in every layout with an
+`iOS` section.
+
+|`longpress`
+|For iOS and Android: the alternatives offered when a key is held, keyed by
+the key's token as written in the layers, separated by spaces.
+
+|`transforms`
+|What each dead key does (<<layouts-v3-dead-keys>>). Shared by all
+platforms.
+
+|`windows`, `macOS`, `chromeOS`, `iOS`, `android`
+|The platform sections, with these exact spellings.
+|===
+
+[[layouts-v3-sections]]
+=== Platform sections
+
+Each section holds one or more *platforms*, each with `layers`: a mapping
+from a layer name to a string of keys.
+
+[cols="1,2,3,2",options="header"]
+|===
+|Section |Platforms |Layer names |Other fields
+
+|`windows`
+|`primary`, required
+|`default`, `shift`, `caps`, `caps+shift`, `alt`, `alt+shift`, `alt+caps`,
+`ctrl`
+|`config` (`locale`, `id`), `deadKeys`
+
+|`macOS`
+|`primary`, required
+|those of `windows`, and `cmd`, `cmd+shift`, `cmd+alt`, `cmd+alt+shift`
+|`deadKeys`, `space`
+
+|`chromeOS`
+|`primary`, required
+|`default`, `shift`, `caps`, `caps+shift`, `alt`, `alt+shift`, `ctrl`
+|`config` (`locale`, `xkbLayout`), `deadKeys`
+
+|`iOS`
+|`primary` (iPhone), `iPad-9in`, `iPad-12in`, each optional
+|`default`, `shift`, `caps`, `alt`, `alt+shift`, `symbols-1`, `symbols-2`
+|`config` (`spellerPackageKey`, `spellerPath`), `deadKeys`
+
+|`android`
+|`primary` (phone) and `tablet-600`, both required
+|`default`, `shift`
+|`config` (`spellerPackageKey`, `spellerPath`)
+|===
+
+A layer name not in the list is an error. On Windows and ChromeOS, `alt` is
+AltGr; on macOS it is Option. The `config` fields mean what the same fields
+of format 4's `targets` mean (<<layouts-targets>>).
+
+[[layouts-v3-desktop]]
+==== Desktop layers
+
+A layer of `windows`, `macOS` or `chromeOS` lists 48 keys in a fixed order:
+the rows E00–E12, D01–D12, C01–C12 and B00–B10 of <<layouts-rows>>, separated
+by spaces. Line breaks are free, but four lines of 13, 12, 12 and 11 keys
+are easiest to check.
+
+[source,yaml]
+----
+windows:
+  config:
+    locale: se-Latn-FI
+  primary:
+    layers:
+      default: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % & / ( ) = ? `
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      caps: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M , . -
+      alt: |
+        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
+        q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
+        â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
+        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     <     >     \u{0}
+      alt+shift: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
+        Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
+        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+  deadKeys:
+    default: ['´']
+    caps: ['´']
+    alt: ['¨']
+    alt+shift: ['ˇ']
+----
+
+* On Windows and macOS, a layer with fewer than 48 keys is an error that
+  gives the count. Keys after the 48th are ignored without a warning.
+* On ChromeOS, a layer must have exactly 48 keys, or the build fails.
+* `+\u{0}+` means no key on Windows and ChromeOS. On macOS it types the
+  character U+0000.
+* A layer you leave out falls back to a platform default, which differs
+  between platforms. Caps Lock in particular behaves differently on each.
+* macOS accepts a `space` mapping from layer name to what the space bar types
+  there, such as `+alt: \u{A0}+`, but format 3 builds ignore it: the space
+  bar always types a space. Migrating to format 4 makes it take effect.
+
+[[layouts-v3-touch]]
+==== Touch layers
+
+A layer of `iOS` or `android` is a set of rows, one per line, of keys
+separated by spaces. Rows may have different lengths. Special keys are
+written `+\s{…}+`, with an optional width after a colon, in key widths:
+
+[cols="1,3",options="header"]
+|===
+|Token |Key
+
+|`+\s{shift}+`, `+\s{shift:1.25}+` |Shift
+|`+\s{backspace}+` |Backspace
+|`+\s{return}+` |Return
+|`+\s{shiftSymbols}+` |switches between the two symbol layers (iOS)
+|`+\s{caps}+`, `+\s{tab}+` |Caps Lock, Tab (iPad)
+|`+\s{spacer:0.5}+` |empty space
+|`+\s{"@":0.75}+` |a key typing `@`, with a width (iOS)
+|===
+
+[source,yaml]
+----
+iOS:
+  config:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+  primary:
+    layers:
+      default: |
+        á š e r t y u i o p ŋ
+        a s d f g h j k l đ ŧ
+        \s{shift:1.25} \s{spacer:0.25} ž z č c v b n m \s{spacer:0.25} \s{backspace:1.25}
+      shift: |
+        Á Š E R T Y U I O P Ŋ
+        A S D F G H J K L Đ Ŧ
+        \s{shift:1.25} \s{spacer:0.25} Ž Z Č C V B N M \s{spacer:0.25} \s{backspace:1.25}
+      symbols-1: |
+        1 2 3 4 5 6 7 8 9 0
+        - / : ; ( ) € & @ "
+        \s{shiftSymbols} \s{spacer:0.25} . , ? ! ' \s{spacer:0.25} \s{backspace}
+      symbols-2: |
+        [ ] { } # % ^ * + =
+        _ \ | ~ < > $ £ § •
+        \s{shiftSymbols} \s{spacer:0.25} . , ? ! ' \s{spacer:0.25} \s{backspace}
+android:
+  config:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+  primary:
+    layers:
+      default: |
+        á š e r t y u i o p ŋ
+        a s d f g h j k l đ ŧ
+        \s{shift} ž z č c v b n m \s{backspace}
+      shift: |
+        Á Š E R T Y U I O P Ŋ
+        A S D F G H J K L Đ Ŧ
+        \s{shift} Ž Z Č C V B N M \s{backspace}
+  tablet-600:
+    layers:
+      default: |
+        á š e r t y u i o p ŋ
+        a s d f g h j k l đ ŧ
+        \s{shift} ž z č c v b n m \s{backspace}
+      shift: |
+        Á Š E R T Y U I O P Ŋ
+        A S D F G H J K L Đ Ŧ
+        \s{shift} Ž Z Č C V B N M \s{backspace}
+----
+
+The apps draw the bottom row, with the space bar, themselves. On iPads, the
+`alt` and `alt+shift` layers hold the characters typed by swiping a key
+down, at the same positions as in `default` and `shift`. Android understands
+`+\s{shift}+` and `+\s{backspace}+`; it passes other tokens to the app as
+they are written.
+
+[[layouts-v3-dead-keys]]
+=== Dead keys and transforms
+
+Two fields make a dead key:
+
+* `transforms`, at the top of the file, maps each dead key's character to its
+  table: the next key's character, and what the two together type. The entry
+  `' '` (a quoted space) is what the dead key types on its own.
+* `deadKeys`, in a platform section, lists for each layer the keys that are
+  dead there. A key not listed types its character normally.
+
+In the `windows` example above, `´` is dead in `default` and `caps`, `¨` in
+`alt` and `ˇ` in `alt+shift`, and the `transforms` of
+<<layouts-v3-structure>> say what they do. The `windows`, `macOS`,
+`chromeOS` and `iOS` sections have `deadKeys`. Android has none: on Android,
+every key whose character is a key of `transforms` is a dead key, on every
+layer.
+
+The `' '` entry is required in some places:
+
+* Windows needs it for every dead key that occurs in its layers.
+* macOS needs it for every entry of `transforms` once any of its layers has a
+  `deadKeys` list.
+* iOS and Android do not need it.
+
+There it must be a plain string. Without it the build stops with an error
+naming the dead key, such as
+`+the escape transform ` ` not found for dead key `´`+` on macOS or
+`+kbdse-FI: dead-key state "´" has no standalone (" ") output+` on Windows.
+
+An entry's value may itself be a table, which chains a second dead key:
+
+[source,yaml]
+----
+transforms:
+  ´:
+    ' ': ´
+    a: á
+    ¨:
+      ' ': ´¨
+      u: ǘ
+----
+
+Here `´` then `¨` then `u` types `ǘ`. Only the Windows and ChromeOS targets
+support chains. The macOS and iOS targets stop with an internal error on a
+layout with a chain and a section for them; the Android target stops on a
+chain in any layout of the bundle.
+
+Write dead-key characters themselves, not `+\u{…}+` escapes, in layers,
+`deadKeys` and `transforms`: an escaped entry does not match the key on
+Windows. Quote keys that YAML would read otherwise, as in format 4
+(<<layouts-quoting>>): `'0': °`, `'~'`, `'n': ŋ`.
+
+[[layouts-v3-escapes]]
+=== Escapes
+
+`+\u{H}+`, with 1 to 6 hexadecimal digits, stands for the character U+H.
+Keys that type a space or another invisible character must use it, because
+spaces separate keys: `+\u{20}+`, `+\u{A0}+`. Where it is decoded depends on
+the platform:
+
+* Windows decodes it in layers, but not in `deadKeys` or `transforms`.
+* macOS decodes it in everything it writes, transform results included.
+* ChromeOS decodes it everywhere, as format 4 does.
+* iOS and Android pass the text to the apps as it is written.
+
+`\u` without braces, as in `+linnjá\u00ADmolsun+`, is not an escape in
+format 3; it stays as written. Use `+\u{AD}+`.
+
+[[layouts-v3-migrate]]
+=== Moving to format 4
+
+`kbdgen ldml migrate` converts a bundle's format 3 layouts to format 4, in
+place. It keeps what each platform typed wherever format 4 can say it, and
+reports every difference it cannot avoid.
+
+Remember that the iOS and Android targets do not build format 4 layouts
+(<<bundle-formats>>): migrate only bundles that you do not build for them.
+
+. Commit your work. The migrator rewrites each file under its own name and
+  keeps no backup; version control is the backup.
+. See what would happen, without writing anything:
++
+[source,sh]
+----
+kbdgen ldml migrate -b sme.kbdgen --dry-run
+----
+. Fix what blocks (see below), and run it for real:
++
+[source,sh]
+----
+kbdgen ldml migrate -b sme.kbdgen
+----
+. Review the report, then compile and test the result (<<layouts-checking>>,
+  <<testing>>).
+
+`--report migrate.yaml` writes the report to a YAML file instead, and prints
+only the summary.
+
+[[layouts-v3-migrate-what]]
+==== What changes
+
+* Each platform section becomes a variant: `windows`, `macOS` and `chromeOS`
+  under `hardware`, `iOS` and `android` under `touch`. Each variant is
+  written in full; you may then merge equal parts into a `default` variant
+  with `inherits` (<<layouts-hosts>>).
+* Layer names become modifier sets: `default` → `none`, `caps+shift` →
+  `caps shift`, `cmd+alt` → `cmd alt`. `alt` becomes `altR` on Windows and
+  ChromeOS (AltGr) and stays `alt` on macOS.
+* Desktop layers are split into rows of 13, 12, 12 and 11 keys.
+* iOS platforms become the sizes `phone`, `tablet` and `tablet-large`;
+  Android's become `phone` and `tablet`. `default` becomes `base`, and
+  iPad `alt` layers become flicks to the south.
+* `transforms` become `deadKeys`: the `' '` entry becomes `standalone`, the
+  other entries `compose`, and chains nested nodes. Keys that a platform
+  made dead become `+\d{…}+` tokens.
+* `longpress` becomes `longPress`, each `config` moves to `targets`, and
+  macOS `space` becomes the variant's `space`.
+* Comments are lost: the migrator writes the file anew.
+
+Then it loads each new layout and types on it with kbdgen's engine: every key
+of every layer except the Caps Lock and shortcut layers, and every dead key
+with every key it combines with. Each result must match what the format 3
+platform typed, or be explained by a reported defect. If not, that is a bug
+in the migrator, reported as M99, and the layout is not written.
+
+[[layouts-v3-migrate-report]]
+==== The report
+
+Each line names a defect by code, the file, and where in it. A summary
+follows, with the outcome of each layout. Here a `deadKeys` list names `~`,
+which has no `transforms` entry:
+
+[source,text]
+----
+M11 ./layouts/se-FI.yaml: 1 comment line(s) are dropped: lines 1 (warned)
+M06 ./layouts/se-FI.yaml: keyNames.return, token linnjá\u00ADmolsun: \u without braces, which v3 kept as text, is now linnjá\u{00AD}molsun (rewritten)
+M04 ./layouts/se-FI.yaml: windows.deadKeys.alt[2], token ~: ~ is dead on layer alt but has no transform: should it be a plain key or a dead key with no compose entries? (blocked)
+M09 ./layouts/se-FI.yaml: windows.primary.layers: windows caps+shift now types otherwise at 32 position(s): D01 "á" → "Á", D02 "š" → "Š", …
+…
+summary: 1 layout(s), 9 defect(s): M04 1, M06 1, M09 6, M11 1
+./layouts/se-FI.yaml: blocked
+blocked: ./layouts/se-FI.yaml
+Error: migration blocked for ./layouts/se-FI.yaml
+----
+
+A *blocked* layout is not written, and the command exits with status 1,
+with `--dry-run` too. Without `--dry-run`, the other layouts are still
+written. The defects are:
+
+[cols="1,4,2",options="header"]
+|===
+|Code |Defect |Action
+
+|M01 |A `deadKeys` entry for a key the layer does not have |dropped
+|M02 |A `deadKeys` list for a layer the platform does not have |dropped
+|M03 |A `transforms` entry that no layer makes dead |kept, unused
+|M04 |A dead key with no `transforms` entry |*blocks*: add the entry, or
+remove the key from `deadKeys`
+|M05 |A desktop layer without exactly 48 keys |*blocks*: fix the layer
+|M06 |`\u` without braces |rewritten as `+\u{…}+`
+|M07 |A layout without platform sections (an older format) |*blocks*
+|M08 |A dead key of more than one character |noted: the Windows layout DLL
+cannot make it dead
+|M09 |Caps Lock types otherwise; the positions are listed |noted: add a
+`caps` layer if you want the old behaviour
+|M10 |A field that is not carried over, named |dropped
+|M11 |Comments, with their line numbers |dropped
+|M12 |iOS and Android dead keys differ |noted
+|M13 |macOS `+\u{0}+`, which typed U+0000 and now means no key |noted
+|M14 |`+\u{…}+` that a platform showed as written, now decoded |noted
+|M15 |An iPad `alt` row that does not line up with `default` |its flicks are
+dropped
+|M16 |A dead key whose `' '` entry is not the key itself |noted: it becomes
+`standalone`
+|M17 |A key that format 3 never made dead, because its `deadKeys` entry is
+spelt otherwise (escaped) |made dead
+|M99 |The new layout types otherwise, unexplained: a migrator bug |*blocks*:
+please report it
+|===
+
+M09 is the one to read closely. Format 4 gives Caps Lock the same behaviour
+everywhere (<<layouts-caps>>), so where a format 3 layout left Caps Lock to
+the platform, some keys change. A common case is the one in the report
+above: Caps Lock with Shift on Windows typed lowercase letters, and now
+types capitals.

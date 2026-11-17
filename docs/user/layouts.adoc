@@ -1,0 +1,1057 @@
+[[layouts]]
+== Writing layouts
+
+A layout file describes one keyboard for one language tag, on every platform
+at once. You write what each key types in each modifier state, as rows of
+characters, plus a table for each dead key. kbdgen generates the rest.
+
+This chapter describes format 4, the format for new layouts. It is a guide,
+built around one example that grows section by section: Northern Sami as
+typed in Finland, `layouts/se-FI.yaml`. The complete file is at the end of
+the chapter (<<layouts-complete>>). The exhaustive rules are in the
+specification,
+link:../spec/ldml/yaml.md[`docs/spec/ldml/yaml.md`].
+
+Format 4 uses the vocabulary of the Unicode standard for keyboards,
+https://www.unicode.org/reports/tr35/tr35-keyboards.html[LDML Keyboard 3.0]:
+its layer names, escapes and transform rules. Anything an LDML keyboard can
+say, a format 4 layout can say too, and kbdgen converts between the two
+(<<layouts-ldml>>).
+
+[[layouts-checking]]
+=== Checking a layout
+
+While you write, compile the layout. This checks every format 4 layout of
+the bundle and builds it for every platform, without building a target:
+
+[source,sh]
+----
+kbdgen ldml compile -b sme.kbdgen -o /tmp/sme-models
+----
+
+In a bundle that also has format 3 layouts, name the format 4 ones, as in
+`--layout se-FI`; a format 3 layout here is an error that suggests
+migrating it. kbdgen checks everything before it writes the first file, so a
+mistake writes nothing. Format 4 is strict: an unknown field is an error, not
+something kbdgen quietly ignores. Every error names the file, the place in
+it, and for rows the row and token, counted from 1:
+
+[source,text]
+----
+Error: ./layouts/se-FI.yaml: hardwar: unknown field hardwar
+Error: ./layouts/se-FI.yaml: hardware.default.layers.none, row 2: layer none row 2 has 11 tokens; form iso row 2 has 12 scan codes
+Error: ./layouts/se-FI.yaml: hardware.default.layers.none, row 1, token 13: no dead key has the identity "´"
+----
+
+To check what the layout types, write tests (<<testing>>).
+
+[[layouts-first]]
+=== A first layout
+
+[source,yaml]
+----
+format: 4
+displayNames:
+  se: Davvisámegiella (Suopma)
+  en: Northern Sami (Finland)
+  fi: Pohjoissaame (Suomi)
+hardware:
+  default:
+    layers:
+      none: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % & / ( ) = ? `
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+----
+
+This is already a working keyboard for Windows, macOS and ChromeOS.
+
+* `format: 4` marks the file as format 4. Without it, kbdgen reads the file
+  as format 3 (<<layouts-v3>>).
+* `displayNames` names the keyboard in several languages. The entry for the
+  layout's own language, here `se`, is required (<<bundle-layouts>>).
+* `hardware` describes physical keyboards. `default` applies to every
+  platform; <<layouts-hosts>> shows how one platform can differ.
+* `layers` maps each modifier state to what the keys type in it: `none`
+  without modifiers, `shift` with Shift.
+
+[[layouts-rows]]
+==== Rows and key positions
+
+The `|` after a layer name starts a YAML block: the indented lines below it,
+taken as they are. Each line is one row of keys, and the keys of a row are
+separated by spaces. Extra spaces and blank lines do not matter, so you can
+line up the columns.
+
+The four rows of the default form, `iso`, are the four rows of character keys
+on a European keyboard, with 13, 12, 12 and 11 keys. Each key has a name from
+the ISO keyboard standard, which tests and error messages use:
+
+[source,text]
+----
+ E00 E01 E02 E03 E04 E05 E06 E07 E08 E09 E10 E11 E12   ← E00 left of 1, E12 left of Backspace
+Tab  D01 D02 D03 D04 D05 D06 D07 D08 D09 D10 D11 D12   ← D01 right of Tab (Q)
+Caps  C01 C02 C03 C04 C05 C06 C07 C08 C09 C10 C11 C12  ← C01 right of Caps Lock (A), C12 left of Enter
+Shift B00 B01 B02 B03 B04 B05 B06 B07 B08 B09 B10      ← B00 right of Shift, left of Z
+----
+
+So in the first layout, `§` is E00, `á` is D01, `đ` is C12 and `ž` is B00.
+Other keyboard shapes have other row lengths; choose one with `form`:
+
+[cols="1,1,3",options="header"]
+|===
+|`form` |Keys per row |Keyboards
+
+|`iso` (default) |13, 12, 12, 11 |European and most others
+|`us` |13, 13, 11, 10 |ANSI, as in the US: no B00, an extra D13 above Enter
+|`abnt2` |13, 12, 12, 12 |Brazilian: an extra B11 right of B10
+|`jis` |14, 12, 12, 11 |Japanese
+|`ks` |14, 12, 11, 10 |Korean
+|===
+
+A row with the wrong number of keys is an error that gives both counts.
+
+You do not write the space bar: it types a space in every layer. To change
+that, see <<layouts-space>>.
+
+[[layouts-tokens]]
+==== Writing characters
+
+Each entry of a row, a *token*, is usually just the text the key types. It can
+be more than one character, such as a letter with a combining accent. Some
+tokens start with a backslash and mean something else:
+
+[cols="1,3",options="header"]
+|===
+|Token |Meaning
+
+|`+\u{A0}+`
+|The character U+00A0, by its hexadecimal code point (1 to 6 digits). Use it
+for anything you cannot see or type: spaces, no-break spaces, joiners,
+combining marks on their own (`+\u{301}+`).
+
+|`+\u{0}+`
+|No key: the key types nothing in this layer.
+
+|`+\d{´}+`
+|The dead key `´` (<<layouts-dead-keys>>).
+
+|`+\s{space}+`
+|A space bar key.
+
+|`+\s{gap}+`
+|An empty position.
+
+|`+\k{eng}+`
+|The key `eng` defined under `keys` (<<layouts-keys>>).
+
+|`+\s{shift}+`, `+\s{"@":0.75}+`, `+\l{accents}+`
+|Keys of touch layouts (<<layouts-touch>>).
+|===
+
+A backslash that starts none of these is an ordinary backslash, so a key
+that types `\` is written `\`. A `\u` that is not followed by `{` is an error:
+write `+\u{AD}+`, not `+\u00AD+`.
+
+Tokens never contain spaces, because spaces separate them. A key that types a
+space is written `+\u{20}+`.
+
+[[layouts-quoting]]
+==== Quoting in YAML
+
+Inside a `|` block nothing needs quoting. Elsewhere, YAML gives some
+characters a meaning of their own, so quote them with single quotes when they
+are the whole value or a key: `'~'` (unquoted it means "nothing"),
+`+'`'+`, `'#'`, `'@'`, `'%'`, `'&'`, `'*'`, `'!'`, `'|'`, `'>'`, `'?'`,
+`'-'`, `':'`, `','`, `'['`, `'{'`, `"'"`. Quote digits and numbers too,
+and the words YAML might read as true or false, such as `'y'`, `'n'`, `'no'`,
+`'on'` and `'off'`.
+
+Format 4 never turns a number or a true/false into text behind your back:
+where it expects text and finds anything else, it stops and asks you to quote
+it:
+
+[source,text]
+----
+Error: ./layouts/se-FI.yaml: decimal: expected a string, found 1; quote it
+----
+
+The same goes for `{` and `}` inside a value written in braces, such as
+`keyNames: {space: gaska}`: a value containing braces must be quoted there.
+
+[[layouts-metadata]]
+=== Names and metadata
+
+[source,yaml]
+----
+format: 4
+displayNames:
+  se: Davvisámegiella (Suopma)
+  en: Northern Sami (Finland)
+  fi: Pohjoissaame (Suomi)
+  nb: Nordsamisk (Finland)
+  sv: Nordsamiska (Finland)
+info:
+  author: Example Author
+  layout: QWERTY
+  indicator: SE
+version: 1.0.0
+decimal: ','
+keyNames:
+  space: gaska
+  return: linnjá\u{AD}molsun
+----
+
+`displayNames`:: The keyboard's name, keyed by language tag. Targets use
+these names wherever the platform shows the keyboard's name, in as many of
+these languages as the platform supports.
+`info`:: LDML metadata, all optional: `name` (default: the autonym),
+`author`, `layout` (a short description of the arrangement, like `QWERTY`),
+`indicator` (a short label for a status bar) and `attribution`.
+`version`:: The layout's version, a semantic version such as `1.0.0`. `1.0`
+is an error.
+`locales`:: Other languages the keyboard is suitable for, as a list of tags:
+`locales: [smn, sms]`.
+`decimal`:: What the decimal key of the numeric keypad types, usually `','`
+or `'.'`.
+`keyNames`:: The labels of the `space` and `return` keys on touch
+keyboards. Both are optional.
+
+[[layouts-layers]]
+=== Layers and modifiers
+
+A layer's name is the set of modifier keys that must be held for it, written
+with LDML's names and separated by spaces. The order does not matter:
+`alt shift` and `shift alt` are the same layer.
+
+[cols="1,3",options="header"]
+|===
+|Name |Modifier
+
+|`none` |no modifier
+|`shift` |either Shift
+|`caps` |Caps Lock on
+|`alt` |either Alt (Option on a Mac)
+|`altL`, `altR` |left or right Alt only
+|`ctrl` |either Ctrl
+|`ctrlL`, `ctrlR` |left or right Ctrl only
+|`cmd` |Command (macOS)
+|`extra1`, `extra2`, `extra3` |extra modifier keys (<<layouts-extra-modifiers>>)
+|`other` |any combination that no other layer names
+|===
+
+A layer is selected only when exactly its modifiers are held: `shift` is not
+used while Ctrl is down as well.
+
+[[layouts-altgr]]
+==== AltGr and Option
+
+The third and fourth levels, on AltGr on Windows and Option on a Mac, are
+the layers `alt` and `alt shift`. Add them to the first layout:
+
+[source,yaml]
+----
+hardware:
+  default:
+    layers:
+      # none and shift as before
+      alt: |
+        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
+        q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
+        â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
+        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     <     >     \u{0}
+      alt shift: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
+        Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
+        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+----
+
+`alt` is the portable choice:
+
+* On Windows and ChromeOS, the right Alt key (AltGr) reaches it. The left
+  Alt key never types there: it is for menus and shortcuts.
+* On macOS, either Option key reaches it.
+
+`altR` is the right Alt key only. When it builds for macOS, kbdgen warns
+about layers for one side, since macOS may not tell the two Option keys
+apart. AltGr on Windows also reaches a layer written `ctrl alt`, as some CLDR
+keyboards write it.
+
+[[layouts-caps]]
+==== Caps Lock
+
+The first layout has no `caps` layer, yet Caps Lock works as people expect: it
+types capitals, and leaves digits and punctuation alone. Caps Lock with Shift
+types capitals too. kbdgen derives these states from the layers you wrote:
+
+* For a layer such as `none` that has a shifted partner (`shift`), it creates
+  the Caps Lock layer: each key types its shifted output when that is the
+  capital of the unshifted one (`á` → `Á`), and its unshifted output
+  otherwise (`1`, not `!`).
+* Caps Lock with Shift uses the shifted layer.
+* A layer with no shifted partner is used for Caps Lock as it is.
+
+The same happens for `alt` and `alt shift`: Caps Lock with AltGr types `Ǧ` on
+C05. A layer you write yourself always wins, so write a `caps` layer when Caps
+Lock should do something else. To turn the derived layers off and get only
+the layers you wrote, put `impliedLayers: none` in the variant, next to
+`layers`.
+
+One layer can serve several modifier sets, separated by commas. This layer
+is used both with Caps Lock and with Caps Lock and Shift, and its fifth row
+holds the space bar, here a no-break space:
+
+[source,yaml]
+----
+      caps, caps shift: |
+        § 1 2 3 4 5 6 7 8 9 0 + ´
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M , . -
+        \u{A0}
+----
+
+Two layers may not name the same modifier set.
+
+[[layouts-space]]
+==== The space bar
+
+The space bar types a space unless you say otherwise, in one of two ways:
+
+* a fifth row with a single token, at the end of a layer, as in the `caps,
+  caps shift` layer above;
+* a `space` entry in the variant, keyed by the layer's name:
++
+[source,yaml]
+----
+    space: {alt: '\u{A0}'}
+----
+
+[[layouts-native]]
+==== Ctrl and Command layers
+
+Layers whose modifiers include `cmd`, or `ctrl` without Alt, never type text:
+those key combinations are shortcuts, and kbdgen passes them to the
+application. Such a layer only tells the platform which character a shortcut
+key stands for. A `cmd` layer becomes the Command key map of the macOS
+`.keylayout`, and a `ctrl` layer the Ctrl column of the Windows layout DLL.
+
+[[layouts-extra-modifiers]]
+==== Extra modifier keys (Windows)
+
+On Windows, up to three keys can act as extra modifiers, each selecting its
+own layers: the right Ctrl key (`rightCtrl`), Caps Lock (`capsLock`) and the
+ISO key left of Z (`B00`). `extraModifiers` binds them, in order, to
+`extra1`, `extra2` and `extra3`. Here right Ctrl selects a Greek layer:
+
+[source,yaml]
+----
+  windows:
+    inherits: default
+    extraModifiers: [rightCtrl]
+    layers:
+      extra1: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        ; ς ε ρ τ υ θ ι ο π \u{0} \u{0}
+        α σ δ φ γ η ξ κ λ \u{0} \u{0} \u{0}
+        \u{0} ζ χ ψ ω β ν μ \u{0} \u{0} \u{0}
+----
+
+When `B00` is bound, every layer must have `+\u{0}+` at B00.
+
+[[layouts-dead-keys]]
+=== Dead keys
+
+A dead key types nothing at first; it changes the next key. The keyboard has
+six of them: acute `´` and grave `+`+` on the key left of Backspace, and on
+D11 and D12 with AltGr the diaeresis `¨`, tilde `~`, circumflex `^` and caron
+`ˇ`. `deadKeys` gives each one a table, and `+\d{…}+` puts it on a key:
+
+[source,yaml]
+----
+deadKeys:
+  ´:
+    compose:
+      a: á
+      A: Á
+      e: é
+      E: É
+      ¨:
+        compose: {u: ǘ, U: Ǘ}
+  '`':
+    compose: {a: à, A: À, e: è, E: È}
+  ¨:
+    compose: {a: ä, A: Ä, o: ö, O: Ö, u: ü, U: Ü}
+  '~':
+    compose: {a: ã, A: Ã, o: õ, O: Õ}
+  ^:
+    compose: {a: â, A: Â, e: ê, E: Ê}
+  ˇ:
+    compose: {c: č, C: Č, g: ǧ, G: Ǧ, s: š, S: Š, z: ž, Z: Ž}
+hardware:
+  default:
+    layers:
+      none: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % & / ( ) = ? \d{`}
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+----
+
+In the `alt` and `alt shift` layers, D11 and D12 become `+\d{¨} \d{~}+` and
+`+\d{^} \d{ˇ}+` (<<layouts-complete>>).
+
+The key of each `deadKeys` entry is the dead key's *identity*: the character
+it stands for, which `+\d{…}+` names. `compose` maps what the next key types
+to the result. A dead key can appear on any number of keys and layers. One
+that no `+\d{…}+` uses has no effect: no platform gets it.
+
+[[layouts-dead-keys-typing]]
+==== What the user gets
+
+kbdgen's keyboard engine, which ChromeOS and the Divvun text service on
+Windows run, gives dead keys the behaviour they have on macOS. The macOS
+`.keylayout` and the Windows layout DLL that kbdgen generates follow it as
+far as those formats allow. With `´` on the key left of Backspace:
+
+* `´` then `a` types `á`, and `´` then Shift+`a` types `Á`.
+* While a dead key waits, the text shows what it would type alone, here `´`,
+  marked as unfinished.
+* `´` then the space bar types `´` alone.
+* `´` then a key that is not in the table types the accent, then the key:
+  `´` then `f` types `´f`.
+* `´` then another dead key that is not in the table types `´`, and the new
+  dead key waits: `´` then `ˇ` then `c` types `´č`.
+* Backspace while a dead key waits cancels the dead key and nothing else.
+* Committing the text while a dead key waits, for example by switching to
+  another window, types the waiting accent.
+
+[[layouts-dead-keys-options]]
+==== Standalone output, chains and names
+
+Each dead key can also have:
+
+`standalone`:: What the dead key types on its own: with the space bar or
+before a key it does not combine with. It is also what the text shows while
+the dead key waits. The default is the identity. Set it when the dead key's character differs from what it should
+type alone, or to `''` to make an unmatched dead key vanish:
++
+[source,yaml]
+----
+deadKeys:
+  ˜:
+    standalone: '~'
+    compose: {a: ã, o: õ}
+  ¨:
+    standalone: ''
+    display: ◌̈
+    compose: {a: ä, o: ö}
+----
++
+Here `˜` (the small tilde) types an ASCII `~` alone, and `¨` then `f` types
+just `f`. While `¨` waits, the text shows nothing, since its standalone
+output is empty.
+`display`:: The label of the dead key's keycap on on-screen and touch
+keyboards. The default is the identity.
+`name`:: The dead key's name in the Windows layout DLL's table of dead-key
+names. Only top-level dead keys have one.
+`marker`:: The LDML marker id that kbdgen generates for the dead key, by
+default `dk_` and the identity's code points (`dk_00B4`). You rarely need it.
+
+A `compose` value can itself be a dead key node, with its own `compose`,
+`standalone` and `display`. That chains dead keys: in the example, `´` then
+`¨` then `u` types `ǘ`. While `´` then `¨` waits, the text shows `´¨`, the
+chained key's default identity.
+
+A space is not a valid `compose` input: what a dead key types with the space
+bar is its `standalone`.
+
+[[layouts-transforms]]
+=== Transforms
+
+Transforms rewrite the text as the user types, beyond dead keys. They are
+LDML transform rules, written as they would be in LDML XML. Here, two
+hyphens become an en dash, and a third turns that into an em dash:
+
+[source,yaml]
+----
+transforms:
+  - - from: '--'
+      to: '–'
+    - from: '–-'
+      to: '—'
+----
+
+`transforms` is a list of groups, and each group a list of rules. After
+every key, each group in turn looks at the text before the cursor, and the
+first of its rules whose `from` matches the end of that text replaces the
+match with `to`. Each group sees what the groups before it wrote, and the
+dead-key groups that kbdgen generates come first.
+
+`from` is a pattern in LDML's syntax: `[aeiou]` matches one of those
+characters, `( )` captures text for `$1` in `to`, `^` matches the start of
+the text, and `+$[name]+` matches any member of a set variable. Variables
+are defined under `variables`, as `strings`, `sets` or `usets`. This Skolt
+Sami layout turns an apostrophe typed after a consonant into the softening
+mark `ʹ`:
+
+[source,yaml]
+----
+variables:
+  sets:
+    consonant: b c č d đ f g ǧ ǥ h j k ǩ l m n ŋ p r s š t v z ž ʒ ǯ
+transforms:
+  - - from: ($[consonant])'
+      to: $1ʹ
+backspace:
+  - - from: ʹ
+      to: "'"
+----
+
+`backspace` holds rules of the same kind for the Backspace key. Here
+Backspace after `ʹ` turns it back into an apostrophe. Where no backspace rule
+matches, Backspace deletes as usual.
+
+A group may also be a `reorder` group, for scripts whose characters are
+typed in a different order than they are stored. The rule syntax is in the
+LDML specification, under
+https://www.unicode.org/reports/tr35/tr35-keyboards.html#element-transforms[transforms].
+
+Transforms run in kbdgen's keyboard engine: on ChromeOS, and on Windows
+through the Divvun text service. A macOS `.keylayout` or a Windows layout
+DLL can only express transforms that continue a dead key; when kbdgen builds
+them, it reports the transforms they cannot express.
+
+[[layouts-long-press]]
+=== Long press
+
+On touch keyboards, holding a key offers alternatives. `longPress` lists
+them for every key that types the given text, separated by spaces:
+
+[source,yaml]
+----
+longPress:
+  a: å æ ä à â ã
+  A: Å Æ Ä À Â Ã
+  o: ø ö ó ò ô õ
+  O: Ø Ö Ó Ò Ô Õ
+  z: ʒ ǯ
+  Z: Ʒ Ǯ
+----
+
+Candidates use the token syntax of rows, so `+\u{…}+` works in them. To
+choose a default candidate (`longPressDefault`), or for keys that cycle
+through characters when tapped repeatedly, use explicit keys
+(<<layouts-keys>>).
+
+[[layouts-touch]]
+=== Touch layouts
+
+`touch` describes on-screen keyboards for phones and tablets. The iOS and
+Android targets build format 3 layouts only (<<bundle-formats>>), so a
+format 4 touch layout is what `kbdgen ldml compile`, `test` and `export`
+work with.
+
+[source,yaml]
+----
+touch:
+  default:
+    sizes:
+      phone:
+        layers:
+          base: |
+            á š e r t y u i o p ŋ
+            a s d f g h j k l đ ŧ
+            \s{shift} ž z č c v b n m \s{backspace}
+          shift: |
+            Á Š E R T Y U I O P Ŋ
+            A S D F G H J K L Đ Ŧ
+            \s{shift} Ž Z Č C V B N M \s{backspace}
+          symbols-1: |
+            1 2 3 4 5 6 7 8 9 0
+            - / : ; ( ) € & @ "
+            \s{shiftSymbols} . , ? ! ' \s{backspace}
+          symbols-2: |
+            [ ] { } # % ^ * + =
+            _ \ | ~ < > $ £ § •
+            \s{shiftSymbols} . , ? ! ' \s{backspace}
+----
+
+`sizes`:: One keyboard per screen size. `phone`, `tablet` and
+`tablet-large` are the usual names; a tablet is a device at least 95 mm
+wide, a large tablet 190 mm. Any other name needs `minDeviceWidth`, in
+millimetres, and no two sizes may have the same width.
+`layers`:: Touch layers have ids, not modifiers. Every size needs `base`.
+`shift`, `symbols-1` and `symbols-2` are the layers that the `shift`,
+`symbols` and `shiftSymbols` keys switch to, and a size that has such a key
+needs the layer it switches to. You can add layers of your own.
+`bottomRow`:: `host` (the default): the app draws the bottom row, with the
+symbols, globe, space and return keys, so your rows leave it out.
+`authored`: you write the bottom row yourself.
+
+Rows work as on hardware, but have no fixed length, and keys can have a
+width, in key widths, after a colon:
+
+[cols="1,3",options="header"]
+|===
+|Token |Key
+
+|`+\s{shift}+`, `+\s{shift:1.5}+`
+|Shift: switches between `base` and `shift`.
+
+|`+\s{symbols}+`
+|Switches to `symbols-1`, and back to `base`.
+
+|`+\s{shiftSymbols}+`
+|Switches between `symbols-1` and `symbols-2`.
+
+|`+\s{backspace}+`, `+\s{return}+`, `+\s{tab}+`, `+\s{caps}+`, `+\s{keyboard}+`
+|Keys the app draws and handles itself.
+
+|`+\s{spacer:0.5}+`, `+\s{gap}+`
+|Empty space.
+
+|`+\s{space:5}+`
+|The space bar.
+
+|`+\s{"@":0.75}+`
+|A key typing `@`, with a width.
+
+|`+\l{accents}+`, `+\l{accents:1.5}+`
+|Switches to your own layer `accents`.
+|===
+
+With `bottomRow: authored` and a layer of your own:
+
+[source,yaml]
+----
+      phone:
+        bottomRow: authored
+        layers:
+          base: |
+            q w e r t y u i o p
+            a s d f g h j k l
+            \s{shift} z x c v b n m \s{backspace}
+            \l{accents:1.5} \s{space:5} \s{return:1.5}
+          shift: |
+            Q W E R T Y U I O P
+            A S D F G H J K L
+            \s{shift} Z X C V B N M \s{backspace}
+            \l{accents:1.5} \s{space:5} \s{return:1.5}
+          accents: |
+            â č ʒ ǯ ǧ ǥ ǩ ŋ õ ʹ
+            š ž đ å ä ˈ
+            \l{base:1.5} \s{space:5} \s{return:1.5}
+----
+
+[[layouts-flicks]]
+==== Flicks
+
+On tablets, a key can type something else when swiped. Give a layer as
+`rows` and `flicks`; each flick direction (`n`, `ne`, `e`, `se`, `s`, `sw`,
+`w`, `nw`) has rows of the same shape, and the token at each position is what
+a flick of that key types:
+
+[source,yaml]
+----
+      tablet:
+        layers:
+          base:
+            rows: |
+              \s{"`":0.75} á š e r t y u i o p ŋ \s{backspace:1.25}
+              \s{shift} a s d f g h j k l đ ŧ \s{shift}
+              \s{spacer:0.5} ž z č c v b n m , . \s{spacer:0.5} \s{return:2}
+            flicks:
+              s: |
+                \s{"@":0.75} 1 2 3 4 5 6 7 8 9 0 å \s{backspace:1.25}
+                \s{shift} % # € & * ( ) ' " ø æ \s{shift}
+                \s{spacer:0.5} q w x - = / ; : ! ? \s{spacer:0.5} \s{return:2}
+----
+
+A flick row must repeat the role keys of its main row; `+\u{0}+` or a gap
+means no flick for that key. Swiping `á` down types `1`.
+
+[[layouts-keys]]
+==== Explicit keys
+
+For anything rows cannot say, define keys under `keys` with LDML's key
+attributes (`output`, `longPress`, `longPressDefault`, `multiTap`, `flick`,
+`width`, `layer`, `gap`, `stretch`) and place them with `+\k{…}+`. Lists of
+keys are space-separated key ids. Here, tapping the key twice types `ŋ`
+instead of `n`, and `displays` labels its keycap:
+
+[source,yaml]
+----
+keys:
+  eng: {output: ŋ}
+  n-or-eng: {output: n, multiTap: eng}
+displays:
+  - {keyId: n-or-eng, display: n ŋ}
+----
+
+The key is placed with `+\k{n-or-eng}+` in a row. `displays` can also label
+keys by output: `{output: å, display: Å}`. Keys that type only combining
+marks get a dotted-circle label (`◌́`) without one.
+
+[[layouts-hosts]]
+=== Platforms and variants
+
+kbdgen builds a layout for each platform, which it calls a *host*. Each host
+takes the first variant of its list that the layout has:
+
+[cols="1,2,2",options="header"]
+|===
+|Host |Hardware variant |Touch variant
+
+|`windows` |`windows`, else `default` |—
+|`macOS` |`macOS`, else `default` |—
+|`chromeOS` |`chromeOS`, else `default` |—
+|`linux` |`linux`, else `default` |—
+|`iOS` |— |`iOS`, else `default`
+|`android` |`android`, else `default` |`android`, else `default`
+|`web` |`default` |`default`
+|===
+
+A variant with `inherits` starts from another variant and changes only what
+it says. Layers and `space` entries are replaced one by one, by modifier set;
+`form`, `impliedLayers` and `extraModifiers` are replaced when given. Here
+Option+Space types a no-break space on macOS, as Mac users expect, while
+every other platform keeps the `default` variant unchanged:
+
+[source,yaml]
+----
+hardware:
+  default:
+    layers:
+      none: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+  macOS:
+    inherits: default
+    space: {alt: '\u{A0}'}
+----
+
+Touch variants inherit the same way: sizes are replaced size by size, and
+`longPress` entries by output. An entry `''` removes inherited candidates.
+On Android, this keeps the global `longPress` except for these two:
+
+[source,yaml]
+----
+touch:
+  android:
+    inherits: default
+    longPress:
+      a: ä å
+      z: ''
+----
+
+The layout-level fields, such as `displayNames`, `deadKeys` and `transforms`,
+are shared by all hosts. No target builds the `linux` and `web` hosts; only
+the `kbdgen ldml` commands use them.
+
+[[layouts-normalization]]
+=== Normalization
+
+Many accented letters can be written in two ways in Unicode: precomposed
+(`á`, U+00E1) or as a letter and a combining accent (`a` + U+0301). They
+look the same and are *canonically equivalent*.
+
+By default, `normalization: disabled`, the keyboard types exactly the code
+points you wrote, and transforms match exactly those. This is what macOS
+does, and what most layouts want.
+
+[source,yaml]
+----
+normalization: enabled
+----
+
+With `normalization: enabled`, LDML's default, transforms match text
+regardless of how it is composed, and the platform chooses whether output is
+precomposed or decomposed. Turn it on only when your transforms must match
+text that did not come from your own keyboard. A macOS `.keylayout` cannot
+express it, and kbdgen warns when it builds one.
+
+[[layouts-targets]]
+=== Platform settings of a layout
+
+`targets` holds settings for one platform that belong to this layout, not
+to the whole bundle:
+
+[source,yaml]
+----
+targets:
+  windows:
+    locale: se-Latn-FI
+  chromeOS:
+    locale: fi
+    xkbLayout: fi
+  iOS:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+  android:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+----
+
+[cols="1,3",options="header"]
+|===
+|Field |Meaning
+
+|`windows.locale`
+|The Windows locale name of the layout, when it differs from the tag.
+
+|`windows.id`
+|The Windows keyboard id: the layout DLL is named `kbd<id>`. The default is
+the first five characters of the tag (`kbdse-FI`).
+
+|`windows.shiftLock`
+|`true`: Caps Lock acts as Shift Lock, and Shift releases it.
+
+|`windows.lrmRlm`
+|`true`: left Shift+Backspace types a left-to-right mark (U+200E) and right
+Shift+Backspace a right-to-left mark (U+200F).
+
+|`windows.keyNames`
+|Names of keys as Windows shows them, in the layout's language, keyed by
+their English name.
+
+|`chromeOS.locale`, `chromeOS.xkbLayout`
+|The input method's language (default `en-US`) and the XKB layout ChromeOS
+pairs it with (default `us`).
+
+|`iOS`, `android`: `spellerPackageKey`, `spellerPath`
+|The speller to install with the keyboard.
+|===
+
+The Windows keyboard options look like this:
+
+[source,yaml]
+----
+targets:
+  windows:
+    locale: se-Latn-FI
+    id: seFI
+    shiftLock: true
+    lrmRlm: false
+    keyNames:
+      Caps Lock: Stuorrabustávat
+      Space: Gaska
+----
+
+The key names Windows knows are `Esc`, `Backspace`, `Tab`, `Enter`, `Ctrl`,
+`Shift`, `Right Shift`, `Alt`, `Space`, `Caps Lock`, `F1` to `F24`, `Pause`,
+`Scroll Lock`, `Num 0` to `Num 9`, `Num *`, `Num -`, `Num +`, `Num /`,
+`Num Del`, `Num Enter`, `Num Lock`, `Sys Req`, `Right Ctrl`, `Right Alt`,
+`Prnt Scrn`, `Break`, `Home`, `End`, `Up`, `Down`, `Left`, `Right`,
+`Page Up`, `Page Down`, `Insert`, `Delete`, `<00>`, `Help`, `Left Windows`,
+`Right Windows` and `Application`. Any other name is an error.
+
+[[layouts-ldml]]
+=== LDML Keyboard 3.0
+
+For each host, kbdgen turns a format 4 layout into an LDML Keyboard 3.0
+document, and builds its keyboard from that document. The parts of a layout
+map to LDML like this:
+
+[cols="1,2",options="header"]
+|===
+|Layout |LDML
+
+|rows of a layer |`keys` with generated ids, and a `layer` of the `layers`
+|`deadKeys` |markers, `displays`, and three generated transform groups
+|`transforms`, `backspace`, `variables`, `keys`, `flicks`, `displays` |the
+elements of the same names
+|`longPress` |`longPressKeyIds` of the keys
+|`info`, `version`, `locales`, `normalization` |`info`, `version`,
+`locales`, `settings`
+|`displayNames`, `targets`, roles, Windows options |a `kbdgen:` extension
+element, which other LDML software ignores
+|===
+
+Tests and explicit keys refer to keys by id. The ids kbdgen generates
+follow a pattern:
+
+* `u-00E1` for a key typing `á`: `u-` and its code points in hexadecimal;
+* `a` for a key typing `a`: a single letter `a`–`z` or `A`–`Z`, or a digit,
+  keeps its own name when the key has nothing else, such as long-press
+  candidates, flicks or a width (otherwise it is `u-0061`);
+* `space` for the space bar, and `dk-dk_00B4` for the dead key `´`.
+
+[[layouts-ldml-export]]
+==== Export
+
+[source,sh]
+----
+kbdgen ldml export -b sme.kbdgen -o ldml
+----
+
+This writes `ldml/<tag>.<host>.xml` for every format 4 layout and host, for
+example `ldml/se-FI.windows.xml`. `--layout se-FI` and `--host windows`,
+each repeatable, limit it to some layouts and hosts.
+
+[[layouts-ldml-import]]
+==== Import
+
+[source,sh]
+----
+kbdgen ldml import -b sme.kbdgen keyboards/mt.xml
+----
+
+This reads LDML keyboard files, CLDR's included, and writes one format 4
+layout per language tag, merging the files of different hosts for one tag.
+It will not replace an existing layout unless you pass `--force`. Import
+reports the comments it dropped, and warns when part of a keyboard can only
+be written in LDML's own terms rather than as rows and dead keys.
+
+[[layouts-ldml-ref]]
+==== Using an LDML file as it is
+
+A layout can also point to an LDML file instead of describing the keyboard
+itself. The path is relative to the layout file:
+
+[source,yaml]
+----
+format: 4
+displayNames:
+  mt: Malti
+  en: Maltese
+ldml: ../ldml/mt.xml
+targets:
+  windows:
+    locale: mt-MT
+----
+
+The file then defines the keyboard for every host;
+`+ldml: {windows: ../ldml/mt-windows.xml, default: ../ldml/mt.xml}+` gives
+one file per host, with `default` for the rest. Besides `format` and `ldml`,
+such a layout may only have `displayNames`, `decimal`, `keyNames` and
+`targets`, and its `targets.windows` may not set `shiftLock`, `lrmRlm` or
+`keyNames`: those come from the LDML file. This is also the way for several
+layouts to share tables, through LDML's `import`.
+
+[[layouts-complete]]
+=== The complete layout
+
+[source,yaml]
+----
+format: 4
+displayNames:
+  se: Davvisámegiella (Suopma)
+  en: Northern Sami (Finland)
+  fi: Pohjoissaame (Suomi)
+  nb: Nordsamisk (Finland)
+  sv: Nordsamiska (Finland)
+info:
+  author: Example Author
+  layout: QWERTY
+  indicator: SE
+version: 1.0.0
+decimal: ','
+keyNames:
+  space: gaska
+  return: linnjá\u{AD}molsun
+deadKeys:
+  ´:
+    compose:
+      a: á
+      A: Á
+      e: é
+      E: É
+      ¨:
+        compose: {u: ǘ, U: Ǘ}
+  '`':
+    compose: {a: à, A: À, e: è, E: È}
+  ¨:
+    compose: {a: ä, A: Ä, o: ö, O: Ö, u: ü, U: Ü}
+  '~':
+    compose: {a: ã, A: Ã, o: õ, O: Õ}
+  ^:
+    compose: {a: â, A: Â, e: ê, E: Ê}
+  ˇ:
+    compose: {c: č, C: Č, g: ǧ, G: Ǧ, s: š, S: Š, z: ž, Z: Ž}
+transforms:
+  - - from: '--'
+      to: '–'
+    - from: '–-'
+      to: '—'
+longPress:
+  a: å æ ä à â ã
+  A: Å Æ Ä À Â Ã
+  o: ø ö ó ò ô õ
+  O: Ø Ö Ó Ò Ô Õ
+  z: ʒ ǯ
+  Z: Ʒ Ǯ
+hardware:
+  default:
+    layers:
+      none: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % & / ( ) = ? \d{`}
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      alt: |
+        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
+        q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} \d{¨} \d{~}
+        â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
+        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     <     >     \u{0}
+      alt shift: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} \d{^} \d{ˇ}
+        Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
+        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+  macOS:
+    inherits: default
+    space: {alt: '\u{A0}'}
+touch:
+  default:
+    sizes:
+      phone:
+        layers:
+          base: |
+            á š e r t y u i o p ŋ
+            a s d f g h j k l đ ŧ
+            \s{shift} ž z č c v b n m \s{backspace}
+          shift: |
+            Á Š E R T Y U I O P Ŋ
+            A S D F G H J K L Đ Ŧ
+            \s{shift} Ž Z Č C V B N M \s{backspace}
+          symbols-1: |
+            1 2 3 4 5 6 7 8 9 0
+            - / : ; ( ) € & @ "
+            \s{shiftSymbols} . , ? ! ' \s{backspace}
+          symbols-2: |
+            [ ] { } # % ^ * + =
+            _ \ | ~ < > $ £ § •
+            \s{shiftSymbols} . , ? ! ' \s{backspace}
+targets:
+  windows:
+    locale: se-Latn-FI
+  chromeOS:
+    locale: fi
+    xkbLayout: fi
+  iOS:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+  android:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+----

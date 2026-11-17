@@ -1,0 +1,306 @@
+[[testing]]
+== Testing layouts
+
+A bundle can carry typing tests: files in `tests/` that press keys on a
+layout and say what should come out. kbdgen runs them on its keyboard engine,
+the same engine that types on ChromeOS and in the Divvun text service on
+Windows, so you can check a layout on any computer before building it.
+
+[source,sh]
+----
+kbdgen ldml test -b sme.kbdgen
+----
+
+This runs every `tests/*.yaml` of the bundle, in the order of their file
+names. Loading a bundle for anything else ignores `tests/`.
+
+[[testing-example]]
+=== A test file
+
+These tests are for the layout of <<layouts>>, on Windows:
+
+[source,yaml]
+----
+# Typing tests for the Northern Sami (Finland) layout on Windows.
+layout: layouts/se-FI.yaml
+host: windows
+tests:
+  - name: acute dead key composes with the next key
+    steps:
+      - press: {key: E12}
+      - expect: {text: '', preedit: ´}
+      - press: {key: C01, mods: shift}
+      - expect: {text: Á, preedit: ''}
+
+  - name: dead key then space types the accent itself
+    steps:
+      - press: {key: E12}
+      - press: {key: space}
+      - expect: {text: ´}
+
+  - name: a key with no composition types the accent, then the key
+    steps:
+      - press: {key: E12}
+      - press: {key: C04}
+      - expect: {text: ´f}
+
+  - name: caron on AltGr+Shift
+    steps:
+      - press: {key: D12, mods: altgr shift}
+      - press: {key: B03}
+      - expect: {text: č}
+
+  - name: Caps Lock gives capitals and keeps digits
+    steps:
+      - press: {key: D02, mods: caps}
+      - press: {key: E01, mods: caps}
+      - press: {key: D02, mods: caps shift}
+      - expect: {text: Š1Š}
+
+  - name: Backspace cancels a pending dead key, then passes
+    context: gaska
+    steps:
+      - press: {key: E12}
+      - backspace
+      - expect: {text: gaska, preedit: ''}
+      - backspace
+      - expect: {pass: true}
+
+  - name: Left Alt is for shortcuts on Windows
+    steps:
+      - press: {key: C05, mods: alt}
+      - expect: {pass: true}
+
+  - name: switching windows commits the pending accent
+    steps:
+      - press: {key: E12}
+      - commit
+      - expect: {text: ´, preedit: ''}
+----
+
+Each test starts from an empty text, or from its `context`, with no dead key
+pending. Its steps press keys and check the result as they go.
+
+`kbdgen ldml test` prints each step that fails, then a summary, and exits
+with a non-zero status when any step fails. Had the first test expected `á`,
+it would say:
+
+[source,text]
+----
+FAIL tests/se-FI-windows.yaml: acute dead key composes with the next key: step 4: expect
+  expected text     "á"
+  expected preedit  ""
+  actual   text     "Á"
+  actual   preedit  ""
+  actual   layer    none
+  actual   action   edit: delete 0, insert "Á", preedit "", layer none
+files: 5, tests: 15, checks: 18, failing steps: 1
+Error: 1 conformance steps failed
+----
+
+[[testing-file]]
+=== The file
+
+[cols="1,4",options="header"]
+|===
+|Field |Meaning
+
+|`layout`
+|The layout to test, as a path from the bundle's directory. Format 3
+layouts are converted to format 4 in memory first; if the conversion is
+blocked, the error names the defect codes (<<layouts-v3-migrate-report>>).
+
+|`keyboard`
+|Instead of `layout`: an LDML keyboard file to test, such as one written by
+`kbdgen ldml export`.
+
+|`host`
+|The platform to test: `windows`, `macOS`, `chromeOS`, `linux`, `iOS`,
+`android` or `web` (<<layouts-hosts>>). Required with `layout`. It also
+decides platform behaviour, such as Left Alt being for shortcuts on Windows
+and ChromeOS.
+
+|`options`
+|Optional engine settings: `backspace`, either `cancelOrPass` (the default:
+Backspace cancels a pending dead key, and otherwise lets the application
+delete) or `codePoint` (LDML's default: delete one character); and
+`outputForm`, `nfc` (the default) or `nfd`, which applies only to layouts
+with `normalization: enabled`.
+
+|`tests`
+|The tests, each with a `name`, optional `context` (the text before the
+cursor when the test starts), optional `atStart` (whether that text is at the
+start of the document, default `true`), and `steps`.
+|===
+
+Unknown fields are errors, as in format 4 layouts.
+
+[[testing-steps]]
+=== Steps
+
+[cols="2,3",options="header"]
+|===
+|Step |Does
+
+|`press: {key: C01}`, `press: {key: C01, mods: shift}`
+|Presses a hardware key, optionally with modifiers.
+
+|`touch: {size: phone, layer: base, row: 1, col: 0}`
+|Taps a touch key, by size, layer id, and row and column counted from 0. A
+`gesture` field makes it a long press, multi-tap or flick.
+
+|`id: u-00E1`
+|Presses the key with that id, wherever it is (<<layouts-ldml>>). A sibling
+`gesture` field works as for `touch`.
+
+|`emit: '-'`
+|Types the text as if a key had typed it.
+
+|`backspace`, `backspace: {mods: shift}`
+|Presses Backspace.
+
+|`decimal`, `decimal: {mods: shift}`
+|Presses the decimal key of the numeric keypad.
+
+|`commit`
+|Commits the text, as when the user switches to another window: a pending
+dead key types its standalone output.
+
+|`reset`
+|Drops a pending dead key without typing it.
+
+|`context: text`
+|Replaces the text before the cursor, keeping any pending dead key.
+
+|`expect: {…}`
+|Checks the result so far (see below).
+|===
+
+`key` is a position name of <<layouts-rows>> (`E00` to `E12`, `D01` to
+`D12`, `C01` to `C12`, `B00` to `B11`), `space`, or a scan code in
+hexadecimal, such as `'0x01'` for Esc.
+
+`mods` lists modifiers separated by spaces: `shift`, `caps`, `ctrl`, `alt`,
+`cmd`, `extra1`, `extra2`, `extra3`, and the one-sided `shiftL`, `shiftR`,
+`ctrlL`, `ctrlR`, `altL` and `altR`. `shift`, `ctrl` and `alt` are the left
+keys. `altgr` is the right Alt key acting as AltGr, as on Windows.
+
+A `gesture` is `tap` (the default), `{longPress: 2}` for the second long-press
+candidate, `{multiTap: 2}` for the second tap, or `{flick: s}` for a swipe
+south; flick directions are `n`, `ne`, `e`, `se`, `s`, `sw`, `w` and `nw`,
+and several separated by spaces make one swipe.
+
+[[testing-expect]]
+=== Checking results
+
+`expect` checks one or more of:
+
+`text`:: All of the text before the cursor, including the `context` it
+started from.
+`preedit`:: What a pending dead key shows, marked as unfinished: its
+standalone output, or `''` when nothing is pending.
+`pass`:: Whether the engine let the last key through to the application
+unchanged. That is `true` for shortcuts, for keys of the app's own such as
+touch Shift and Backspace keys, and, with the default `backspace` option, for
+Backspace with no dead key pending.
+`layer`:: The touch layer that the last key switched to, or `null` for none.
+
+Texts are compared exactly, character by character, with no normalization.
+They may use `+\u{…}+` escapes, which kbdgen decodes: write them in single
+quotes, `+'\u{A0}'+`, or with the backslash doubled in double quotes,
+`+"\\u{A0}"+`. Quote any text
+YAML would read otherwise, as in layouts (<<layouts-quoting>>).
+
+[[testing-more]]
+=== Touch, transforms and other files
+
+A touch test, with a long press, and the host's own Shift key:
+
+[source,yaml]
+----
+layout: layouts/se-FI.yaml
+host: iOS
+tests:
+  - name: tap and long press
+    steps:
+      - touch: {size: phone, layer: base, row: 1, col: 0}
+      - touch: {size: phone, layer: base, row: 1, col: 0, gesture: {longPress: 3}}
+      - expect: {text: aä}
+  - name: the shift key is the app's own
+    steps:
+      - touch: {size: phone, layer: base, row: 2, col: 0}
+      - expect: {pass: true}
+----
+
+Transforms, `emit` and the decimal key, on ChromeOS:
+
+[source,yaml]
+----
+layout: layouts/se-FI.yaml
+host: chromeOS
+tests:
+  - name: two hyphens make an en dash, a third an em dash
+    steps:
+      - press: {key: B10}
+      - press: {key: B10}
+      - expect: {text: –}
+      - press: {key: B10}
+      - expect: {text: —}
+  - name: emitted text goes through the transforms too
+    context: x
+    atStart: false
+    steps:
+      - emit: '-'
+      - press: {key: B10}
+      - expect: {text: x–}
+  - name: the decimal key
+    steps:
+      - decimal
+      - expect: {text: ','}
+----
+
+A format 3 layout, which is migrated in memory, so you can write tests before
+you migrate the bundle and keep them afterwards:
+
+[source,yaml]
+----
+# A format 3 layout is migrated in memory before it is tested.
+layout: layouts/se-NO.yaml
+host: macOS
+tests:
+  - name: acute dead key on macOS
+    steps:
+      - press: {key: E12}
+      - press: {key: C01, mods: shift}
+      - expect: {text: Á}
+----
+
+An LDML file exported with `kbdgen ldml export -b sme.kbdgen -o ldml`, with
+LDML's default Backspace:
+
+[source,yaml]
+----
+# The exported LDML keyboard, with LDML's default Backspace.
+keyboard: ldml/se-FI.windows.xml
+options:
+  backspace: codePoint
+tests:
+  - name: Backspace deletes one character
+    context: gaska
+    steps:
+      - backspace
+      - expect: {text: gask, pass: false}
+----
+
+[[testing-cldr]]
+=== CLDR's tests
+
+[source,sh]
+----
+kbdgen ldml test -b sme.kbdgen --cldr
+----
+
+`--cldr` also runs the test files that CLDR publishes with its LDML keyboards,
+against those keyboards, after the bundle's own tests. They check kbdgen's
+engine rather than your layouts. CLDR's repertoire tests are not run; kbdgen
+prints a note for each.
