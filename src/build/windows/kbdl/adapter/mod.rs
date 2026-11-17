@@ -11,7 +11,7 @@ mod tests;
 
 use std::path::Path;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use indexmap::IndexMap;
 use kbd_model::{Host, Keyboard, Layout};
 use language_tags::LanguageTag;
@@ -28,7 +28,7 @@ use crate::{
 use super::{
     bundle::{keyboard_name, metadata},
     diag::Diagnostics,
-    input::{ExtraModifierKey, KeyNameEntry, KeyNameTable, LayoutInput},
+    input::{ExtraModifierKey, KeyNameEntry, KeyNameTable, LayoutInput, Metadata},
     tables::{KEY_NAMES, KEY_NAMES_EXT},
 };
 
@@ -124,11 +124,11 @@ pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
     let metadata = layout_metadata(bundle, layout)?;
     let mut diag = Diagnostics::new(metadata.name.clone());
     let Some(hardware) = &keyboard.hardware else {
-        return Err(anyhow!(
+        bail!(
             "{}: the windows keyboard of layout {} has no hardware layers",
             metadata.name,
             layout.tag
-        ));
+        );
     };
     let derived = layers::derive(keyboard, hardware, &mut diag)?;
     let dead_key_tree = dead_tree::derive(keyboard, &derived, &mut diag)?;
@@ -163,7 +163,7 @@ pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
 /// `kbdl.metadata.bundle` with the `id` and `locale` of `targets.windows`
 /// and the compiled layout's display name for its primary language subtag.
 // [spec:kbdgen:req:ldml.kbdl.metadata]
-fn layout_metadata(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<super::input::Metadata> {
+fn layout_metadata(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Metadata> {
     let primary = layout.tag.primary_language();
     let display_name = layout
         .layout
@@ -194,9 +194,9 @@ fn key_name_entry(name: &str) -> Option<KeyNameEntry> {
     find(&KEY_NAMES, KeyNameTable::Normal).or_else(|| find(&KEY_NAMES_EXT, KeyNameTable::Extended))
 }
 
-// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1]
 /// The Windows-only parts of the input: extra modifiers, flags, dead-key
 /// names by dead identity, key-name overrides and the decimal separator.
+// [spec:kbdgen:req:ldml.kbdl.windows-inputs+1]
 fn windows_inputs(
     keyboard: &Keyboard,
     dead_keys: &[layers::DeadKey],

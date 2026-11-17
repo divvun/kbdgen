@@ -146,9 +146,9 @@ impl fmt::Display for Outcome {
 }
 
 /// The engine's outcome as a TSF host applies it (`tsf.edit.ops`), and the
-/// markers left pending: edits change the document, and a passed key first commits
-/// what is pending (`tsf.edit.reset`) and then reaches the application,
-/// not this text.
+/// markers left pending: edits change the document, and a passed key first
+/// commits what is pending (`tsf.edit.reset`) and then reaches the
+/// application, not this text.
 pub fn engine_run(model: &Model, path: &[Press]) -> (Outcome, Vec<String>) {
     let mut harness = Harness::new(model);
     for press in path {
@@ -218,11 +218,11 @@ impl Case {
 
 /// Every single press from the reset state, then every dead-key path:
 /// each case on which both sides agree and leave a dead key pending,
-/// continued with
-/// every press that types or leaves something pending alone, except Ctrl
-/// presses, which the engine passes. A pair of pending dead states, the
-/// DLL's dead character and the engine's pending markers, is continued from
-/// its first path only: dead-key tables see nothing else of the text.
+/// continued with every press that types or leaves something pending
+/// alone, except Ctrl presses, which the engine passes. A pair of pending
+/// dead states, the DLL's dead character and the engine's pending markers,
+/// is continued from its first path only: dead-key tables see nothing else
+/// of the text.
 pub fn cases(subject: &Subject) -> Vec<Case> {
     let singles: Vec<Case> = presses(subject.input.extra_modifiers.len())
         .into_iter()

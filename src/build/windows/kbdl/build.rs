@@ -236,17 +236,18 @@ fn check_toolchain_with(probe: &Probe) -> Result<PathBuf> {
         .join("rustlib")
         .join(&host)
         .join("bin");
-    match ["rust-lld", "rust-lld.exe"]
+    let Some(lld) = ["rust-lld", "rust-lld.exe"]
         .map(|name| bin.join(name))
         .into_iter()
         .find(|path| path.is_file())
-    {
-        Some(lld) => Ok(lld),
-        None => bail!(
+    else {
+        bail!(
             "the toolchain has no rust-lld in {}; use a rustup-installed toolchain, which ships it",
             bin.display()
-        ),
-    }
+        );
+    };
+    tracing::debug!("Using {version} and {}", lld.display());
+    Ok(lld)
 }
 
 /// [`check_toolchain_with`] against the real `cargo` and `rustc`, run in
@@ -272,12 +273,23 @@ pub fn build_layout(output_path: &Path, name: &str) -> Result<()> {
         .with_context(|| format!("{name}: crate directory {} is missing", crate_dir.display()))?;
     for variant in &VARIANTS {
         tracing::info!("Building {name} for {}", variant.name);
-        let status = cargo_command(&crate_dir, name, variant)
-            .status()
+        let output = cargo_command(&crate_dir, name, variant)
+            .output()
             .with_context(|| format!("{name} ({}): cargo could not be started", variant.name))?;
-        if !status.success() {
-            bail!("{name} ({}): cargo failed with {status}", variant.name);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !output.status.success() {
+            bail!(
+                "{name} ({}): cargo failed with {}:\n{}",
+                variant.name,
+                output.status,
+                stderr.trim_end()
+            );
         }
+        tracing::trace!(
+            "Cargo output for {name} ({}):\n{}",
+            variant.name,
+            stderr.trim_end()
+        );
         let built = built_dll(&crate_dir, name, variant);
         let bytes = std::fs::read(&built)
             .with_context(|| format!("{name} ({}): read {}", variant.name, built.display()))?;
@@ -294,6 +306,7 @@ pub fn build_layout(output_path: &Path, name: &str) -> Result<()> {
                 .with_context(|| format!("create {}", parent.display()))?;
         }
         std::fs::write(&target, &bytes).with_context(|| format!("write {}", target.display()))?;
+        tracing::debug!("Wrote {}", target.display());
     }
     Ok(())
 }

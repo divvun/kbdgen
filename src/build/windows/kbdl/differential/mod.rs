@@ -131,9 +131,9 @@ pub(super) fn embedded_model(res: &[u8]) -> Option<Vec<u8>> {
         .map(|(.., data)| data)
 }
 
-// [spec:kbdgen:req:tsf.test.engine]
 /// Every layout of `fixture` as its DLL is built. Each must embed a model,
 /// since a layout without one has no text service to compare.
+// [spec:kbdgen:req:tsf.test.engine]
 pub(super) fn subjects(fixture: &FixtureBundle) -> Vec<Subject> {
     let label = &fixture.label;
     let layouts = source_layouts(&fixture.bundle).unwrap_or_else(|e| panic!("{label}: {e:#}"));
@@ -152,8 +152,11 @@ pub(super) fn subjects(fixture: &FixtureBundle) -> Vec<Subject> {
                 .layouts
                 .get(&layout.tag)
                 .is_some()
-                .then(|| migrate_bundle_layout(&fixture.bundle.path, layout.tag.as_str()))
-                .and_then(|migration| migration.unwrap_or_else(|e| panic!("{label}: {e}")));
+                .then(|| {
+                    migrate_bundle_layout(&fixture.bundle.path, layout.tag.as_str())
+                        .unwrap_or_else(|e| panic!("{label}: {e}"))
+                })
+                .flatten();
             Subject {
                 name,
                 migration,

@@ -5,7 +5,7 @@
 use std::fmt::Write as _;
 
 use super::tables::{
-    FIXED_VK_TO_WCH1, FIXED_VK_TO_WCH2, FIXED_VK_TO_WCH3, KeyName, Row, Tables, WCH_NONE,
+    FIXED_VK_TO_WCH1, FIXED_VK_TO_WCH2, FIXED_VK_TO_WCH3, KeyName, Tables, WCH_NONE,
 };
 
 /// `Cargo.toml` of a layout crate named `name`.
@@ -259,14 +259,8 @@ const _: () = {
     out.push_str("};\n\n");
 }
 
-fn row(out: &mut String, row: &Row) {
-    let _ = writeln!(
-        out,
-        "    r(0x{:02x}, {}, {}),",
-        row.vk,
-        row.attributes,
-        units(&row.wch)
-    );
+fn row(out: &mut String, vk: u8, attributes: u8, wch: &[u16]) {
+    let _ = writeln!(out, "    r(0x{vk:02x}, {attributes}, {}),", units(wch));
 }
 
 fn fixed_table<const N: usize>(out: &mut String, name: &str, fixed: &[(u8, [u16; N])]) {
@@ -276,14 +270,7 @@ fn fixed_table<const N: usize>(out: &mut String, name: &str, fixed: &[(u8, [u16;
         fixed.len() + 1
     );
     for (vk, wch) in fixed {
-        row(
-            out,
-            &Row {
-                vk: *vk,
-                attributes: 0,
-                wch: wch.to_vec(),
-            },
-        );
+        row(out, *vk, 0, wch);
     }
     let _ = writeln!(out, "    r(0x00, 0, [0x0000; {N}]),\n];\n");
 }
@@ -391,22 +378,17 @@ fn char_tables(out: &mut String, tables: &Tables) {
         tables.rows.len() + 1
     );
     for r in &tables.rows {
-        row(out, r);
+        row(out, r.vk, r.attributes, &r.wch);
     }
     let _ = writeln!(out, "    r(0x00, 0, [0x0000; {n}]),\n];\n");
     fixed_table(out, "aVkToWch2", &FIXED_VK_TO_WCH2);
     fixed_table(out, "aVkToWch1", &FIXED_VK_TO_WCH1);
 
     out.push_str("static aVkToWcharTable: [VK_TO_WCHAR_TABLE; 5] = [\n");
-    for (table, width) in [
-        ("aVkToWch3".to_owned(), 3),
-        (format!("aVkToWch{n}"), n),
-        ("aVkToWch2".to_owned(), 2),
-        ("aVkToWch1".to_owned(), 1),
-    ] {
+    for width in [3, n, 2, 1] {
         let _ = writeln!(
             out,
-            "    VK_TO_WCHAR_TABLE {{ pVkToWchars: p(&{table}), nModifications: {width}, cbSize: {} }},",
+            "    VK_TO_WCHAR_TABLE {{ pVkToWchars: p(&aVkToWch{width}), nModifications: {width}, cbSize: {} }},",
             2 + 2 * width
         );
     }

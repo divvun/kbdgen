@@ -241,15 +241,20 @@ pub fn source_layouts(bundle: &KbdgenBundle) -> Result<Vec<SourceLayout>> {
 }
 
 /// Generates every layout of the bundle with Windows output, v3 and v4 side
-/// by side in bundle layout order. Any fatal condition fails the whole
-/// bundle.
+/// by side in bundle layout order, each one completely before the next so
+/// that its diagnostics are reported together. Any fatal condition fails
+/// the whole bundle.
 // [spec:kbdgen:req:kbdl.metadata]
 // [spec:kbdgen:req:tsf.data.resource]
 pub fn generate_bundle(bundle: &KbdgenBundle) -> Result<Vec<GeneratedLayout>> {
     let mut generated: Vec<GeneratedLayout> = Vec::new();
-    for mut source in source_layouts(bundle)? {
-        let layout = generate(&source.input, source.model.as_deref(), &mut source.diag)
-            .with_context(|| format!("Windows layout for {}", source.tag))?;
+    for source in sources(bundle) {
+        let context = || format!("Windows layout for {}", source.tag());
+        let Some(mut derived) = source_layout(bundle, &source).with_context(context)? else {
+            continue;
+        };
+        let layout = generate(&derived.input, derived.model.as_deref(), &mut derived.diag)
+            .with_context(context)?;
         if generated.iter().any(|other| other.name == layout.name) {
             bail!(
                 "two Windows layouts are named {}; set the Windows id to tell them apart",
@@ -275,7 +280,7 @@ pub fn write(output_path: &Path, layouts: &[GeneratedLayout]) -> Result<()> {
             (&res_name, &layout.res),
         ];
         for entry in std::fs::read_dir(&dir).with_context(|| format!("read {}", dir.display()))? {
-            let entry = entry?;
+            let entry = entry.with_context(|| format!("read {}", dir.display()))?;
             let file_name = entry.file_name();
             let keep = KEPT_ENTRIES.iter().any(|kept| file_name == *kept)
                 || files.iter().any(|(name, _)| file_name == *name);
@@ -283,17 +288,28 @@ pub fn write(output_path: &Path, layouts: &[GeneratedLayout]) -> Result<()> {
                 continue;
             }
             let path = entry.path();
-            if entry.file_type()?.is_dir() {
+            let is_dir = entry
+                .file_type()
+                .with_context(|| format!("read the type of {}", path.display()))?
+                .is_dir();
+            if is_dir {
                 std::fs::remove_dir_all(&path)
             } else {
                 std::fs::remove_file(&path)
             }
             .with_context(|| format!("remove stale {}", path.display()))?;
+            tracing::debug!("Removed stale {}", path.display());
         }
         for (name, contents) in files {
             let path = dir.join(name);
             std::fs::write(&path, contents).with_context(|| format!("write {}", path.display()))?;
+            tracing::debug!("Wrote {}", path.display());
         }
+        tracing::info!(
+            "Wrote the {} layout crate to {}",
+            layout.name,
+            dir.display()
+        );
     }
     Ok(())
 }
@@ -322,7 +338,13 @@ pub struct GenerateKbdl;
 #[async_trait(?Send)]
 impl BuildStep for GenerateKbdl {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
+        tracing::info!("Generating the Windows layout crates");
         let layouts = generate_bundle(bundle)?;
+        if layouts.is_empty() {
+            tracing::warn!(
+                "No layout in the bundle has a Windows keyboard, so no crate is generated"
+            );
+        }
         write(output_path, &layouts)
     }
 }
@@ -341,9 +363,16 @@ impl BuildStep for BuildKbdl {
             return Ok(());
         }
         build::check_toolchain(&output_path.join(CRATES_DIR))?;
-        for name in names {
-            build::build_layout(output_path, &name)?;
+        for name in &names {
+            build::build_layout(output_path, name)?;
         }
+        let variants: Vec<&str> = build::VARIANTS.iter().map(|variant| variant.name).collect();
+        tracing::info!(
+            "Wrote the DLLs of {} layout(s) to {} under {}",
+            names.len(),
+            variants.join(", "),
+            output_path.display()
+        );
         Ok(())
     }
 }

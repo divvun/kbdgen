@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context, Result, bail};
 use indexmap::IndexMap;
 
 use super::{
@@ -376,11 +376,6 @@ fn units(text: &str) -> Vec<u16> {
     text.encode_utf16().collect()
 }
 
-/// Renders units for messages, escaping everything outside printable ASCII.
-fn show(text: &str) -> String {
-    format!("{:?}", text)
-}
-
 /// The column a layer's values occupy, or `None` for `caps`, `caps+shift`
 /// and `alt+caps`, which only feed SGCAPS rows and attributes.
 // [spec:kbdgen:def:kbdl.layers]
@@ -407,8 +402,7 @@ fn column_layers(extra_modifiers: usize) -> Vec<Layer> {
         Layer::Alt,
         Layer::AltShift,
     ];
-    for i in 0..extra_modifiers {
-        let i = u8::try_from(i).unwrap_or(u8::MAX);
+    for i in (0..).take(extra_modifiers) {
         layers.push(Layer::Extra(i));
         layers.push(Layer::ExtraShift(i));
     }
@@ -468,7 +462,7 @@ pub fn build(input: &LayoutInput, diag: &mut Diagnostics) -> Result<Tables> {
         diag,
     };
     for position in 0..POSITION_COUNT {
-        builder.position(&grid, position)?;
+        builder.position(&grid, position);
     }
     let decimal = decimal_char(input.decimal.as_deref(), &layout, builder.diag)?;
     builder.fixed_rows(decimal);
@@ -510,7 +504,9 @@ pub fn build(input: &LayoutInput, diag: &mut Diagnostics) -> Result<Tables> {
         e1_vsc_to_vk: E1_VSC_TO_VK.to_vec(),
         locale_flags,
     };
-    check_invariants(&tables).map_err(|error| anyhow!("{layout}: {error}"))?;
+    check_invariants(&tables).with_context(|| {
+        format!("{layout}: kbdgen generated inconsistent tables, which is a bug")
+    })?;
     Ok(tables)
 }
 
@@ -570,9 +566,9 @@ fn check_reserved_units(input: &LayoutInput, layout: &str) -> Result<()> {
                 && value.text.encode_utf16().any(is_special)
             {
                 bail!(
-                    "{layout}: key {} in layer {layer}: value {} contains a unit in 0xF000-0xF002",
+                    "{layout}: key {} in layer {layer}: value {:?} contains a unit in 0xF000-0xF002",
                     POSITION_NAMES[position],
-                    show(&value.text)
+                    value.text
                 );
             }
         }
@@ -635,43 +631,48 @@ struct CharTableBuilder<'d> {
     diag: &'d mut Diagnostics,
 }
 
-impl CharTableBuilder<'_> {
-    /// Classifies one value for a cell of the main table.
-    // [spec:kbdgen:sem:kbdl.vk-chars.values]
-    fn classify(&mut self, value: Option<&KeyValue>, position: usize, layer: Layer) -> Cell {
-        let Some(value) = value else {
-            return Cell::None;
-        };
-        let units = units(&value.text);
-        let position = POSITION_NAMES[position];
-        match units.len() {
-            0 => Cell::None,
-            1 if value.dead => Cell::Dead(units[0]),
-            1 => Cell::Char(units[0]),
-            2..=MAX_LIGATURE_UNITS => {
-                if value.dead {
-                    self.diag.warn(format!(
-                        "key {position} in layer {layer}: ligature {} cannot be a dead key; the dead-key flag is ignored",
-                        show(&value.text)
-                    ));
-                }
-                Cell::Ligature(units)
-            }
-            n => {
-                self.diag.warn(format!(
-                    "key {position} in layer {layer}: value {} has {n} UTF-16 units, more than the {MAX_LIGATURE_UNITS} Windows delivers per keystroke; treated as no key",
-                    show(&value.text)
+/// Classifies one value for a cell of the main table.
+// [spec:kbdgen:sem:kbdl.vk-chars.values]
+fn classify(
+    value: Option<&KeyValue>,
+    position: usize,
+    layer: Layer,
+    diag: &mut Diagnostics,
+) -> Cell {
+    let Some(value) = value else {
+        return Cell::None;
+    };
+    let units = units(&value.text);
+    let position = POSITION_NAMES[position];
+    match units.len() {
+        0 => Cell::None,
+        1 if value.dead => Cell::Dead(units[0]),
+        1 => Cell::Char(units[0]),
+        2..=MAX_LIGATURE_UNITS => {
+            if value.dead {
+                diag.warn(format!(
+                    "key {position} in layer {layer}: ligature {:?} cannot be a dead key; the dead-key flag is ignored",
+                    value.text
                 ));
-                Cell::None
             }
+            Cell::Ligature(units)
+        }
+        n => {
+            diag.warn(format!(
+                "key {position} in layer {layer}: value {:?} has {n} UTF-16 units, more than the {MAX_LIGATURE_UNITS} Windows delivers per keystroke; treated as no key",
+                value.text
+            ));
+            Cell::None
         }
     }
+}
 
+impl CharTableBuilder<'_> {
     /// Emits the rows of one ISO position, if it has any.
     // [spec:kbdgen:req:kbdl.vk-chars]
-    fn position(&mut self, grid: &Grid, position: usize) -> Result<()> {
+    fn position(&mut self, grid: &Grid, position: usize) {
         if position == B00 && grid.b00_rebound {
-            return Ok(());
+            return;
         }
         if position == B11
             && grid
@@ -679,15 +680,15 @@ impl CharTableBuilder<'_> {
                 .values()
                 .all(|values| values.get(B11).is_none_or(Option::is_none))
         {
-            return Ok(());
+            return;
         }
         let vk = POSITION_KEYS[position].1;
         let name = POSITION_NAMES[position];
 
-        let layers = self.layers.clone();
-        let cells: Vec<Cell> = layers
+        let cells: Vec<Cell> = self
+            .layers
             .iter()
-            .map(|layer| self.classify(grid.get(*layer, position), position, *layer))
+            .map(|layer| classify(grid.get(*layer, position), position, *layer, self.diag))
             .collect();
         let has_dead = cells.iter().any(|cell| matches!(cell, Cell::Dead(_)));
 
@@ -731,7 +732,6 @@ impl CharTableBuilder<'_> {
         } else if attributes == SGCAPS {
             self.sgcaps_row(grid, position, vk);
         }
-        Ok(())
     }
 
     /// The `0xff` row after a row with dead keys. It holds the dead
@@ -759,7 +759,7 @@ impl CharTableBuilder<'_> {
         let name = POSITION_NAMES[position];
         let mut wch = vec![WCH_NONE; self.columns];
         for (column, layer) in [(0, Layer::Caps), (1, Layer::CapsShift)] {
-            wch[column] = match self.classify(grid.get(layer, position), position, layer) {
+            wch[column] = match classify(grid.get(layer, position), position, layer, self.diag) {
                 Cell::None => WCH_NONE,
                 Cell::Char(unit) => unit,
                 Cell::Dead(unit) => {
@@ -857,20 +857,15 @@ fn decimal_char(decimal: Option<&str>, layout: &str, diag: &mut Diagnostics) -> 
     };
     let Ok(unit) = u16::try_from(u32::from(first)) else {
         bail!(
-            "{layout}: the decimal separator {} lies outside the Basic Multilingual Plane",
-            show(decimal)
+            "{layout}: the decimal separator {decimal:?} lies outside the Basic Multilingual Plane"
         );
     };
     if is_special(unit) {
-        bail!(
-            "{layout}: the decimal separator {} is a unit in 0xF000-0xF002",
-            show(decimal)
-        );
+        bail!("{layout}: the decimal separator {decimal:?} is a unit in 0xF000-0xF002");
     }
     if chars.next().is_some() {
         diag.warn(format!(
-            "decimal separator {} has more than one character; only the first is used",
-            show(decimal)
+            "decimal separator {decimal:?} has more than one character; only the first is used"
         ));
     }
     Ok(unit)
@@ -904,15 +899,9 @@ fn emitted_units(
         set.extend(ligature.units.iter().copied());
     }
     set.insert(decimal);
-    for fixed in FIXED_VK_TO_WCH3.iter().map(|(_, wch)| &wch[..]) {
-        set.extend(fixed.iter().copied());
-    }
-    for fixed in FIXED_VK_TO_WCH2.iter().map(|(_, wch)| &wch[..]) {
-        set.extend(fixed.iter().copied());
-    }
-    for fixed in FIXED_VK_TO_WCH1.iter().map(|(_, wch)| &wch[..]) {
-        set.extend(fixed.iter().copied());
-    }
+    set.extend(FIXED_VK_TO_WCH3.iter().flat_map(|(_, wch)| wch));
+    set.extend(FIXED_VK_TO_WCH2.iter().flat_map(|(_, wch)| wch));
+    set.extend(FIXED_VK_TO_WCH1.iter().flat_map(|(_, wch)| wch));
     for (input, node) in tree {
         set.extend(input.encode_utf16());
         walk(node, &mut set);
@@ -997,13 +986,9 @@ fn dead_keys(
         let children = match tree.get(&text) {
             Some(DeadKeyNode::Branch(children)) => children,
             Some(DeadKeyNode::Leaf(_)) => bail!(
-                "{layout}: dead key {} (U+{dead_char:04X}) has a plain output instead of a set of compositions",
-                show(&text)
+                "{layout}: dead key {text:?} (U+{dead_char:04X}) has a plain output instead of a set of compositions"
             ),
-            None => bail!(
-                "{layout}: dead key {} (U+{dead_char:04X}) has no dead-key entry",
-                show(&text)
-            ),
+            None => bail!("{layout}: dead key {text:?} (U+{dead_char:04X}) has no dead-key entry"),
         };
         check_branch(children, &text, layout)?;
         let id = key_dead_id(dead_char, children, &mut ids, &text, layout, diag)?;
@@ -1022,8 +1007,8 @@ fn dead_keys(
     }
 
     let mut entries = Vec::new();
-    for (index, children) in groups.iter().enumerate() {
-        let id = states[index].id;
+    for (owner, children) in states.iter().zip(&groups) {
+        let id = owner.id;
         for child in children {
             entries.push(match child {
                 Child::Leaf { base, composed } => DeadKeyEntry {
@@ -1067,20 +1052,15 @@ fn key_dead_id(
     }
     if ids.is_free(dead_char) {
         diag.warn(format!(
-            "dead key {}: its standalone output cannot serve as its dead id; an unmatched key emits the dead character itself instead",
-            show(path)
+            "dead key {path:?}: its standalone output cannot serve as its dead id; an unmatched key emits the dead character itself instead"
         ));
         return Ok(ids.take(dead_char));
     }
     let Some(unit) = ids.fallback() else {
-        bail!(
-            "{layout}: dead key {}: no unit is left for its dead id",
-            show(path)
-        );
+        bail!("{layout}: dead key {path:?}: no unit is left for its dead id");
     };
     diag.warn(format!(
-        "dead key {}: its standalone output and its character are already dead ids; using U+{unit:04X}, which an unmatched key emits",
-        show(path)
+        "dead key {path:?}: its standalone output and its character are already dead ids; using U+{unit:04X}, which an unmatched key emits"
     ));
     Ok(ids.take(unit))
 }
@@ -1089,13 +1069,9 @@ fn key_dead_id(
 // [spec:kbdgen:req:kbdl.dead-keys.diagnostics+1]
 fn check_branch(children: &IndexMap<String, DeadKeyNode>, path: &str, layout: &str) -> Result<()> {
     match children.get(STANDALONE) {
-        None => bail!(
-            "{layout}: dead-key state {} has no standalone (\" \") output",
-            show(path)
-        ),
+        None => bail!("{layout}: dead-key state {path:?} has no standalone (\" \") output"),
         Some(DeadKeyNode::Branch(_)) => bail!(
-            "{layout}: dead-key state {}: the standalone (\" \") output is a nested set instead of a string",
-            show(path)
+            "{layout}: dead-key state {path:?}: the standalone (\" \") output is a nested set instead of a string"
         ),
         Some(DeadKeyNode::Leaf(_)) => Ok(()),
     }
@@ -1132,8 +1108,7 @@ fn visit<'t>(
             [unit] if !is_special(unit) => unit,
             _ => {
                 diag.warn(format!(
-                    "dead-key input {}: the input must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted",
-                    show(&child_path)
+                    "dead-key input {child_path:?}: the input must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted"
                 ));
                 continue;
             }
@@ -1142,9 +1117,7 @@ fn visit<'t>(
             DeadKeyNode::Leaf(output) => match units(output)[..] {
                 [composed] if !is_special(composed) => result.push(Child::Leaf { base, composed }),
                 _ => diag.warn(format!(
-                    "dead-key input {} -> output {}: the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted",
-                    show(&child_path),
-                    show(output)
+                    "dead-key input {child_path:?} -> output {output:?}: the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted"
                 )),
             },
             DeadKeyNode::Branch(grandchildren) => {
@@ -1159,8 +1132,7 @@ fn visit<'t>(
                 visit(chained, states, groups, ids, layout, diag)?;
                 if groups[chained].is_empty() {
                     diag.warn(format!(
-                        "chained dead-key state {}: none of its children fit the tables; omitted",
-                        show(&child_path)
+                        "chained dead-key state {child_path:?}: none of its children fit the tables; omitted"
                     ));
                 } else {
                     result.push(Child::Chain {
@@ -1194,14 +1166,10 @@ fn chained_dead_id(
         return Ok(ids.take(unit));
     }
     let Some(unit) = ids.fallback() else {
-        bail!(
-            "{layout}: chained dead-key state {}: no unit is left for its dead id",
-            show(path)
-        );
+        bail!("{layout}: chained dead-key state {path:?}: no unit is left for its dead id");
     };
     diag.warn(format!(
-        "chained dead-key state {}: its standalone output cannot serve as its dead id; using U+{unit:04X}, which an unmatched key emits",
-        show(path)
+        "chained dead-key state {path:?}: its standalone output cannot serve as its dead id; using U+{unit:04X}, which an unmatched key emits"
     ));
     Ok(ids.take(unit))
 }
@@ -1232,18 +1200,14 @@ fn dead_key_names(
             [unit] if key_dead_chars.contains(&unit) => unit,
             _ => {
                 diag.warn(format!(
-                    "dead-key name {} for {}: no key emits that dead key; ignored",
-                    show(name),
-                    show(output)
+                    "dead-key name {name:?} for {output:?}: no key emits that dead key; ignored"
                 ));
                 continue;
             }
         };
         if name.is_empty() || name.contains('\0') {
             diag.warn(format!(
-                "dead-key name {} for {}: the name is empty or contains U+0000; ignored",
-                show(name),
-                show(output)
+                "dead-key name {name:?} for {output:?}: the name is empty or contains U+0000; ignored"
             ));
             continue;
         }
@@ -1286,16 +1250,14 @@ fn key_names(
             .find(|key_name| key_name.scan_code == entry.scan_code)
         else {
             diag.warn(format!(
-                "key-name override {} for {label} scan code 0x{:02x}: no such entry; ignored",
-                show(name),
+                "key-name override {name:?} for {label} scan code 0x{:02x}: no such entry; ignored",
                 entry.scan_code
             ));
             continue;
         };
         if name.is_empty() || name.contains('\0') {
             diag.warn(format!(
-                "key-name override {} for {label} scan code 0x{:02x}: the name is empty or contains U+0000; ignored",
-                show(name),
+                "key-name override {name:?} for {label} scan code 0x{:02x}: the name is empty or contains U+0000; ignored",
                 entry.scan_code
             ));
             continue;

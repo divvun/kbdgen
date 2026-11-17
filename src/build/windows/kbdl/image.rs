@@ -320,21 +320,17 @@ pub fn verify(bytes: &[u8], machine: u16) -> Result<()> {
         bail!("subsystem is {}, expected 1 (native)", image.subsystem);
     }
 
-    let mut names: Vec<&str> = image
+    let names: Vec<&str> = image
         .sections
         .iter()
         .map(|section| section.name.as_str())
         .collect();
-    names.sort_unstable();
-    if names != [".data", ".reloc", ".rsrc"] {
-        let actual: Vec<&str> = image
-            .sections
-            .iter()
-            .map(|section| section.name.as_str())
-            .collect();
+    let mut sorted = names.clone();
+    sorted.sort_unstable();
+    if sorted != [".data", ".reloc", ".rsrc"] {
         bail!(
             "sections are {}, expected exactly .data, .rsrc and .reloc",
-            actual.join(", ")
+            names.join(", ")
         );
     }
     let Some(data) = image

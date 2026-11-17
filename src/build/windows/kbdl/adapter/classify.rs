@@ -1,6 +1,8 @@
 //! What a layout's DLL does not reproduce: the model features that only the
 //! text service provides, reported once per layout.
 
+use std::fmt::Write as _;
+
 use indexmap::IndexMap;
 use kbd_model::{
     Atom, Fixed, Item, Keyboard, Normalization, Pattern, ReplacementItem, Rule, TransformGroup,
@@ -71,13 +73,14 @@ fn show_items(keyboard: &Keyboard, pattern: &Pattern, node: usize, out: &mut Str
 fn show_item(keyboard: &Keyboard, pattern: &Pattern, item: &Item, out: &mut String) {
     match item.atom {
         Atom::Char(c) if c.is_alphanumeric() || c.is_ascii_punctuation() => out.push(c),
-        Atom::Char(c) => out.push_str(&format!("\\u{{{:x}}}", u32::from(c))),
+        Atom::Char(c) => {
+            let _ = write!(out, "\\u{{{:x}}}", u32::from(c));
+        }
         Atom::Any => out.push('.'),
         Atom::Class(_) => out.push_str("[…]"),
         Atom::Fixed(fixed) => out.push_str(fixed_escape(fixed)),
         Atom::Marker(m) => {
-            let name = keyboard.marker_name(m).unwrap_or("?");
-            out.push_str(&format!("\\m{{{name}}}"));
+            let _ = write!(out, "\\m{{{}}}", keyboard.marker_name(m).unwrap_or("?"));
         }
         Atom::AnyMarker => out.push_str("\\m{.}"),
         Atom::Set(_) => out.push_str("$[…]"),
@@ -95,7 +98,9 @@ fn show_item(keyboard: &Keyboard, pattern: &Pattern, item: &Item, out: &mut Stri
     match (item.min, item.max) {
         (1, 1) => {}
         (0, 1) => out.push('?'),
-        (min, max) => out.push_str(&format!("{{{min},{max}}}")),
+        (min, max) => {
+            let _ = write!(out, "{{{min},{max}}}");
+        }
     }
 }
 
@@ -115,12 +120,12 @@ fn fixed_escape(fixed: Fixed) -> &'static str {
     }
 }
 
-fn show_pattern(keyboard: &Keyboard, pattern: &Pattern) -> String {
-    let mut out = String::new();
-    if pattern.anchored {
+fn show_rule(keyboard: &Keyboard, group: usize, index: usize, rule: &Rule) -> String {
+    let mut out = format!("group {} rule {}: ", group + 1, index + 1);
+    if rule.from.anchored {
         out.push('^');
     }
-    show_items(keyboard, pattern, 0, &mut out);
+    show_items(keyboard, &rule.from, 0, &mut out);
     out
 }
 
@@ -173,14 +178,9 @@ pub fn classify(
             TransformGroup::Rules(rules) => {
                 for (r, rule) in rules.iter().enumerate() {
                     if !starts_with_marker(&rule.from) {
-                        result.text_transforms.add(|| {
-                            format!(
-                                "group {} rule {}: {}",
-                                g + 1,
-                                r + 1,
-                                show_pattern(keyboard, &rule.from)
-                            )
-                        });
+                        result
+                            .text_transforms
+                            .add(|| show_rule(keyboard, g, r, rule));
                     }
                 }
             }
@@ -194,14 +194,9 @@ pub fn classify(
             TransformGroup::Rules(rules) => {
                 for (r, rule) in rules.iter().enumerate() {
                     if !is_generated_backspace(rule) {
-                        result.backspace_rules.add(|| {
-                            format!(
-                                "group {} rule {}: {}",
-                                g + 1,
-                                r + 1,
-                                show_pattern(keyboard, &rule.from)
-                            )
-                        });
+                        result
+                            .backspace_rules
+                            .add(|| show_rule(keyboard, g, r, rule));
                     }
                 }
             }

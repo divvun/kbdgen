@@ -12,7 +12,7 @@ use kbd_model::{
 
 use super::super::{
     diag::Diagnostics,
-    input::{KeyValue, Layer, POSITION_COUNT, POSITION_NAMES},
+    input::{KeyValue, Layer, MAX_EXTRA_MODIFIERS, POSITION_COUNT, POSITION_NAMES},
     tables::POSITION_KEYS,
 };
 
@@ -104,10 +104,9 @@ pub(super) fn layer_states(extra_modifiers: usize) -> Vec<(Layer, ModifierState,
             Selection::Engine,
         ),
     ];
-    for i in 0..extra_modifiers.min(3) {
+    for index in (0..).take(extra_modifiers.min(MAX_EXTRA_MODIFIERS)) {
         let mut extra = ModifierState::default();
-        extra.extra[i] = true;
-        let index = u8::try_from(i).unwrap_or(u8::MAX);
+        extra.extra[usize::from(index)] = true;
         states.push((Layer::Extra(index), extra, Selection::Engine));
         states.push((
             Layer::ExtraShift(index),

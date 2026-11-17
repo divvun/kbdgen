@@ -193,11 +193,11 @@ impl<'t> Dll<'t> {
     /// leaves its result pending. With a ligature, it composes with the
     /// ligature's first unit, and the rest follows (verified with
     /// `ToUnicodeEx`; a `DKF_DEAD` entry there is untested and taken as no
-    /// entry). Without an entry, the pending dead
-    /// character is typed, followed by the key's own units, a dead key's
-    /// dead character included, and nothing stays pending (`kbdl.dead-keys`;
-    /// verified with `ToUnicodeEx`). A key that translates to nothing keeps
-    /// the pending state.
+    /// entry). Without an entry, the pending dead character is typed,
+    /// followed by the key's own units, a dead key's dead character
+    /// included, and nothing stays pending (`kbdl.dead-keys`; verified with
+    /// `ToUnicodeEx`). A key that translates to nothing keeps the pending
+    /// state.
     pub fn press(&mut self, vk: u8, keys: WinKeys) -> Typed {
         let translated = self.translate(vk, keys);
         let units = match &translated {

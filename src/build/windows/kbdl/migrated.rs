@@ -203,7 +203,7 @@ pub fn compare(bundle: &KbdgenBundle, tag: &LanguageTag) -> Result<Comparison> {
         .yaml
         .as_deref()
         .ok_or_else(|| anyhow!("{tag} migrated to no text"))?;
-    let dir = tempfile::tempdir()?;
+    let dir = tempfile::tempdir().context("create a temporary directory")?;
     let path = dir.path().join(format!("{tag}.yaml"));
     std::fs::write(&path, yaml).with_context(|| format!("write {}", path.display()))?;
     let model = adapter::load(tag, &path)?

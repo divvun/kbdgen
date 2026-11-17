@@ -44,25 +44,15 @@ pub fn file_version(metadata: &Metadata, diag: &mut Diagnostics) -> [u16; 4] {
         diag.warn("no version is given; using 1.0.0.0");
         return FALLBACK_VERSION;
     };
-    let components: Vec<&str> = version.split('.').collect();
-    let mut result = [0u16; 4];
-    let parsed = components.len() <= 3
-        && components
-            .iter()
-            .enumerate()
-            .all(|(i, component)| match decimal_u16(component) {
-                Some(value) => {
-                    result[i] = value;
-                    true
-                }
-                None => false,
-            });
-    if !parsed {
+    let components: Option<Vec<u16>> = version.split('.').map(decimal_u16).collect();
+    let Some(components) = components.filter(|components| components.len() <= 3) else {
         diag.warn(format!(
             "version {version:?} is not up to three decimal components of 0-65535; using 1.0.0.0"
         ));
         return FALLBACK_VERSION;
-    }
+    };
+    let mut result = [0u16; 4];
+    result[..components.len()].copy_from_slice(&components);
     if let Some(build) = metadata.build.as_deref() {
         let Some(build) = decimal_u16(build) else {
             diag.warn(format!(
@@ -204,6 +194,8 @@ fn string_block(slots: &[(u16, &str)]) -> Vec<u8> {
 // [spec:kbdgen:req:tsf.data.resource]
 pub fn res_file(metadata: &Metadata, version: [u16; 4], model: Option<&[u8]>) -> Vec<u8> {
     let mut out = Vec::new();
+    // rc.exe starts every .res file with this empty entry, which marks the
+    // file as 32-bit.
     entry(&mut out, 0, 0, 0, 0, &[]);
     entry(
         &mut out,

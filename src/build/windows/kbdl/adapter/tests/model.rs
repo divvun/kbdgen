@@ -86,8 +86,8 @@ fn blocked_v3_migration_builds_without_model() {
     let layout = bundle.layouts.get(&tag).unwrap();
     let target = layout.windows.as_ref().unwrap();
     let (input, mut diag) =
-        super::super::super::bundle::layout_input(bundle, &tag, layout, target).unwrap();
-    let model = super::super::super::v3_model(bundle, &tag, &mut diag);
+        crate::build::windows::kbdl::bundle::layout_input(bundle, &tag, layout, target).unwrap();
+    let model = crate::build::windows::kbdl::v3_model(bundle, &tag, &mut diag);
     assert!(model.is_none());
     assert!(
         diag.warnings()

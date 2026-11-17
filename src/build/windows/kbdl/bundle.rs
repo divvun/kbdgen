@@ -58,8 +58,7 @@ pub fn layout_input(
             .and_then(|dead_keys| dead_keys.get(windows_layer));
 
         let mut values = Vec::with_capacity(POSITION_NAMES.len());
-        for (index, token) in tokens.iter().take(DESKTOP_KEY_COUNT).enumerate() {
-            let position = POSITION_NAMES[index];
+        for (token, position) in tokens.iter().zip(&POSITION_NAMES[..DESKTOP_KEY_COUNT]) {
             let value = token_value(token, &metadata.name, position, layer, &mut diag)?;
             values.push(value.map(|text| {
                 let dead = dead_keys.is_some_and(|list| list.contains(&text));
@@ -123,8 +122,7 @@ fn token_value(
     })?;
     if decoded.is_empty() || decoded.starts_with('\0') {
         diag.warn(format!(
-            "key {position} in layer {layer}: value {:?} is empty or starts with U+0000; treated as no key",
-            token
+            "key {position} in layer {layer}: value {token:?} is empty or starts with U+0000; treated as no key"
         ));
         return Ok(None);
     }
