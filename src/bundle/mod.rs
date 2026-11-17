@@ -373,7 +373,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
 /// the bundle's Windows target.
 const WINDOWS_LAYOUT_OPTIONS: [&str; 3] = ["shiftLock", "lrmRlm", "keyNames"];
 
-// [spec:kbdgen:req:bundle.structure.targets+2]
+// [spec:kbdgen:req:bundle.structure.targets+3]
 /// Fails when `targets/windows.yaml` sets a keyboard option, which would
 /// otherwise be ignored like an unknown field.
 fn reject_windows_options(path: &Path) -> Result<(), Error> {
@@ -393,7 +393,7 @@ fn reject_windows_options(path: &Path) -> Result<(), Error> {
     }
 }
 
-// [spec:kbdgen:req:bundle.structure.targets+2]
+// [spec:kbdgen:req:bundle.structure.targets+3]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets from {}", path.display());
     let mut targets = Targets::default();

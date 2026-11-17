@@ -1,8 +1,10 @@
 # `kbdgen ldml` commands
 
-These subcommands export, import, migrate, compile and test layouts. Each
-loads the bundle as `cli.commands` does, and fails without writing
-anything when loading fails.
+These subcommands export, import, migrate, compile and test layouts. They
+read only the bundle's `layouts/*.yaml`, and `test` also its `tests/*.yaml`;
+`project.yaml`, `targets/` and `resources/` are not loaded, so a directory
+holding just `layouts/` is enough. A layout that fails to load fails the
+command before anything is written.
 
 Sources: `docs/spec/cli.md`, `docs/spec/bundle.md`.
 

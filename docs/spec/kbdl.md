@@ -7,14 +7,11 @@ version and string resources as a binary `.res` itself, and links with `cargo`
 and `rust-lld` for x86, x64, arm64 and the WOW64 variant installed to
 `SysWOW64`. Building needs only a Rust toolchain with the three
 `*-pc-windows-msvc` targets installed, on any host: no MSVC, Windows SDK,
-MSKLC, `kbdutool` or `rc.exe`. These rules replace the earlier MSKLC path
-(KLC generation, then `kbdutool`, `cl`, `rc` and `link`; the DLL build is now
-`kbdl.build`) and the earlier generated-C design; the user-visible layout
-semantics of KLC generation are restated here in table terms
-(`kbdl.vk-chars.values`, `kbdl.caps`, `kbdl.dead-keys`, `kbdl.ligatures`,
-`kbdl.metadata`), its known defects are corrected, and the generator gains
-chained dead keys, the 49th ISO key, extra modifier layers, locale flags,
-dead-key names and localised key names. Text processing beyond what these tables can
+MSKLC, `kbdutool` or `rc.exe` (`kbdl.build`). The layout semantics are
+stated in table terms (`kbdl.vk-chars.values`, `kbdl.caps`,
+`kbdl.dead-keys`, `kbdl.ligatures`, `kbdl.metadata`), including chained dead
+keys, the 49th ISO key, extra modifier layers, locale flags, dead-key names
+and localised key names. Text processing beyond what these tables can
 express (multi-unit dead-key output, ligatures over 16 units) belongs to a
 text service and is out of scope here.
 

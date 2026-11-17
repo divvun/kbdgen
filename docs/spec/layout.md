@@ -7,7 +7,7 @@ order that desktop generators map layer tokens onto.
 
 ## Layout file schema
 
-> [spec:kbdgen:def:layout.schema]
+> [spec:kbdgen:def:layout.schema+1]
 > A layout is one `layouts/<tag>.yaml` file: a YAML mapping, deserialised from
 > an already-parsed YAML value, so string fields MUST be YAML strings (an
 > unquoted number is an error). Unknown fields are ignored. Fields:
@@ -16,7 +16,7 @@ order that desktop generators map layer tokens onto.
 > `decimal`; the optional target sections `windows`, `chromeOS`, `macOS`,
 > `iOS`, `android`; `transforms`; `keyNames` (required `space` and `return`
 > strings); and `longpress`, a mapping from key to one string that is split on
-> whitespace into an ordered list of alternatives (used only by Android).
+> whitespace into an ordered list of alternatives (used by Android and iOS).
 > Absent optional fields are absent, not empty. The loader decodes no escapes
 > in any field.
 

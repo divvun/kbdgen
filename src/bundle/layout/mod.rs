@@ -24,7 +24,7 @@ pub enum Transform {
     More(IndexMap<String, Transform>),
 }
 
-// [spec:kbdgen:def:layout.schema]
+// [spec:kbdgen:def:layout.schema+1]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Layout {
@@ -144,7 +144,7 @@ pub struct AndroidPlatform {
     pub layers: IndexMap<AndroidKbdLayer, String>,
 }
 
-// [spec:kbdgen:def:layout.schema]
+// [spec:kbdgen:def:layout.schema+1]
 fn from_mapped_sequence<'de, D>(
     deserializer: D,
 ) -> Result<Option<IndexMap<String, Vec<String>>>, D::Error>
@@ -269,7 +269,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:def:layout.schema/test]
+    // [spec:kbdgen:def:layout.schema+1/test]
     #[test]
     fn absent_optional_fields_stay_absent() {
         let layout = layout("unknownField: [1, 2]\n");
@@ -286,7 +286,7 @@ mod tests {
         assert!(layout.key_names.is_none());
     }
 
-    // [spec:kbdgen:def:layout.schema/test]
+    // [spec:kbdgen:def:layout.schema+1/test]
     #[test]
     fn display_names_are_required_and_case_normalised() {
         let root = tempfile::tempdir().unwrap();
@@ -318,7 +318,7 @@ mod tests {
         assert_eq!(keys, ["se", "en-GB"]);
     }
 
-    // [spec:kbdgen:def:layout.schema/test]
+    // [spec:kbdgen:def:layout.schema+1/test]
     #[test]
     fn unquoted_numbers_are_not_strings() {
         assert_yaml_error("decimal: 1\n");
@@ -326,7 +326,7 @@ mod tests {
         assert_yaml_error("longpress:\n  a: 1\n");
     }
 
-    // [spec:kbdgen:def:layout.schema/test]
+    // [spec:kbdgen:def:layout.schema+1/test]
     #[test]
     fn key_names_require_space_and_return() {
         assert_yaml_error("keyNames:\n  space: Space\n");
@@ -341,7 +341,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:def:layout.schema/test]
+    // [spec:kbdgen:def:layout.schema+1/test]
     #[test]
     fn longpress_splits_on_whitespace_in_order() {
         let longpress =
@@ -364,7 +364,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:def:layout.schema/test]
+    // [spec:kbdgen:def:layout.schema+1/test]
     #[test]
     fn loader_keeps_escapes_verbatim() {
         let layout = layout(

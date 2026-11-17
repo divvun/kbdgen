@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-// [spec:kbdgen:req:bundle.structure.targets+2]
+// [spec:kbdgen:req:bundle.structure.targets+3]
 #[derive(Debug, Default)]
 pub struct Targets {
     pub windows: Option<Windows>,
@@ -159,7 +159,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+2/test]
+    // [spec:kbdgen:req:bundle.structure.targets+3/test]
     #[test]
     fn recognised_stems_load_and_unknown_are_ignored() {
         let _env = EnvGuard::new();
@@ -195,7 +195,7 @@ mod tests {
         assert_eq!(android.build, 6);
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+2/test]
+    // [spec:kbdgen:req:bundle.structure.targets+3/test]
     #[test]
     fn absent_target_files_leave_targets_unconfigured() {
         let bundle = load_with_targets(&[("windows", WINDOWS)]).unwrap();
@@ -207,7 +207,7 @@ mod tests {
         assert!(bundle.targets.android.is_none());
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+2/test]
+    // [spec:kbdgen:req:bundle.structure.targets+3/test]
     #[test]
     fn target_parse_failure_aborts_loading() {
         let _env = EnvGuard::new();
@@ -230,7 +230,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+2/test]
+    // [spec:kbdgen:req:bundle.structure.targets+3/test]
     #[test]
     fn ios_and_android_strings_must_be_yaml_strings() {
         let _env = EnvGuard::new();
@@ -248,7 +248,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+2/test]
+    // [spec:kbdgen:req:bundle.structure.targets+3/test]
     #[test]
     fn windows_target_rejects_layout_keyboard_options() {
         for (field, value) in [
@@ -272,7 +272,7 @@ mod tests {
         assert!(load_with_targets(&[("windows", &yaml)]).is_ok());
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+2/test]
+    // [spec:kbdgen:req:bundle.structure.targets+3/test]
     #[test]
     fn non_mapping_ios_and_android_targets_are_errors() {
         let _env = EnvGuard::new();
