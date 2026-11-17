@@ -78,7 +78,7 @@ fn append_map(document: &mut Document, index: usize, map: &KeyMap, actions: &Ele
 // [spec:kbdgen:def:ldml.macos.input]
 // [spec:kbdgen:def:keylayout.document]
 // [spec:kbdgen:req:keylayout.transforms+1]
-// [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
+// [spec:kbdgen:req:macbundle.plist.bundle-resources+2]
 pub fn write(input: &KeylayoutInput) -> String {
     let mut document = Document::from_str(LAYOUT_TEMPLATE).expect("the embedded template parses");
     let root = document.root();

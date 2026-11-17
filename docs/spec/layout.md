@@ -38,15 +38,13 @@ order that desktop generators map layer tokens onto.
 
 ## Transforms
 
-> [spec:kbdgen:def:layout.transforms]
+> [spec:kbdgen:def:layout.transforms+1]
 > `transforms` is an ordered tree for dead-key composition: a mapping from a
 > dead key's output to a node, where a node is a leaf (YAML string: composed
-> output) or a branch (mapping from the next input to a child node). Top-level
-> keys MUST be YAML strings (else a deserialisation error). Inside the tree a
-> non-string mapping key panics ("Only Strings are supported within map
-> transforms!") and a number, boolean, null or sequence value panics ("Only
-> Strings and Maps are supported within transforms!"), so digits MUST be
-> quoted.
+> output) or a branch (mapping from the next input to a child node). Every
+> key MUST be a YAML string and every value a string or a mapping, so digits
+> MUST be quoted; anything else fails loading with a deserialisation error
+> naming the layout file.
 
 > [spec:kbdgen:req:layout.transforms.dead-key-entries+1]
 > Generators treat each top-level entry as one dead key. The macOS, iOS and

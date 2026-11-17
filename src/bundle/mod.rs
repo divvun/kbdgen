@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::fs::{canonicalize, read_dir};
 use std::path::{Path, PathBuf};
@@ -49,7 +48,7 @@ pub struct KbdgenBundle {
 /// byte-wise. The order is established on construction and no method can
 /// insert or re-key an entry, so every iteration visits the layouts in the
 /// same order on every run.
-// [spec:kbdgen:req:bundle.layouts+1]
+// [spec:kbdgen:req:bundle.layouts+2]
 #[derive(Debug, Default)]
 pub struct Layouts(IndexMap<LanguageTag, Layout>);
 
@@ -85,7 +84,7 @@ impl Layouts {
 
 /// Collects into bundle layout order. A tag seen twice keeps the value of
 /// its last occurrence.
-// [spec:kbdgen:req:bundle.layouts+1]
+// [spec:kbdgen:req:bundle.layouts+2]
 impl FromIterator<(LanguageTag, Layout)> for Layouts {
     fn from_iter<I: IntoIterator<Item = (LanguageTag, Layout)>>(iter: I) -> Self {
         let mut map: IndexMap<LanguageTag, Layout> = iter.into_iter().collect();
@@ -123,9 +122,8 @@ impl KbdgenBundle {
     pub fn name(&self) -> &str {
         self.path
             .file_stem()
-            .expect("No file stem?")
-            .to_str()
-            .expect("Must be valid utf-8")
+            .and_then(|stem| stem.to_str())
+            .expect("read_kbdgen_bundle only accepts bundles with a UTF-8 stem")
     }
 
     #[cfg(test)]
@@ -153,6 +151,15 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     let canonical_bundle_path: PathBuf =
         canonicalize(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
 
+    if canonical_bundle_path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .is_none()
+    {
+        return Err(Error::BundleName {
+            path: canonical_bundle_path,
+        });
+    }
     tracing::info!("Reading bundle {}", canonical_bundle_path.display());
 
     let project_text = fs::read_to_string(canonical_bundle_path.join(PROJECT_FILENAME))
@@ -179,7 +186,7 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
     })
 }
 
-// [spec:kbdgen:req:bundle.layouts+1]
+// [spec:kbdgen:req:bundle.layouts+2]
 // [spec:kbdgen:def:ldml.yaml.detect]
 /// The v3 layouts, and the paths of the v4 ones, which are detected by
 /// `format: 4` and not read as v3.
@@ -254,7 +261,9 @@ fn load_layout(path: &Path) -> Result<Loaded, Error> {
         }
     }
     yaml.as_mapping_mut()
-        .expect("top level yaml type must be a mapping")
+        .ok_or_else(|| Error::NotAMapping {
+            path: path.to_path_buf(),
+        })?
         .insert(
             Value::String("languageTag".to_owned()),
             Value::String(tag.to_string()),
@@ -264,10 +273,11 @@ fn load_layout(path: &Path) -> Result<Loaded, Error> {
         serde_path_to_error::deserialize(yaml).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
     // [spec:kbdgen:req:bundle.layouts.autonym]
-    let _autonym = match layout
-        .display_names
-        .get(&tag.primary_language().parse::<LanguageTag>().unwrap())
-    {
+    let _autonym = match layout.display_names.get(
+        &tag.primary_language()
+            .parse::<LanguageTag>()
+            .expect("a tag's primary language subtag is a tag"),
+    ) {
         Some(v) => v,
         None => {
             return Err(Error::MissingMandatoryDisplayName {
@@ -276,12 +286,12 @@ fn load_layout(path: &Path) -> Result<Loaded, Error> {
         }
     };
 
-    // [spec:kbdgen:req:bundle.layouts+1]
+    // [spec:kbdgen:req:bundle.layouts+2]
     if let Some(decimal) = layout.decimal.as_ref()
         && decimal != COMMA_DECIMAL
         && decimal != DEFAULT_DECIMAL
     {
-        tracing::error!(
+        tracing::warn!(
             "{tag}: {decimal:?} is not a supported decimal separator, using {DEFAULT_DECIMAL:?}"
         );
         layout.decimal = Some(DEFAULT_DECIMAL.to_owned());
@@ -294,99 +304,72 @@ fn load_yaml<T>(path: &Path) -> Result<T, Error>
 where
     T: for<'de> serde::Deserialize<'de>,
 {
-    let s = match fs::read_to_string(path) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(Error::Io(path.to_path_buf(), e));
-        }
-    };
-
+    let s = fs::read_to_string(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
     let deserializer = serde_yaml::Deserializer::from_str(&s);
     serde_path_to_error::deserialize(deserializer).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
-// [spec:kbdgen:req:bundle.structure.targets.env]
-fn load_yaml_with_env<T>(path: &Path, env_vars: HashMap<&str, &str>) -> Result<T, Error>
+/// Loads a target file, then sets each field whose variable in `env_vars`
+/// is set, in order, so a later variable for the same field wins.
+// [spec:kbdgen:req:bundle.structure.targets.env+1]
+fn load_yaml_with_env<T>(path: &Path, env_vars: &[(&str, &str)]) -> Result<T, Error>
 where
     T: for<'de> serde::Deserialize<'de>,
 {
-    let s = match fs::read_to_string(path) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(Error::Io(path.to_path_buf(), e));
-        }
-    };
-
-    let deserializer = serde_yaml::Deserializer::from_str(&s);
-    let mut raw: serde_yaml::Value = serde_path_to_error::deserialize(deserializer)
-        .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
-
-    {
-        let root = raw.as_mapping_mut().unwrap();
-
-        for (env_var, field_name) in env_vars {
-            let value = match std::env::var(env_var) {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
-
-            root.insert(
-                serde_yaml::Value::String(field_name.to_string()),
-                serde_yaml::Value::String(value),
-            );
+    let mut raw: Value = load_yaml(path)?;
+    let root = raw.as_mapping_mut().ok_or_else(|| Error::NotAMapping {
+        path: path.to_path_buf(),
+    })?;
+    for &(env_var, field_name) in env_vars {
+        if let Ok(value) = std::env::var(env_var) {
+            root.insert(Value::String(field_name.to_owned()), Value::String(value));
         }
     }
-
-    match serde_path_to_error::deserialize(raw) {
-        Ok(v) => Ok(v),
-        Err(e) => Err(Error::Yaml(path.to_path_buf(), e)),
-    }
+    serde_path_to_error::deserialize(raw).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
-// [spec:kbdgen:def:bundle.resources]
+// [spec:kbdgen:def:bundle.resources+1]
 fn read_resources(path: &Path) -> Result<Resources, Error> {
     tracing::debug!("Reading resources from {}", path.display());
     let mut resources = Resources::default();
+    let mut chromeos_dir: Option<PathBuf> = None;
 
-    let iter = read_dir(path)
+    let mut dirs = read_dir(path)
         .map_err(|e| Error::Io(path.to_path_buf(), e))?
-        .filter_map(Result::ok)
-        .map(|file| file.path())
-        .filter(|path| path.is_dir());
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| Error::Io(path.to_path_buf(), e))?;
+    dirs.retain(|path| path.is_dir());
+    dirs.sort();
 
-    for path in iter {
-        let target_name = path
+    for dir in dirs {
+        let target_name = dir
             .file_name()
             .expect("read_dir entries have a file name")
             .to_string_lossy();
 
         match target_name.as_ref() {
-            "macos" => resources.macos = load_resources(&path, resources::MacOS::load),
-            "chromeos" => resources.chromeos = load_resources(&path, resources::ChromeOS::load),
-            "android" => resources.android = load_resources(&path, resources::Android::load),
-            "ios" => resources.ios = load_resources(&path, resources::IOS::load),
-            _ => tracing::warn!("Ignoring unknown resource folder {}", path.display()),
+            "macos" => resources.macos = Some(resources::MacOS::load(&dir)?),
+            "ios" => resources.ios = Some(resources::IOS::load(&dir)?),
+            "android" => resources.android = Some(resources::Android::load(&dir)),
+            // Bundles written for kbdgen 2 keep ChromeOS resources in `chrome`.
+            "chromeos" | "chrome" => {
+                if let Some(first) = chromeos_dir.replace(dir.clone()) {
+                    return Err(Error::DuplicateResources { first, second: dir });
+                }
+                resources.chromeos = Some(resources::ChromeOS::load(&dir)?);
+            }
+            _ => tracing::warn!("Ignoring unknown resource folder {}", dir.display()),
         };
     }
     Ok(resources)
-}
-
-fn load_resources<T>(path: &Path, load: fn(&Path) -> std::io::Result<T>) -> Option<T> {
-    load(path)
-        .inspect_err(|e| {
-            tracing::warn!(
-                "Ignoring unreadable resource folder {}: {e}",
-                path.display()
-            )
-        })
-        .ok()
 }
 
 /// Keyboard options that a layout's own `targets.windows` holds, never
 /// the bundle's Windows target.
 const WINDOWS_LAYOUT_OPTIONS: [&str; 3] = ["shiftLock", "lrmRlm", "keyNames"];
 
-// [spec:kbdgen:req:bundle.structure.targets+1]
+// [spec:kbdgen:req:bundle.structure.targets+2]
 /// Fails when `targets/windows.yaml` sets a keyboard option, which would
 /// otherwise be ignored like an unknown field.
 fn reject_windows_options(path: &Path) -> Result<(), Error> {
@@ -406,7 +389,7 @@ fn reject_windows_options(path: &Path) -> Result<(), Error> {
     }
 }
 
-// [spec:kbdgen:req:bundle.structure.targets+1]
+// [spec:kbdgen:req:bundle.structure.targets+2]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets from {}", path.display());
     let mut targets = Targets::default();
@@ -435,17 +418,16 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
             "ios" => {
                 targets.ios = load_yaml_with_env(
                     &path,
-                    [
+                    &[
                         ("MATCH_GIT_URL", "matchGitUrl"),
                         ("MATCH_PASSWORD", "matchPassword"),
-                        ("FASTLANE_USER", "fastlaneUser"),
                         ("PRODUCE_USERNAME", "fastlaneUser"),
+                        ("FASTLANE_USER", "fastlaneUser"),
                         ("FASTLANE_PASSWORD", "fastlanePassword"),
                         ("APP_STORE_KEY_JSON", "appStoreKeyJson"),
                         ("TEAM_ID", "teamId"),
                         ("CODE_SIGN_ID", "codeSignId"),
-                    ]
-                    .into(),
+                    ],
                 )?;
             }
             "macos" => {
@@ -455,15 +437,14 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
             "android" => {
                 targets.android = load_yaml_with_env(
                     &path,
-                    [
+                    &[
                         ("ANDROID_KEYSTORE", "keyStore"),
                         ("ANDROID_KEYALIAS", "keyAlias"),
                         ("PLAY_STORE_ACCOUNT", "playStoreAccount"),
                         ("PLAY_STORE_P12", "playStoreP12"),
                         ("STORE_PW", "storePassword"),
                         ("KEY_PW", "keyPassword"),
-                    ]
-                    .into(),
+                    ],
                 )?
             }
             _ => tracing::warn!("Ignoring unknown target file {}", path.display()),
@@ -506,6 +487,28 @@ pub enum Error {
         "layout {tag} is a v4 layout (`format: 4`); the {target} target cannot build v4 layouts yet"
     )]
     V4Layout { tag: String, target: &'static str },
+
+    #[error("{}: the top level must be a mapping", path.display())]
+    NotAMapping { path: PathBuf },
+
+    #[error("{}: the bundle's name must be UTF-8", path.display())]
+    BundleName { path: PathBuf },
+
+    #[error(
+        "{}: {tag:?} is not a language tag; name icons icon.<ext> or icon.<language tag>.<ext>",
+        path.display()
+    )]
+    IconTag { path: PathBuf, tag: String },
+
+    #[error("{} and {} are both the {which} icon", first.display(), second.display())]
+    DuplicateIcon {
+        which: String,
+        first: PathBuf,
+        second: PathBuf,
+    },
+
+    #[error("{} and {} both hold ChromeOS resources; keep one", first.display(), second.display())]
+    DuplicateResources { first: PathBuf, second: PathBuf },
 }
 
 /// Builds bundle directories on disk for tests that exercise loading.
@@ -568,7 +571,7 @@ mod tests {
         layouts.keys().map(LanguageTag::as_str).collect()
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn loaded_layouts_iterate_in_ascending_tag_order() {
         let root = tempfile::tempdir().unwrap();
@@ -609,7 +612,7 @@ mod tests {
         assert_eq!(values, tags(&bundle.layouts));
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn layout_order_ignores_insertion_order() {
         let entries = ["sme", "se-FI", "en", "sma", "se", "fkv", "en-GB"];
@@ -635,7 +638,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn duplicate_tags_keep_the_last_file_by_name() {
         let root = tempfile::tempdir().unwrap();
@@ -773,7 +776,7 @@ mod tests {
         assert!(bundle.targets.ios.is_none());
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn malformed_layout_stem_is_invalid_language_tag() {
         for stem in ["se_FI", "not a tag", "x"] {
@@ -784,7 +787,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn stem_tag_overrides_authored_language_tag() {
         let layout = single_layout(
@@ -795,7 +798,7 @@ mod tests {
         assert_eq!(layout.language_tag.as_str(), "se-FI");
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn unsupported_decimal_is_reset_to_period() {
         let decimal = |value: Option<&str>| {
@@ -814,21 +817,21 @@ mod tests {
         assert_eq!(decimal(None), None);
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
-    #[should_panic(expected = "top level yaml type must be a mapping")]
-    fn empty_layout_file_panics() {
-        let _ = load_single_layout("se", "");
+    fn empty_and_sequence_layout_files_are_errors() {
+        for yaml in ["", "- se\n"] {
+            assert!(
+                matches!(
+                    load_single_layout("se", yaml),
+                    Err(Error::NotAMapping { .. })
+                ),
+                "{yaml:?}"
+            );
+        }
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
-    #[test]
-    #[should_panic(expected = "top level yaml type must be a mapping")]
-    fn sequence_layout_file_panics() {
-        let _ = load_single_layout("se", "- se\n");
-    }
-
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     #[test]
     fn first_failing_layout_by_name_aborts_loading() {
         let root = tempfile::tempdir().unwrap();

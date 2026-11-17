@@ -156,7 +156,7 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 > language tag; `DivvunKeyboardIndex` = the layout's 0-based position in
 > `ios.layouts`, which is also its position in the keyboard definitions file.
 
-> [spec:kbdgen:req:xcode.targets.hosting-app+1]
+> [spec:kbdgen:req:xcode.targets.hosting-app+2]
 > With an iOS target, the generator MUST rewrite, via the typed structs of
 > xcode_structures.rs (unknown keys dropped; a file that does not
 > deserialize is an error): `repo/HostingApp/Info.plist` (`HostingPlist`)
@@ -166,8 +166,8 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 > `HostingApp/HostingApp.entitlements` (`EntitlementsDict`) with app groups
 > `["group.<packageId>"]`; and `HostingApp/Settings.bundle/Root.plist`
 > (`SettingsRootDict`) with `ApplicationGroupContainerIdentifier =
-> group.<packageId>`. With or without the target, it MUST render the iOS
-> icon `icon.png` for every entry of
+> group.<packageId>`. With or without the target, it MUST render the default
+> icon of `resources/ios` (`icon.<ext>`, `bundle.resources`) for every entry of
 > `HostingApp/Images.xcassets/AppIcon.appiconset/Contents.json` at N×N
 > pixels, N = first `size` number × the `scale` number before its `x`, via
 > `convert -resize NxN -background transparent -gravity center -extent NxN`

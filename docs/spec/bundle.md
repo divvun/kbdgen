@@ -27,7 +27,7 @@ dependency bundles.
 
 ### Target files
 
-> [spec:kbdgen:req:bundle.structure.targets+1]
+> [spec:kbdgen:req:bundle.structure.targets+2]
 > A file in `targets/` is recognised by its stem, exactly `windows`, `ios`,
 > `macos`, `chromeos` or `android`; other stems are warned about and ignored.
 > An absent file leaves the target unconfigured; a parse failure aborts
@@ -48,30 +48,30 @@ dependency bundles.
 > Other fields are strings. `windows`, `macos`, `chromeos` accept any scalar
 > as a string (`version: 1.0` → `"1.0"`); `ios` and `android` are parsed via a
 > YAML value, so their strings MUST be YAML strings and their top level MUST
-> be a mapping (else a panic).
+> be a mapping, else loading fails with an error naming the file.
 
-> [spec:kbdgen:req:bundle.structure.targets.env]
+> [spec:kbdgen:req:bundle.structure.targets.env+1]
 > When `ios.yaml` or `android.yaml` exists, each variable below that is set
 > to valid Unicode (empty included) MUST replace the named top-level field
 > with its value as a YAML string; unset variables leave the file value.
 >
 > | Target | Variable → field |
 > |---|---|
-> | iOS | `MATCH_GIT_URL`→`matchGitUrl`, `MATCH_PASSWORD`→`matchPassword`, `FASTLANE_USER`→`fastlaneUser`, `PRODUCE_USERNAME`→`fastlaneUser`, `FASTLANE_PASSWORD`→`fastlanePassword`, `APP_STORE_KEY_JSON`→`appStoreKeyJson`, `TEAM_ID`→`teamId`, `CODE_SIGN_ID`→`codeSignId` |
+> | iOS | `MATCH_GIT_URL`→`matchGitUrl`, `MATCH_PASSWORD`→`matchPassword`, `PRODUCE_USERNAME`→`fastlaneUser`, `FASTLANE_USER`→`fastlaneUser`, `FASTLANE_PASSWORD`→`fastlanePassword`, `APP_STORE_KEY_JSON`→`appStoreKeyJson`, `TEAM_ID`→`teamId`, `CODE_SIGN_ID`→`codeSignId` |
 > | Android | `ANDROID_KEYSTORE`→`keyStore`, `ANDROID_KEYALIAS`→`keyAlias`, `PLAY_STORE_ACCOUNT`→`playStoreAccount`, `PLAY_STORE_P12`→`playStoreP12`, `STORE_PW`→`storePassword`, `KEY_PW`→`keyPassword` |
 >
-> Overrides apply in hash-map order: with both `FASTLANE_USER` and
-> `PRODUCE_USERNAME` set, the winner is unspecified.
+> Overrides apply in the table's order with `PRODUCE_USERNAME` before
+> `FASTLANE_USER`, so with both set `FASTLANE_USER` wins.
 
 ## Layouts
 
-> [spec:kbdgen:req:bundle.layouts+1]
+> [spec:kbdgen:req:bundle.layouts+2]
 > Each `layouts/*.yaml` stem MUST be a well-formed BCP 47 tag (normalised,
 > `se-fi` → `se-FI`), else loading fails with `InvalidLanguageTag`. The file's
-> top level MUST be a mapping (else, empty files included, a panic: "top level
-> yaml type must be a mapping"); the tag is inserted as `languageTag` and the
-> value deserialised as a layout. A `decimal` other than `.` or `,` is logged
-> as an error and replaced by `.`. Files are loaded in ascending byte-wise
+> top level MUST be a mapping, else (empty files included) loading fails with
+> an error naming the file; the tag is inserted as `languageTag` and the
+> value deserialised as a layout. A `decimal` other than `.` or `,` is
+> replaced by `.` with a warning naming the layout. Files are loaded in ascending byte-wise
 > file-name order; the first failing layout aborts loading, and when two
 > stems normalise to the same tag the later file replaces the earlier.
 > Layouts MUST be iterated in "bundle layout order": ascending by the
@@ -86,27 +86,32 @@ dependency bundles.
 
 ## Resources
 
-> [spec:kbdgen:def:bundle.resources]
+> [spec:kbdgen:def:bundle.resources+1]
 > `resources/` holds per-target subdirectories named exactly `macos`, `ios`,
-> `chromeos`, `android`; other subdirectories are warned about and ignored,
-> plain files ignored, and an unreadable recognised directory leaves that
-> target without resources. For `macos`, `ios`, `chromeos`, each entry named
-> `icon.*` is an icon keyed by the language tag in the second `.`-separated
-> segment (`icon.se.png` → `se`; `icon.png` → `png`, the key iOS looks up).
-> A segment that is not a well-formed tag (`icon.se_FI.png`) panics; among
-> entries sharing a tag the survivor is unspecified. For `android` the only
-> resource is `icon.png`, if present.
+> `chromeos` (or `chrome`, as bundles written for kbdgen 2 name it; having
+> both is an error) and `android`; other subdirectories are warned about and
+> ignored, plain files are ignored, and a recognised directory that cannot be
+> read fails loading. For `macos`, `ios` and `chromeos`, a file named
+> `icon.<ext>` (`icon.png`) is the target's default icon and a file named
+> `icon.<tag>.<ext>` (`icon.se.png`) is the icon of the layouts tagged
+> `<tag>`; the extension is the last `.`-separated segment. A `<tag>` that
+> is not a well-formed language tag (`icon.se_FI.png`), or two files for the
+> same tag or for the default, fail loading with an error naming the files.
+> iOS uses only the default icon. For `android` the only resource is
+> `icon.png`, if present.
 
 ## Fetch
 
-> [spec:kbdgen:req:bundle.fetch]
+> [spec:kbdgen:req:bundle.fetch+1]
 > `kbdgen fetch` loads the bundle, creates `<bundle>/layouts/` and
 > `<bundle>/projects/`, then for each dependency in order (branch defaulting
-> to `main`) MUST download `https://github.com/{url}/archive/{branch}.zip`
-> (status unchecked; a non-zip body fails as a zip error), extract it to a
-> temporary directory and use `{repo}-{branch'}/{id}.kbdgen` as the source,
-> where `repo` is the second `/`-segment of `url` (no `/` panics) and
-> `branch'` has `/` replaced by `-`. For each listed layout `L` it copies
+> to `main`) MUST download `https://github.com/{url}/archive/{branch}.zip`,
+> extract it to a temporary directory and use `{repo}-{branch'}/{id}.kbdgen`
+> as the source, where `repo` is the second `/`-segment of `url` and
+> `branch'` has `/` replaced by `-`. A `url` without a `/` fails before
+> anything is downloaded, with an error naming the dependency; a failed
+> request or a non-success HTTP status fails naming the dependency and the
+> URL, and a body that is not a zip archive fails likewise. For each listed layout `L` it copies
 > `layouts/L.yaml` to `<bundle>/layouts/L.yaml` and the source `project.yaml`
 > to `<bundle>/projects/L.yaml`, overwriting. Any error aborts; earlier copies
 > remain.

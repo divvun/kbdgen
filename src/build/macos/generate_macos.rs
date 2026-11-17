@@ -141,7 +141,7 @@ mod tests {
             .join("Contents")
     }
 
-    // [spec:kbdgen:req:bundle.layouts+1/test]
+    // [spec:kbdgen:req:bundle.layouts+2/test]
     // [spec:kbdgen:req:macbundle.plist+2/test]
     // [spec:kbdgen:req:macbundle.plist.strings/test]
     #[tokio::test]

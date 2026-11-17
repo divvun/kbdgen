@@ -134,14 +134,15 @@
 > `TISIntendedLanguage` language tag}; the `KLInfo_*` entries follow the
 > CFBundle keys in bundle layout order. `codeSignId` is required but unused.
 
-> [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
+> [spec:kbdgen:req:macbundle.plist.bundle-resources+2]
 > Each document MUST be written to `Contents/Resources/<name>.keylayout` as
 > pretty-printed UTF-8 (two-space indent, `<x … />`, trailing newline) in
 > hex entity mode: in attribute values `& ' " < >`, ASCII controls (tab
 > included) and other Unicode Separator/Other characters except U+0020
 > (U+00A0 included) become `&#xHHHH;` (uppercase, ≥ 4 digits); combining
-> marks stay literal. On macOS hosts, an `icon.<tag>.*` in `resources/macos`
-> whose tag equals the layout's tag is converted with ImageMagick `convert`
+> marks stay literal. On macOS hosts, the layout's icon in `resources/macos`
+> (`bundle.resources`: the `icon.<tag>.<ext>` whose tag equals the layout's
+> tag, else the default `icon.<ext>`) is converted with ImageMagick `convert`
 > to 16, 16@2x, 32 and 32@2x PNGs and `iconutil --convert icns` into
 > `<name>.icns`; a tool that cannot be started or exits non-zero is an
 > error naming the layout, the tool and its stderr. Other hosts skip each

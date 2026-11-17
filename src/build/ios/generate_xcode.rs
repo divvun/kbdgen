@@ -91,7 +91,7 @@ fn keyboard_plist(
     Ok(plist)
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+// [spec:kbdgen:req:xcode.targets.hosting-app+2]
 fn generate_hosting_plist(path: &Path, target: &iOS) -> Result<()> {
     let mut plist: HostingPlist = read_plist(path)?;
 
@@ -114,24 +114,23 @@ fn generate_hosting_plist(path: &Path, target: &iOS) -> Result<()> {
     write_plist(path, &plist)
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+// [spec:kbdgen:req:xcode.targets.hosting-app+2]
 fn update_entitlements(path: &Path, app_group: &str) -> Result<()> {
     let mut entitlements: EntitlementsDict = read_plist(path)?;
     entitlements.com_apple_security_application_groups = vec![app_group.to_string()];
     write_plist(path, &entitlements)
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+// [spec:kbdgen:req:xcode.targets.hosting-app+2]
 fn generate_icons(bundle: &KbdgenBundle, hosting_app_path: &Path) -> Result<()> {
-    let png: LanguageTag = "png".parse().expect("`png` parses as a language tag");
     let icon = bundle
         .resources
         .ios
         .as_ref()
         .context("the bundle has no resources/ios directory")?
-        .icons
-        .get(&png)
-        .context("resources/ios has no icon.png")?;
+        .icon
+        .as_ref()
+        .context("resources/ios has no default icon (icon.png)")?;
 
     let appiconset_path = hosting_app_path.join("Images.xcassets/AppIcon.appiconset");
     let contents_path = appiconset_path.join("Contents.json");
@@ -492,7 +491,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:req:xcode.targets.hosting-app+1/test]
+    // [spec:kbdgen:req:xcode.targets.hosting-app+2/test]
     #[test]
     fn icons_need_ios_resources() {
         let bundle = KbdgenBundle::new_test("test".to_string(), Default::default());
@@ -506,7 +505,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:req:xcode.targets.hosting-app+1/test]
+    // [spec:kbdgen:req:xcode.targets.hosting-app+2/test]
     #[test]
     fn icon_sides_are_size_times_scale() {
         assert_eq!(icon_side("83.5x83.5", "2x"), Some(167.0));

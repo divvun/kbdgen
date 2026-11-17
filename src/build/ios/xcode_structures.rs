@@ -82,7 +82,7 @@ pub struct KeyboardInfoPlist {
     pub sentry_dsn: Option<String>,
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+// [spec:kbdgen:req:xcode.targets.hosting-app+2]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EntitlementsDict {
     #[serde(rename = "com.apple.security.application-groups")]
@@ -101,7 +101,7 @@ pub struct PreferenceSpecifier {
     pub default_value: bool,
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+// [spec:kbdgen:req:xcode.targets.hosting-app+2]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SettingsRootDict {
     #[serde(rename = "StringsTable")]
@@ -118,7 +118,7 @@ pub struct BundleSchemes {
     pub cf_bundle_url_schemes: Vec<String>,
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+// [spec:kbdgen:req:xcode.targets.hosting-app+2]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct HostingPlist {
     #[serde(rename = "CFBundleDevelopmentRegion")]

@@ -1,10 +1,10 @@
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::{Context, bail};
 
 use super::project::Project;
 
-// [spec:kbdgen:req:bundle.fetch]
+// [spec:kbdgen:req:bundle.fetch+1]
 pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
     let layouts_dir = target.join("layouts");
     let projects_dir = target.join("projects");
@@ -14,6 +14,12 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
         .with_context(|| format!("create {}", projects_dir.display()))?;
 
     for (id, bundle) in project.dependencies.iter() {
+        let Some(repository) = bundle.url.split('/').nth(1) else {
+            bail!(
+                "{id}: url {:?} is not a GitHub <owner>/<repository>",
+                bundle.url
+            );
+        };
         let branch = bundle.branch.as_deref().unwrap_or("main");
         let url = format!("https://github.com/{}/archive/{}.zip", bundle.url, branch);
 
@@ -22,6 +28,7 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
         tracing::info!("Downloading {id} from {url}");
         let response = reqwest::get(&url)
             .await
+            .and_then(reqwest::Response::error_for_status)
             .with_context(|| format!("{id}: download {url}"))?;
         let bytes = response
             .bytes()
@@ -37,11 +44,7 @@ pub async fn fetch(target: &Path, project: &Project) -> anyhow::Result<()> {
 
         let kbdgen_path = tempdir
             .path()
-            .join(format!(
-                "{}-{}",
-                bundle.url.split('/').nth(1).unwrap(),
-                branch.replace('/', "-")
-            ))
+            .join(format!("{}-{}", repository, branch.replace('/', "-")))
             .join(format!("{id}.kbdgen"));
 
         for layout in &bundle.layouts {
@@ -96,7 +99,35 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:req:bundle.fetch/test]
+    // [spec:kbdgen:req:bundle.fetch+1/test]
+    #[tokio::test]
+    async fn a_url_without_a_repository_is_an_error() {
+        let root = tempfile::tempdir().unwrap();
+        let project = Project {
+            locales: IndexMap::new(),
+            author: "Test".to_string(),
+            copyright: "Test".to_string(),
+            email: "test@example.com".to_string(),
+            organisation: "Test".to_string(),
+            dependencies: IndexMap::from([(
+                "sme".to_string(),
+                crate::bundle::project::Dependency {
+                    url: "giellalt".to_string(),
+                    branch: None,
+                    layouts: vec!["se".to_string()],
+                },
+            )]),
+        };
+
+        let error = fetch(root.path(), &project).await.unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "sme: url \"giellalt\" is not a GitHub <owner>/<repository>"
+        );
+    }
+
+    // [spec:kbdgen:req:bundle.fetch+1/test]
     #[tokio::test]
     async fn https_urls_reach_the_socket() {
         // A client compiled without TLS rejects an https:// URL before it opens

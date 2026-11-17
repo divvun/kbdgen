@@ -64,6 +64,7 @@ pub struct MacOsBundle {
     /// Each layout's keyboard name and `.keylayout` text, by language tag.
     layouts: IndexMap<LanguageTag, (String, String)>,
     icons: IndexMap<LanguageTag, PathBuf>,
+    default_icon: Option<PathBuf>,
 }
 
 impl MacOsBundle {
@@ -93,6 +94,11 @@ impl MacOsBundle {
                 .as_ref()
                 .map(|resources| resources.icons.clone())
                 .unwrap_or_default(),
+            default_icon: bundle
+                .resources
+                .macos
+                .as_ref()
+                .and_then(|resources| resources.default_icon.clone()),
         })
     }
 
@@ -101,7 +107,7 @@ impl MacOsBundle {
     }
 
     // [spec:kbdgen:req:macbundle.plist+2]
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources+2]
     // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn add_key_layout(&mut self, input: &KeylayoutInput, layout_xml: String) {
         let name = &input.name;
@@ -122,9 +128,9 @@ impl MacOsBundle {
             .insert(input.tag.clone(), (name.clone(), layout_xml));
     }
 
-    /// Converts the layout's `icon.<tag>.*`, if it has one, into
-    /// `<name>.icns`.
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
+    /// Converts the layout's `icon.<tag>.*`, else the default `icon.*`, if
+    /// there is one, into `<name>.icns`.
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources+2]
     fn write_icon(&self, tag: &LanguageTag, name: &str) -> Result<()> {
         const SIZES: &[(&str, u32)] = &[
             ("icon_16x16", 16),
@@ -133,7 +139,7 @@ impl MacOsBundle {
             ("icon_32x32@2x", 64),
         ];
 
-        let Some(icon) = self.icons.get(tag) else {
+        let Some(icon) = self.icons.get(tag).or(self.default_icon.as_ref()) else {
             return Ok(());
         };
         if !cfg!(target_os = "macos") {
@@ -167,7 +173,7 @@ impl MacOsBundle {
     }
 
     // [spec:kbdgen:req:macbundle.plist+2]
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources+2]
     // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn write_all(self) -> Result<()> {
         let plist_path = self.path.join(TOP_FOLDER).join("Info.plist");

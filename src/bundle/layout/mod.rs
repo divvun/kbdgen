@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 use serde_yaml::Value;
 
 use android::AndroidKbdLayer;
@@ -17,7 +17,7 @@ pub mod ios;
 pub mod macos;
 pub mod windows;
 
-// [spec:kbdgen:def:layout.transforms]
+// [spec:kbdgen:def:layout.transforms+1]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Transform {
     End(String),
@@ -54,11 +54,14 @@ pub struct Layout {
 
 impl Layout {
     pub fn autonym(&self) -> &str {
-        let temp: LanguageTag = self.language_tag.primary_language().parse().unwrap();
-        &self
-            .display_names
-            .get(&temp)
-            .expect("autonym must be present")
+        let language: LanguageTag = self
+            .language_tag
+            .primary_language()
+            .parse()
+            .expect("a tag's primary language subtag is a tag");
+        self.display_names
+            .get(&language)
+            .expect("loading rejects layouts without an autonym (bundle.layouts.autonym)")
     }
 }
 
@@ -163,39 +166,28 @@ fn from_nested_sequence<'de, D>(
 where
     D: Deserializer<'de>,
 {
-    let mut output_map: IndexMap<String, Transform> = IndexMap::new();
-
     let transform_map: IndexMap<String, Value> = Deserialize::deserialize(deserializer)?;
-
-    for (key, transform) in transform_map {
-        let transform = process_transform(transform);
-
-        output_map.insert(key.clone(), transform);
-    }
-
-    Ok(Some(output_map))
+    transform_map
+        .into_iter()
+        .map(|(key, value)| Ok((key, process_transform(value)?)))
+        .collect::<Result<IndexMap<String, Transform>, &str>>()
+        .map(Some)
+        .map_err(D::Error::custom)
 }
 
-// [spec:kbdgen:def:layout.transforms]
-fn process_transform(value: Value) -> Transform {
+// [spec:kbdgen:def:layout.transforms+1]
+fn process_transform(value: Value) -> Result<Transform, &'static str> {
     match value {
-        Value::String(character) => Transform::End(character),
-        Value::Mapping(mapping) => {
-            let mut output_map: IndexMap<String, Transform> = IndexMap::new();
-
-            for (map_key, map_value) in mapping {
-                let key_character = match map_key {
-                    Value::String(key_character) => key_character,
-                    _ => panic!("Only Strings are supported within map transforms!"),
-                };
-
-                let inner_transform = process_transform(map_value);
-                output_map.insert(key_character, inner_transform);
-            }
-
-            Transform::More(output_map)
-        }
-        _ => panic!("Only Strings and Maps are supported within transforms!"),
+        Value::String(output) => Ok(Transform::End(output)),
+        Value::Mapping(mapping) => mapping
+            .into_iter()
+            .map(|(key, value)| match key {
+                Value::String(key) => Ok((key, process_transform(value)?)),
+                _ => Err("transform inputs must be strings; quote digits"),
+            })
+            .collect::<Result<_, _>>()
+            .map(Transform::More),
+        _ => Err("transform outputs must be strings or maps of further transforms; quote digits"),
     }
 }
 
@@ -472,7 +464,7 @@ mod tests {
         assert!(i_os.primary.is_none() && i_os.i_pad_9in.is_none() && i_os.i_pad_12in.is_none());
     }
 
-    // [spec:kbdgen:def:layout.transforms/test]
+    // [spec:kbdgen:def:layout.transforms+1/test]
     #[test]
     fn transforms_form_ordered_leaf_and_branch_tree() {
         let transforms = layout(
@@ -491,34 +483,23 @@ mod tests {
         assert_eq!(leaf(&branch(&branch(&transforms["¨"])["~"])["o"]), "ṏ");
     }
 
-    // [spec:kbdgen:def:layout.transforms/test]
+    // [spec:kbdgen:def:layout.transforms+1/test]
     #[test]
     fn non_string_top_level_transform_key_is_error() {
         assert_yaml_error("transforms:\n  1:\n    a: b\n");
     }
 
-    // [spec:kbdgen:def:layout.transforms/test]
+    // [spec:kbdgen:def:layout.transforms+1/test]
     #[test]
-    #[should_panic(expected = "Only Strings are supported within map transforms!")]
-    fn non_string_nested_transform_key_panics() {
-        let _ = load("transforms:\n  '´':\n    1: x\n");
+    fn non_string_nested_transform_key_is_error() {
+        assert_yaml_error("transforms:\n  '´':\n    1: x\n");
     }
 
-    // [spec:kbdgen:def:layout.transforms/test]
+    // [spec:kbdgen:def:layout.transforms+1/test]
     #[test]
-    fn non_string_transform_values_panic() {
+    fn non_string_transform_values_are_errors() {
         for value in ["1", "true", "~", "[a, b]"] {
-            let yaml = format!("transforms:\n  '´':\n    a: {value}\n");
-            let panic = std::panic::catch_unwind(|| load(&yaml)).unwrap_err();
-            let message = panic
-                .downcast_ref::<&str>()
-                .copied()
-                .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
-                .unwrap();
-            assert_eq!(
-                message, "Only Strings and Maps are supported within transforms!",
-                "{value}"
-            );
+            assert_yaml_error(&format!("transforms:\n  '´':\n    a: {value}\n"));
         }
     }
 }
