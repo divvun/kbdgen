@@ -1,10 +1,21 @@
-= KeyboardGen Developer Documentation
+= kbdgen developer guide
 :doctype: book
 :toc: left
+:toclevels: 2
 
-Most of this documentation is currently Windows oriented as that is
-the only implemented build at this time.
+This guide is for people changing kbdgen: how the workspace is laid out,
+how a target build runs, how the code is tested, and how each target's
+generator works. `DEV.md` in the repository is the short version: building,
+running the tests and regenerating these pages.
+
+The specification in `docs/spec/` is normative; where this guide and the
+spec disagree, the spec wins. The link:../user/kbdgen.html[user guide]
+describes the command line and the formats from the outside.
+
+include::architecture.adoc[]
 
 include::build-system.adoc[]
+
+include::testing.adoc[]
 
 include::targets.adoc[]

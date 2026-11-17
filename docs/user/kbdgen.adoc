@@ -1,12 +1,43 @@
-= KeyboardGen User Documentation
+= kbdgen user guide
 :doctype: book
 :toc: left
+:toclevels: 2
 
-KeyboardGen (shortened `kbdgen`) is a tool for generating keyboard 
-layouts from .kbdgen bundles and associated resources.
+kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, iOS and Android
+from one source: a `.kbdgen` bundle, which is a directory of YAML files
+describing the layouts, plus per-target metadata and resources such as icons.
+It also converts layouts to and from CLDR LDML Keyboard 3.0 XML, and runs
+typing tests against kbdgen's keyboard engine.
+
+This guide covers the command line, the bundle, the two layout formats,
+layout tests, and what each target produces. Contributors will find the
+internals in the link:../dev/kbdgen.html[developer guide], and the
+normative specification in `docs/spec/` in the repository.
+
+kbdgen is built from source. With Rust installed through
+https://rustup.rs[rustup]:
+
+[source,sh]
+----
+rustup target add wasm32-unknown-unknown
+git clone https://github.com/divvun/kbdgen.git
+cd kbdgen
+cargo install --path .
+----
+
+The WebAssembly target is needed because kbdgen's build compiles its
+keyboard engine to WebAssembly for the ChromeOS target. Some targets need
+more tools, such as the Windows Rust targets or Xcode; each target's
+chapter lists them.
 
 include::cli.adoc[]
 
 include::bundle.adoc[]
+
+include::layouts.adoc[]
+
+include::layouts-v3.adoc[]
+
+include::testing.adoc[]
 
 include::targets.adoc[]

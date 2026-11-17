@@ -1,0 +1,227 @@
+[#architecture]
+== Architecture
+
+kbdgen is one Cargo workspace. The root package is the `kbdgen` command
+line tool; `crates/` holds the keyboard model, the engine, LDML support and
+the two host bindings. The specification in `docs/spec/` says what all of
+it must do, and `plan/` tracks which parts are done.
+
+=== The workspace
+
+[cols="2,2,5",options="header"]
+|===
+|Crate |Kind |Holds
+
+|`kbd-model`
+|`no_std` library
+|The keyboard model: a superset of CLDR LDML Keyboard 3.0, stored fully
+resolved, with its invariants (`Keyboard::validate`) and its `DVKB` binary
+encoding (`Keyboard::to_bytes`, `from_bytes`).
+
+|`kbd-engine`
+|`no_std` library
+|The engine. `Model::key` takes a model, the host's `State`, the text before
+the caret and a key event, and returns the edit to make and the next state.
+It is deterministic and does no I/O. Every host runs it: the Windows text
+service, the ChromeOS extension through WebAssembly, and kbdgen itself
+when it derives dead-key tables or runs tests.
+
+|`kbd-ldml`
+|library
+|LDML keyboard3 XML through `xmlem`: reading, resolving a document to the
+model, exporting a model to a document, and writing. Embeds the CLDR import
+files (`crates/kbd-ldml/data/`).
+
+|`kbd-tsf`
+|`cdylib`
+|The Windows text service, a TSF text input processor that runs
+`kbd-engine` on the model each layout DLL carries. Built for release by
+`kbdgen tsf`.
+
+|`kbd-wasm`
+|`cdylib`
+|`kbd-engine` for WebAssembly hosts, as a C ABI of integers and byte
+buffers. kbdgen's `build.rs` compiles it for `wasm32-unknown-unknown` and
+the ChromeOS target embeds the module as `engine.wasm`.
+
+|`kbdgen`
+|binary and library
+|The command line, bundle loading, the format 4 layout format and its
+lowering, the format 3 migrator, and the target generators.
+|===
+
+The split follows what runs where. Code that ships inside a keyboard
+(`kbd-model`, `kbd-engine`) is `no_std` and never panics, and the model
+has nothing whose order or encoding varies by platform (no hash maps, no
+floating point), so both build for every device triple and behave the same
+on each. Parsing XML and YAML happens once, at build time, in the
+std crates. All member crates deny `unwrap`, `expect`, `panic!` and slice
+indexing outside tests (see their `[lints]` and `clippy.toml`), and
+`tests/workspace.rs` checks each crate's dependencies against
+`docs/spec/ldml/crate.md`.
+
+`default-members` leaves out `kbd-tsf` and `kbd-wasm`, so a plain
+`cargo build` or `cargo test` skips them; use `--workspace` to include them.
+
+=== The kbdgen crate
+
+`src/main.rs`::
+The clap command line. It sets up logging, loads the bundle and dispatches
+to a target build or an `ldml` command.
+
+`src/bundle/`::
+`read_kbdgen_bundle` loads a bundle into a `KbdgenBundle`: the project, the
+format 3 layouts (parsed into the types in `src/bundle/layout/`), the paths
+of the format 4 layouts, the target files and the resources.
+`reject_v4_layouts` decides which targets accept format 4 layouts.
+`fetch.rs` is `kbdgen fetch`.
+
+`src/ldml/`::
+Everything about layouts as keyboards: `yaml/` is format 4 (loading,
+lowering to keyboard3 documents, and import from them), `migrate/` converts
+format 3 to format 4, `conformance/` runs test vectors, and `cli.rs`,
+`export.rs`, `import.rs` and `compile.rs` implement `kbdgen ldml`.
+
+`src/build/`::
+The target generators, one module per target, and the `BuildStep` and
+`BuildSteps` traits in `mod.rs`. `windows/kbdl/` generates and builds the
+layout DLLs; `windows/tsf/` is `kbdgen tsf`.
+
+`build.rs`::
+Builds `kbd-wasm` for WebAssembly in a nested cargo with its own target
+directory, and leaves `kbd_wasm.wasm` in `OUT_DIR` for the ChromeOS target
+to `include_bytes!`.
+
+`examples/`::
+Developer tools: `migrate-survey` migrates every layout of the given
+bundles in memory and reports the defects; `pbxproj-roundtrip` reads an
+Xcode `project.pbxproj` and prints it as kbdgen writes it. Run them with
+`+cargo run --example <name> -- <arguments>+`.
+
+=== From a layout to the engine
+
+A format 4 layout reaches the engine in three stages:
+
+. `src/ldml/yaml` loads the YAML strictly and lowers it to one LDML
+  keyboard3 document per host (`windows`, `macOS`, `chromeOS`, and so on).
+. `kbd_ldml::resolve` turns each document into a `kbd_model::Keyboard`.
+. `Keyboard::to_bytes` encodes it as a `.dvkb` model, which
+  `kbd_engine::Model::from_bytes` loads.
+
+LDML XML from `kbdgen ldml import` enters at the second stage.
+
+Format 3 layouts reach the model through `src/ldml/migrate`.
+`migrate_bundle_layout` converts a layout file to format 4 text in memory,
+writing nothing, and the text then takes the format 4 path. This is how
+the Windows DLLs and the ChromeOS extension get an engine model for a
+format 3 layout. When the migration is blocked by a defect, Windows builds
+the DLL without a model and warns; the text service then stays inactive for
+that layout.
+
+Each target reads layouts as follows:
+
+[cols="1,3,3",options="header"]
+|===
+|Target |Format 4 |Format 3
+
+|Windows
+|DLL tables and engine model from the model (`windows/kbdl/adapter/`)
+|DLL tables from the layout's `windows` section (`windows/kbdl/bundle.rs`);
+engine model from the in-memory migration
+
+|macOS
+|`.keylayout` from the model (`macos/adapter/`)
+|`.keylayout` from the layout's `macOS` section (`macos/v3.rs`)
+
+|ChromeOS
+|the model
+|the model of the in-memory migration
+
+|iOS, Android
+|refused
+|the format 3 layout, read directly
+|===
+
+=== How a target build runs
+
+`kbdgen target` loads the bundle, checks `reject_v4_layouts`, creates the
+output directory, and then runs a list of build steps. A step implements
+`BuildStep`, whose only inputs are the loaded bundle and the output path; a
+target's `BuildSteps` lists its steps and runs them in order with
+`build_full`, stopping at the first error. Subcommands such as
+`macos generate` or `android clone` run one step on its own. The
+<<build-system>> chapter lists each target's steps and the conventions a
+step follows.
+
+[#spec]
+=== The specification
+
+`docs/spec/` is the normative description of kbdgen:
+
+* `docs/spec/*.md` covers the bundle, the format 3 layout, the command line
+  and pipeline, and each target: `kbdl.md` (Windows layout DLLs), `tsf.md`
+  (the text service), `macos.md`, `ios.md` with `pbxproj.md`, `android.md`
+  and `chromeos.md`.
+* `docs/spec/ldml/*.md` covers the model, the engine, LDML XML, format 4,
+  the migration, the adapters from the model to each target, the
+  `kbdgen ldml` commands and the tests. `ldml/overview.md` explains how
+  these fit together, and `ldml/crate.md` the workspace.
+
+Each rule is a block quote that starts with its id:
+
+[source,markdown]
+----
+> [spec:kbdgen:req:ldml.cli.test]
+> `test` MUST run every `tests/*.yaml` of the bundle (`ldml.test.bundle`).
+----
+
+The id's kind is `def` (a definition), `req` (a requirement), `sem`
+(behaviour), `syn` (syntax) or `thm` (a consequence of other rules, such as
+the struct sizes that follow from the Windows table layout). A `+N` suffix, as in `ldml.yaml.coexistence+2`, is the rule's
+version, raised whenever its meaning changes.
+
+Code says which rules it implements with a comment carrying the same id,
+on the item that implements it. A test says which rules it verifies with
+`/test`, or `/test/golden` for a golden-file test:
+
+[source,rust]
+----
+/// The `cargo rustc` invocation for one crate and variant.
+// [spec:kbdgen:req:kbdl.build]
+pub fn cargo_command(crate_dir: &Path, name: &str, variant: &Variant) -> Command {
+
+// [spec:kbdgen:req:kbdl.build/test]
+#[test]
+fn cargo_invocation_per_variant() {
+----
+
+An annotation names the rule version it was checked against. When a rule's
+version is raised, every annotation of it is updated once the code has
+been checked against the new text. `.config/nspec/config.styx` says where
+the spec and the code are, and which rules need a golden test.
+
+[#nplan]
+=== Planning with nplan
+
+The work is planned with nplan, in the repository:
+
+`plan/main.styx`::
+The work breakdown: a tree of nodes whose ids follow the tree with dots
+(`targets.windows.dll-gen`). Each node has a title, a kind (`feat`, `fix`
+and so on), the nodes it depends on, and the spec rules it `implements`.
+The top level is `input` (the bundle and command line), `targets`,
+`ldml` (the model, engine and formats) and `quality`.
+
+`plan/.state.styx`::
+Each node's status. nplan derives it from spec coverage and from the
+trailers of commits; it is not edited by hand.
+
+The everyday commands:
+
+* `nplan next` shows the next ready node, with the rules it would cover.
+* `nplan start <id>` marks a node as in progress.
+* `nplan check` runs the checks a commit is gated on (see <<testing>>).
+* `nplan commit -m <message>` commits through nplan: it checks that the
+  plan state is current, derives the Conventional Commits type from the
+  node's kind, and adds `nplan-id:` and `nplan-rule:` trailers that tie
+  the commit to the node and the rules it touched.

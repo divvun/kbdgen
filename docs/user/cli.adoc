@@ -1,15 +1,366 @@
-== CLI
+[#cli]
+== Command line
 
-Core `kbdgen` functionality will be within the subcommand `target`, that then allows to select
-among the various linguistic targets: Windows, macOS, ChromeOS, Android and iOS.
+kbdgen is one binary with four commands:
 
-Example usage:
+[cols="1,4",options="header"]
+|===
+|Command |What it does
 
-`cargo run -- target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac macos generate`
+|`kbdgen target`
+|Builds a bundle's keyboards for one platform: Windows, macOS, ChromeOS, iOS
+or Android.
 
-The first argument is the location of the given .kbdgen bundle (see below for 
-information on bundles) that the keyboard should be built from.
+|`kbdgen ldml`
+|Works on a bundle's layouts: exports them to CLDR LDML Keyboard 3.0 XML,
+imports XML, migrates format 3 layouts to format 4, compiles engine models,
+and runs layout tests.
 
-The second argument is the output path.
+|`kbdgen fetch`
+|Downloads layouts that the bundle takes from other keyboard repositories.
 
-And the third argument is the desired target.
+|`kbdgen tsf`
+|Builds the Windows text service for release. This is release engineering
+for the text service itself, not part of building a keyboard.
+|===
+
+Every command and subcommand prints its usage with `--help`, and
+`kbdgen --version` prints the version.
+
+[#cli-output]
+=== Output, logging and exit status
+
+kbdgen writes its log to stderr. Each line has a timestamp, a level and the
+module that wrote it:
+
+----
+2026-11-17T22:47:55.734906Z  INFO kbdgen::build::windows::kbdl::build: Building kbdtsfa for x64
+----
+
+The default level is `info`: one line per milestone, plus every warning.
+The `RUST_LOG` environment variable changes it:
+
+[source,sh]
+----
+RUST_LOG=warn kbdgen target -b sme.kbdgen -o out/windows windows    # warnings only
+RUST_LOG=debug kbdgen target -b sme.kbdgen -o out/windows windows   # each file written, each tool run
+RUST_LOG=info,kbdgen::build::windows=trace kbdgen target -b sme.kbdgen -o out/windows windows
+----
+
+The last form raises one module to `trace`, which includes the full output
+of the tools kbdgen runs (cargo, for Windows). Start such a list with a
+default level such as `info`: a `RUST_LOG` that names only a module
+silences everything else.
+
+Stdout carries only a command's results, so it can be piped or captured:
+
+* the files that `ldml export`, `ldml compile`, `ldml import` and `tsf`
+  wrote, one path per line (`ldml import` prints its notes and warnings
+  before them)
+* the identifiers from `target … ios print-pkg-ids`
+* the report of `ldml migrate` and the results of `ldml test`
+
+The one exception is `target … ios build`: `pod install` and `xcodebuild`
+print their own progress to stdout while they run.
+
+kbdgen exits with status 0 on success. On failure it prints `Error:` and the
+reason to stderr, followed by `Caused by:` lines when there is more detail,
+and exits with status 1. A command line that does not parse exits with
+status 2 and prints the usage.
+
+[#cli-target]
+=== `kbdgen target`
+
+----
+kbdgen target -b <BUNDLE> -o <OUT> <PLATFORM> [<STEP>] [OPTIONS]
+----
+
+`-b`, `--bundle-path`:: The `.kbdgen` bundle directory (<<bundle>>).
+`-o`, `--output-path`:: The output directory. kbdgen creates it, with its
+parents, when it does not exist.
+
+Both options are required and come before the platform:
+`kbdgen target windows -b …` is a usage error.
+
+kbdgen first loads the whole bundle: `project.yaml`, every layout, the
+target files and the resources. When anything fails to load, it stops
+before creating the output directory. iOS and Android then refuse a bundle
+that has any format 4 layout:
+
+----
+Error: layout vro is a v4 layout (`format: 4`); the ios target cannot build v4 layouts yet
+----
+
+Windows, macOS and ChromeOS build format 3 and format 4 layouts side by
+side.
+
+[cols="2,5",options="header"]
+|===
+|Platform and step |What it does
+
+|`windows`
+|Generates a Rust crate per layout in `OUT/build/`, then builds each into
+layout DLLs in `OUT/x86/`, `OUT/x64/`, `OUT/arm64/` and `OUT/wow64/`.
+
+|`chromeos`
+|Writes an input method extension into `OUT`: `manifest.json`,
+`background.js`, `engine.wasm`, one model per layout in `models/`, and
+`_locales/`.
+
+|`macos build`
+|Runs `generate`, then `installer`. `--no-installer` skips the installer. A
+kbdgen built for another operating system than macOS skips the installer
+with a warning.
+
+|`macos generate`
+|Writes the keyboard layout bundle
+`OUT/<packageId>.keyboardlayout.<bundle>.bundle`, with one `.keylayout` file
+per layout.
+
+|`macos installer`
+|Packages that bundle as `OUT/<packageId>.keyboardlayout.<bundle>.pkg`, with
+`pkgbuild` and `productbuild`. Run `generate` first.
+
+|`ios build`
+|Clones giellakbd-ios into `OUT/repo`, generates the keyboards and the Xcode
+project, downloads signing certificates and provisioning profiles with
+fastlane, runs `pod install`, then archives and exports the app to
+`OUT/<packageId>.xcarchive` and `OUT/ipa/`.
+
+|`ios print-pkg-ids`
+|Prints the app's bundle identifier and each keyboard's, one per line,
+sorted. Runs no build step.
+
+|`ios init`
+|Registers the app and keyboard identifiers, and their app group, with App
+Store Connect through fastlane.
+
+|`android build`
+|Runs `clone`, downloads the divvunspell and pahkat libraries from their
+GitHub releases into the app, then runs `generate`.
+
+|`android clone`
+|Clones giellakbd-android into `OUT/repo`. An existing `OUT/repo` is reused.
+
+|`android generate`
+|Writes the layouts, names, icons and spell checker configuration into
+`OUT/repo`. When the bundle has `targets/android.yaml`, it also writes
+`app/local.gradle` and runs `gradlew assembleRelease`.
+|===
+
+Each step either completes or stops the build with an error; a full build
+runs its steps in order and stops at the first failure. The target chapters
+describe each platform's configuration and output in detail.
+
+Build the Windows layout DLLs:
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o out/windows windows
+----
+
+Build the macOS bundle and its installer:
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o out/macos macos build
+----
+
+Build the ChromeOS extension:
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o out/chromeos chromeos
+----
+
+List the iOS bundle identifiers, for example to set up signing:
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o out/ios ios print-pkg-ids
+----
+
+[#cli-ldml]
+=== `kbdgen ldml`
+
+The `ldml` commands work on the layouts in the bundle's `layouts/`
+directory; `ldml test` also reads `tests/`. They do not read
+`project.yaml`, the target files or the resources. Here `-b` and `-o` come
+after the subcommand.
+
+`export` and `compile` work on format 4 layouts only, and fail on a format 3
+layout with a hint to migrate it. Both take two filters, each repeatable:
+
+`--layout <TAG>`:: Only this layout. A tag that names no layout is an error.
+Use it to pick format 4 layouts out of a bundle that still has format 3
+ones.
+`--host <HOST>`:: Only this host: `windows`, `macOS`, `chromeOS`, `linux`,
+`iOS`, `android` or `web`. The names are case-sensitive.
+
+Without filters they cover every layout and every host. A layout has a
+keyboard for some hosts only; the others are skipped. `export`, `compile`
+and `import` check everything before they write the first file, so a
+failure leaves nothing behind.
+
+The examples below start from the format 3 bundle `sme.kbdgen`, and
+migrate it first.
+
+==== `ldml migrate`
+
+----
+kbdgen ldml migrate -b <BUNDLE> [--dry-run] [--report <FILE>]
+----
+
+Converts the bundle's format 3 layouts to format 4, in place. For each
+layout it lists the defects it found: what the conversion changed, what it
+dropped, and what to review, each with a code such as `M09` and the action
+taken. A layout with a blocking defect is not written, and the command then
+exits with status 1; the other layouts are still written.
+<<layouts-v3-migrate>> lists the defects and how to resolve the blocking
+ones.
+
+`--dry-run`:: Report only; write no layout.
+`--report <FILE>`:: Write the report to `FILE` as YAML (the defects, then a
+summary with each layout's outcome), and print only the summary.
+
+Preview, then convert and keep the report:
+
+[source,sh]
+----
+kbdgen ldml migrate -b sme.kbdgen --dry-run
+kbdgen ldml migrate -b sme.kbdgen --report migration.yaml
+----
+
+The report ends with a summary and the state of each layout:
+
+----
+summary: 4 layout(s), 29 defect(s): M06 1, M09 6, M13 3, M14 14, M16 5
+sme.kbdgen/layouts/se.yaml: written
+sme.kbdgen/layouts/se-FI.yaml: written
+----
+
+==== `ldml compile`
+
+----
+kbdgen ldml compile -b <BUNDLE> -o <OUT> [--layout <TAG>]… [--host <HOST>]…
+----
+
+Writes `OUT/<tag>.<host>.dvkb`, the binary engine model of each layout for
+each host. These are the models that the Windows DLLs and the ChromeOS
+extension embed; compiling them on their own is the quick way to check a
+layout while writing it (<<layouts-checking>>).
+
+[source,sh]
+----
+kbdgen ldml compile -b sme.kbdgen -o out/models --host windows
+----
+
+==== `ldml export`
+
+----
+kbdgen ldml export -b <BUNDLE> -o <OUT> [--layout <TAG>]… [--host <HOST>]…
+----
+
+Writes `OUT/<tag>.<host>.xml`, an LDML Keyboard 3.0 document per layout and
+host. What LDML cannot express goes into elements in kbdgen's own
+namespace, which other LDML tools ignore. <<layouts-ldml>> shows how a
+layout maps to LDML.
+
+[source,sh]
+----
+kbdgen ldml export -b sme.kbdgen -o out/xml --layout se-NO
+----
+
+==== `ldml import`
+
+----
+kbdgen ldml import -b <BUNDLE> [--force] <XML>…
+----
+
+Reads LDML Keyboard 3.0 files and writes each layout as
+`layouts/<tag>.yaml` in format 4. Files for the same layout, one per host,
+are merged into one layout. The tag comes from kbdgen's own attribute when a
+file has it (files kbdgen exported do), otherwise from the keyboard's
+`locale`. An existing layout file is an error unless `--force` is given.
+
+The command prints how many XML comments each file lost, any warnings, and
+the files it wrote:
+
+[source,sh]
+----
+kbdgen ldml import -b my.kbdgen --force out/xml/*.xml
+----
+
+==== `ldml test`
+
+----
+kbdgen ldml test -b <BUNDLE> [--cldr]
+----
+
+Runs every `tests/*.yaml` file of the bundle through the engine and prints
+each failing step with the expected and actual result, then a summary. It
+exits with status 1 when a step fails. `--cldr` also runs the CLDR test
+vectors that kbdgen carries. <<testing>> describes the test file format.
+
+----
+$ kbdgen ldml test -b my.kbdgen
+FAIL tests/dead-keys.yaml: deliberately wrong: step 2: expect
+  expected text     "b"
+  actual   text     "a"
+  actual   preedit  ""
+  actual   layer    none
+  actual   action   edit: delete 0, insert "a", preedit "", layer none
+files: 1, tests: 2, checks: 3, failing steps: 1
+Error: 1 conformance steps failed
+----
+
+[#cli-fetch]
+=== `kbdgen fetch`
+
+----
+kbdgen fetch -b <BUNDLE>
+----
+
+Copies the layouts listed under `dependencies` in `project.yaml` from other
+bundles on GitHub into this one, replacing files already there
+(<<bundle-fetch>>). With this in `my.kbdgen/project.yaml`:
+
+[source,yaml]
+----
+dependencies:
+  sme:
+    url: giellalt/keyboard-sme
+    layouts: [se]
+----
+
+[source,sh]
+----
+kbdgen fetch -b my.kbdgen
+----
+
+writes `my.kbdgen/layouts/se.yaml` and `my.kbdgen/projects/se.yaml`.
+
+[#cli-tsf]
+=== `kbdgen tsf`
+
+----
+kbdgen tsf -w <WORKSPACE> -o <OUT>
+----
+
+Builds the Windows text service, which every Divvun keyboard on Windows
+shares and which is released separately from keyboards.
+
+`-w`, `--workspace`:: A kbdgen checkout, which holds `crates/kbd-tsf`.
+`-o`, `--output-path`:: Where to write the release files.
+
+It builds `divvun_tip_x86.dll`, `divvun_tip_x64.dll` and
+`divvun_tip_arm64.dll`, checks each, links the Arm64X forwarder
+`divvun_tip.dll`, and prints the four files' absolute paths on stdout: the
+list of files to sign. The DLLs link the Rust standard library against the
+MSVC and Windows SDK libraries, so this runs on Windows, with the MSVC build
+tools, the Windows SDK and the three Windows Rust targets installed.
+
+[source,sh]
+----
+kbdgen tsf -w . -o release
+----

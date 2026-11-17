@@ -1,0 +1,220 @@
+[#testing]
+== Testing
+
+=== Running the tests
+
+The tests run with https://nexte.st[cargo-nextest]:
+
+[source,sh]
+----
+cargo install cargo-nextest --locked
+cargo nextest run --workspace
+----
+
+`--workspace` is needed: `kbd-tsf` and `kbd-wasm` are not default members,
+so without it their tests do not run. To run some tests only, pass a
+filter: `cargo nextest run --workspace keylayout`.
+
+Most tests sit next to the code, in `#[cfg(test)]` modules. The others:
+
+* `tests/ldml_cli.rs` runs the `kbdgen` binary (`ldml` commands, and
+  `target` builds of format 4 layouts) and checks exit status and output
+  files.
+* `tests/workspace.rs` checks each crate's dependencies against
+  `docs/spec/ldml/crate.md`.
+* `tests/ldml_kmc.rs` validates exported LDML with Keyman's `kmc`.
+* `crates/kbd-engine/tests/targets.rs` builds `kbd-model` and `kbd-engine`
+  for every device triple.
+* `crates/kbd-tsf/tests/` holds the text service tests: `self_contained.rs`
+  runs everywhere, `vm.rs` and `acceptance.rs` only on Windows.
+
+==== Ignored tests
+
+Tests that need extra tools or a particular machine are marked
+`#[ignore]`, with a reason. `--run-ignored all` adds them to a run, and
+`--run-ignored only` with a filter runs one:
+
+[source,sh]
+----
+cargo nextest run --workspace --run-ignored only -E 'test(fixture_dlls_hold_their_golden_tables)'
+----
+
+[cols="3,4",options="header"]
+|===
+|Test |Needs
+
+|`fixture_dlls_hold_their_golden_tables`,
+`built_vro_dlls_verify_and_embed_the_model` (`src/build/windows/kbdl/`)
+|The three Windows Rust targets. Runs on any host.
+
+|`device_crates_build_for_every_device_triple`
+(`crates/kbd-engine/tests/targets.rs`)
+|The Rust targets of every device triple in `ldml.crate.targets`.
+
+|`exported_fixtures_pass_kmc` (`tests/ldml_kmc.rs`)
+|Node.js. It runs `npx -y @keymanapp/kmc@18`, or the executable that
+`KBDGEN_KMC` names.
+
+|`real_dlls_type_what_the_simulation_types`
+(`src/build/windows/kbdl/differential/windows.rs`)
+|Windows, in an elevated interactive session. It installs layouts.
+
+|`crates/kbd-tsf/tests/vm.rs` and `acceptance.rs`
+|A Windows 11 machine prepared as described below.
+|===
+
+On macOS and Linux the Windows-only tests are not compiled, so
+`--run-ignored all` is safe there. On Windows, select tests by name.
+
+=== Golden files
+
+Golden files pin generated output byte for byte. A golden test generates
+from fixed fixture layouts and compares the result with the file:
+
+[cols="1,3,4",options="header"]
+|===
+|Generator |Directory |Files
+
+|Windows
+|`src/build/windows/kbdl/testdata/golden/<fixture>/`
+|The generated crate (`Cargo.toml.golden`, `lib.rs.golden`), the `.res`
+file, `diagnostics.txt`, and `kbdtables.txt`, the tables decoded from the
+built DLLs
+
+|macOS
+|`src/build/macos/testdata/golden/`
+|`<fixture>.keylayout` and `<fixture>.diag`
+
+|ChromeOS
+|`src/build/chromeos/testdata/golden/`
+|`manifest.json`, `_locales/` and `diagnostics.txt`
+|===
+
+When a change to a generator is intended, regenerate the files with
+`KBDGEN_BLESS` set. Each golden test then writes its current output over its
+file before comparing, so the run passes and `git diff` shows exactly what
+changed:
+
+[source,sh]
+----
+KBDGEN_BLESS=1 cargo nextest run --workspace
+----
+
+`kbdtables.txt` comes from built DLLs, in an ignored test, so rewriting it
+needs that test too:
+
+[source,sh]
+----
+KBDGEN_BLESS=1 cargo nextest run --workspace --run-ignored only -E 'test(fixture_dlls_hold_their_golden_tables)'
+----
+
+Read the diff before committing it. A failing golden test prints which
+file differs and where; a missing file asks for `KBDGEN_BLESS=1` to create
+it.
+
+The DLL bytes themselves are not golden: code generation changes with the
+Rust release, while the decoded tables do not.
+
+=== Test vectors
+
+The engine is tested with typing vectors in the format of a bundle's
+`tests/*.yaml` (described in the user guide). kbdgen's own are in
+`crates/kbd-engine/tests/golden/`: layouts in `layouts/` and `v3/`, LDML
+keyboards in `keyboards/`, and the vectors in `tests/`.
+`src/ldml/conformance/tests/` runs them, together with the CLDR 48
+keyboards and keyboardTest3 vectors vendored in
+`crates/kbd-ldml/testdata/cldr/48/`. These files are inputs written by
+hand, not output, so `KBDGEN_BLESS` does not touch them. Add a vector file
+to `tests/` to cover a new engine behaviour.
+
+The same directory has the round-trip tests (`roundtrip.rs`: XML, the
+model, format 4 YAML and the binary model, each written, read back and
+written again) and the property tests (`robust.rs`: decoding arbitrary
+bytes and typing arbitrary keys never panic).
+
+=== Differential tests
+
+The Windows, macOS and ChromeOS generators each have a test that types on
+what the generator wrote and on `kbd-engine` with the same model, and
+requires the same text. Windows and macOS keep a list of the differences
+their native formats cannot avoid (`exceptions.rs` in each `differential/`
+directory); a difference must match an entry there, and any other fails
+the test. ChromeOS runs the engine itself, so it allows none.
+
+Windows (`src/build/windows/kbdl/differential/`)::
+Simulates `ToUnicodeEx` on the generated `KBDTABLES`: every layer at each
+of the 49 ISO positions and the space bar, then every dead-key path. Runs
+on every host. On Windows, `windows.rs` also loads the built DLLs and
+checks the real `ToUnicodeEx` against both (ignored; see above).
+
+macOS (`src/build/macos/differential/`)::
+Reads the written `.keylayout` back and simulates it. Runs on every host;
+nothing calls macOS. It also checks a format 3 layout's `.keylayout`
+against the one built from its migration.
+
+ChromeOS (`src/build/chromeos/differential/`)::
+Generates the extension, then `harness/typing_test.ts` loads its
+`background.js`, `engine.wasm` and models in Deno, behind a fake
+`chrome.input.ime` and text field, and types every case. This needs
+https://deno.com[Deno]: `deno` on `PATH`, or its path in `DENO`. Without
+it, the test prints that it is skipping and passes, so check its output
+when you change the ChromeOS target.
+
+The migration is checked the same way: `src/ldml/migrate` runs each
+migrated layout through the engine against what the format 3 platforms
+typed, and reports every difference as a defect.
+
+=== Windows text service tests
+
+The text service only runs inside Windows, so its end-to-end tests run on
+a Windows 11 machine (a VM is fine) with a user signed in at the desktop.
+They type with `SendInput` and switch input methods, so they take over the
+desktop while they run.
+
+The VM test (`crates/kbd-tsf/tests/vm.rs`, with the scripts in
+`crates/kbd-tsf/tests/vm/`) builds the text service under a test CLSID,
+checks that registration refuses misnamed and misplaced DLLs, registers
+the fixture layouts,
+types each case into Win32, RichEdit, WPF and console windows in 32- and
+64-bit processes, and removes everything again. Run it elevated, for
+example over SSH, while the same user is signed in:
+
+[source,bat]
+----
+kbdgen target -b crates/kbd-tsf/tests/vm/fixture.kbdgen -o C:\kbd-vm windows
+set KBD_TSF_VM_LAYOUT=C:\kbd-vm
+cargo test -p kbd-tsf --test vm -- --ignored --nocapture
+----
+
+The acceptance test (`crates/kbd-tsf/tests/acceptance.rs`) installs the
+keyboard as a user gets it, with Inno Setup 6 and kbdi, types each case
+through the installed text service, and uninstalls it. Its file header
+lists the setup and the variables `KBD_TSF_ACCEPTANCE_ISS` and
+`KBD_TSF_ACCEPTANCE_KBDI`.
+
+=== Checks before committing
+
+`nplan check` runs the checks a commit is gated on, as configured in
+`.config/nplan/config.styx`:
+
+[cols="1,3",options="header"]
+|===
+|Check |Command
+
+|format
+|`+cargo fmt --all -- --check+`
+
+|lint
+|`cargo clippy --workspace --all-targets`
+
+|test
+|`cargo nextest run --workspace`
+|===
+
+`nplan check --fix` runs `cargo fmt --all` when formatting fails. A passing
+check is recorded against the content it checked, and `nplan commit`
+skips checks whose content has not changed since, so running
+`nplan check` while working keeps commits fast.
+
+Tests also count towards spec coverage: a test that verifies a rule
+carries its id with `/test` (see <<spec>>).

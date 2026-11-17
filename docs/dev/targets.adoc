@@ -1,11 +1,15 @@
-= Target Specific information
+[#targets]
+= Targets
+
+One chapter per target generator under `src/build/`: what it reads, the
+steps it runs, and how it is tested.
 
 include::windows.adoc[]
-
-include::chromeos.adoc[]
 
 include::macos.adoc[]
 
 include::ios.adoc[]
 
 include::android.adoc[]
+
+include::chromeos.adoc[]

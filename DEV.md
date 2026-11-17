@@ -1,47 +1,78 @@
-# kbdgen 2/3.0
+# Developing kbdgen
 
-This is a developer oriented Readme.
+A quick start for contributors. The developer guide
+(`docs/dev/`, published at <https://divvun.github.io/kbdgen/dev/kbdgen.html>)
+explains the architecture, the build pipeline and the tests in depth, and
+`docs/spec/` holds the specification the code is checked against.
 
-`cargo run -- target -b C:\Projects\keyboard-sme\sme.kbdgen -o C:\KbdgenBuilds\android_blep android build`
+## Build
 
-`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android build`
+```sh
+rustup target add wasm32-unknown-unknown
+cargo build
+```
 
-`cargo run -- target -b ~/Projects/divvun-keyboard/divvun.kbdgen -o ~/KbdgenBuilds/android_blep android build`
+kbdgen's `build.rs` compiles `crates/kbd-wasm` for `wasm32-unknown-unknown`
+in a nested cargo build and embeds the module in the ChromeOS target, so the
+build fails without that target.
 
-`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/android_blep android generate`
+`cargo build` builds the `default-members`: kbdgen, `kbd-model`, `kbd-engine`
+and `kbd-ldml`. Add `--workspace` to include `kbd-tsf` and `kbd-wasm`.
 
+Run kbdgen from the checkout with `cargo run --`, for example on the test
+bundle in the repository:
 
+```sh
+cargo run -- target -b crates/kbd-tsf/tests/acceptance/fixture.kbdgen -o /tmp/kbdgen-out windows
+cargo run -- ldml compile -b crates/kbd-tsf/tests/acceptance/fixture.kbdgen -o /tmp/kbdgen-models
+```
 
-`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/ios_blep ios`
+The Windows target needs the three Windows standard libraries, on any host:
 
+```sh
+rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc aarch64-pc-windows-msvc
+```
 
-`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/blep windows`
+Set `RUST_LOG=debug` (or `trace`) to see more of what a build does.
 
-`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/blep windows`
+## Test
 
+```sh
+cargo install cargo-nextest --locked
+cargo nextest run --workspace
+```
 
-`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/mac_blep macos build`
+`--workspace` matters: without it `kbd-tsf` and `kbd-wasm` are not tested.
 
-`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/mac_blep macos build`
+- `KBDGEN_BLESS=1 cargo nextest run --workspace` rewrites the golden files
+  of the Windows, macOS and ChromeOS generators. Review the diff before
+  committing it.
+- The ChromeOS typing test drives the generated extension in Deno. Without
+  `deno` on `PATH` (or `DENO` naming it) it prints a notice and passes.
+- `cargo nextest run --workspace --run-ignored all` adds the slow and
+  tool-dependent tests: Windows DLL builds, the device-triple builds of
+  `kbd-model` and `kbd-engine`, and Keyman's `kmc` (needs Node.js).
+- The Windows text service tests in `crates/kbd-tsf/tests/vm.rs` and
+  `acceptance.rs` are compiled only on Windows and need a Windows 11
+  machine with a signed-in session; their file headers say how to run
+  them. On Windows, select tests by name rather than with
+  `--run-ignored all`, which would pick these up too.
 
+`nplan check` runs what a commit is gated on: `cargo fmt --all -- --check`,
+`cargo clippy --workspace --all-targets` and `cargo nextest run --workspace`.
+Commit messages use Conventional Commits prefixes (`feat:`, `fix:`, `docs:`
+and so on).
 
-`cargo run -- target -b ~/Projects/keyboard-sme/sme.kbdgen -o ~/KbdgenBuilds/chrome_blep chromeos`
+## Documentation
 
-`cargo run -- target -b ~/git/divvun/keyboard-sme/sme.kbdgen/ -o ~/git/divvun/KbdgenBuilds/chrome_blep chromeos`
+The guides are AsciiDoc. Regenerate the HTML after changing them:
 
+```sh
+asciidoctor -a last-update-label! docs/index.adoc
+asciidoctor -a last-update-label! docs/user/kbdgen.adoc
+asciidoctor -a last-update-label! docs/dev/kbdgen.adoc
+```
 
-`cargo run -- target -b C:\Projects\keyboard-sme\sme.kbdgen -o C:\KbdgenBuilds\mac_blep macos`
-
-# asciidoc
-
-`asciidoctor -a last-update-label! docs/user/kbdgen.adoc`
-
-`asciidoctor -a last-update-label! docs/dev/kbdgen.adoc`
-
-# old keyboard gen commands
-
-(run from old_kbdgen folder)
-
-`./kbdgen build android -o android-build ~/Projects/divvun-keyboard/divvun.kbdgen`
-
-`./kbdgen build android -o android-build ~/Projects/keyboard-sme-old/sme.kbdgen`
+Each writes its `.html` beside the source, which is what
+<https://divvun.github.io/kbdgen/> serves. `-a last-update-label!` keeps the
+"Last updated" line out, so regenerating unchanged sources changes nothing.

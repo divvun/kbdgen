@@ -1,83 +1,96 @@
 # kbdgen
 
-[![](https://divvun-tc.thetc.se/api/github/v1/repository/divvun/kbdgen/main/badge.svg)](https://divvun-tc.thetc.se/api/github/v1/repository/divvun/kbdgen/main/latest)
+kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, iOS and Android
+from one source: a `.kbdgen` bundle, which is a directory of YAML files
+describing the layouts, plus per-target metadata and resources such as icons.
+It also converts layouts to and from CLDR LDML Keyboard 3.0 XML, and runs
+typing tests against kbdgen's keyboard engine.
 
-A tool to build keyboard packages for a multitude of platforms using a single, simple text file definition. Supported outputs:
+Documentation: <https://divvun.github.io/kbdgen/> (the user guide and the
+developer guide). The normative specification is in [`docs/spec/`](docs/spec/).
 
-- macOS
-- Windows
-- ChromeOS
-- iOS/iPadOS
-- Android
-- [CLDR keyboard 3.0](https://cldr.unicode.org/index/keyboard-workgroup) (LDML) definitions, exported and imported with `kbdgen ldml`
+## Outputs
 
-We think it's pretty cool.
-[Documentation](https://divvun.github.io/kbdgen/) (under construction -- [how to update](DEV.md#asciidoc)).
+| Target | Command | Output |
+|---|---|---|
+| Windows | `kbdgen target … windows` | keyboard layout DLLs for x86, x64, arm64 and WOW64, carrying the engine model that the Divvun text service runs |
+| macOS | `kbdgen target … macos build` | a keyboard layout bundle of `.keylayout` files, and a `.pkg` installer |
+| ChromeOS | `kbdgen target … chromeos` | an input method extension that runs kbdgen's engine compiled to WebAssembly |
+| iOS and iPadOS | `kbdgen target … ios build` | a keyboard app built from [giellakbd-ios](https://github.com/divvun/giellakbd-ios) |
+| Android | `kbdgen target … android build` | a keyboard app built from [giellakbd-android](https://github.com/divvun/giellakbd-android) |
+| CLDR LDML | `kbdgen ldml export`, `kbdgen ldml import` | LDML Keyboard 3.0 XML, one file per layout and host |
 
-## Runtime dependency
+Layouts come in two formats. Format 4 (a layout file with `format: 4`) is
+LDML-shaped and compiles to kbdgen's keyboard model; format 3 is the older
+format. The Windows, macOS and ChromeOS targets build both. iOS and Android
+build format 3 only, and refuse a bundle that has a format 4 layout.
+`kbdgen ldml migrate` converts format 3 layouts to format 4.
 
-kbdgen uses `convert` which is part of `imagemagick`
+`kbdgen tsf` builds the Windows text service, which is released separately
+from keyboards.
 
-For Mac: `brew install imagemagick`
-For Linux: `<pkg-manager> install imagemagick`
+## Install
 
-## Installation
+kbdgen is built from source:
 
-1. get [Rust](https://www.rust-lang.org/learn/get-started)
-1. add the WebAssembly target, which the ChromeOS engine is built for: `rustup target add wasm32-unknown-unknown`
-1. clone this repo: `git clone https://github.com/divvun/kbdgen.git`
-1. `cd kbdgen`
-1. `cargo install --path .` (this installs `kbdgen` to the path)
+1. Install Rust with [rustup](https://rustup.rs).
+2. Add the WebAssembly target. kbdgen's build script compiles the keyboard
+   engine for it and embeds the module in every ChromeOS extension:
 
-**Alternatively** - download a precompiled binary from nightly builds:
+   ```sh
+   rustup target add wasm32-unknown-unknown
+   ```
 
-- [Linux](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=linux) (x86_64)
-- [macOS](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=macos) (x86_64)
-- [Windows](https://pahkat.uit.no/devtools/download/kbdgen?channel=nightly&platform=windows) (i686)
+3. Clone and install:
 
-Extract the archive, and move the binary to somewhere on your `$PATH`.
+   ```sh
+   git clone https://github.com/divvun/kbdgen.git
+   cd kbdgen
+   cargo install --path .
+   ```
 
-## Example Usage
+Each target also needs some tools of its own:
 
-`cargo run -- target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_mac macos generate`
+| Target | Needs |
+|---|---|
+| Windows | The three Windows targets: `rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc aarch64-pc-windows-msvc`. kbdgen builds the layout DLLs with `cargo` and links them with the `rust-lld` that rustup ships, so this works on macOS and Linux too. |
+| macOS | ImageMagick for icons. Icons (`iconutil`) and the installer (`pkgbuild`, `productbuild`) need macOS; on other hosts `macos build` skips both with a warning. |
+| ChromeOS | Nothing more. |
+| iOS | macOS with Xcode, CocoaPods, fastlane, xcbeautify, git and ImageMagick. |
+| Android | git, tar, and ImageMagick for the icon. When the bundle has `targets/android.yaml`, kbdgen also runs `gradlew assembleRelease`, which needs a JDK and the Android SDK. |
+| `kbdgen tsf` | Windows, with the MSVC build tools, the Windows SDK and the three Windows targets above. |
 
-Let's build an android app. There's two. [divvun-dev-keyboard](https://github.com/divvun/divvun-dev-keyboard) and [divvun-keyboard](https://github.com/divvun/divvun-keyboard). The former is the unstable one where we do all the testing. The latter one gets pushed to production. Both are deployed as separate apps in google playstore.
+kbdgen runs ImageMagick as `convert`. ImageMagick 7 still installs that
+command (it prints a deprecation notice, which is harmless). On macOS:
+`brew install imagemagick`.
 
-Alas, I digress.
+## Quick start
 
-We want to build divvun-dev-keyboard. Clone divvun-dev-keyboard.
+Build a published keyboard, North Sámi, for Windows and macOS:
 
-```bash
-cd source/divvun
-git clone git@github.com:divvun/divvun-dev-keyboard.git
-cd ../kbdgen
-cargo run -- fetch -b /Users/srdkvr/source/divvun/divvun-dev-keyboard/divvun-dev.kbdgen #fetches deps
-cargo run -- target --bundle-path /Users/srdkvr/source/divvun/divvun-dev-keyboard/divvun-dev.kbdgen --output-path ~/source/divvun/android_keyboard android build
+```sh
+git clone https://github.com/giellalt/keyboard-sme
+kbdgen target -b keyboard-sme/sme.kbdgen -o out/windows windows
+kbdgen target -b keyboard-sme/sme.kbdgen -o out/macos macos build
 ```
 
-Note - you will need imagemagick to run converting of images - so
+`out/windows/x64/kbdse-NO.dll` is one of the resulting layout DLLs, and
+`out/macos` holds the `.bundle` and its `.pkg` installer.
 
+Those layouts are in format 3. To see what converting them to format 4 would
+report, without writing anything:
+
+```sh
+kbdgen ldml migrate -b keyboard-sme/sme.kbdgen --dry-run
 ```
-$ brew install imagemagick@6
-$ echo 'export PATH="/opt/homebrew/opt/imagemagick@6/bin:$PATH"' >> ~/.zshrc
-```
 
-Your typical commands are
+`kbdgen --help` lists every command, and each command takes `--help` too.
+Log lines go to stderr; set `RUST_LOG=debug` for more detail.
 
-- ... `android clone` # Clones the base android repository
-- ... `android generate` # Generates all the layouts and speller configs, but doesn't clone stuff
-- ... `android build` # Both of the above.
+## Contributing
 
-### TL;DR Android
-
-Your
-
-For Android run two commands:
-
-```
-kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_android android clone
-kbdgen target --bundle-path C:\Projects\Divvun\keyboards\keyboard-sme\sme.kbdgen --output-path C:\KbdgenBuilds\sme_android android generate
-```
+See [DEV.md](DEV.md) for building, testing and regenerating the
+documentation, and the developer guide for how the code fits together.
 
 ## License
 
@@ -87,10 +100,6 @@ This project is licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
-
-## Contribution
-
-Fork and PR on Github.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any

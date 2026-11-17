@@ -1,27 +1,197 @@
-== Build System
+[#build-system]
+== Build system
 
-All builds are to implemented as io steps with no 
-arguments or return types except the bundle and output path.
+This chapter covers how `kbdgen target` runs a target's build, and the
+conventions every build step follows for logging and errors.
 
-Builds are expected to be per major target (i.e., Windows, 
-MacOS, ChromeOS, iOS).
+=== The pipeline
 
-A given build must implement the following trait:
+`kbdgen target -b <BUNDLE> -o <OUT> <PLATFORM>` runs, in `src/main.rs`:
 
-```
+. `read_kbdgen_bundle` loads the whole bundle. Any error ends the run here,
+  before anything is written.
+. `KbdgenBundle::reject_v4_layouts` fails when the bundle has a format 4
+  layout and the target cannot build one. Windows, macOS and ChromeOS can;
+  iOS and Android cannot.
+. The output directory is created with its parents and canonicalised.
+. The target's steps run.
+
+The steps implement two traits from `src/build/mod.rs`:
+
+[source,rust]
+----
 #[async_trait(?Send)]
 pub trait BuildSteps {
-    fn populate_steps(&mut self);
-    fn count(&self) -> usize;
-    async fn build_full(&self);
+    fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self
+    where
+        Self: Sized;
+
+    fn steps(&self) -> &[Box<dyn BuildStep>];
+    fn bundle(&self) -> &KbdgenBundle;
+    fn output_path(&self) -> &Path;
+
+    async fn build_full(&self) -> Result<()> {
+        for step in self.steps() {
+            step.build(self.bundle(), self.output_path()).await?;
+        }
+
+        Ok(())
+    }
 }
-```
 
-And, subsequently, every step in the build must implement this trait:
-
-```
 #[async_trait(?Send)]
 pub trait BuildStep {
-    async fn build(&self, bundle: Arc<KbdgenBundle>, output_path: &Path);
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()>;
 }
-```
+----
+
+A step's only inputs are the bundle and the canonical output path.
+Whatever a later step needs from an earlier one, it finds in the output
+directory: `macos installer` packages the `.bundle` that `macos generate`
+left there, and the iOS and Android steps all work in `OUT/repo`. That is
+what lets a subcommand run a single step.
+
+`build_full` awaits each step in turn and stops at the first error. The
+steps of each target:
+
+[cols="2,5",options="header"]
+|===
+|Command |Steps
+
+|`windows`
+|`GenerateKbdl`, `BuildKbdl` (`WindowsBuild`)
+
+|`chromeos`
+|`GenerateChromeOs` (`ChromeOsBuild`)
+
+|`macos build`
+|`GenerateMacOs`, then `GenerateInstaller` unless `--no-installer` is given
+or kbdgen was built for another OS than macOS. `main.rs` runs these
+directly; macOS has no `BuildSteps`.
+
+|`android build`
+|`CloneGiellaKbd`, `DownloadDependencies`, `GenerateAndroid`
+(`AndroidBuild`)
+
+|`ios build`
+|`CloneGiellaKbd`, `GenerateIos`, `GenerateXcode`, `FastlaneProvisioning`,
+`PodInstall`, `BuildXcarchive` (`IosBuild`)
+|===
+
+`macos generate`, `macos installer`, `android clone` and
+`android generate` each run one of these steps. `ios print-pkg-ids` and
+`ios init` run no step.
+
+==== Writing a step
+
+* Compute everything, then write. `GenerateKbdl` generates every layout
+  crate in memory before writing the first, and `GenerateChromeOs` builds
+  the models, manifest and messages before it writes the extension. A
+  bad layout then fails the step without leaving half an output.
+* Check external tools' exit status, and capture their output rather than
+  letting it interleave with kbdgen's log: log it at `trace` on success and
+  put stderr into the error on failure (`build_layout` in
+  `src/build/windows/kbdl/build.rs` does this for cargo).
+* Gate on the host only where the tool exists on one OS. The macOS
+  installer step in `macos build` and macOS icon conversion are the only
+  such places; the Windows DLL build runs on any host.
+
+To add a target: add a module under `src/build/` with a `BuildStep` per
+step and a `BuildSteps` for the full build; add a `TargetCommand` variant
+and its `name()` in `src/main.rs`; decide in `reject_v4_layouts` whether it
+accepts format 4 layouts; and specify it in `docs/spec/`.
+
+=== Logging
+
+kbdgen logs with `tracing`. `main.rs` installs a `tracing_subscriber`
+formatter that writes to stderr and filters with `RUST_LOG`, defaulting to
+`info`. Stdout is reserved for a command's results, such as the paths
+`kbdgen tsf` prints for signing; use `println!` only for those. When a
+child process would write to stdout, capture its output or send it to
+stderr, as `kbdgen tsf` does for cargo with
+`.stdout(std::io::stderr())`.
+
+The levels are used like this across the targets:
+
+[cols="1,4,4",options="header"]
+|===
+|Level |For |Examples
+
+|`error`
+|Nothing. A failure is returned as an error, and `main` prints it.
+|
+
+|`warn`
+|The output differs from what the bundle asks for, or something in it was
+ignored or skipped. The user should look.
+|`Ignoring unknown target file …`; `Skipping the installer: pkgbuild and
+productbuild only exist on macOS`; Windows table entries that cannot be
+represented and are omitted
+
+|`info`
+|One line per milestone a user follows.
+|`Reading bundle …`; `Generating the Windows layout crates`;
+`Building kbdse-NO for x64`; `Running pod install in …`
+
+|`debug`
+|Per-file and per-command detail.
+|`Wrote …`; `Running …`; `Skipping layout se: it has no macOS layers`
+
+|`trace`
+|Bulky raw output.
+|cargo, rust-lld and gradlew output; the generated `distribution.xml`
+|===
+
+Messages name what they are about (the layout, the file, the variant) and
+print paths with `display()`, not `{:?}`. The Windows, macOS and ChromeOS
+generators collect each layout's warnings and notes in a `Diagnostics`
+value (`src/build/windows/kbdl/diag.rs`), which logs each one with the
+layout's name and also keeps it, so the golden tests can pin them.
+
+=== Errors
+
+Build steps and `main` return `anyhow::Result`. Modules whose callers need
+to tell errors apart define them with `thiserror`: `bundle::Error`,
+`ldml::LdmlError` and `ldml::compile::CompileError` in kbdgen, and the
+error types of `kbd-ldml` and `kbd-engine`. `main` returns the error, and
+anyhow prints it with its chain of causes.
+
+The house style, as in `src/build/windows/kbdl/build.rs`:
+
+[source,rust]
+----
+let crate_dir = dunce::canonicalize(&crate_dir)
+    .with_context(|| format!("{name}: crate directory {} is missing", crate_dir.display()))?;
+for variant in &VARIANTS {
+    tracing::info!("Building {name} for {}", variant.name);
+    let output = cargo_command(&crate_dir, name, variant)
+        .output()
+        .with_context(|| format!("{name} ({}): cargo could not be started", variant.name))?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !output.status.success() {
+        bail!(
+            "{name} ({}): cargo failed with {}:\n{}",
+            variant.name,
+            output.status,
+            stderr.trim_end()
+        );
+    }
+    // ...
+    std::fs::write(&target, &bytes).with_context(|| format!("write {}", target.display()))?;
+}
+----
+
+* Every I/O error gets context naming the path: `write {path}`,
+  `create {path}`, `read {path}`. The context is the action and its object,
+  not "failed to …"; the cause already says what went wrong.
+* Messages start lower case, have no full stop, and lead with the subject:
+  the layout, the variant, or the file (`kbdse-NO (x64): cargo failed …`).
+* When the fix is known, the message gives it: `install it with
+  rustup target add …`, `run the macOS generate step first`,
+  `pass --force to replace it`.
+* A tool that cannot be started says what to install
+  (`+`xcodebuild` could not be started; install Xcode+`). A tool that
+  fails gives its command, its exit status and its stderr.
+* Nothing a bundle or the environment can cause may panic. `expect` is for
+  invariants the code itself guarantees, and its message states the
+  invariant (`read_kbdgen_bundle only accepts bundles with a UTF-8 stem`).

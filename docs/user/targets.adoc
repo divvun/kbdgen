@@ -1,11 +1,46 @@
-= Target Specific information
+[#targets]
+= Targets
+
+Each target turns the bundle's layouts into one platform's keyboard format,
+using that target's file in `targets/` and its resources. The chapters below
+describe each target's configuration and output.
+
+[cols="1,2,1,3",options="header"]
+|===
+|Target |Command |Layout formats |Runs on
+
+|Windows
+|`windows`
+|4 and 3
+|Any host with the three Windows Rust targets installed
+
+|macOS
+|`macos build`, `generate`, `installer`
+|4 and 3
+|Any host for `generate`; icons and the `.pkg` installer need macOS
+
+|iOS
+|`ios build`, `print-pkg-ids`, `init`
+|3
+|macOS with Xcode, CocoaPods and fastlane
+
+|Android
+|`android build`, `clone`, `generate`
+|3
+|Any host; the Gradle build needs a JDK and the Android SDK
+
+|ChromeOS
+|`chromeos`
+|4 and 3
+|Any host
+|===
 
 include::windows.adoc[]
 
-include::chromeos.adoc[]
+include::macos.adoc[]
 
 include::ios.adoc[]
 
-include::macos.adoc[]
-
 include::android.adoc[]
+
+include::chromeos.adoc[]
