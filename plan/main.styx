@@ -134,6 +134,36 @@ children (
                     }
                 )
             }
+
+            {
+                id input.fetch-tls
+                title "Compile TLS into the HTTP client: `kbdgen fetch` and the Android dependency download cannot reach https:// URLs"
+                kind @fix
+                deps (input.bundle)
+                sealed true
+                log (
+                    {
+                        at 2026-11-17T16:15:51.262188Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Doing (nplan start)"
+                    }
+
+                    {
+                        at 2026-11-17T16:20:37.033752Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Found on 2026-11-17 when the first iOS keyboard job on the new macOS builder failed in `kbdgen fetch` with \"invalid URL, scheme is not http\". reqwest is declared with default-features = false and no TLS feature. On main it still had TLS because pahkat-client enabled it through feature unification; v4 dropped pahkat-client, so the v4-latest binary of 2026-10-20 has no TLS at all. Fix: reqwest feature rustls-tls (ring provider, webpki roots), which is what main effectively built with. The Cargo.lock also gains quinn and friends through reqwest's weak dependency features; `cargo tree -i quinn` confirms they are not compiled."
+                    }
+
+                    {
+                        at 2026-11-17T16:20:42.278384Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Doing → Done (nplan complete)"
+                    }
+                )
+            }
         )
     }
 
@@ -1771,6 +1801,12 @@ children (
                         text "Doing → Done (nplan complete)"
                     }
                 )
+            }
+
+            {
+                id ldml.version-4-alpha
+                title "Version the v4 line as 4.0.0-alpha.1"
+                kind @chore
             }
         )
         log (

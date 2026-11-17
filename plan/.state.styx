@@ -431,6 +431,7 @@ assertions (
     {id targets.windows.tsf.console, kind @complete, author "brendan@necessary.nu", at 2026-10-06T23:39:33.822226Z}
     {id ldml.ref-windows-targets, kind @complete, author "brendan@necessary.nu", at 2026-10-06T23:46:23.672504Z}
     {id targets.windows.test-golden, kind @doing, author "brendan@necessary.nu", at 2026-10-06T23:46:48.316912Z}
+    {id input.fetch-tls, kind @complete, author "brendan@necessary.nu", at 2026-11-17T16:20:42.278384Z}
 )
 
 impl_evidence (

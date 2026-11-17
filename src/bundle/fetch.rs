@@ -87,4 +87,34 @@ mod tests {
             0
         );
     }
+
+    // [spec:kbdgen:req:bundle.fetch/test]
+    #[tokio::test]
+    async fn https_urls_reach_the_socket() {
+        // A client compiled without TLS rejects an https:// URL before it opens
+        // a socket, so the refusal from a port nothing listens on shows that
+        // the client can speak TLS.
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+
+        let error = client
+            .get(format!("https://127.0.0.1:{port}/"))
+            .send()
+            .await
+            .unwrap_err();
+
+        let mut cause = std::error::Error::source(&error);
+        let mut refused = false;
+        while let Some(inner) = cause {
+            if let Some(io) = inner.downcast_ref::<std::io::Error>() {
+                refused |= io.kind() == std::io::ErrorKind::ConnectionRefused;
+            }
+            cause = inner.source();
+        }
+        assert!(refused, "{error:?}");
+    }
 }
