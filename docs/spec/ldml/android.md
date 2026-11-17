@@ -1,5 +1,9 @@
 # Model to Android layout resources
 
+**Not implemented yet** (plan node `ldml.port.android`): the Android target
+builds format 3 layouts only and rejects format 4 (`ldml.yaml.coexistence`).
+These rules specify the adapter that work will add.
+
 The Android target writes static resources into a clone of
 `giellakbd-android` (`docs/spec/android.md`): per layout, the rows and row
 keys XML for phone and tablet, and `assets/layouts/{tag}.json` with the
