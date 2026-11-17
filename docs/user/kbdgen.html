@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.20">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>KeyboardGen User Documentation</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -140,7 +139,7 @@ p a>code:hover{color:rgba(0,0,0,.9)}
 #content::before{content:none}
 #header>h1:first-child{color:rgba(0,0,0,.85);margin-top:2.25rem;margin-bottom:0}
 #header>h1:first-child+#toc{margin-top:8px;border-top:1px solid #dddddf}
-#header>h1:only-child,body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
+#header>h1:only-child{border-bottom:1px solid #dddddf;padding-bottom:8px}
 #header .details{border-bottom:1px solid #dddddf;line-height:1.45;padding-top:.25em;padding-bottom:.25em;padding-left:.25em;color:rgba(0,0,0,.6);display:flex;flex-flow:row wrap}
 #header .details span:first-child{margin-left:-.125em}
 #header .details span.email a{color:rgba(0,0,0,.85)}
@@ -162,6 +161,7 @@ p a>code:hover{color:rgba(0,0,0,.9)}
 #toctitle{color:#7a2518;font-size:1.2em}
 @media screen and (min-width:768px){#toctitle{font-size:1.375em}
 body.toc2{padding-left:15em;padding-right:0}
+body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
 #toc.toc2{margin-top:0!important;background:#f8f8f7;position:fixed;width:15em;left:0;top:0;border-right:1px solid #e7e7e9;border-top-width:0!important;border-bottom-width:0!important;z-index:1000;padding:1.25em 1em;height:100%;overflow:auto}
 #toc.toc2 #toctitle{margin-top:0;margin-bottom:.8rem;font-size:1.2em}
 #toc.toc2>ul{font-size:.9em;margin-bottom:0}
@@ -218,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -327,7 +328,7 @@ a.image{text-decoration:none;display:inline-block}
 a.image object{pointer-events:none}
 sup.footnote,sup.footnoteref{font-size:.875em;position:static;vertical-align:super}
 sup.footnote a,sup.footnoteref a{text-decoration:none}
-sup.footnote a:active,sup.footnoteref a:active{text-decoration:underline}
+sup.footnote a:active,sup.footnoteref a:active,#footnotes .footnote a:first-of-type:active{text-decoration:underline}
 #footnotes{padding-top:.75em;padding-bottom:.75em;margin-bottom:.625em}
 #footnotes hr{width:20%;min-width:6.25em;margin:-.25em 0 .75em;border-width:1px 0 0}
 #footnotes .footnote{padding:0 .375em 0 .225em;line-height:1.3334;font-size:.875em;margin-left:1.2em;margin-bottom:.2em}
@@ -462,8 +463,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#_chromeos">ChromeOS</a>
 <ul class="sectlevel2">
+<li><a href="#_what_is_generated">What is generated</a></li>
+<li><a href="#_trying_it_on_a_chromebook">Trying it on a Chromebook</a></li>
 <li><a href="#_target_configuration_2">Target configuration</a></li>
 <li><a href="#_keyboard_layouts_2">Keyboard layouts</a></li>
+<li><a href="#_building_kbdgen_from_source">Building kbdgen from source</a></li>
 </ul>
 </li>
 <li><a href="#_ios">iOS</a>
@@ -528,7 +532,7 @@ information on bundles) that the keyboard should be built from.</p>
 <div class="content">
 <div class="paragraph">
 <p>\.kbdgen bundles are folders with the .kbdgen extension which describe keyboards for a
-language or language family. They&#8217;re expected to contain 3 pieces:</p>
+language or language family. They&#8217;re expected to contain 4 pieces:</p>
 </div>
 <div class="paragraph">
 <p>*project.yaml
@@ -617,7 +621,7 @@ characters in correspondence with appropriate format for the expected
 </div>
 <div class="paragraph">
 <p>Newlines are permitted for readability, but the keys must be in the correct order,
-and having more keys than expected will result in an error.</p>
+and having more or fewer keys than expected will result in an error.</p>
 </div>
 <div class="paragraph">
 <p>Special keys are supported, and must be contained within <code>\s{}</code>.
@@ -780,13 +784,80 @@ typically to 3 lines of the keyboard. Keys in the format of \u{} are written in 
 <h2 id="_chromeos">ChromeOS</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>ChromeOS generation mainly involves adding keyboard layout information to a
-JavaScript file.</p>
+<p><code>kbdgen target chromeos</code> writes a ChromeOS input method: a Chrome extension
+(Manifest V3) with one input method per layout. The extension runs the same
+keyboard engine as the Windows text service, compiled to WebAssembly, on
+each layout&#8217;s compiled keyboard, so dead keys, transforms and everything
+else the layout says type on ChromeOS as they do in the engine.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>kbdgen target -b sme.kbdgen -o chromeos-out chromeos</code></pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_what_is_generated">What is generated</h3>
+<div class="paragraph">
+<p>The output directory is the unpacked extension:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>manifest.json</code> - the extension manifest, with one input method per layout</p>
+</li>
+<li>
+<p><code>background.js</code> - the service worker that runs the engine</p>
+</li>
+<li>
+<p><code>engine.wasm</code> - the keyboard engine</p>
+</li>
+<li>
+<p><code>models/&lt;tag&gt;.dvkb</code> - each layout&#8217;s compiled keyboard</p>
+</li>
+<li>
+<p><code>_locales/&lt;language&gt;/messages.json</code> - the names of the extension and of
+each input method, in every language the layouts have a display name in</p>
+</li>
+<li>
+<p><code>icon.png</code> - the extension icon, if the bundle has one</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>kbdgen warns about anything a layout uses that ChromeOS cannot give, such as
+layers that need Left Alt (on ChromeOS only Right Alt types), long-press
+keys, or key labels.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_trying_it_on_a_chromebook">Trying it on a Chromebook</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Copy the output directory to the Chromebook.</p>
+</li>
+<li>
+<p>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong> and choose
+<strong>Load unpacked</strong>, then pick the directory.</p>
+</li>
+<li>
+<p>In <strong>Settings</strong>, <strong>Device</strong>, <strong>Keyboard and inputs</strong>, <strong>Input</strong>, add the new input
+method; it is listed under the language of its <code>locale</code>.</p>
+</li>
+<li>
+<p>Switch to it from the input menu in the shelf, or with Ctrl+Space.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>To publish, zip the directory&#8217;s contents and upload them to the Chrome Web
+Store.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_target_configuration_2">Target configuration</h3>
 <div class="paragraph">
-<p>A file for the desired target has to be specified, and in this case for ChromeOS, it could look like this:</p>
+<p><code>targets/chromeos.yaml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -795,27 +866,71 @@ build: 11
 version: 1.0.0</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>The fields define what follows:</p>
-</div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>appId</code> - the id of the app</p>
+<p><code>build</code> - the extension version Chrome compares, one to four
+dot-separated numbers such as <code>11</code> or <code>1.0.3</code></p>
 </li>
 <li>
-<p><code>version</code> - current app version</p>
+<p><code>version</code> - the version shown to users</p>
 </li>
 <li>
-<p><code>build</code> - current app build</p>
+<p><code>appId</code> - not used by kbdgen</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>The extension&#8217;s name and description come from <code>project.yaml</code> <code>locales</code>,
+which must have an <code>en</code> entry. The icon is <code>resources/chromeos/icon.png</code>, a
+PNG of at least 128 by 128 pixels.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_keyboard_layouts_2">Keyboard layouts</h3>
 <div class="paragraph">
-<p>The ChromeOS keyboard was modeled after the Windows one and so shares a lot of similarities.</p>
+<p>Both layout formats work. A v4 layout (<code>format: 4</code>) gets a ChromeOS input
+method from its <code>chromeOS</code> hardware variant, or from <code>default</code> when it has
+none:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>targets:
+  chromeOS:
+    locale: fi
+    xkbLayout: fi
+deadKeys:
+  ´: {compose: {a: á, e: é}}
+hardware:
+  default:
+    layers:
+      none: |
+        § 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . -
+      shift: |
+        ½ ! " # ¤ % &amp; / ( ) = ? `
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _
+      altR: |
+        | \u{0} @ £ $ € \u{0} { [ ] } \ \u{0}
+        q w € \u{0} ŧ \u{0} \u{0} ï õ \u{0} ¨ ~
+        â \u{0} \u{0} \u{0} ǧ ǥ \u{0} ǩ \u{0} ø æ '
+        ǯ ʒ x \u{0} \u{0} \u{0} \u{0} µ &lt; &gt; \u{0}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Write AltGr layers as <code>altR</code> (or <code>alt</code>): ChromeOS reserves Left Alt for
+shortcuts, so layers that need it are never typed.</p>
+</div>
+<div class="paragraph">
+<p>A v3 layout needs a <code>chromeOS</code> section. kbdgen converts it in memory, as
+<code>kbdgen ldml migrate</code> would, without changing the file. If the conversion
+reports a blocking problem, such as a layer without exactly 48 keys, the
+build stops and names the layout; <code>kbdgen ldml migrate --dry-run</code> lists the
+problems.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -834,45 +949,24 @@ version: 1.0.0</code></pre>
           Á Š E R T Y U I O P Å Ŋ
           A S D F G H J K L Ö Ä Đ
         Ž Z Č C V B N M ; : _
-      caps: |
-        § 1 2 3 4 5 6 7 8 9 0 + ´
-          Á Š E R T Y U I O P Å Ŋ
-          A S D F G H J K L Ö Ä Đ
-        Ž Z Č C V B N M , . -
-      caps+shift: |
-        ½ ! " # ¤ % &amp; / ( ) = ? `
-          á š e r t y u i o p å ŋ
-          a s d f g h j k l ö ä đ
-        ž z č c v b n m ; : _
-      alt: |
-        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
-              q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
-              â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
-        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     &lt;     &gt;     \u{0}
-      alt+shift: |
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-              Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
-              Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
-        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-      ctrl: |
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}</code></pre>
+  deadKeys:
+    default: [´]</code></pre>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_config_2">Config</h4>
 <div class="paragraph">
-<p>The <code>config</code> section is used by Pahkat for spellchecking, the fields:</p>
+<p>Both are optional:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>locale</code> - defines the language locale</p>
+<p><code>locale</code> - the language ChromeOS lists the input method under; <code>en-US</code>
+by default</p>
 </li>
 <li>
-<p><code>xkbLayout</code> - defines the layout ??</p>
+<p><code>xkbLayout</code> - the ChromeOS keyboard layout beneath the input method, which
+gives Ctrl shortcuts their keys; <code>us</code> by default</p>
 </li>
 </ul>
 </div>
@@ -880,9 +974,27 @@ version: 1.0.0</code></pre>
 <div class="sect3">
 <h4 id="_layers_3">Layers</h4>
 <div class="paragraph">
-<p>Each layer is split by line,
-typically to 3 lines of the keyboard. Keys in the format of <code>\u{}</code> are written in Unicode to avoid display issues.</p>
+<p>In v3, each layer is 48 keys in ISO order, split over lines as you like.
+<code>\u{&#8230;&#8203;}</code> writes a character by its code point, and <code>\u{0}</code> means no key.
+Layers may be <code>default</code>, <code>shift</code>, <code>caps</code>, <code>caps+shift</code>, <code>alt</code>, <code>alt+shift</code>
+and <code>ctrl</code>; <code>alt</code> is typed with Right Alt (AltGr).</p>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_building_kbdgen_from_source">Building kbdgen from source</h3>
+<div class="paragraph">
+<p>kbdgen embeds the engine compiled to WebAssembly, so building kbdgen needs
+Rust&#8217;s WebAssembly target:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>rustup target add wasm32-unknown-unknown</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Released kbdgen binaries already contain the engine; generating an extension
+needs no Rust.</p>
 </div>
 </div>
 </div>
@@ -1339,7 +1451,7 @@ typically to 3 lines of the keyboard. Special keys need to be preceeded by <code
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-03-22 23:46:38 +0200
+Last updated 2022-09-22 16:22:27 +0200
 </div>
 </div>
 </body>

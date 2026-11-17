@@ -8,4 +8,4 @@ include::macos.adoc[]
 
 include::ios.adoc[]
 
-include::android[]
+include::android.adoc[]
