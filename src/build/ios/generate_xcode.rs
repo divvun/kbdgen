@@ -1,12 +1,11 @@
 use std::{
-    cmp::Ordering,
     collections::BTreeSet,
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
+    process::Command,
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use language_tags::LanguageTag;
 use rayon::prelude::*;
@@ -14,9 +13,12 @@ use rayon::prelude::*;
 use crate::{
     build::{
         BuildStep,
-        ios::{IosProjectExt, ios_layouts, pbxproj::Pbxproj, xcode_structures::*},
+        ios::{
+            ensure_success, ios_layouts, keyboard_name, pbxproj::Pbxproj, pkg_id,
+            xcode_structures::*,
+        },
     },
-    bundle::{KbdgenBundle, layout::IOsTarget, project::Project},
+    bundle::{KbdgenBundle, layout::IOsTarget, project::Project, target::iOS},
 };
 
 const REPOSITORY: &str = "repo";
@@ -28,178 +30,305 @@ const INFO_PLIST: &str = "Info.plist";
 
 const SETTINGS_BUNDLE: &str = "Settings.bundle";
 const ROOT_PLIST: &str = "Root.plist";
-const ENTITLEMENTS_EXTENSION: &str = ".entitlements";
 
 const DEFAULT_LOCALE: &str = "en";
 
-pub fn replace_all_occurances(input: String, character: char, replace_with: char) -> String {
-    input
-        .as_str()
-        .chars()
-        .map(|curr| {
-            if curr.cmp(&character) != Ordering::Equal {
-                curr
-            } else {
-                replace_with
-            }
-        })
-        .into_iter()
-        .collect::<String>()
+/// Xcode calls the development language's localization `Base`.
+fn xcode_locale(locale: &str) -> &str {
+    if locale == DEFAULT_LOCALE {
+        "Base"
+    } else {
+        locale
+    }
 }
 
-// [spec:kbdgen:req:xcode.targets.keyboard-plist+1]
-pub fn generate_keyboard_plist(
-    template_path: &Path,
-    target: &IOsTarget,
-    contact_email: Option<String>,
-    value: &IosKeyboardSettings,
-    display_name: &str,
+fn read_plist<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
+    plist::from_file(path).with_context(|| format!("read {}", path.display()))
+}
+
+fn write_plist<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
+    tracing::debug!("Writing {}", path.display());
+    plist::to_file_xml(path, value).with_context(|| format!("write {}", path.display()))
+}
+
+// [spec:kbdgen:req:xcode.targets.keyboard-plist+2]
+fn keyboard_plist(
+    template: &KeyboardInfoPlist,
+    target: &iOS,
+    ios_layout: &IOsTarget,
     keyboard_index: usize,
     primary_language: &LanguageTag,
-    output_path: &Path,
-) {
-    tracing::debug!("Generating keyboard plist for {}", &display_name);
+    display_name: &str,
+    contact_email: Option<String>,
+) -> Result<KeyboardInfoPlist> {
+    let mut plist = template.clone();
 
-    let mut keyboard_plist: KeyboardInfoPlist =
-        plist::from_file(template_path).expect("valid stuff");
-
-    if let (Some(key), Some(path)) = (
-        target.config.speller_package_key.as_deref(),
-        target.config.speller_path.as_deref(),
-    ) {
-        keyboard_plist.divvun_speller_package_key = Some(key.to_string());
-        keyboard_plist.divvun_speller_path = Some(path.to_string());
+    let speller = &ios_layout.config;
+    if let (Some(key), Some(path)) = (&speller.speller_package_key, &speller.speller_path) {
+        plist.divvun_speller_package_key = Some(key.clone());
+        plist.divvun_speller_path = Some(path.clone());
     } else {
-        keyboard_plist.divvun_speller_package_key = None;
-        keyboard_plist.divvun_speller_path = None;
+        plist.divvun_speller_package_key = None;
+        plist.divvun_speller_path = None;
     }
 
     if let Some(email) = contact_email {
-        keyboard_plist.divvun_contact_email = email.to_string();
+        plist.divvun_contact_email = email;
     }
 
-    // keyboard_plist
-    keyboard_plist.cf_bundle_display_name = display_name.to_string();
-    keyboard_plist.cf_bundle_short_version_string = value.short_version.to_string();
-    keyboard_plist.cf_bundle_version = value.build_version.to_string();
-    keyboard_plist.ls_application_queries_schemes[0] = value.package_id.to_string();
-    keyboard_plist.sentry_dsn = value.sentry_dsn.clone();
-    keyboard_plist
-        .ns_extension
-        .ns_extension_attributes
-        .primary_language = primary_language.to_string();
-    keyboard_plist.divvun_keyboard_index = keyboard_index;
+    plist.cf_bundle_display_name = display_name.to_string();
+    plist.cf_bundle_short_version_string = target.version.clone();
+    plist.cf_bundle_version = target.build.to_string();
+    *plist
+        .ls_application_queries_schemes
+        .first_mut()
+        .context("Keyboard/Info.plist has no LSApplicationQueriesSchemes")? =
+        target.package_id.clone();
+    plist.sentry_dsn = target.sentry_dsn.clone();
+    plist.ns_extension.ns_extension_attributes.primary_language = primary_language.to_string();
+    plist.divvun_keyboard_index = keyboard_index;
 
-    tracing::debug!("Writing plist to {:?}", output_path);
-    plist::to_file_xml(output_path, &keyboard_plist).unwrap();
+    Ok(plist)
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app]
-pub fn generate_hosting_plist(
-    in_out_path: PathBuf,
-    display_name: String,
-    value: IosKeyboardSettings,
-) {
-    tracing::debug!("Generating hosting plist for {}", &display_name);
+// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+fn generate_hosting_plist(path: &Path, target: &iOS) -> Result<()> {
+    let mut plist: HostingPlist = read_plist(path)?;
 
-    let mut hosting_app_plist: HostingPlist =
-        plist::from_file(in_out_path.clone()).expect("valid stuff");
+    plist.cf_bundle_display_name = target.bundle_name.clone();
+    plist.cf_bundle_short_version_string = target.version.clone();
+    plist.cf_bundle_version = target.build.to_string();
+    *plist
+        .cf_bundle_url_types
+        .first_mut()
+        .and_then(|url_type| url_type.cf_bundle_url_schemes.first_mut())
+        .with_context(|| format!("{} has no CFBundleURLSchemes", path.display()))? =
+        target.package_id.clone();
+    *plist
+        .ls_application_queries_schemes
+        .first_mut()
+        .with_context(|| format!("{} has no LSApplicationQueriesSchemes", path.display()))? =
+        target.package_id.clone();
+    plist.sentry_dsn = target.sentry_dsn.clone();
 
-    hosting_app_plist.cf_bundle_display_name = display_name;
-    hosting_app_plist.cf_bundle_short_version_string = value.short_version;
-    hosting_app_plist.cf_bundle_version = value.build_version;
-    hosting_app_plist.cf_bundle_url_types[0].cf_bundle_url_schemes[0] = value.package_id.clone();
-    hosting_app_plist.ls_application_queries_schemes[0] = value.package_id;
-    hosting_app_plist.sentry_dsn = value.sentry_dsn;
-
-    plist::to_file_xml(in_out_path, &hosting_app_plist).unwrap();
+    write_plist(path, &plist)
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app]
-pub fn update_entitlements(entitlements_path: PathBuf, new_entitlements: Vec<String>) {
-    tracing::debug!("Updating entitlements in {:?}", &entitlements_path);
-
-    let mut keyboard_entitlements: EntitlementsDict =
-        plist::from_file(entitlements_path.clone()).expect("valid stuff");
-    keyboard_entitlements.com_apple_security_application_groups = new_entitlements;
-    plist::to_file_xml(entitlements_path, &keyboard_entitlements).unwrap();
+// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+fn update_entitlements(path: &Path, app_group: &str) -> Result<()> {
+    let mut entitlements: EntitlementsDict = read_plist(path)?;
+    entitlements.com_apple_security_application_groups = vec![app_group.to_string()];
+    write_plist(path, &entitlements)
 }
 
-#[derive(Clone)]
-pub struct IosKeyboardSettings {
-    short_version: String,
-    build_version: String,
-    package_id: String,
-    sentry_dsn: Option<String>,
-}
-
-pub fn path_to_relative(path: &Path, relative_to: &str) -> PathBuf {
-    let mut reversed_components = path
-        .components()
-        .rev()
-        .take_while(|x| x.as_os_str() != relative_to)
-        .collect::<Vec<_>>();
-    reversed_components.reverse();
-    reversed_components.into_iter().collect()
-}
-
-// [spec:kbdgen:req:xcode.targets.hosting-app]
-pub fn generate_icons(bundle: &KbdgenBundle, path: &Path) {
+// [spec:kbdgen:req:xcode.targets.hosting-app+1]
+fn generate_icons(bundle: &KbdgenBundle, hosting_app_path: &Path) -> Result<()> {
+    let png: LanguageTag = "png".parse().expect("`png` parses as a language tag");
     let icon = bundle
         .resources
         .ios
         .as_ref()
-        .unwrap()
+        .context("the bundle has no resources/ios directory")?
         .icons
-        .get(&LanguageTag::from_str("png").unwrap())
-        .expect("no icon found for ios");
+        .get(&png)
+        .context("resources/ios has no icon.png")?;
 
-    let images_path = path.join("Images.xcassets");
-    let appiconset_path = images_path.join("AppIcon.appiconset");
+    let appiconset_path = hosting_app_path.join("Images.xcassets/AppIcon.appiconset");
     let contents_path = appiconset_path.join("Contents.json");
+    let contents = fs::read_to_string(&contents_path)
+        .with_context(|| format!("read {}", contents_path.display()))?;
+    let mut contents: AppIconSetContents = serde_json::from_str(&contents)
+        .with_context(|| format!("parse {}", contents_path.display()))?;
 
-    let mut contents: AppIconSetContents = serde_json::from_str(
-        &fs::read_to_string(&contents_path).expect("could not read appicon file"),
-    )
-    .expect("could not parse appiconset contents");
+    tracing::info!("Generating app icons from {}", icon.display());
+    contents
+        .images
+        .par_iter_mut()
+        .try_for_each(|image| -> Result<()> {
+            let filename = format!("{}-{}@{}.png", image.idiom, image.size, image.scale);
+            let side = icon_side(&image.size, &image.scale).with_context(|| {
+                format!("{}: unsupported icon {filename}", contents_path.display())
+            })?;
+            let geometry = format!("{side}x{side}");
+            let icon_path = appiconset_path.join(&filename);
+            tracing::debug!("Writing {}", icon_path.display());
 
-    contents.images.par_iter_mut().for_each(|content| {
-        tracing::debug!("Generating icon at scale {}", &content.scale);
-        let filename = format!(
-            "{}-{}@{}.png",
-            &content.idiom, &content.size, &content.scale
-        );
+            let output = Command::new("convert")
+                .arg("-resize")
+                .arg(&geometry)
+                .args([
+                    "-background",
+                    "transparent",
+                    "-gravity",
+                    "center",
+                    "-extent",
+                ])
+                .arg(&geometry)
+                .arg(icon)
+                .arg(&icon_path)
+                .output()
+                .context("`convert` could not be started; install ImageMagick")?;
+            ensure_success(&format!("convert {}", icon_path.display()), &output)?;
 
-        let size_axis: Vec<f32> = content
-            .size
-            .split("x")
-            .map(|x| serde_json::from_str::<f32>(x).unwrap())
-            .collect::<Vec<f32>>();
-        let axis_multiplier =
-            serde_json::from_str::<f32>(&content.scale.replace("x", "").to_string()).unwrap();
-        let new_axis = size_axis.first().unwrap() * axis_multiplier;
-        std::process::Command::new("convert")
-            .arg("-resize")
-            .arg(&format!("{new_axis}x{new_axis}"))
-            .args(&[
-                "-background",
-                "transparent",
-                "-gravity",
-                "center",
-                "-extent",
-            ])
-            .arg(&format!("{new_axis}x{new_axis}"))
-            .arg(icon)
-            .arg(appiconset_path.join(&filename))
-            .output()
-            .expect("convert failed to run");
-        content.filename = Some(filename);
-    });
-    fs::write(
-        contents_path,
-        serde_json::to_string_pretty(&contents).unwrap(),
-    )
-    .unwrap();
+            image.filename = Some(filename);
+            Ok(())
+        })?;
+
+    let json = serde_json::to_string_pretty(&contents).expect("icon set contents serialize");
+    fs::write(&contents_path, json).with_context(|| format!("write {}", contents_path.display()))
+}
+
+/// The pixel width of an icon from its asset catalog `size` (`83.5x83.5`) and `scale` (`2x`).
+fn icon_side(size: &str, scale: &str) -> Option<f32> {
+    let width: f32 = size.split('x').next()?.parse().ok()?;
+    let scale: f32 = scale.strip_suffix('x')?.parse().ok()?;
+    Some(width * scale)
+}
+
+/// The contact email in the layout's `projects/<tag>.yaml`. Only layouts fetched from a
+/// keyboard repository have one; those in the bundle's own `layouts` folder do not.
+fn layout_contact_email(bundle: &KbdgenBundle, tag: &LanguageTag) -> Option<String> {
+    let path = bundle.path.join("projects").join(format!("{tag}.yaml"));
+    let content = match fs::read_to_string(&path) {
+        Ok(content) => content,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return None,
+        Err(err) => {
+            tracing::warn!(
+                "Ignoring {}, so {tag} keeps the template's contact email: {err}",
+                path.display()
+            );
+            return None;
+        }
+    };
+    match serde_yaml::from_str::<Project>(&content) {
+        Ok(project) => Some(project.email),
+        Err(err) => {
+            tracing::warn!(
+                "Ignoring {}, so {tag} keeps the template's contact email: {err}",
+                path.display()
+            );
+            None
+        }
+    }
+}
+
+struct Paths {
+    repository: PathBuf,
+    hosting_app: PathBuf,
+    keyboard: PathBuf,
+}
+
+/// Adds a keyboard target per iOS layout, configures the hosting app and localizations, and
+/// removes the template's `Keyboard` target.
+fn configure_targets(
+    bundle: &KbdgenBundle,
+    target: &iOS,
+    paths: &Paths,
+    pbxproj: &mut Pbxproj,
+) -> Result<()> {
+    let development_team = target.team_id.as_deref().unwrap_or("Unknown");
+
+    // [spec:kbdgen:req:xcode.localization+1]
+    for (locale, info) in &bundle.project.locales {
+        let locale = xcode_locale(locale);
+        let locale_path = paths.hosting_app.join(format!("{locale}.lproj"));
+        fs::create_dir_all(&locale_path)
+            .with_context(|| format!("create {}", locale_path.display()))?;
+
+        let info_strings = XcodeHostingInfoStrings {
+            cf_bundle_name: info.name.clone(),
+            cf_bundle_display_name: info.name.clone(),
+        };
+        let info_strings_path = locale_path.join(HOSTING_INFO_STRINGS);
+        tracing::debug!("Writing {}", info_strings_path.display());
+        fs::write(&info_strings_path, info_strings.to_string())
+            .with_context(|| format!("write {}", info_strings_path.display()))?;
+
+        if locale != "Base" && locale_path.join("About.txt").exists() {
+            pbxproj.add_localized_about(locale)?;
+        }
+    }
+
+    let template_path = paths.keyboard.join(INFO_PLIST);
+    let template: KeyboardInfoPlist = read_plist(&template_path)?;
+    let default_tag: LanguageTag = DEFAULT_LOCALE
+        .parse()
+        .expect("default language tag must parse");
+
+    // Must use the same list as GenerateIos: `layout_index` becomes DivvunKeyboardIndex, which the
+    // keyboard uses to find its entry in KeyboardDefinitions.json.
+    for (layout_index, (language_tag, layout)) in ios_layouts(bundle)?.into_iter().enumerate() {
+        let ios_layout = layout
+            .i_os
+            .as_ref()
+            .expect("ios_layouts only returns layouts with an iOS target");
+        let display_name = layout
+            .display_names
+            .get(&default_tag)
+            .expect("ios_layouts rejects layouts without an English display name");
+        let pkg_id = pkg_id(target, layout);
+        let name = keyboard_name(&pkg_id);
+        tracing::info!("Adding keyboard target {name} for {language_tag}");
+
+        let layout_dir = Path::new(KEYBOARD).join(name);
+        let layout_path = paths.repository.join(&layout_dir);
+        fs::create_dir_all(&layout_path)
+            .with_context(|| format!("create {}", layout_path.display()))?;
+
+        let plist = keyboard_plist(
+            &template,
+            target,
+            ios_layout,
+            layout_index,
+            language_tag,
+            display_name,
+            layout_contact_email(bundle, language_tag),
+        )?;
+        write_plist(&layout_path.join(INFO_PLIST), &plist)?;
+
+        // [spec:kbdgen:req:xcode.targets+2]
+        let plist_ref = pbxproj.create_plist_file_reference(Path::new(INFO_PLIST));
+        pbxproj.add_path(&layout_dir)?;
+        pbxproj.add_ref_to_group(&plist_ref, &layout_dir)?;
+        pbxproj.duplicate_target(KEYBOARD, name, &layout_dir.join(INFO_PLIST))?;
+        pbxproj.set_build_setting(name, "PRODUCT_BUNDLE_IDENTIFIER", &pkg_id)?;
+        pbxproj.set_build_setting(name, "DEVELOPMENT_TEAM", development_team)?;
+        pbxproj.add_appex_to_target_embedded_binaries(HOSTING_APP, name)?;
+    }
+
+    generate_hosting_plist(&paths.hosting_app.join(INFO_PLIST), target)?;
+
+    let app_group = format!("group.{}", target.package_id);
+    update_entitlements(
+        &paths.keyboard.join(format!("{KEYBOARD}.entitlements")),
+        &app_group,
+    )?;
+    update_entitlements(
+        &paths
+            .hosting_app
+            .join(format!("{HOSTING_APP}.entitlements")),
+        &app_group,
+    )?;
+
+    let root_plist_path = paths.hosting_app.join(SETTINGS_BUNDLE).join(ROOT_PLIST);
+    let mut root_plist: SettingsRootDict = read_plist(&root_plist_path)?;
+    root_plist.application_group_container_identifier = app_group;
+    write_plist(&root_plist_path, &root_plist)?;
+
+    // [spec:kbdgen:req:xcode.targets+2]
+    pbxproj.set_build_setting(HOSTING_APP, "PRODUCT_BUNDLE_IDENTIFIER", &target.package_id)?;
+    pbxproj.set_build_setting(HOSTING_APP, "DEVELOPMENT_TEAM", development_team)?;
+    pbxproj.remove_target(KEYBOARD)?;
+    pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD)?;
+
+    // [spec:kbdgen:req:xcode.localization+1]
+    let locales: BTreeSet<String> = bundle
+        .project
+        .locales
+        .keys()
+        .map(|locale| xcode_locale(locale).to_string())
+        .collect();
+    pbxproj.add_locales(HOSTING_APP, &locales)
 }
 
 pub struct GenerateXcode;
@@ -207,202 +336,182 @@ pub struct GenerateXcode;
 #[async_trait(?Send)]
 impl BuildStep for GenerateXcode {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        let repository_path = output_path.join(REPOSITORY);
-        let hosting_app_path = repository_path.join(HOSTING_APP);
-        let keyboard_path = repository_path.join(KEYBOARD);
+        let repository = output_path.join(REPOSITORY);
+        let paths = Paths {
+            hosting_app: repository.join(HOSTING_APP),
+            keyboard: repository.join(KEYBOARD),
+            repository,
+        };
+        let pbxproj_path = paths
+            .repository
+            .join("GiellaKeyboard.xcodeproj/project.pbxproj");
 
-        let xcodeproj_path = repository_path.join("GiellaKeyboard.xcodeproj");
-        let pbxproj_path = xcodeproj_path.join("project.pbxproj");
-        let mut pbxproj = Pbxproj::from_path(&pbxproj_path);
-
-        // ADD PROJECT LOCALES TO ALL LOCALES LIST AND REPLACE "en" WITH "Base"
-        let mut all_locales: BTreeSet<String> =
-            bundle.project.locales.keys().map(|x| x.clone()).collect();
-        if all_locales.remove("en") {
-            all_locales.insert("Base".to_string());
-        }
-
-        let default_language_tag =
-            LanguageTag::parse(DEFAULT_LOCALE).expect("default language tag must parse");
+        tracing::info!(
+            "Generating the Xcode project in {}",
+            paths.repository.display()
+        );
+        let mut pbxproj = Pbxproj::from_path(&pbxproj_path)?;
 
         if let Some(target) = &bundle.targets.ios {
-            let ios_keyboard_settings = IosKeyboardSettings {
-                short_version: target.version.clone(),
-                build_version: target.build.to_string(),
-                package_id: target.package_id.clone(),
-                sentry_dsn: target.sentry_dsn.clone(),
-            };
-
-            // Must use the same list as GenerateIos: `layout_index` becomes DivvunKeyboardIndex, which the
-            // keyboard uses to find its entry in KeyboardDefinitions.json.
-            for (layout_index, (language_tag, layout)) in
-                ios_layouts(bundle)?.into_iter().enumerate()
-            {
-                if let Some(_ios_layout) = &layout.i_os {
-                    // GENERATE LOCALES
-                    // TODO: Check if About.txt exists for locale before creating file reference
-
-                    // [spec:kbdgen:req:xcode.localization]
-                    for (locale_name, locale_info) in &bundle.project.locales {
-                        let locale_name = if locale_name == "en" {
-                            "Base"
-                        } else {
-                            locale_name
-                        };
-
-                        tracing::debug!("Generating locale {} for {}", &locale_name, &language_tag);
-
-                        let locale_path = hosting_app_path.join(&format!("{}.lproj", locale_name));
-                        let info_path = locale_path.join(HOSTING_INFO_STRINGS);
-
-                        std::fs::create_dir_all(&locale_path).unwrap();
-
-                        let info_strings = XcodeHostingInfoStrings {
-                            cf_bundle_name: locale_info.name.to_string(),
-                            cf_bundle_display_name: locale_info.name.to_string(),
-                        };
-                        std::fs::write(info_path, info_strings.to_string()).unwrap();
-
-                        if locale_name == "Base" {
-                            continue;
-                        } else {
-                            if Path::new(&format!(
-                                "{REPOSITORY}/{HOSTING_APP}/{locale_name}.lproj/About.txt"
-                            ))
-                            .exists()
-                            {
-                                let about_id =
-                                    pbxproj.create_file_reference("text", locale_name, "About.txt");
-                                pbxproj.add_file_ref_to_variant_group(about_id);
-                            }
-                        };
-                    }
-
-                    // KEYBOARD PLIST
-                    let default_display_name = layout
-                        .display_names
-                        .get(&default_language_tag)
-                        .expect(&format!("no '{}' displayName!", DEFAULT_LOCALE));
-
-                    let pkg_id = bundle.pkg_id(layout);
-                    let layout_folder_name = pkg_id.split(".").last().unwrap();
-
-                    let keyboard_plist_template = keyboard_path.join(INFO_PLIST);
-                    let current_layout_path = keyboard_path.join(layout_folder_name);
-
-                    std::fs::create_dir_all(&current_layout_path).unwrap();
-
-                    let layout_project_path = bundle
-                        .path
-                        .join("projects")
-                        .join(&format!("{}.yaml", language_tag));
-
-                    // Fetch email from the layout's project.yaml file.
-                    // It may not exist if it's a layout that was inside the .kbdgen/layouts folder, as opposed to
-                    // one that was fetched from a keyboard-xxx repo in the `fetch` step.
-                    let current_layout_project = std::fs::read_to_string(&layout_project_path)
-                        .ok()
-                        .and_then(|content| serde_yaml::from_str::<Project>(&content).ok());
-                    let email = current_layout_project.map(|project| project.email);
-
-                    // KEYBOARD PLIST
-                    let layout_info_plist_path = current_layout_path.join(INFO_PLIST);
-                    generate_keyboard_plist(
-                        &keyboard_plist_template,
-                        layout.i_os.as_ref().unwrap(),
-                        email,
-                        &ios_keyboard_settings,
-                        &default_display_name,
-                        layout_index,
-                        language_tag,
-                        &layout_info_plist_path,
-                    );
-
-                    // GENERATE .pbxproj
-                    // [spec:kbdgen:req:xcode.targets+1]
-                    let temp = pbxproj.create_plist_file(&Path::new(INFO_PLIST));
-                    let hmm = path_to_relative(&current_layout_path, REPOSITORY);
-                    tracing::debug!("Relpath: {}", hmm.display());
-                    pbxproj.add_path(&hmm);
-                    pbxproj.add_ref_to_group(
-                        &temp,
-                        &path_to_relative(&current_layout_path, REPOSITORY),
-                    );
-                    pbxproj.duplicate_target(
-                        KEYBOARD,
-                        &layout_folder_name,
-                        &path_to_relative(&layout_info_plist_path, REPOSITORY),
-                    );
-                    pbxproj.set_target_build_configuration(
-                        &layout_folder_name,
-                        "PRODUCT_BUNDLE_IDENTIFIER",
-                        &format!("{}.{layout_folder_name}", &target.package_id),
-                    );
-
-                    pbxproj.set_target_build_configuration(
-                        &layout_folder_name,
-                        "DEVELOPMENT_TEAM",
-                        &target.code_sign_id.as_deref().unwrap_or("Unknown"),
-                    );
-                    pbxproj.add_appex_to_target_embedded_binaries(HOSTING_APP, &layout_folder_name);
-                }
-            }
-
-            // HOSTING APP PLIST
-            let hosting_app_plist_path = hosting_app_path.join(INFO_PLIST);
-            generate_hosting_plist(
-                hosting_app_plist_path,
-                target.bundle_name.clone(),
-                ios_keyboard_settings,
-            );
-
-            // NEW ENTITLEMENTS
-            let new_entitlements = format!("{}.{}", "group", target.package_id);
-
-            // UPDATE KEYBOARD ENTITLEMENTS
-            let keyboard_entitlements_path =
-                keyboard_path.join(format!("{}{}", KEYBOARD, ENTITLEMENTS_EXTENSION));
-            update_entitlements(keyboard_entitlements_path, vec![new_entitlements.clone()]);
-
-            // UPDATE HOSTING APP ENTITLEMENTS
-            let hosting_app_entitlements_path =
-                hosting_app_path.join(format!("{}{}", HOSTING_APP, ENTITLEMENTS_EXTENSION));
-            update_entitlements(
-                hosting_app_entitlements_path,
-                vec![new_entitlements.clone()],
-            );
-
-            // UPDATE ENTITLEMENTS IN SETTINGS BUNDLE PLIST
-            let root_plist_path = hosting_app_path.join(SETTINGS_BUNDLE).join(ROOT_PLIST);
-            let mut root_plist: SettingsRootDict =
-                plist::from_file(root_plist_path.clone()).expect("valid stuff");
-            root_plist.application_group_container_identifier = new_entitlements.clone();
-            plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
-
-            // UPDATE PBXPROJ
-            // [spec:kbdgen:req:xcode.targets+1]
-            pbxproj.set_target_build_configuration(
-                HOSTING_APP,
-                "PRODUCT_BUNDLE_IDENTIFIER",
-                &target.package_id,
-            );
-            pbxproj.set_target_build_configuration(
-                HOSTING_APP,
-                "DEVELOPMENT_TEAM",
-                &target.code_sign_id.as_deref().unwrap_or("Unknown"),
-            );
-            pbxproj.remove_target(KEYBOARD);
-            pbxproj.remove_appex_from_target_embedded_binaries(HOSTING_APP, KEYBOARD);
-            // [spec:kbdgen:req:xcode.localization]
-            pbxproj.update(HOSTING_APP, all_locales);
+            configure_targets(bundle, target, &paths, &mut pbxproj)?;
         }
 
-        // GENERATE ICONS
-        generate_icons(&bundle, &hosting_app_path);
+        generate_icons(bundle, &paths.hosting_app)?;
 
-        tracing::debug!("Write to the .pbxproj");
-        std::fs::write(pbxproj_path.clone(), pbxproj.to_pbxproj_string()).unwrap();
+        tracing::debug!("Writing {}", pbxproj_path.display());
+        fs::write(&pbxproj_path, pbxproj.to_pbxproj_string())
+            .with_context(|| format!("write {}", pbxproj_path.display()))
+    }
+}
 
-        Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bundle::layout::IOsConfig;
+
+    fn template(queries_schemes: &[&str]) -> KeyboardInfoPlist {
+        serde_json::from_value(serde_json::json!({
+            "DivvunSpellerPath": "template.bhfst",
+            "DivvunSpellerPackageKey": "template",
+            "DivvunContactEmail": "template@example.com",
+            "CFBundleDevelopmentRegion": "en",
+            "CFBundleDisplayName": "Template",
+            "CFBundleExecutable": "$(EXECUTABLE_NAME)",
+            "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+            "CFBundleInfoDictionaryVersion": "6.0",
+            "CFBundleName": "$(PRODUCT_NAME)",
+            "CFBundlePackageType": "XPC!",
+            "CFBundleShortVersionString": "0.0",
+            "CFBundleSignature": "????",
+            "CFBundleVersion": "0",
+            "DivvunKeyboardIndex": 0,
+            "ITSAppUsesNonExemptEncryption": false,
+            "LSApplicationQueriesSchemes": queries_schemes,
+            "NSExtension": {
+                "NSExtensionAttributes": {
+                    "IsASCIICapable": false,
+                    "PrefersRightToLeft": false,
+                    "PrimaryLanguage": "en",
+                    "RequestsOpenAccess": true
+                },
+                "NSExtensionPointIdentifier": "com.apple.keyboard-service",
+                "NSExtensionPrincipalClass": "KeyboardViewController"
+            },
+            "SentryDSN": "https://template@sentry.example"
+        }))
+        .unwrap()
+    }
+
+    fn target() -> iOS {
+        serde_yaml::from_str(
+            "packageId: com.example.keyboards\nbundleName: Keyboards\nversion: '2.1'\nbuild: 7\n",
+        )
+        .unwrap()
+    }
+
+    fn ios_layout(speller_package_key: Option<&str>) -> IOsTarget {
+        IOsTarget {
+            config: IOsConfig {
+                speller_package_key: speller_package_key.map(str::to_string),
+                speller_path: Some("se.bhfst".to_string()),
+            },
+            primary: None,
+            i_pad_9in: None,
+            i_pad_12in: None,
+            dead_keys: None,
+        }
+    }
+
+    // [spec:kbdgen:req:xcode.targets.keyboard-plist+2/test]
+    #[test]
+    fn keyboard_plist_fills_in_the_layout() {
+        let se: LanguageTag = "se".parse().unwrap();
+
+        let plist = keyboard_plist(
+            &template(&["template"]),
+            &target(),
+            &ios_layout(Some("se")),
+            3,
+            &se,
+            "Northern Sami",
+            Some("se@example.com".to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(plist.divvun_speller_package_key.as_deref(), Some("se"));
+        assert_eq!(plist.divvun_speller_path.as_deref(), Some("se.bhfst"));
+        assert_eq!(plist.divvun_contact_email, "se@example.com");
+        assert_eq!(plist.cf_bundle_display_name, "Northern Sami");
+        assert_eq!(plist.cf_bundle_short_version_string, "2.1");
+        assert_eq!(plist.cf_bundle_version, "7");
+        assert_eq!(
+            plist.ls_application_queries_schemes,
+            ["com.example.keyboards"]
+        );
+        assert_eq!(plist.sentry_dsn, None);
+        assert_eq!(
+            plist.ns_extension.ns_extension_attributes.primary_language,
+            "se"
+        );
+        assert_eq!(plist.divvun_keyboard_index, 3);
+
+        let unchanged = keyboard_plist(
+            &template(&["template"]),
+            &target(),
+            &ios_layout(None),
+            0,
+            &se,
+            "Northern Sami",
+            None,
+        )
+        .unwrap();
+        assert_eq!(unchanged.divvun_speller_package_key, None);
+        assert_eq!(unchanged.divvun_speller_path, None);
+        assert_eq!(unchanged.divvun_contact_email, "template@example.com");
+    }
+
+    // [spec:kbdgen:req:xcode.targets.keyboard-plist+2/test]
+    #[test]
+    fn keyboard_plist_needs_a_queries_scheme_to_replace() {
+        let se: LanguageTag = "se".parse().unwrap();
+
+        let error = keyboard_plist(
+            &template(&[]),
+            &target(),
+            &ios_layout(None),
+            0,
+            &se,
+            "Northern Sami",
+            None,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Keyboard/Info.plist has no LSApplicationQueriesSchemes"
+        );
+    }
+
+    // [spec:kbdgen:req:xcode.targets.hosting-app+1/test]
+    #[test]
+    fn icons_need_ios_resources() {
+        let bundle = KbdgenBundle::new_test("test".to_string(), Default::default());
+        let output = tempfile::tempdir().unwrap();
+
+        let error = generate_icons(&bundle, output.path()).unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "the bundle has no resources/ios directory"
+        );
+    }
+
+    // [spec:kbdgen:req:xcode.targets.hosting-app+1/test]
+    #[test]
+    fn icon_sides_are_size_times_scale() {
+        assert_eq!(icon_side("83.5x83.5", "2x"), Some(167.0));
+        assert_eq!(icon_side("1024x1024", "1x"), Some(1024.0));
+        assert_eq!(icon_side("20x20", "2"), None);
+        assert_eq!(icon_side("big", "2x"), None);
     }
 }

@@ -1,11 +1,11 @@
-use std::{cmp::Ordering, path::Path};
+use std::{path::Path, sync::LazyLock};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use indexmap::IndexMap;
+use language_tags::LanguageTag;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 use crate::{
     build::{BuildStep, ios::ios_layouts},
@@ -19,6 +19,10 @@ use crate::{
 const REPOSITORY: &str = "repo";
 const MODELS: &str = "Keyboard/Models";
 
+// [spec:kbdgen:syn:ios.rows]
+static SPECIAL_KEY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\\s\{([^}:]+)(?::(\d+(?:\.\d+)?))?\}$").expect("valid regex"));
+
 #[derive(Serialize, Deserialize)]
 pub struct IosInfo {
     name: String,
@@ -28,44 +32,22 @@ pub struct IosInfo {
     space: String,
 }
 
-/// Removes all occurrences of `character` in `input`
-pub fn remove_all_occurrences(input: String, character: char) -> String {
-    input
-        .as_str()
-        .chars()
-        .filter(|x| x.cmp(&character) != Ordering::Equal)
-        .into_iter()
-        .collect::<String>()
-}
-
 // [spec:kbdgen:syn:ios.rows]
-pub fn keyboard_component_from_string(input: String) -> Option<IosButton> {
-    let regex = Regex::new(r"^\\s\{([^}:]+)(?::(\d+(?:\.\d+)?))?\}$").expect("valid regex");
-    let captures = regex.captures(input.as_str());
-
-    if let Some(captures) = captures {
-        if let Some(id) = captures.get(1) {
-            let id = match id.as_str().chars().next().unwrap().cmp(&'\"') {
-                Ordering::Equal => remove_all_occurrences(id.as_str().to_string(), '\"'),
-                _ => format!("_{}", remove_all_occurrences(id.as_str().to_string(), '\"')),
-            };
-            if let Some(width) = captures.get(2) {
-                Some(IosButton {
-                    id: id,
-                    width: width.as_str().parse::<f32>().expect("invalid float value"),
-                })
-            } else {
-                Some(IosButton {
-                    id: id,
-                    width: 1.0f32,
-                })
-            }
-        } else {
-            return None;
-        }
+pub fn keyboard_component_from_string(input: &str) -> Option<IosButton> {
+    let captures = SPECIAL_KEY.captures(input)?;
+    let id = &captures[1];
+    let id = if id.starts_with('"') {
+        id.replace('"', "")
     } else {
-        return None;
-    }
+        format!("_{}", id.replace('"', ""))
+    };
+    let width = captures.get(2).map_or(1.0, |width| {
+        width
+            .as_str()
+            .parse()
+            .expect("the pattern only matches decimal widths")
+    });
+    Some(IosButton { id, width })
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,7 +63,7 @@ pub enum IosKeyMapType {
     Button(IosButton),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct IosPlatform {
     #[serde(flatten)]
     layer: IndexMap<String, Vec<Vec<IosKeyMapType>>>,
@@ -115,7 +97,7 @@ pub struct IosKeyboardDefinitions {
 }
 
 // [spec:kbdgen:syn:ios.rows]
-pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
+pub fn ios_layer_name(layer: &IOsKbdLayer) -> &'static str {
     match layer {
         IOsKbdLayer::Default => "normal",
         IOsKbdLayer::Shift => "shifted",
@@ -125,35 +107,36 @@ pub fn ios_layer_name(layer: &IOsKbdLayer) -> String {
         IOsKbdLayer::Symbols1 => "symbols-1",
         IOsKbdLayer::Symbols2 => "symbols-2",
     }
-    .to_string()
 }
 
 // [spec:kbdgen:syn:ios.rows]
-pub fn generate_platform(platform: &IOsPlatform) -> IndexMap<String, Vec<Vec<IosKeyMapType>>> {
-    let mut layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-    for (layer_name, layer_key_map) in &platform.layers {
-        let layer_name = ios_layer_name(layer_name);
-        let key_map_rows: Vec<&str> = layer_key_map.trim().split("\n").map(|x| x).collect();
-        let mut layer_rows: Vec<Vec<IosKeyMapType>> = Vec::new();
-        for key_map in key_map_rows {
-            let key_map = split_keys(key_map);
-            let mut new_key_map: Vec<IosKeyMapType> = Vec::new();
-            for key in key_map {
-                if let Some(keyboard_entity) = keyboard_component_from_string(key.clone()) {
-                    new_key_map.push(IosKeyMapType::Button(keyboard_entity));
-                } else {
-                    new_key_map.push(IosKeyMapType::Character(key));
-                }
-            }
-            layer_rows.push(new_key_map)
-        }
-        layers.insert(layer_name, layer_rows);
-    }
-    layers
+pub fn generate_platform(platform: &IOsPlatform) -> IosPlatform {
+    let layer = platform
+        .layers
+        .iter()
+        .map(|(layer, rows)| {
+            let rows = rows
+                .trim()
+                .split('\n')
+                .map(|row| {
+                    split_keys(row)
+                        .into_iter()
+                        .map(|key| match keyboard_component_from_string(&key) {
+                            Some(button) => IosKeyMapType::Button(button),
+                            None => IosKeyMapType::Character(key),
+                        })
+                        .collect()
+                })
+                .collect();
+            (ios_layer_name(layer).to_string(), rows)
+        })
+        .collect();
+    IosPlatform { layer }
 }
 
 // [spec:kbdgen:req:ios.transforms]
 fn process_transforms(
+    tag: &LanguageTag,
     transforms: &IndexMap<String, Transform>,
 ) -> IndexMap<String, IndexMap<String, String>> {
     let mut output_map: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
@@ -162,10 +145,8 @@ fn process_transforms(
         let mut transforms_by_char: IndexMap<String, String> = IndexMap::new();
         match transform {
             Transform::End(character) => {
-                tracing::error!(
-                    "Transform ended too soon for dead key {} - character {}",
-                    dead_key,
-                    character
+                tracing::warn!(
+                    "Transform ended too soon for dead key {dead_key} in {tag}; ignoring its output {character}"
                 );
             }
             Transform::More(transforms) => {
@@ -197,80 +178,71 @@ pub struct GenerateIos;
 #[async_trait(?Send)]
 impl BuildStep for GenerateIos {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        let repository_path = output_path.join(REPOSITORY);
-        let models_path = repository_path.join(MODELS);
-        let keyboard_definitions_file_path = models_path.join("KeyboardDefinitions.json");
+        let path = output_path
+            .join(REPOSITORY)
+            .join(MODELS)
+            .join("KeyboardDefinitions.json");
+        let layouts = ios_layouts(bundle)?;
+        tracing::info!(
+            "Generating {} for {} layouts",
+            path.display(),
+            layouts.len()
+        );
 
-        // panic!("{:?} {:?} {:?}", repository_path, models_path, keyboard_definitions_file_path);
-
-        let mut all_layouts: Vec<IosKeyboardDefinitions> = Vec::new();
-        for (language_tag, layout) in ios_layouts(bundle)? {
-            if let Some(ios_target) = &layout.i_os {
-                tracing::debug!("Generating json for {}", &language_tag);
-
-                let mut longpress: IndexMap<String, Vec<String>> = IndexMap::new();
-                let mut iphone_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> = IndexMap::new();
-                let mut i_pad_9in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> =
-                    IndexMap::new();
-                let mut i_pad_12in_layers: IndexMap<String, Vec<Vec<IosKeyMapType>>> =
-                    IndexMap::new();
-                let dead_keys = ios_target.dead_keys.clone().unwrap_or_default();
-                let transforms = layout.transforms.clone().unwrap_or_default();
-
-                if let Some(layout_longpress) = &layout.longpress {
-                    for (key, value) in layout_longpress {
-                        longpress.insert(key.clone(), value.clone());
-                    }
-                }
-
-                if let Some(primary_platform) = &ios_target.primary {
-                    iphone_layers.extend(generate_platform(&primary_platform));
-                }
-                if let Some(i_pad_9in_platform) = &ios_target.i_pad_9in {
-                    i_pad_9in_layers.extend(generate_platform(&i_pad_9in_platform));
-                }
-                if let Some(i_pad_12in_platform) = &ios_target.i_pad_12in {
-                    i_pad_12in_layers.extend(generate_platform(&i_pad_12in_platform));
-                }
-
-                // [spec:kbdgen:def:ios.keyboard-json+1]
+        let definitions: Vec<IosKeyboardDefinitions> = layouts
+            .into_iter()
+            .map(|(language_tag, layout)| {
+                tracing::debug!("Generating the keyboard definition for {language_tag}");
+                let ios = layout
+                    .i_os
+                    .as_ref()
+                    .expect("ios_layouts only returns layouts with an iOS target");
                 let key_names = layout
                     .key_names
                     .as_ref()
-                    .expect("ios_layouts() rejects layouts without keyNames");
-                all_layouts.push(IosKeyboardDefinitions {
+                    .expect("ios_layouts rejects layouts without keyNames");
+                let dead_keys = ios.dead_keys.clone().unwrap_or_default();
+
+                // [spec:kbdgen:def:ios.keyboard-json+1]
+                IosKeyboardDefinitions {
                     info: IosInfo {
                         name: layout.autonym().to_string(),
                         locale: language_tag.to_string(),
-                        return_button: key_names.r#return.to_string(),
-                        space: key_names.space.to_string(),
+                        return_button: key_names.r#return.clone(),
+                        space: key_names.space.clone(),
                     },
-                    longpress: longpress,
+                    longpress: layout.longpress.clone().unwrap_or_default(),
                     dead_keys: IosDeadKeys {
                         iphone: dead_keys.clone(),
                         i_pad_9in: dead_keys.clone(),
-                        i_pad_12in: dead_keys.clone(),
+                        i_pad_12in: dead_keys,
                     },
-                    transforms: process_transforms(&transforms),
-                    iphone: IosPlatform {
-                        layer: iphone_layers,
-                    },
-                    i_pad_9in: IosPlatform {
-                        layer: i_pad_9in_layers,
-                    },
-                    i_pad_12in: IosPlatform {
-                        layer: i_pad_12in_layers,
-                    },
-                });
-            }
-        }
-        // [spec:kbdgen:def:ios.keyboard-json+1]
-        std::fs::write(
-            &keyboard_definitions_file_path,
-            serde_json::to_string_pretty(&all_layouts).unwrap(),
-        )
-        .with_context(|| format!("Writing to '{}'", keyboard_definitions_file_path.display()))?;
+                    transforms: process_transforms(
+                        language_tag,
+                        layout.transforms.as_ref().unwrap_or(&IndexMap::new()),
+                    ),
+                    iphone: ios
+                        .primary
+                        .as_ref()
+                        .map(generate_platform)
+                        .unwrap_or_default(),
+                    i_pad_9in: ios
+                        .i_pad_9in
+                        .as_ref()
+                        .map(generate_platform)
+                        .unwrap_or_default(),
+                    i_pad_12in: ios
+                        .i_pad_12in
+                        .as_ref()
+                        .map(generate_platform)
+                        .unwrap_or_default(),
+                }
+            })
+            .collect();
 
-        Ok(())
+        // [spec:kbdgen:def:ios.keyboard-json+1]
+        let json = serde_json::to_string_pretty(&definitions)
+            .expect("keyboard definitions serialize to JSON");
+        std::fs::write(&path, json).with_context(|| format!("write {}", path.display()))
     }
 }

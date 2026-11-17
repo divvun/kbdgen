@@ -2,27 +2,24 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct XcodeHostingInfoStrings {
-    #[serde(rename = "CFBundleName")]
     pub cf_bundle_name: String,
-    #[serde(rename = "CFBundleDisplayName")]
     pub cf_bundle_display_name: String,
 }
 
-// [spec:kbdgen:req:xcode.localization]
+// [spec:kbdgen:req:xcode.localization+1]
 impl fmt::Display for XcodeHostingInfoStrings {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(&format!(
+        write!(
+            fmt,
             "\"CFBundleName\" = {:?};\n\"CFBundleDisplayName\" = {:?};",
             self.cf_bundle_name, self.cf_bundle_display_name
-        ))
+        )
     }
 }
 
-// LAYOUT PLIST START
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LayoutInfoPlistExtensionAttributes {
     #[serde(rename = "IsASCIICapable")]
     pub is_ascii_capable: bool,
@@ -34,7 +31,7 @@ pub struct LayoutInfoPlistExtensionAttributes {
     pub requests_open_access: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyboardInfoPlistExtension {
     #[serde(rename = "NSExtensionAttributes")]
     pub ns_extension_attributes: LayoutInfoPlistExtensionAttributes,
@@ -44,8 +41,8 @@ pub struct KeyboardInfoPlistExtension {
     pub ns_extension_principal_class: String,
 }
 
-// [spec:kbdgen:req:xcode.targets.keyboard-plist+1]
-#[derive(Serialize, Deserialize, Debug)]
+// [spec:kbdgen:req:xcode.targets.keyboard-plist+2]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyboardInfoPlist {
     #[serde(rename = "DivvunSpellerPath")]
     pub divvun_speller_path: Option<String>,
@@ -85,9 +82,7 @@ pub struct KeyboardInfoPlist {
     pub sentry_dsn: Option<String>,
 }
 
-// LAYOUT PLIST END
-
-// [spec:kbdgen:req:xcode.targets.hosting-app]
+// [spec:kbdgen:req:xcode.targets.hosting-app+1]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EntitlementsDict {
     #[serde(rename = "com.apple.security.application-groups")]
@@ -106,7 +101,7 @@ pub struct PreferenceSpecifier {
     pub default_value: bool,
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app]
+// [spec:kbdgen:req:xcode.targets.hosting-app+1]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SettingsRootDict {
     #[serde(rename = "StringsTable")]
@@ -123,7 +118,7 @@ pub struct BundleSchemes {
     pub cf_bundle_url_schemes: Vec<String>,
 }
 
-// [spec:kbdgen:req:xcode.targets.hosting-app]
+// [spec:kbdgen:req:xcode.targets.hosting-app+1]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct HostingPlist {
     #[serde(rename = "CFBundleDevelopmentRegion")]

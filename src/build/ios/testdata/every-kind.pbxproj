@@ -1,0 +1,298 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 52;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B0 /* TODO */ = {isa = PBXBuildFile; fileRef = F0 /* TODO */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, );COMPILER_FLAGS = "-fno-objc-arc";};};
+		B1 /* TODO */ = {isa = PBXBuildFile; productRef = D0 /* TODO */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CP /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = P0 /* TODO */;
+			proxyType = 1;
+			remoteGlobalIDString = T0;
+			remoteInfo = Keyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		PC /* TODO */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B0 /* TODO */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Start PBXFileReference section */
+
+		F0 /* Foo-Bar */ = {isa = PBXFileReference; includeInIndex = 0; name = "Foo-Bar"; path = "Foo-Bar.appex"; sourceTree = BUILT_PRODUCTS_DIR; 		};
+		F1 /* A+B.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "A+B.swift"; sourceTree = "<group>"; 		};
+		F2 /* nb */ = {isa = PBXFileReference; lastKnownFileType = text; name = nb; path = "nb.lproj/About+More.txt"; sourceTree = "<group>"; 		};
+/* End PBXFileReference section */
+
+/* Start PBXFrameworksBuildPhase section */
+
+		PF /* TODO */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1 /* TODO */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Start PBXGroup section */
+
+		G0 = {
+			isa = PBXGroup;
+			children = (
+				G1 /* TODO */,
+				G2 /* TODO */,
+				G3 /* TODO */,
+			);
+			sourceTree = "<group>";
+		};
+		G1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F0 /* TODO */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		G2 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				F1 /* TODO */,
+			);
+			path = "Hosting App";
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		G3 /* Keyboard */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Keyboard;
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Start PBXHeadersBuildPhase section */
+
+		PH /* TODO */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Start PBXNativeTarget section */
+
+		T0 /* TODO */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CL;
+			buildPhases = (
+				PC /* TODO */,
+				PF /* TODO */,
+				PH /* TODO */,
+				PR /* TODO */,
+				PS /* TODO */,
+				PX /* TODO */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				TD /* TODO */,
+			);
+			name = "HostingApp";
+			packageProductDependencies = (
+				D0 /* TODO */,
+			);
+			productName = HostingApp;
+			productReference = F0 /* TODO */;
+			productType = com.apple.product-type.application;
+		};
+/* End PBXNativeTarget section */
+
+/* Start PBXProject section */
+
+		P0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1130;
+				TargetAttributes = {
+					T0 = {
+						CreatedOnToolsVersion = 6.0;
+					};
+				};
+				knownAssetTags = (
+					New,
+					Old,
+				);
+			};
+			buildConfigurationList = CL /* TODO: Build configuration list for PBXProject "GiellaKeyboard" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base /* TODO */,
+				en /* TODO */,
+			);
+			mainGroup = G0;
+			packageReferences = (
+				R0 /* TODO */,
+			);
+			productRefGroup = G1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				T0 /* TODO */,
+			);
+		};
+/* End PBXProject section */
+
+/* Start PBXResourcesBuildPhase section */
+
+		PR /* TODO */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0 /* TODO */,
+				B1 /* TODO */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Start PBXShellScriptBuildPhase section */
+
+		PS /* TODO */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+				"${DERIVED}/list",
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-HostingApp-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${A}\" \"${B}\"\necho \\ok\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Start PBXSourcesBuildPhase section */
+
+		PX /* TODO */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Start PBXTargetDependency section */
+
+		TD /* TODO */ = {
+			isa = PBXTargetDependency;
+			target = T0;
+			targetProxy = CP;
+		};
+/* End PBXTargetDependency section */
+
+/* Start PBXVariantGroup section */
+
+		V0 /* TODO */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F2 /* TODO */,
+			);
+			name = "About.txt";
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Start XCBuildConfiguration section */
+
+		BC /* TODO */ = {
+			isa = XCBuildConfiguration;
+
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				INFOPLIST_FILE = "Keyboard/Info.plist";
+			LD_RUNPATH_SEARCH_PATHS = (
+				"$(inherited)",
+				"@executable_path/Frameworks",
+			);
+
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = "Release";
+		};
+/* End XCBuildConfiguration section */
+
+/* Start XCConfigurationList section */
+
+		CL /* TODO */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC /* TODO */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		R0 /* TODO */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://example.com/sentry-cocoa";
+			requirement = {
+				kind = "upToNextMajorVersion";
+				minimumVersion = "8.0.0";
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D0 /* TODO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = R0 /* TODO */;
+			productName = "Sentry";
+		};
+		D1 /* TODO */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = "Local";
+		};
+/* End XCSwiftPackageProductDependency section */
+
+	};
+	rootObject = P0;
+}

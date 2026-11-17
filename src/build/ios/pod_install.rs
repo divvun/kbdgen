@@ -1,27 +1,31 @@
-use std::path::Path;
+use std::{ffi::OsString, path::Path, process::Command};
+
+use anyhow::{Context, Result, bail};
+use async_trait::async_trait;
 
 use crate::{build::BuildStep, bundle::KbdgenBundle};
-use anyhow::Result;
-use async_trait::async_trait;
+
+use super::REPOSITORY_FOLDER;
 
 pub struct PodInstall;
 
-// [spec:kbdgen:req:ios.build-chain+1]
+// [spec:kbdgen:req:ios.build-chain+2]
 #[async_trait(?Send)]
 impl BuildStep for PodInstall {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        let path = output_path.join("repo");
+        let path = output_path.join(REPOSITORY_FOLDER);
+        let mut project_directory = OsString::from("--project-directory=");
+        project_directory.push(&path);
 
-        tracing::debug!("Run pod install on {:?}", &path);
-
-        std::process::Command::new("pod")
-            .arg("install")
-            .arg("--repo-update")
-            .arg(format!("--project-directory={}", path.to_str().unwrap()))
+        tracing::info!("Running pod install in {}", path.display());
+        let status = Command::new("pod")
+            .args(["install", "--repo-update"])
+            .arg(project_directory)
             .status()
-            .unwrap();
-
-        tracing::debug!("Pod install finished");
+            .context("`pod` could not be started; install CocoaPods")?;
+        if !status.success() {
+            bail!("`pod install` failed with {status}; its output is above");
+        }
 
         Ok(())
     }

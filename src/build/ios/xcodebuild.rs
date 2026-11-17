@@ -1,32 +1,39 @@
 use std::{
     collections::HashMap,
-    io,
     path::Path,
-    process::{Command, ExitStatus, Stdio},
+    process::{Command, Stdio},
+    sync::Arc,
 };
 
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Semaphore;
 
 use crate::{
     build::{
         BuildStep,
-        ios::{IosProjectExt, pbxproj::Pbxproj},
+        ios::{IosProjectExt, ensure_success, ios_target, keyboard_name, pbxproj::Pbxproj},
     },
     bundle::{KbdgenBundle, target::iOS},
 };
 
+const REPOSITORY: &str = "repo";
+
+const FASTLANE_JOBS: usize = 12;
+
 pub struct BuildXcarchive;
 
 fn xcodebuild_archive(
-    deps_path: &Path,
+    repository_path: &Path,
     archive_path: &Path,
     code_sign_id: &str,
     team_id: &str,
-) -> io::Result<ExitStatus> {
-    let xcodebuild = Command::new("xcodebuild")
-        .current_dir(deps_path)
+) -> Result<()> {
+    tracing::info!("Archiving {}", archive_path.display());
+    let mut xcodebuild = Command::new("xcodebuild")
+        .current_dir(repository_path)
         .args(["archive", "-archivePath"])
         .arg(archive_path)
         .args([
@@ -41,28 +48,38 @@ fn xcodebuild_archive(
         ])
         .arg("-jobs")
         .arg(num_cpus::get().to_string())
-        .arg(format!("CODE_SIGN_IDENTITY={}", code_sign_id))
-        .arg(format!("DEVELOPMENT_TEAM={}", team_id))
+        .arg(format!("CODE_SIGN_IDENTITY={code_sign_id}"))
+        .arg(format!("DEVELOPMENT_TEAM={team_id}"))
         .stdout(Stdio::piped())
         .spawn()
-        .expect("Failed to spawn xcodebuild");
+        .context("`xcodebuild` could not be started; install Xcode")?;
+    let log = xcodebuild
+        .stdout
+        .take()
+        .expect("xcodebuild's stdout is piped");
 
-    let mut xcbeautify = Command::new("xcbeautify")
-        .stdin(xcodebuild.stdout.unwrap())
-        .spawn()
-        .expect("Failed to spawn xcbeautify");
-
-    xcbeautify.wait()
+    let beautified = Command::new("xcbeautify").stdin(log).status();
+    let status = xcodebuild.wait().context("wait for `xcodebuild archive`")?;
+    let beautified = beautified
+        .context("`xcbeautify` could not be started; install it with `brew install xcbeautify`")?;
+    if !status.success() {
+        bail!("`xcodebuild archive` failed with {status}; its log is above");
+    }
+    if !beautified.success() {
+        bail!("`xcbeautify` failed with {beautified}");
+    }
+    Ok(())
 }
 
 fn xcodebuild_export_ipa(
-    deps_path: &Path,
+    repository_path: &Path,
     archive_path: &Path,
     ipa_path: &Path,
     plist_path: &Path,
-) -> io::Result<ExitStatus> {
-    std::process::Command::new("xcodebuild")
-        .current_dir(deps_path)
+) -> Result<()> {
+    tracing::info!("Exporting {}", ipa_path.display());
+    let status = Command::new("xcodebuild")
+        .current_dir(repository_path)
         .args(["-exportArchive", "-archivePath"])
         .arg(archive_path)
         .arg("-exportPath")
@@ -70,49 +87,71 @@ fn xcodebuild_export_ipa(
         .arg("-exportOptionsPlist")
         .arg(plist_path)
         .status()
+        .context("`xcodebuild` could not be started; install Xcode")?;
+    if !status.success() {
+        bail!("`xcodebuild -exportArchive` failed with {status}; its log is above");
+    }
+    Ok(())
 }
 
-// [spec:kbdgen:req:ios.build-chain+1]
+// [spec:kbdgen:req:ios.build-chain+2]
 #[async_trait(?Send)]
 impl BuildStep for BuildXcarchive {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> anyhow::Result<()> {
-        let target = bundle.targets.ios.as_ref().unwrap().clone();
-        let team_id = target.team_id.as_ref().unwrap().to_string();
-        let code_sign_id = target.code_sign_id.as_ref().unwrap().to_string();
-        let deps_path = output_path.join("repo");
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
+        let target = ios_target(bundle)?;
+        let team_id = target
+            .team_id
+            .as_deref()
+            .context("targets/ios.yaml has no teamId")?;
+        let code_sign_id = target
+            .code_sign_id
+            .as_deref()
+            .context("targets/ios.yaml has no codeSignId")?;
+        let repository_path = output_path.join(REPOSITORY);
 
         let archive_path = output_path.join(format!("{}.xcarchive", target.package_id));
         let ipa_path = output_path.join("ipa");
-        let plist_path = output_path.join("repo").join("opts.plist");
+        let plist_path = repository_path.join("opts.plist");
 
-        xcodebuild_archive(&deps_path, &archive_path, &code_sign_id, &team_id)?;
-        xcodebuild_export_ipa(&deps_path, &archive_path, &ipa_path, &plist_path)?;
-
-        Ok(())
+        xcodebuild_archive(&repository_path, &archive_path, code_sign_id, team_id)?;
+        xcodebuild_export_ipa(&repository_path, &archive_path, &ipa_path, &plist_path)
     }
 }
 
 pub fn fastlane_env(ios_target: &iOS) -> HashMap<&'static str, String> {
-    let mut o = HashMap::new();
+    [
+        ("MATCH_GIT_URL", &ios_target.match_git_url),
+        ("MATCH_PASSWORD", &ios_target.match_password),
+        ("FASTLANE_USER", &ios_target.fastlane_user),
+        ("PRODUCE_USERNAME", &ios_target.fastlane_user),
+        ("FASTLANE_PASSWORD", &ios_target.fastlane_password),
+        ("APP_STORE_KEY_JSON", &ios_target.app_store_key_json),
+    ]
+    .into_iter()
+    .filter_map(|(name, value)| Some((name, value.clone()?)))
+    .collect()
+}
 
-    if let Some(value) = ios_target.match_git_url.as_deref() {
-        o.insert("MATCH_GIT_URL", value.to_string());
-    }
-    if let Some(value) = ios_target.match_password.as_deref() {
-        o.insert("MATCH_PASSWORD", value.to_string());
-    }
-    if let Some(value) = ios_target.fastlane_user.as_deref() {
-        o.insert("FASTLANE_USER", value.to_string());
-        o.insert("PRODUCE_USERNAME", value.to_string());
-    }
-    if let Some(value) = ios_target.fastlane_password.as_deref() {
-        o.insert("FASTLANE_PASSWORD", value.to_string());
-    }
-    if let Some(value) = ios_target.app_store_key_json.as_deref() {
-        o.insert("APP_STORE_KEY_JSON", value.to_string());
-    }
-
-    o
+pub async fn fastlane(
+    dir: &Path,
+    env: &HashMap<&'static str, String>,
+    args: &[&str],
+) -> Result<()> {
+    let command = format!("fastlane {}", args.join(" "));
+    tracing::debug!("Running {command}");
+    let output = tokio::process::Command::new("fastlane")
+        .current_dir(dir)
+        .envs(env)
+        .args(args)
+        .output()
+        .await
+        .context("`fastlane` could not be started; install it with `brew install fastlane`")?;
+    tracing::trace!(
+        "Output of {command}:\n{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    ensure_success(&command, &output)
 }
 
 pub struct FastlaneProvisioning;
@@ -135,164 +174,133 @@ struct ProvisioningProfile {
 }
 
 async fn load_provisioning_profile(
-    deps_path: &Path,
+    repository_path: &Path,
     id: &str,
-) -> anyhow::Result<ProvisioningProfile> {
+) -> Result<ProvisioningProfile> {
+    let profile = format!("{id}.mobileprovision");
     let output = tokio::process::Command::new("security")
-        .args(["cms", "-D", "-i"])
-        .arg(format!("{id}.mobileprovision"))
-        .current_dir(deps_path)
+        .args(["cms", "-D", "-i", &profile])
+        .current_dir(repository_path)
         .output()
-        .await?;
-    Ok(plist::from_bytes(&output.stdout)?)
+        .await
+        .context("`security` could not be started")?;
+    ensure_success(&format!("security cms -D -i {profile}"), &output)?;
+    plist::from_bytes(&output.stdout).with_context(|| format!("parse {profile}"))
 }
 
-// [spec:kbdgen:req:ios.build-chain+1]
+// [spec:kbdgen:req:ios.build-chain+2]
 async fn embed_profiles(
     bundle: &KbdgenBundle,
-    deps_path: &Path,
-    output_path: &Path,
-) -> anyhow::Result<()> {
-    let target = bundle.targets.ios.as_ref().unwrap().clone();
-    let team_id = target.team_id.as_ref().unwrap().to_string();
-
-    let repository_path = output_path.join("repo");
-
-    let xcodeproj_path = repository_path.join("GiellaKeyboard.xcodeproj");
-    let pbxproj_path = xcodeproj_path.join("project.pbxproj");
-    let mut pbxproj = Pbxproj::from_path(&pbxproj_path);
+    target: &iOS,
+    team_id: &str,
+    repository_path: &Path,
+) -> Result<()> {
+    let pbxproj_path = repository_path.join("GiellaKeyboard.xcodeproj/project.pbxproj");
+    let mut pbxproj = Pbxproj::from_path(&pbxproj_path)?;
 
     let mut plist = Plist {
-        team_id,
+        team_id: team_id.to_string(),
         method: "app-store".to_string(),
         provisioning_profiles: Default::default(),
     };
 
-    for id in bundle.all_pkg_ids() {
-        let name = if id == target.package_id {
+    for id in bundle.all_pkg_ids()? {
+        let target_name = if id == target.package_id {
             "HostingApp"
         } else {
-            id.split(".").last().unwrap()
+            keyboard_name(&id)
         };
-        let profile = load_provisioning_profile(deps_path, &id).await?;
+        let profile = load_provisioning_profile(repository_path, &id).await?;
+        tracing::debug!("Using profile {} ({}) for {id}", profile.name, profile.uuid);
 
-        pbxproj.set_build_target_setting(name, "PROVISIONING_PROFILE", &profile.uuid);
-        pbxproj.set_build_target_setting(name, "PROVISIONING_PROFILE_SPECIFIER", &profile.name);
-        plist
-            .provisioning_profiles
-            .insert(id.to_string(), profile.uuid);
+        pbxproj.set_build_setting(target_name, "PROVISIONING_PROFILE", &profile.uuid)?;
+        pbxproj.set_build_setting(target_name, "PROVISIONING_PROFILE_SPECIFIER", &profile.name)?;
+        plist.provisioning_profiles.insert(id, profile.uuid);
     }
 
-    std::fs::write(pbxproj_path, pbxproj.to_pbxproj_string())?;
-    plist::to_file_xml(deps_path.join("opts.plist"), &plist)?;
-
-    Ok(())
+    tracing::debug!("Writing {}", pbxproj_path.display());
+    std::fs::write(&pbxproj_path, pbxproj.to_pbxproj_string())
+        .with_context(|| format!("write {}", pbxproj_path.display()))?;
+    let opts_path = repository_path.join("opts.plist");
+    tracing::debug!("Writing {}", opts_path.display());
+    plist::to_file_xml(&opts_path, &plist).with_context(|| format!("write {}", opts_path.display()))
 }
 
-// [spec:kbdgen:req:ios.build-chain+1]
+// [spec:kbdgen:req:ios.build-chain+2]
 #[async_trait(?Send)]
 impl BuildStep for FastlaneProvisioning {
-    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> anyhow::Result<()> {
-        let target = bundle.targets.ios.as_ref().unwrap().clone();
-        let app_store_key_json_path = target.app_store_key_json.as_deref().unwrap().to_string();
-        let team_id = target.team_id.as_ref().unwrap().to_string();
-        let deps_path = output_path.join("repo");
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
+        let target = ios_target(bundle)?;
+        let api_key_path = target
+            .app_store_key_json
+            .as_deref()
+            .context("targets/ios.yaml has no appStoreKeyJson")?;
+        let team_id = target
+            .team_id
+            .as_deref()
+            .context("targets/ios.yaml has no teamId")?;
+        let repository_path = output_path.join(REPOSITORY);
+        let ids = bundle.all_pkg_ids()?;
 
-        tracing::info!(
-            "Downloading signing certificates and provisioning profiles (this may take a while)..."
+        let env = fastlane_env(target);
+        tracing::trace!(
+            "Fastlane environment sets {}",
+            env.keys().copied().collect::<Vec<_>>().join(", ")
         );
 
-        let env = fastlane_env(&target);
-        tracing::trace!(env = ?env, "fastlane env");
+        tracing::info!(
+            "Downloading signing certificates and provisioning profiles for {} package ids",
+            ids.len()
+        );
+        tracing::debug!("Package ids: {}", ids.join(", "));
 
-        let mut futures = vec![];
-        let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(12));
-
-        tracing::info!("bundle ids:");
-        bundle.all_pkg_ids().into_iter().for_each(|id| {
-            tracing::info!("  {:?}", id);
+        let api_key_arg = format!("--api_key_path={api_key_path}");
+        let owned = |args: &[&str]| args.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        let match_runs = ids.iter().map(|id| {
+            owned(&[
+                "match",
+                "appstore",
+                &format!("--app_identifier={id}"),
+                &api_key_arg,
+            ])
         });
-
-        bundle.all_pkg_ids().into_iter().for_each(|id| {
-            // let team_id = team_id.to_string();
-            let app_store_key_json_path = app_store_key_json_path.to_string();
-            let deps_path = deps_path.clone();
-            let env = fastlane_env(&target);
-            let sem = sem.clone();
-
-            futures.push(tokio::spawn(async move {
-                let _permit = sem.acquire_owned().await.unwrap();
-
-                tokio::process::Command::new("fastlane")
-                    .current_dir(&deps_path)
-                    .envs(&env)
-                    .args(["match", "appstore"])
-                    .arg(format!("--app_identifier={}", &id))
-                    .arg(format!("--api_key_path={}", app_store_key_json_path))
-                    .output()
-                    .await
-                    .map(|x| (id, x, true))
-            }))
+        let sigh_runs = ids.iter().map(|id| {
+            owned(&[
+                "sigh",
+                "-a",
+                id,
+                "-b",
+                team_id,
+                "-z",
+                "-q",
+                &format!("{id}.mobileprovision"),
+                &api_key_arg,
+            ])
         });
+        let runs: Vec<Vec<String>> = match_runs.chain(sigh_runs).collect();
 
-        bundle.all_pkg_ids().into_iter().for_each(|id| {
-            let team_id = team_id.to_string();
-            let app_store_key_json_path = app_store_key_json_path.to_string();
-            let deps_path = deps_path.clone();
-            let env = fastlane_env(&target);
-            let sem = sem.clone();
-
-            futures.push(tokio::spawn(async move {
-                let _permit = sem.acquire_owned().await.unwrap();
-
-                tokio::process::Command::new("fastlane")
-                    .current_dir(&deps_path)
-                    .envs(&env)
-                    .args(["sigh", "-a"])
-                    .arg(&id)
-                    .arg("-b")
-                    .arg(team_id)
-                    .args(["-z", "-q"])
-                    .arg(format!("{}.mobileprovision", &id))
-                    .arg(format!("--api_key_path={}", app_store_key_json_path))
-                    .output()
-                    .await
-                    .map(|x| (id, x, false))
-            }))
-        });
-
-        for fut in futures {
-            let fut = fut.await;
-            match fut {
-                Ok(Ok((id, output, is_signing))) => {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    if output.status.success() {
-                        tracing::trace!(exit_code = output.status.code(), stdout = %stdout, stderr = %stderr);
-                    } else {
-                        tracing::error!(exit_code = output.status.code(), stdout = %stdout, stderr = %stderr);
-                    }
-
-                    if !output.status.success() {
-                        anyhow::bail!("Failed to download profile '{}'.", id);
-                    }
-
-                    if is_signing {
-                        tracing::debug!("Downloaded signing cert for '{}'.", id);
-                    } else {
-                        tracing::debug!("Downloaded profile for '{}'.", id);
-                    }
-                }
-                Ok(Err(err)) => return Err(err.into()),
-                Err(err) => {
-                    return Err(err.into());
-                }
-            }
+        let jobs = Arc::new(Semaphore::new(FASTLANE_JOBS));
+        let tasks: Vec<_> = runs
+            .into_iter()
+            .map(|args| {
+                let jobs = jobs.clone();
+                let repository_path = repository_path.clone();
+                let env = env.clone();
+                tokio::spawn(async move {
+                    let _job = jobs
+                        .acquire_owned()
+                        .await
+                        .expect("the semaphore is never closed");
+                    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+                    fastlane(&repository_path, &env, &args).await
+                })
+            })
+            .collect();
+        for task in tasks {
+            task.await.context("a fastlane task panicked")??;
         }
 
-        tracing::info!("Downloaded all signing certs and provisioning profiles.");
-        embed_profiles(bundle, &deps_path, output_path).await?;
-
-        Ok(())
+        tracing::info!("Downloaded all signing certificates and provisioning profiles");
+        embed_profiles(bundle, target, team_id, &repository_path).await
     }
 }

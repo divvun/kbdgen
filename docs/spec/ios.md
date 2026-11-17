@@ -57,58 +57,70 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 
 ## Package identifiers
 
-> [spec:kbdgen:req:ios.pkg-ids]
+> [spec:kbdgen:req:ios.pkg-ids+1]
 > A layout's extension bundle identifier MUST be `{packageId}.{ext}`, with
-> `ext` the layout's language tag. When `packageId` is exactly
-> `no.uit.giella.keyboards.Sami`, `ext` MUST instead come from this legacy
-> table when the tag is listed: `se` and `sme` → `northern-sami-keyboard`,
-> `sms` → `skolt-sami-keyboard`, `smn` → `inari-sami-keyboard`, `smj-SE` →
-> `julev-sami-keyboard`, `smj-NO` → `julev-sami-keyboard-no`, `sma` →
-> `south-sami-keyboard`. The identifier's last `.`-segment is the layout's
-> "folder name", naming its Xcode target and `Keyboard/<folder>` directory.
-> Computing an identifier without an iOS target panics.
+> `ext` the layout's language tag and `packageId` that of the iOS target.
+> When `packageId` is exactly `no.uit.giella.keyboards.Sami`, `ext` MUST
+> instead come from this legacy table when the tag is listed: `se` and `sme`
+> → `northern-sami-keyboard`, `sms` → `skolt-sami-keyboard`, `smn` →
+> `inari-sami-keyboard`, `smj-SE` → `julev-sami-keyboard`, `smj-NO` →
+> `julev-sami-keyboard-no`, `sma` → `south-sami-keyboard`. The identifier's
+> last `.`-segment is the layout's "folder name", naming its Xcode target and
+> `Keyboard/<folder>` directory.
 
-> [spec:kbdgen:def:ios.pkg-ids.all]
+> [spec:kbdgen:def:ios.pkg-ids.all+1]
 > The package identifier list is the base `packageId` plus the identifier of
 > every layout with an `iOS` section (with or without `keyNames`), sorted
 > byte-wise with duplicates retained (`se` and `sme` both yield
 > `…northern-sami-keyboard` under the legacy table). `ios print-pkg-ids`
-> prints it one per line.
+> prints it one per line. Producing it MUST fail with an error when the
+> bundle has no iOS target.
 
 ## Build chain
 
-> [spec:kbdgen:req:ios.build-chain+1]
+> [spec:kbdgen:req:ios.build-chain+2]
 > `ios build` MUST run, per `[spec:kbdgen:sem:pipeline.steps]`: `git clone
-> https://github.com/divvun/giellakbd-ios.git repo` in `<out>` (exit status
-> ignored); `ios.keyboard-json`; Xcode generation (`xcode.targets`);
-> provisioning; `pod install --repo-update --project-directory=<out>/repo`
-> (the refresh lets a stale spec index resolve the locked versions); and
-> `xcodebuild archive` (workspace `GiellaKeyboard.xcworkspace`, scheme
-> `HostingApp`, Release, to `<out>/<packageId>.xcarchive`, piped through
-> `xcbeautify`) followed by `xcodebuild -exportArchive` to `<out>/ipa` with
-> `repo/opts.plist`. Exit statuses of pod and xcodebuild are ignored.
-> Provisioning spawns, for every id of `ios.pkg-ids.all`, both `fastlane
-> match appstore` and `fastlane sigh` (writing `<id>.mobileprovision`) as
-> independent concurrent tasks (at most 12 running); any non-zero exit fails
-> with `Failed to download profile '<id>'.`. Each profile's UUID and name
-> then set `PROVISIONING_PROFILE`/`PROVISIONING_PROFILE_SPECIFIER` on target
-> `HostingApp` (base id) or the id's last segment, and `repo/opts.plist`
-> records `{teamID, method: app-store, provisioningProfiles: {id: UUID}}`.
+> https://github.com/divvun/giellakbd-ios.git repo` in `<out>`;
+> `ios.keyboard-json`; Xcode generation (`xcode.targets`); provisioning;
+> `pod install --repo-update --project-directory=<out>/repo` (the refresh
+> lets a stale spec index resolve the locked versions); and `xcodebuild
+> archive` (workspace `GiellaKeyboard.xcworkspace`, scheme `HostingApp`,
+> Release, to `<out>/<packageId>.xcarchive`, piped through `xcbeautify`)
+> followed by `xcodebuild -exportArchive` to `<out>/ipa` with
+> `repo/opts.plist`. A command that cannot be started or exits non-zero MUST
+> fail the step with an error naming it: `git`, `fastlane` and `security`
+> run captured, and the error quotes the tail of their stderr (of stdout
+> when stderr is empty); `pod`, `xcodebuild` and `xcbeautify` stream their
+> output, which the error points to. Provisioning requires `teamId` and
+> `appStoreKeyJson`, and archiving `teamId` and `codeSignId`; a missing one
+> is an error. Provisioning spawns, for every id of `ios.pkg-ids.all`, both
+> `fastlane match appstore` and `fastlane sigh` (writing
+> `<id>.mobileprovision`) as independent concurrent tasks (at most 12
+> running), awaits them in that order and fails with the first failure.
+> Each profile, decoded by `security cms -D -i <id>.mobileprovision`, then
+> sets its UUID and name as `PROVISIONING_PROFILE`/
+> `PROVISIONING_PROFILE_SPECIFIER` on target `HostingApp` (base id) or the
+> id's last segment, and `repo/opts.plist` records `{teamID, method:
+> app-store, provisioningProfiles: {id: UUID}}`.
 
-> [spec:kbdgen:req:ios.build-chain.init]
+> [spec:kbdgen:req:ios.build-chain.init+1]
 > `ios init` MUST run in `<out>`, with the target's fastlane environment:
 > `fastlane produce -a <packageId> --app_name <name>` (name = project
-> `locales.en.name`; panic if absent), then `fastlane produce group -g
-> group.<packageId> -n "<name> Group"`, then concurrently for every id of
-> `ios.pkg-ids.all`: for non-base ids `fastlane produce -a <id> --app_name
-> "<name>: <last segment>" --skip_itc`, followed by `fastlane produce
-> enable_services -a <id> --app-group` and `fastlane produce associate_group
-> -a <id> group.<packageId>`. Exit statuses are ignored; only launch
-> failures are errors.
+> `locales.en.name`), then `fastlane produce group -g group.<packageId> -n
+> "<name> Group"`, then concurrently for every id of `ios.pkg-ids.all`: for
+> non-base ids `fastlane produce -a <id> --app_name "<name>: <last segment>"
+> --skip_itc`, followed by `fastlane produce enable_services -a <id>
+> --app-group` and `fastlane produce associate_group -a <id>
+> group.<packageId>`. It MUST fail with an error when the bundle has no iOS
+> target or no `en` locale, or when a fastlane run cannot be started or
+> exits non-zero; such an error names the command and quotes the tail of
+> its stderr (of stdout when stderr is empty). A failed run ends its id's
+> sequence, and the per-id tasks are awaited in id order, failing with the
+> first failure.
 
 ## Xcode project generation
 
-> [spec:kbdgen:req:xcode.targets+1]
+> [spec:kbdgen:req:xcode.targets+2]
 > Xcode generation always reads and rewrites
 > `repo/GiellaKeyboard.xcodeproj/project.pbxproj` (`pbxproj.model.read`,
 > `pbxproj.serialize`), but only with an iOS target (`targets/ios.yaml`)
@@ -118,53 +130,62 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 > `Products`, shared build phases, and settings `INFOPLIST_FILE =
 > Keyboard/<folder>/Info.plist`, `PRODUCT_NAME = <folder>`,
 > `PRODUCT_BUNDLE_IDENTIFIER = <packageId>.<folder>`, `DEVELOPMENT_TEAM =
-> <codeSignId>` (`Unknown` if unset, not `teamId`); and embed the appex in
-> `HostingApp`'s first `Embed App/Foundation Extensions` phase with
-> `ATTRIBUTES = (RemoveHeadersOnCopy, )`. Afterwards `HostingApp` gets the
-> base identifier and team, and target `Keyboard` is removed with its
-> dependencies, `Products` entry and embed build file.
+> <teamId>` (`Unknown` if unset); and embed the appex in `HostingApp`'s
+> first `Embed App/Foundation Extensions` phase with `ATTRIBUTES =
+> (RemoveHeadersOnCopy, )`. Afterwards `HostingApp` gets the base identifier
+> and team, and target `Keyboard` is removed with its dependencies,
+> `Products` entry and embed build file. These steps MUST fail with an error
+> when the project lacks a target, configuration list, build configuration,
+> product or embed phase they use, or the `Products` group.
 
-> [spec:kbdgen:req:xcode.targets.keyboard-plist+1]
+> [spec:kbdgen:req:xcode.targets.keyboard-plist+2]
 > With an iOS target, each such layout's `repo/Keyboard/<folder>/Info.plist`
 > MUST be produced from template `repo/Keyboard/Info.plist` deserialized as
-> the typed `KeyboardInfoPlist` (xcode_structures.rs; missing required keys
-> panic, keys outside it are dropped) and written as XML with:
+> the typed `KeyboardInfoPlist` (xcode_structures.rs; keys outside it are
+> dropped; a template that does not deserialize, or has no
+> `LSApplicationQueriesSchemes` entry, is an error) and written as XML with:
 > `DivvunSpellerPackageKey`/`DivvunSpellerPath` from `iOS.config` when both
 > are set, else both omitted; `DivvunContactEmail` from
-> `<bundle>/projects/<tag>.yaml` when readable, else unchanged;
-> `CFBundleDisplayName` = `displayNames.en` (panic if absent);
+> `<bundle>/projects/<tag>.yaml` when it exists and parses as a project
+> (when it exists but cannot be read or parsed, a warning is logged), else
+> unchanged;
+> `CFBundleDisplayName` = `displayNames.en`;
 > `CFBundleShortVersionString`/`CFBundleVersion` = target
 > `version`/`build`; `LSApplicationQueriesSchemes[0]` = `packageId`;
 > `SentryDSN` = `sentryDsn` (omitted if unset); `PrimaryLanguage` = the
 > language tag; `DivvunKeyboardIndex` = the layout's 0-based position in
 > `ios.layouts`, which is also its position in the keyboard definitions file.
 
-> [spec:kbdgen:req:xcode.targets.hosting-app]
+> [spec:kbdgen:req:xcode.targets.hosting-app+1]
 > With an iOS target, the generator MUST rewrite, via the typed structs of
-> xcode_structures.rs (unknown keys dropped): `repo/HostingApp/Info.plist`
-> (`HostingPlist`) with `CFBundleDisplayName` = `bundleName`, version and
-> build, `packageId` as first URL scheme and first queries scheme, and
-> `SentryDSN`; `Keyboard/Keyboard.entitlements` and
+> xcode_structures.rs (unknown keys dropped; a file that does not
+> deserialize is an error): `repo/HostingApp/Info.plist` (`HostingPlist`)
+> with `CFBundleDisplayName` = `bundleName`, version and build, `packageId`
+> as first URL scheme and first queries scheme (an error when either list is
+> empty), and `SentryDSN`; `Keyboard/Keyboard.entitlements` and
 > `HostingApp/HostingApp.entitlements` (`EntitlementsDict`) with app groups
 > `["group.<packageId>"]`; and `HostingApp/Settings.bundle/Root.plist`
 > (`SettingsRootDict`) with `ApplicationGroupContainerIdentifier =
 > group.<packageId>`. With or without the target, it MUST render the iOS
-> icon `icon.png` (panic if missing) for every entry of
+> icon `icon.png` for every entry of
 > `HostingApp/Images.xcassets/AppIcon.appiconset/Contents.json` at N×N
-> pixels, N = first `size` number × `scale`, via `convert -resize NxN
-> -background transparent -gravity center -extent NxN` into
-> `<idiom>-<size>@<scale>.png`, recording it as `filename`.
+> pixels, N = first `size` number × the `scale` number before its `x`, via
+> `convert -resize NxN -background transparent -gravity center -extent NxN`
+> into `<idiom>-<size>@<scale>.png`, recording it as `filename`. A missing
+> `resources/ios` or icon, an unreadable `Contents.json`, `size` or `scale`,
+> or a `convert` that cannot be started or exits non-zero MUST be an error;
+> for `convert` it names the command and quotes the tail of its stderr.
 
-> [spec:kbdgen:req:xcode.localization]
-> With an iOS target, for each iOS layout and each project locale (`en`
-> written `Base`), the generator MUST write
-> `repo/HostingApp/<locale>.lproj/InfoPlist.strings` as
+> [spec:kbdgen:req:xcode.localization+1]
+> With an iOS target, for each project locale (`en` written `Base`), the
+> generator MUST write `repo/HostingApp/<locale>.lproj/InfoPlist.strings` as
 > `"CFBundleName" = <name>;\n"CFBundleDisplayName" = <name>;` (`name`
-> Rust-debug-quoted, no trailing newline). For non-`Base` locales whose
-> `repo/HostingApp/<locale>.lproj/About.txt` exists relative to the process
-> working directory (not `<out>`), it adds a `<locale>.lproj/About.txt`
-> reference to variant group `About.txt` once per layout (so duplicates
-> arise). Finally the sorted locale set is added to `knownRegions`, and a new
-> `InfoPlist.strings` variant group of `<locale>.lproj/InfoPlist.strings`
-> references is added to `HostingApp`'s last resources phase and to group
+> Rust-debug-quoted, no trailing newline). For each non-`Base` locale whose
+> `<out>/repo/HostingApp/<locale>.lproj/About.txt` exists, it adds a
+> `<locale>.lproj/About.txt` reference to variant group `About.txt` (an
+> error if the project has none) unless the group already has a reference
+> with that path. Finally the sorted locale set is added to `knownRegions`,
+> and a new `InfoPlist.strings` variant group of
+> `<locale>.lproj/InfoPlist.strings` references is added to `HostingApp`'s
+> last resources phase (an error if it has none) and to group
 > `HostingApp/Supporting Files`.

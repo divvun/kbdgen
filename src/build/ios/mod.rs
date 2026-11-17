@@ -1,21 +1,20 @@
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
+    process::Output,
 };
 
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
-use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use once_cell::sync::Lazy;
 
-use crate::bundle::{KbdgenBundle, layout::Layout};
+use crate::bundle::{KbdgenBundle, layout::Layout, target::iOS};
 
 use self::{
     clone_giellakbd::CloneGiellaKbd,
     generate_ios::GenerateIos,
     generate_xcode::GenerateXcode,
     pod_install::PodInstall,
-    xcodebuild::{BuildXcarchive, FastlaneProvisioning, fastlane_env},
+    xcodebuild::{BuildXcarchive, FastlaneProvisioning, fastlane, fastlane_env},
 };
 
 use super::{BuildStep, BuildSteps};
@@ -41,7 +40,7 @@ const DEFAULT_LOCALE: &str = "en";
 /// Layouts are sorted by their English display name (the name shown in iOS Settings), then by language
 /// tag. Fails if any iOS layout lacks the fields iOS needs, rather than leaving it out of one of the files.
 // [spec:kbdgen:req:ios.layouts]
-pub(crate) fn ios_layouts(bundle: &KbdgenBundle) -> anyhow::Result<Vec<(&LanguageTag, &Layout)>> {
+pub(crate) fn ios_layouts(bundle: &KbdgenBundle) -> Result<Vec<(&LanguageTag, &Layout)>> {
     let default_tag: LanguageTag = DEFAULT_LOCALE
         .parse()
         .expect("default language tag must parse");
@@ -65,7 +64,7 @@ pub(crate) fn ios_layouts(bundle: &KbdgenBundle) -> anyhow::Result<Vec<(&Languag
     }
     if !problems.is_empty() {
         problems.sort();
-        anyhow::bail!(
+        bail!(
             "Some iOS layouts are incomplete:\n  {}",
             problems.join("\n  ")
         );
@@ -89,7 +88,7 @@ pub struct IosBuild {
 
 #[async_trait(?Send)]
 impl BuildSteps for IosBuild {
-    // [spec:kbdgen:req:ios.build-chain+1]
+    // [spec:kbdgen:req:ios.build-chain+2]
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
         let steps: Vec<Box<dyn BuildStep>> = vec![
             Box::new(CloneGiellaKbd),
@@ -120,138 +119,151 @@ impl BuildSteps for IosBuild {
     }
 }
 
-pub trait IosProjectExt {
-    fn pkg_id(&self, layout: &Layout) -> String;
-    fn all_pkg_ids(&self) -> Vec<String>;
-    fn supported_layouts(&self) -> IndexMap<&LanguageTag, &Layout>;
+pub(crate) fn ios_target(bundle: &KbdgenBundle) -> Result<&iOS> {
+    bundle
+        .targets
+        .ios
+        .as_ref()
+        .context("the bundle has no iOS target (targets/ios.yaml)")
 }
 
-// [spec:kbdgen:req:ios.pkg-ids]
-static LEGACY_DIVVUN_KBD_IDS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
-    [
-        ("se", "northern-sami-keyboard"),
-        ("sme", "northern-sami-keyboard"),
-        ("sms", "skolt-sami-keyboard"),
-        ("smn", "inari-sami-keyboard"),
-        ("smj-SE", "julev-sami-keyboard"),
-        ("smj-NO", "julev-sami-keyboard-no"),
-        ("sma", "south-sami-keyboard"),
-    ]
-    .into()
-});
+/// Fails unless the command behind `output` succeeded, quoting the end of its stderr, or of its
+/// stdout when stderr is empty, as fastlane reports its errors there.
+pub(crate) fn ensure_success(command: &str, output: &Output) -> Result<()> {
+    const TAIL_LINES: usize = 20;
+
+    if output.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let report = if stderr.trim().is_empty() {
+        String::from_utf8_lossy(&output.stdout)
+    } else {
+        stderr
+    };
+    let lines: Vec<&str> = report.trim().lines().collect();
+    let tail = lines[lines.len().saturating_sub(TAIL_LINES)..].join("\n");
+    bail!("`{command}` failed with {}: {tail}", output.status)
+}
+
+/// The last segment of a package id, which names its keyboard's folder and Xcode target.
+pub(crate) fn keyboard_name(pkg_id: &str) -> &str {
+    pkg_id.rsplit_once('.').map_or(pkg_id, |(_, name)| name)
+}
+
+/// Divvun's Sami keyboards keep the package ids they were first published with.
+// [spec:kbdgen:req:ios.pkg-ids+1]
+fn legacy_divvun_keyboard_id(tag: &str) -> Option<&'static str> {
+    Some(match tag {
+        "se" | "sme" => "northern-sami-keyboard",
+        "sms" => "skolt-sami-keyboard",
+        "smn" => "inari-sami-keyboard",
+        "smj-SE" => "julev-sami-keyboard",
+        "smj-NO" => "julev-sami-keyboard-no",
+        "sma" => "south-sami-keyboard",
+        _ => return None,
+    })
+}
+
+/// The bundle identifier of a layout's keyboard extension.
+// [spec:kbdgen:req:ios.pkg-ids+1]
+pub(crate) fn pkg_id(target: &iOS, layout: &Layout) -> String {
+    let tag = layout.language_tag.as_str();
+    let ext = if target.package_id == "no.uit.giella.keyboards.Sami" {
+        legacy_divvun_keyboard_id(tag).unwrap_or(tag)
+    } else {
+        tag
+    };
+    format!("{}.{ext}", target.package_id)
+}
+
+pub trait IosProjectExt {
+    fn all_pkg_ids(&self) -> Result<Vec<String>>;
+}
 
 impl IosProjectExt for KbdgenBundle {
-    // [spec:kbdgen:req:ios.pkg-ids]
-    fn pkg_id(&self, layout: &Layout) -> String {
-        let target = self.targets.ios.as_ref().unwrap();
-        let base_id = &target.package_id;
-        let tag = layout.language_tag.as_str();
-
-        let ext = if target.package_id == "no.uit.giella.keyboards.Sami" {
-            LEGACY_DIVVUN_KBD_IDS.get(tag).unwrap_or(&tag)
-        } else {
-            tag
-        };
-
-        format!("{base_id}.{ext}")
-    }
-
-    // [spec:kbdgen:def:ios.pkg-ids.all]
-    fn all_pkg_ids(&self) -> Vec<String> {
-        let target = self.targets.ios.as_ref().unwrap();
-        let base_id = &target.package_id;
-        let mut v = std::iter::once(base_id.to_string())
+    // [spec:kbdgen:def:ios.pkg-ids.all+1]
+    fn all_pkg_ids(&self) -> Result<Vec<String>> {
+        let target = ios_target(self)?;
+        let mut ids: Vec<String> = std::iter::once(target.package_id.clone())
             .chain(
-                self.supported_layouts()
+                self.layouts
                     .values()
-                    .map(|layout| self.pkg_id(layout)),
+                    .filter(|layout| layout.i_os.is_some())
+                    .map(|layout| pkg_id(target, layout)),
             )
-            .collect::<Vec<_>>();
-        v.sort();
-        v
-    }
-
-    fn supported_layouts(&self) -> IndexMap<&LanguageTag, &Layout> {
-        self.layouts
-            .iter()
-            .filter(|(_, layout)| layout.i_os.is_some())
-            .collect()
+            .collect();
+        ids.sort();
+        Ok(ids)
     }
 }
 
-// [spec:kbdgen:req:ios.build-chain.init]
-pub async fn init(bundle: KbdgenBundle, path: &Path) -> anyhow::Result<()> {
-    let target = bundle.targets.ios.as_ref().cloned().unwrap();
-    let app_name = bundle.project.locales["en"].name.to_string();
-    let base_id = target.package_id.to_string();
+// [spec:kbdgen:req:ios.build-chain.init+1]
+pub async fn init(bundle: KbdgenBundle, path: &Path) -> Result<()> {
+    let target = ios_target(&bundle)?;
+    let app_name = &bundle
+        .project
+        .locales
+        .get(DEFAULT_LOCALE)
+        .context("project.yaml has no `en` locale to name the app")?
+        .name;
+    let base_id = &target.package_id;
+    let group = format!("group.{base_id}");
+    let env = fastlane_env(target);
 
-    let env = fastlane_env(&target);
+    tracing::info!("Registering {base_id} with App Store Connect");
+    fastlane(
+        path,
+        &env,
+        &["produce", "-a", base_id, "--app_name", app_name],
+    )
+    .await?;
 
-    tracing::debug!(id = base_id, "registering id");
-    tokio::process::Command::new("fastlane")
-        .current_dir(path)
-        .envs(&env)
-        .args(["produce", "-a", &base_id, "--app_name", &app_name])
-        .output()
-        .await?;
+    tracing::info!("Registering app group {group}");
+    let group_name = format!("{app_name} Group");
+    fastlane(
+        path,
+        &env,
+        &["produce", "group", "-g", &group, "-n", &group_name],
+    )
+    .await?;
 
-    tracing::debug!(id = base_id, "registering base group");
-    tokio::process::Command::new("fastlane")
-        .current_dir(path)
-        .envs(&env)
-        .args(["produce", "group", "-g"])
-        .arg(format!("group.{base_id}"))
-        .arg("-n")
-        .arg(format!("{} Group", &app_name))
-        .output()
-        .await?;
-
-    let ids = bundle.all_pkg_ids();
-    let futs = ids
+    let tasks: Vec<_> = bundle
+        .all_pkg_ids()?
         .into_iter()
         .map(|id| {
             let path = path.to_path_buf();
-            let base_id = base_id.to_string();
-            let target = target.clone();
-            let app_name = app_name.clone();
+            let env = env.clone();
+            let base_id = base_id.clone();
+            let group = group.clone();
+            let app_name = format!("{app_name}: {}", keyboard_name(&id));
 
             tokio::spawn(async move {
                 if id != base_id {
-                    tracing::debug!(id = id, "registering id");
-                    let _output = tokio::process::Command::new("fastlane")
-                        .current_dir(&path)
-                        .envs(fastlane_env(&target))
-                        .args(["produce", "-a", &id, "--app_name"])
-                        .arg(format!("{app_name}: {}", id.rsplit(".").next().unwrap()))
-                        .arg("--skip_itc")
-                        .output()
-                        .await?;
+                    tracing::info!("Registering {id} with App Store Connect");
+                    let args = ["produce", "-a", &id, "--app_name", &app_name, "--skip_itc"];
+                    fastlane(&path, &env, &args).await?;
                 }
-
-                tracing::debug!(id = id, "enabling app group");
-                let _output = tokio::process::Command::new("fastlane")
-                    .current_dir(&path)
-                    .envs(fastlane_env(&target))
-                    .args(["produce", "enable_services", "-a", &id, "--app-group"])
-                    .output()
-                    .await?;
-
-                tracing::debug!(id = id, "associating group");
-                let _output = tokio::process::Command::new("fastlane")
-                    .current_dir(&path)
-                    .envs(fastlane_env(&target))
-                    .args(["produce", "associate_group", "-a", &id])
-                    .arg(format!("group.{base_id}"))
-                    .output()
-                    .await?;
-
-                Ok::<_, std::io::Error>(())
+                tracing::info!("Adding {id} to app group {group}");
+                fastlane(
+                    &path,
+                    &env,
+                    &["produce", "enable_services", "-a", &id, "--app-group"],
+                )
+                .await?;
+                fastlane(
+                    &path,
+                    &env,
+                    &["produce", "associate_group", "-a", &id, &group],
+                )
+                .await?;
+                Ok::<_, anyhow::Error>(())
             })
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    for fut in futs.into_iter() {
-        let _mm = fut.await?;
+    for task in tasks {
+        task.await.context("a fastlane task panicked")??;
     }
 
     Ok(())
@@ -420,5 +432,104 @@ mod tests {
 
         assert!(result.is_err());
         assert!(!models.join("KeyboardDefinitions.json").exists());
+    }
+
+    fn target(package_id: &str) -> iOS {
+        serde_yaml::from_str(&format!(
+            "packageId: {package_id}\nbundleName: Keyboards\nversion: '1.0'\nbuild: 1\n"
+        ))
+        .unwrap()
+    }
+
+    // [spec:kbdgen:req:ios.pkg-ids+1/test]
+    #[test]
+    fn pkg_ids_use_the_legacy_table_only_for_the_sami_package() {
+        let (_, se) = ios_layout("se", "Northern Sami", true);
+        let (_, fi) = ios_layout("fi", "Finnish", true);
+        let sami = target("no.uit.giella.keyboards.Sami");
+        let other = target("com.example.keyboards");
+
+        assert_eq!(
+            pkg_id(&sami, &se),
+            "no.uit.giella.keyboards.Sami.northern-sami-keyboard"
+        );
+        assert_eq!(pkg_id(&sami, &fi), "no.uit.giella.keyboards.Sami.fi");
+        assert_eq!(pkg_id(&other, &se), "com.example.keyboards.se");
+        assert_eq!(keyboard_name(&pkg_id(&sami, &se)), "northern-sami-keyboard");
+    }
+
+    // [spec:kbdgen:def:ios.pkg-ids.all+1/test]
+    #[test]
+    fn all_pkg_ids_are_sorted_and_need_an_ios_target() {
+        let mut bundle = bundle(vec![
+            ios_layout("se", "Northern Sami", true),
+            ios_layout("fi", "Finnish", false),
+        ]);
+
+        assert_eq!(
+            bundle.all_pkg_ids().unwrap_err().to_string(),
+            "the bundle has no iOS target (targets/ios.yaml)"
+        );
+
+        bundle.targets.ios = Some(target("com.example.keyboards"));
+        assert_eq!(
+            bundle.all_pkg_ids().unwrap(),
+            [
+                "com.example.keyboards",
+                "com.example.keyboards.fi",
+                "com.example.keyboards.se"
+            ]
+        );
+    }
+
+    // [spec:kbdgen:req:ios.build-chain.init+1/test]
+    #[tokio::test]
+    async fn init_needs_an_ios_target_and_an_english_app_name() {
+        let output = tempfile::tempdir().unwrap();
+
+        let without_target = bundle(vec![ios_layout("se", "Northern Sami", true)]);
+        let error = init(without_target, output.path()).await.unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "the bundle has no iOS target (targets/ios.yaml)"
+        );
+
+        let mut without_english = bundle(vec![ios_layout("se", "Northern Sami", true)]);
+        without_english.targets.ios = Some(target("com.example.keyboards"));
+        let error = init(without_english, output.path()).await.unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "project.yaml has no `en` locale to name the app"
+        );
+    }
+
+    // [spec:kbdgen:req:ios.build-chain+2/test]
+    // [spec:kbdgen:req:ios.build-chain.init+1/test]
+    #[cfg(unix)]
+    #[test]
+    fn failed_commands_report_the_tail_of_their_output() {
+        use std::os::unix::process::ExitStatusExt;
+
+        let output = |code: i32, stdout: &str, stderr: &str| Output {
+            status: std::process::ExitStatus::from_raw(code << 8),
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: stderr.as_bytes().to_vec(),
+        };
+        let stderr: String = (1..=25).map(|line| format!("line {line}\n")).collect();
+        let tail: Vec<String> = (6..=25).map(|line| format!("line {line}")).collect();
+
+        assert!(ensure_success("tool", &output(0, "", "warning")).is_ok());
+        assert_eq!(
+            ensure_success("tool run", &output(1, "ignored", &stderr))
+                .unwrap_err()
+                .to_string(),
+            format!("`tool run` failed with exit status: 1: {}", tail.join("\n"))
+        );
+        assert_eq!(
+            ensure_success("fastlane sigh", &output(1, "[!] no profile\n", "  \n"))
+                .unwrap_err()
+                .to_string(),
+            "`fastlane sigh` failed with exit status: 1: [!] no profile"
+        );
     }
 }

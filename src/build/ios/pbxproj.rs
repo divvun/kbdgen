@@ -1,12 +1,14 @@
 use std::{
-    borrow::BorrowMut,
     collections::{BTreeMap, BTreeSet},
-    path::{Path, PathBuf},
-    str::FromStr,
+    path::Path,
+    process::Command,
 };
 
+use anyhow::{Context, Result, bail};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+
+use super::ensure_success;
 
 #[nova::newtype(serde, display)]
 pub type ObjectId = String;
@@ -30,17 +32,11 @@ impl ObjectId {
     }
 }
 
-impl AsRef<str> for ObjectId {
-    fn as_ref(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct Project {
-    pub attributes: serde_json::Value,
+    pub attributes: serde_json::Map<String, serde_json::Value>,
     pub build_configuration_list: ObjectId,
     pub compatibility_version: String,
     pub development_region: String,
@@ -143,7 +139,6 @@ pub struct CopyFilesBuildPhase {
     pub run_only_for_deployment_postprocessing: String,
 }
 
-// All 4 build phase types are almost identical
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourcesBuildPhase {
     #[serde(rename = "buildActionMask")]
@@ -243,7 +238,7 @@ pub struct SwiftPackageProductDependency {
     pub product_name: String,
 }
 
-// [spec:kbdgen:def:pbxproj.model+1]
+// [spec:kbdgen:def:pbxproj.model+2]
 // [spec:kbdgen:sem:pbxproj.model.ordering+1]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -256,706 +251,506 @@ pub struct Pbxproj {
     pub root_object: ObjectId,
 }
 
+/// Newer Xcode versions name the phase that embeds app extensions "Embed Foundation Extensions".
+const EMBED_EXTENSIONS_PHASES: [&str; 2] = ["Embed App Extensions", "Embed Foundation Extensions"];
+
 impl Pbxproj {
-    pub fn from_path(path: &Path) -> Self {
-        convert_pbxproj_to_json(path)
+    /// Reads a project.pbxproj by having `plutil`, which only ships with macOS, convert a copy of
+    /// it to JSON.
+    // [spec:kbdgen:req:pbxproj.model.read+1]
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let tempdir = tempfile::tempdir().context("create a temporary directory")?;
+        let json_path = tempdir.path().join("tmp.pbxproj");
+        std::fs::copy(path, &json_path)
+            .with_context(|| format!("copy {} to {}", path.display(), json_path.display()))?;
+
+        let output = Command::new("plutil")
+            .args(["-convert", "json"])
+            .arg(&json_path)
+            .output()
+            .context("`plutil` could not be started; it ships with macOS")?;
+        ensure_success(&format!("plutil -convert json {}", path.display()), &output)?;
+
+        let json =
+            std::fs::read(&json_path).with_context(|| format!("read {}", json_path.display()))?;
+        serde_json::from_slice(&json).with_context(|| format!("parse {}", path.display()))
     }
 
-    pub fn project(&self) -> Option<&Project> {
-        if let Some(Object::Project(project)) = self.objects.get(&self.root_object) {
-            return Some(project);
+    fn project(&self) -> Result<&Project> {
+        match self.objects.get(&self.root_object) {
+            Some(Object::Project(project)) => Ok(project),
+            _ => bail!("rootObject {} is not a PBXProject", self.root_object),
         }
-        None
     }
 
-    pub fn project_mut(&mut self) -> Option<&mut Project> {
-        if let Some(Object::Project(project)) = self.objects.get_mut(&self.root_object) {
-            return Some(project);
+    fn project_mut(&mut self) -> Result<&mut Project> {
+        match self.objects.get_mut(&self.root_object) {
+            Some(Object::Project(project)) => Ok(project),
+            _ => bail!("rootObject {} is not a PBXProject", self.root_object),
         }
-        None
     }
 
-    pub fn known_regions_mut(&mut self) -> Option<&mut BTreeSet<String>> {
-        if let Some(Object::Project(project)) = self.objects.get_mut(&self.root_object) {
-            return Some(&mut project.known_regions);
+    fn group(&self, id: &ObjectId) -> Option<&Group> {
+        match self.objects.get(id) {
+            Some(Object::Group(group)) => Some(group),
+            _ => None,
         }
-        None
     }
 
-    pub fn add_target(&mut self, object_id: &ObjectId) {
-        tracing::debug!("Adding target with ref: {}", &object_id);
-        self.project_mut()
-            .unwrap()
-            .targets
-            .insert(object_id.clone());
-    }
-
-    pub fn build_file_id_by_file_ref_name(&self, name: &str) -> Option<&ObjectId> {
-        for object in &self.objects {
-            if let (id, Object::BuildFile(build_file)) = object {
-                if let Some(Object::FileReference(file_ref)) = build_file
-                    .file_ref
-                    .as_ref()
-                    .and_then(|file_ref| self.objects.get(file_ref))
-                {
-                    if let Some(file_ref_name) = file_ref.name.as_ref() {
-                        if file_ref_name == name {
-                            return Some(id);
-                        }
-                    } else if file_ref.path == name {
-                        return Some(id);
-                    }
-                }
-            }
+    fn group_mut(&mut self, id: &ObjectId) -> Result<&mut Group> {
+        match self.objects.get_mut(id) {
+            Some(Object::Group(group)) => Ok(group),
+            _ => bail!("{id} is not a PBXGroup"),
         }
-        return None;
     }
 
-    pub fn group(&self, object_id: &ObjectId) -> Option<&Group> {
-        if let Some(Object::Group(main_group)) = self.objects.get(object_id) {
-            return Some(main_group);
+    fn file_reference(&self, id: &ObjectId) -> Result<&FileReference> {
+        match self.objects.get(id) {
+            Some(Object::FileReference(file_reference)) => Ok(file_reference),
+            _ => bail!("{id} is not a PBXFileReference"),
         }
-        return None;
     }
 
-    pub fn group_mut(&mut self, object_id: &ObjectId) -> Option<&mut Group> {
-        if let Some(Object::Group(main_group)) = self.objects.get_mut(object_id) {
-            return Some(main_group);
+    fn configuration_list(&self, id: &ObjectId) -> Result<&ConfigurationList> {
+        match self.objects.get(id) {
+            Some(Object::ConfigurationList(list)) => Ok(list),
+            _ => bail!("{id} is not an XCConfigurationList"),
         }
-        return None;
     }
 
-    pub fn group_by_name_mut(&mut self, name: &str) -> Option<&mut Group> {
-        for object in self.objects.borrow_mut() {
-            if let (_id, Object::Group(group)) = object {
-                if let Some(group_name) = group.name.clone() {
-                    if group_name == name {
-                        return Some(group);
-                    }
-                }
-            }
+    fn build_configuration(&self, id: &ObjectId) -> Result<&BuildConfiguration> {
+        match self.objects.get(id) {
+            Some(Object::BuildConfiguration(configuration)) => Ok(configuration),
+            _ => bail!("{id} is not an XCBuildConfiguration"),
         }
-        None
     }
 
-    pub fn variant_group_by_name_mut(&mut self, name: &str) -> Option<&mut VariantGroup> {
-        for object in self.objects.borrow_mut() {
-            if let (_id, Object::VariantGroup(group)) = object {
-                if let Some(group_name) = group.name.clone() {
-                    if group_name == name {
-                        return Some(group);
-                    }
-                }
-            }
+    fn build_configuration_mut(&mut self, id: &ObjectId) -> Result<&mut BuildConfiguration> {
+        match self.objects.get_mut(id) {
+            Some(Object::BuildConfiguration(configuration)) => Ok(configuration),
+            _ => bail!("{id} is not an XCBuildConfiguration"),
         }
-        None
     }
 
-    pub fn file_reference_by_id(&self, object_id: &ObjectId) -> Option<&FileReference> {
-        for object in &self.objects {
-            if let (id, Object::FileReference(file_reference)) = object {
-                if id == object_id {
-                    return Some(file_reference);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn file_reference_id_by_path(&self, path_name: &str) -> Option<&ObjectId> {
-        for object in &self.objects {
-            if let (id, Object::FileReference(file_reference)) = object {
-                if file_reference.path == path_name {
-                    return Some(id);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn native_target_by_name(&self, name: &str) -> Option<&NativeTarget> {
-        for object in self.objects.values() {
-            if let Object::NativeTarget(native_target) = object {
-                if native_target.name == name {
-                    return Some(native_target);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn native_target_id_by_name(&mut self, name: &str) -> Option<&ObjectId> {
-        for (key, value) in &self.objects {
-            if let Object::NativeTarget(native_target) = value {
-                if native_target.name == name {
-                    return Some(key);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn native_target_by_name_mut(&mut self, name: &str) -> Option<&mut NativeTarget> {
-        for object in self.objects.values_mut() {
-            if let Object::NativeTarget(native_target) = object {
-                if native_target.name == name {
-                    return Some(native_target);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn configuration_list_by_id(&self, object_id: &ObjectId) -> Option<&ConfigurationList> {
-        for object in &self.objects {
-            if let (id, Object::ConfigurationList(configuration_list)) = object {
-                if id == object_id {
-                    return Some(configuration_list);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn configuration_by_id(&self, object_id: &ObjectId) -> Option<&BuildConfiguration> {
-        for object in &self.objects {
-            if let (id, Object::BuildConfiguration(configuration_list)) = object {
-                if id == object_id {
-                    return Some(configuration_list);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn configuration_by_id_mut(
-        &mut self,
-        object_id: &ObjectId,
-    ) -> Option<&mut BuildConfiguration> {
-        for object in self.objects.borrow_mut() {
-            if let (id, Object::BuildConfiguration(configuration_list)) = object {
-                if id == object_id {
-                    return Some(configuration_list);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn copy_file_build_phase_by_id_mut(
-        &mut self,
-        object_id: &ObjectId,
-    ) -> Option<&mut CopyFilesBuildPhase> {
-        for object in self.objects.borrow_mut() {
-            if let (id, Object::CopyFilesBuildPhase(configuration_list)) = object {
-                if id == object_id {
-                    return Some(configuration_list);
-                }
-            }
-        }
-        None
-    }
-
-    // TODO: Needs cleanup
-    pub fn resources_build_phase_by_target_name_mut(
-        &mut self,
-        target_name: &str,
-    ) -> Option<&mut ResourcesBuildPhase> {
-        let mut the_id: Option<ObjectId> = None;
-
-        if let Some(native_target) = self.native_target_by_name(target_name) {
-            for build_phase_id in native_target.build_phases.clone() {
-                if let Some(Object::ResourcesBuildPhase(_build_phase)) =
-                    self.objects.get(&build_phase_id)
-                {
-                    the_id = Some(build_phase_id);
-                }
-            }
-        }
-
-        if let Some(phase_id) = the_id {
-            for (object_id, object) in self.objects.borrow_mut() {
-                if let Object::ResourcesBuildPhase(build_phase) = object {
-                    if object_id == &phase_id {
-                        return Some(build_phase);
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
-    // Very similar to create_file_reference
-    pub fn create_plist_file(&mut self, relative_plist_path: &Path) -> ObjectId {
-        let object = ObjectId::new_random();
-
-        self.objects.insert(
-            object.clone(),
-            Object::FileReference(FileReference {
-                last_known_file_type: Some("text.plist.xml".to_string()),
-                name: Some(
-                    relative_plist_path
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_string(),
-                ),
-                path: relative_plist_path.to_str().unwrap().to_string(),
-                source_tree: "<group>".to_string(),
-
-                file_encoding: None,
-                include_in_index: None,
-                explicit_file_type: None,
-            }),
-        );
-
-        return object;
-    }
-
-    pub fn create_file_reference(
-        &mut self,
-        file_type: &str,
-        locale_name: &str,
-        file_name: &str,
-    ) -> ObjectId {
-        let object_id = ObjectId::new_random();
-
-        tracing::debug!(
-            "Adding filereference {} for {} with ref: {}",
-            &file_name,
-            &locale_name,
-            &object_id
-        );
-
-        self.objects.insert(
-            object_id.clone(),
-            Object::FileReference(FileReference {
-                last_known_file_type: Some(file_type.to_string()),
-                name: Some(locale_name.to_string()),
-                path: format!("{}.lproj/{}", locale_name, file_name),
-                source_tree: "<group>".to_string(),
-                file_encoding: None,
-                include_in_index: None,
-                explicit_file_type: None,
-            }),
-        );
-
-        return object_id;
-    }
-
-    pub fn create_variant_group(
-        &mut self,
-        children: BTreeSet<ObjectId>,
-        name: Option<String>,
-        path: Option<String>,
-    ) -> ObjectId {
-        let object_id = ObjectId::new_random();
-
-        tracing::debug!("Adding variant group with ref: {}", &object_id);
-
-        let variant_group = VariantGroup {
-            children: children,
-            source_tree: "<group>".to_string(),
-            name: name,
-            path: path,
-        };
-
+    fn native_target(&self, name: &str) -> Result<(&ObjectId, &NativeTarget)> {
         self.objects
-            .insert(object_id.clone(), Object::VariantGroup(variant_group));
-
-        return object_id;
+            .iter()
+            .find_map(|(id, object)| match object {
+                Object::NativeTarget(target) if target.name == name => Some((id, target)),
+                _ => None,
+            })
+            .with_context(|| format!("the project has no target named {name}"))
     }
 
-    pub fn create_build_file(&mut self, file_ref: &ObjectId) -> ObjectId {
-        let object_id = ObjectId::new_random();
+    fn build_file_id_by_file_ref_name(&self, name: &str) -> Option<&ObjectId> {
+        self.objects.iter().find_map(|(id, object)| {
+            let Object::BuildFile(build_file) = object else {
+                return None;
+            };
+            let Some(Object::FileReference(file_ref)) =
+                self.objects.get(build_file.file_ref.as_ref()?)
+            else {
+                return None;
+            };
+            (file_ref.name.as_deref().unwrap_or(&file_ref.path) == name).then_some(id)
+        })
+    }
 
-        tracing::debug!("Adding build file with ref: {}", &object_id);
+    fn file_reference_id_by_path(&self, path: &str) -> Option<&ObjectId> {
+        self.objects.iter().find_map(|(id, object)| match object {
+            Object::FileReference(file_reference) if file_reference.path == path => Some(id),
+            _ => None,
+        })
+    }
 
-        let variant_group = BuildFile {
+    fn embed_extensions_phase_id(&self, target_name: &str) -> Result<ObjectId> {
+        let (_, target) = self.native_target(target_name)?;
+        target
+            .build_phases
+            .iter()
+            .find(|id| match self.objects.get(id) {
+                Some(Object::CopyFilesBuildPhase(phase)) => phase
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| EMBED_EXTENSIONS_PHASES.contains(&name)),
+                _ => false,
+            })
+            .cloned()
+            .with_context(|| format!("target {target_name} has no Embed App Extensions phase"))
+    }
+
+    fn create_variant_group(&mut self, children: BTreeSet<ObjectId>, name: &str) -> ObjectId {
+        let id = ObjectId::new_random();
+        let group = VariantGroup {
+            children,
+            source_tree: "<group>".to_string(),
+            name: Some(name.to_string()),
+            path: None,
+        };
+        self.objects.insert(id.clone(), Object::VariantGroup(group));
+        id
+    }
+
+    fn create_build_file(&mut self, file_ref: &ObjectId) -> ObjectId {
+        let id = ObjectId::new_random();
+        let build_file = BuildFile {
             file_ref: Some(file_ref.clone()),
             product_ref: None,
             settings: None,
         };
-
         self.objects
-            .insert(object_id.clone(), Object::BuildFile(variant_group));
-
-        return object_id;
+            .insert(id.clone(), Object::BuildFile(build_file));
+        id
     }
 
-    pub fn add_path(&mut self, path: &PathBuf) {
-        let path_names: Vec<String> = path
-            .components()
-            .map(|x| x.as_os_str().to_str().unwrap().to_string())
-            .collect();
-
-        let mut target = self.project().unwrap().main_group.clone();
-
-        'boop: for path_name in path_names {
-            let children_references = &self.group(&target).unwrap().children;
-
-            for child_reference in children_references {
-                if let Some(child_group) = self.group(child_reference) {
-                    if let Some(path) = &child_group.path {
-                        if path == &path_name {
-                            target = child_reference.clone();
-                            continue 'boop;
-                        }
-                    }
-                }
-            }
-
-            let id = ObjectId::new_random();
-
-            let new_child = Group {
-                children: Default::default(),
-                name: None,
-                path: Some(path_name.clone()),
+    /// Creates a reference to `<locale>.lproj/<file_name>`, named for its locale as the children
+    /// of a variant group are.
+    fn create_localized_file_reference(
+        &mut self,
+        file_type: &str,
+        locale: &str,
+        file_name: &str,
+    ) -> ObjectId {
+        let id = ObjectId::new_random();
+        self.objects.insert(
+            id.clone(),
+            Object::FileReference(FileReference {
+                last_known_file_type: Some(file_type.to_string()),
+                name: Some(locale.to_string()),
+                path: format!("{locale}.lproj/{file_name}"),
                 source_tree: "<group>".to_string(),
-            };
-
-            self.objects.insert(id.clone(), Object::Group(new_child));
-            self.group_mut(&target).unwrap().children.insert(id.clone());
-
-            target = id;
-        }
+                file_encoding: None,
+                include_in_index: None,
+                explicit_file_type: None,
+            }),
+        );
+        id
     }
 
-    pub fn add_ref_to_group(&mut self, object_id: &ObjectId, group: &PathBuf) {
-        let group_names: Vec<String> = group
-            .components()
-            .map(|x| x.as_os_str().to_str().unwrap().to_string())
-            .collect();
+    pub fn create_plist_file_reference(&mut self, path: &Path) -> ObjectId {
+        let id = ObjectId::new_random();
+        self.objects.insert(
+            id.clone(),
+            Object::FileReference(FileReference {
+                last_known_file_type: Some("text.plist.xml".to_string()),
+                name: path
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned()),
+                path: path.to_string_lossy().into_owned(),
+                source_tree: "<group>".to_string(),
+                file_encoding: None,
+                include_in_index: None,
+                explicit_file_type: None,
+            }),
+        );
+        id
+    }
 
-        let mut object = self.project().unwrap().main_group.clone();
-
-        for group_name in group_names {
-            let children_references = &self.group(&object).unwrap().children;
-
-            for child_reference in children_references {
-                if let Some(child_group) = self.group(child_reference) {
-                    if let Some(child_path) = &child_group.path {
-                        if child_path == &group_name {
-                            object = child_reference.clone();
-                            break;
-                        }
-                    } else if let Some(child_name) = &child_group.name {
-                        if child_name == &group_name {
-                            object = child_reference.clone();
-                            break;
-                        }
-                    }
+    /// Adds `<locale>.lproj/About.txt` to the `About.txt` variant group unless it is already there.
+    pub fn add_localized_about(&mut self, locale: &str) -> Result<()> {
+        let path = format!("{locale}.lproj/About.txt");
+        let (group_id, group) = self
+            .objects
+            .iter()
+            .find_map(|(id, object)| match object {
+                Object::VariantGroup(group) if group.name.as_deref() == Some("About.txt") => {
+                    Some((id.clone(), group))
                 }
+                _ => None,
+            })
+            .context("the project has no About.txt variant group")?;
+        let present = group.children.iter().any(|child| {
+            self.file_reference(child)
+                .is_ok_and(|file| file.path == path)
+        });
+        if present {
+            return Ok(());
+        }
+
+        let id = self.create_localized_file_reference("text", locale, "About.txt");
+        let Some(Object::VariantGroup(group)) = self.objects.get_mut(&group_id) else {
+            unreachable!("{group_id} was found as a variant group");
+        };
+        group.children.insert(id);
+        Ok(())
+    }
+
+    /// Makes sure the main group has a nested group, matched by `path`, for each component of
+    /// `path`.
+    pub fn add_path(&mut self, path: &Path) -> Result<()> {
+        let mut parent = self.project()?.main_group.clone();
+
+        for component in path.components() {
+            let component = component.as_os_str().to_string_lossy();
+            let children = &self
+                .group(&parent)
+                .with_context(|| format!("{parent} is not a PBXGroup"))?
+                .children;
+            let existing = children.iter().find(|child| {
+                self.group(child)
+                    .is_some_and(|group| group.path.as_deref() == Some(&*component))
+            });
+
+            parent = match existing {
+                Some(child) => child.clone(),
+                None => {
+                    let id = ObjectId::new_random();
+                    let group = Group {
+                        children: Default::default(),
+                        name: None,
+                        path: Some(component.into_owned()),
+                        source_tree: "<group>".to_string(),
+                    };
+                    self.objects.insert(id.clone(), Object::Group(group));
+                    self.group_mut(&parent)?.children.insert(id.clone());
+                    id
+                }
+            };
+        }
+
+        Ok(())
+    }
+
+    /// Adds `id` to the group at `group_path`, matching each component against a child group's
+    /// `path`, or its `name` if it has no path. A component that matches no group is skipped, so
+    /// `id` lands in the deepest group found.
+    pub fn add_ref_to_group(&mut self, id: &ObjectId, group_path: &Path) -> Result<()> {
+        let mut group_id = self.project()?.main_group.clone();
+
+        for component in group_path.components() {
+            let component = component.as_os_str().to_string_lossy();
+            let children = &self
+                .group(&group_id)
+                .with_context(|| format!("{group_id} is not a PBXGroup"))?
+                .children;
+            let child = children.iter().find(|child| {
+                self.group(child).is_some_and(|group| {
+                    group.path.as_deref().or(group.name.as_deref()) == Some(&*component)
+                })
+            });
+            if let Some(child) = child {
+                group_id = child.clone();
             }
         }
 
-        self.group_mut(&object)
-            .unwrap()
-            .children
-            .insert(object_id.clone());
+        self.group_mut(&group_id)?.children.insert(id.clone());
+        Ok(())
     }
 
-    pub fn add_file_ref_to_variant_group(&mut self, object_id: ObjectId) {
-        let variant = self.variant_group_by_name_mut("About.txt").unwrap();
-        variant.children.insert(object_id);
-    }
-
-    // [spec:kbdgen:req:xcode.targets+1]
+    // [spec:kbdgen:req:xcode.targets+2]
     pub fn duplicate_target(
         &mut self,
         source_name: &str,
         destination_name: &str,
-        plist_path: &PathBuf,
-    ) {
-        let mut new_native_target = match self.native_target_by_name(&source_name) {
-            Some(native_target) => native_target.clone(),
-            None => std::panic!(
-                "No native target with name `{}` could be found in .pbxproj",
-                source_name
-            ),
-        };
+        plist_path: &Path,
+    ) -> Result<()> {
+        let mut target = self.native_target(source_name)?.1.clone();
+        let target_id = ObjectId::new_random();
+        target.name = destination_name.to_string();
 
-        let new_native_target_id = ObjectId::new_random();
-        new_native_target.name = destination_name.to_string();
-
-        let new_configuration_list_id = ObjectId::new_random();
-        let mut new_configuration_list = self
-            .configuration_list_by_id(&new_native_target.build_configuration_list)
-            .unwrap()
+        let configuration_list_id = ObjectId::new_random();
+        let mut configuration_list = self
+            .configuration_list(&target.build_configuration_list)?
             .clone();
 
-        // Create new build configurations
-        let mut new_configuration_list_refs: BTreeSet<ObjectId> = BTreeSet::new();
-        for build_configuration_id in &new_configuration_list.build_configurations {
-            let new_build_configuration_id = ObjectId::new_random();
-            let mut new_build_configuration = self
-                .configuration_by_id(build_configuration_id)
-                .unwrap()
-                .clone();
-
-            new_build_configuration.build_settings.insert(
+        let mut configuration_ids = BTreeSet::new();
+        for source_id in &configuration_list.build_configurations {
+            let id = ObjectId::new_random();
+            let mut configuration = self.build_configuration(source_id)?.clone();
+            configuration.build_settings.insert(
                 "INFOPLIST_FILE".to_string(),
-                serde_json::Value::String(plist_path.to_str().unwrap().to_string()),
+                plist_path.to_string_lossy().into(),
             );
-            new_build_configuration.build_settings.insert(
-                "PRODUCT_NAME".to_string(),
-                serde_json::Value::String(destination_name.to_string()),
-            );
-            // new_build_configuration.build_settings.insert(
-            //     "CODE_SIGN_STYLE".to_string(),
-            //     serde_json::Value::String("CODE_SIGN_STYLE".to_string()),
-            // );
-            // new_build_configuration.build_settings.insert(
-            //     "PRODUCT_ENABLE_BITCODE".to_string(),
-            //     serde_json::Value::String("ENABLE_BITCODE".to_string()),
-            // );
-
-            new_configuration_list_refs.insert(new_build_configuration_id.clone());
-            // Add to the actual .pbxproj
-            // Each new build configuration
-            self.objects.insert(
-                new_build_configuration_id.clone(),
-                Object::BuildConfiguration(new_build_configuration),
-            );
+            configuration
+                .build_settings
+                .insert("PRODUCT_NAME".to_string(), destination_name.into());
+            self.objects
+                .insert(id.clone(), Object::BuildConfiguration(configuration));
+            configuration_ids.insert(id);
         }
-        // Add all new build configuration references to the list
-        new_configuration_list.build_configurations =
-            new_configuration_list_refs.into_iter().collect();
+        configuration_list.build_configurations = configuration_ids;
+        target.build_configuration_list = configuration_list_id.clone();
 
-        // add new configuration list reference to the new native target
-        new_native_target.build_configuration_list = new_configuration_list_id.clone();
+        let appex_id = ObjectId::new_random();
+        let source_appex_id = target
+            .product_reference
+            .as_ref()
+            .with_context(|| format!("target {source_name} has no product"))?;
+        let mut appex = self.file_reference(source_appex_id)?.clone();
+        appex.path = format!("{destination_name}.appex");
+        target.product_reference = Some(appex_id.clone());
 
-        // Appex
-        let new_appex_id = ObjectId::new_random();
-        let mut new_appex = self
-            .file_reference_by_id(&new_native_target.product_reference.unwrap())
-            .unwrap()
-            .clone();
-        new_appex.path = format!("{}.appex", destination_name);
-
-        // Add new appex id to the new native target
-        new_native_target.product_reference = Some(new_appex_id.clone());
-
-        // Add to the actual .pbxproj
-        // The new appex
         self.objects
-            .insert(new_appex_id.clone(), Object::FileReference(new_appex));
-        // The new configuration list
+            .insert(appex_id.clone(), Object::FileReference(appex));
         self.objects.insert(
-            new_configuration_list_id,
-            Object::ConfigurationList(new_configuration_list),
+            configuration_list_id,
+            Object::ConfigurationList(configuration_list),
         );
-        // The new native target
-        self.objects.insert(
-            new_native_target_id.clone(),
-            Object::NativeTarget(new_native_target),
-        );
+        self.objects
+            .insert(target_id.clone(), Object::NativeTarget(target));
 
-        // Finishing up
-        self.add_ref_to_group(&new_appex_id, &PathBuf::from_str("Products").unwrap());
-        self.add_target(&new_native_target_id);
+        self.add_ref_to_group(&appex_id, Path::new("Products"))?;
+        self.project_mut()?.targets.insert(target_id);
+        Ok(())
     }
 
-    // [spec:kbdgen:req:xcode.targets+1]
-    pub fn remove_target(&mut self, target_name: &str) {
-        let target = self.native_target_by_name_mut(target_name).unwrap();
+    /// Removes the target, the dependencies on it and its product's entry in `Products`. Its
+    /// product file reference stays: `remove_appex_from_target_embedded_binaries` finds the
+    /// embedding build file through it.
+    // [spec:kbdgen:req:xcode.targets+2]
+    pub fn remove_target(&mut self, name: &str) -> Result<()> {
+        let (target_id, target) = self.native_target(name)?;
+        let target_id = target_id.clone();
+        let product_id = target
+            .product_reference
+            .clone()
+            .with_context(|| format!("target {name} has no product"))?;
 
-        let product_reference = &target.product_reference.clone();
-        target.product_reference = None;
-
-        let target_id = self.native_target_id_by_name(target_name).unwrap().clone();
-
-        let mut references_to_remove: BTreeSet<ObjectId> = BTreeSet::new();
-        for (target_dependency_id, target_dependency) in &self.objects {
-            if let Object::TargetDependency(target_dependency) = target_dependency {
-                if target_dependency.target == target_id {
-                    references_to_remove.insert(target_dependency_id.clone());
+        let dependency_ids: Vec<ObjectId> = self
+            .objects
+            .iter()
+            .filter_map(|(id, object)| match object {
+                Object::TargetDependency(dependency) if dependency.target == target_id => {
+                    Some(id.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        for dependency_id in &dependency_ids {
+            self.objects.remove(dependency_id);
+        }
+        for object in self.objects.values_mut() {
+            if let Object::NativeTarget(target) = object {
+                for dependency_id in &dependency_ids {
+                    target.dependencies.remove(dependency_id);
                 }
             }
         }
 
-        for reference in references_to_remove {
-            self.objects.remove(&reference);
-            for obj in self.objects.borrow_mut() {
-                if let (_any_target_id, Object::NativeTarget(any_target)) = obj {
-                    any_target.dependencies.remove(&reference);
-                }
-            }
-        }
+        let products = self
+            .objects
+            .values_mut()
+            .find_map(|object| match object {
+                Object::Group(group) if group.name.as_deref() == Some("Products") => Some(group),
+                _ => None,
+            })
+            .context("the project has no Products group")?;
+        products.children.remove(&product_id);
 
-        self.group_by_name_mut("Products")
-            .unwrap()
-            .children
-            .remove(product_reference.as_ref().unwrap());
-
-        self.project_mut().unwrap().targets.remove(&target_id);
+        self.project_mut()?.targets.remove(&target_id);
         self.objects.remove(&target_id);
+        Ok(())
     }
 
-    pub fn set_target_build_configuration(&mut self, target_name: &str, key: &str, value: &str) {
-        let target = self.native_target_by_name(&target_name).unwrap();
-        let configuration_list = self
-            .configuration_list_by_id(&target.build_configuration_list)
-            .unwrap()
+    pub fn set_build_setting(&mut self, target_name: &str, key: &str, value: &str) -> Result<()> {
+        tracing::debug!("Setting {key} = {value} for target {target_name}");
+        let list_id = &self.native_target(target_name)?.1.build_configuration_list;
+        let configuration_ids = self
+            .configuration_list(list_id)?
+            .build_configurations
             .clone();
-
-        for build_configuration_ref in &configuration_list.build_configurations {
-            let new_build_configuration = self
-                .configuration_by_id_mut(build_configuration_ref)
-                .unwrap();
-            new_build_configuration.build_settings.insert(
-                key.to_string(),
-                serde_json::Value::String(value.to_string()),
-            );
+        for id in &configuration_ids {
+            self.build_configuration_mut(id)?
+                .build_settings
+                .insert(key.to_string(), value.into());
         }
+        Ok(())
     }
 
-    // [spec:kbdgen:req:xcode.targets+1]
-    pub fn add_appex_to_target_embedded_binaries(&mut self, target_path: &str, appex_path: &str) {
+    // [spec:kbdgen:req:xcode.targets+2]
+    pub fn add_appex_to_target_embedded_binaries(
+        &mut self,
+        target_name: &str,
+        appex_name: &str,
+    ) -> Result<()> {
+        let appex = format!("{appex_name}.appex");
         let appex_id = self
-            .file_reference_id_by_path(&format!("{}.appex", appex_path))
-            .unwrap()
+            .file_reference_id_by_path(&appex)
+            .with_context(|| format!("the project has no file reference for {appex}"))?
             .clone();
+        let phase_id = self.embed_extensions_phase_id(target_name)?;
 
-        let target = self.native_target_by_name(target_path).unwrap().clone();
+        let build_file_id = ObjectId::new_random();
+        let Some(Object::CopyFilesBuildPhase(phase)) = self.objects.get_mut(&phase_id) else {
+            unreachable!("embed_extensions_phase_id returns a copy-files phase");
+        };
+        phase.files.insert(build_file_id.clone());
 
-        for build_phase_id in &target.build_phases {
-            if let Some(build_phase) = self.copy_file_build_phase_by_id_mut(build_phase_id) {
-                if build_phase.name.as_ref().unwrap() == "Embed App Extensions"
-                    || build_phase.name.as_ref().unwrap() == "Embed Foundation Extensions"
-                {
-                    let build_file_id = ObjectId::new_random();
-                    // Insert new build file that references our new keyboard appex
-                    build_phase.files.insert(build_file_id.clone());
-
-                    // Create build file that references our keyboard appex
-                    let mut temp: BTreeMap<String, serde_json::Value> = BTreeMap::new();
-                    temp.insert(
-                        "ATTRIBUTES".to_string(),
-                        serde_json::Value::Array(vec![serde_json::Value::String(
-                            "RemoveHeadersOnCopy".to_string(),
-                        )]),
-                    );
-                    {
-                        self.objects.insert(
-                            build_file_id,
-                            Object::BuildFile(BuildFile {
-                                file_ref: Some(appex_id),
-                                product_ref: None,
-                                settings: Some(temp),
-                            }),
-                        );
-                    }
-                    break;
-                }
-            }
-        }
+        let settings = BTreeMap::from([(
+            "ATTRIBUTES".to_string(),
+            serde_json::json!(["RemoveHeadersOnCopy"]),
+        )]);
+        self.objects.insert(
+            build_file_id,
+            Object::BuildFile(BuildFile {
+                file_ref: Some(appex_id),
+                product_ref: None,
+                settings: Some(settings),
+            }),
+        );
+        Ok(())
     }
 
     pub fn remove_appex_from_target_embedded_binaries(
         &mut self,
-        target_path: &str,
-        appex_path: &str,
-    ) {
-        let appex_id = self
-            .file_reference_id_by_path(&format!("{}.appex", appex_path))
-            .unwrap()
+        target_name: &str,
+        appex_name: &str,
+    ) -> Result<()> {
+        let appex = format!("{appex_name}.appex");
+        let build_file_id = self
+            .build_file_id_by_file_ref_name(&appex)
+            .with_context(|| format!("the project has no build file for {appex}"))?
             .clone();
+        let phase_id = self.embed_extensions_phase_id(target_name)?;
 
-        let build_file_id_to_remove = self
-            .build_file_id_by_file_ref_name(&format!("{}.appex", appex_path))
-            .unwrap()
-            .clone();
-
-        let target = self.native_target_by_name_mut(target_path).unwrap();
-
-        // remove dependency that has been either automatically generated by xcode or us
-        target.dependencies.remove(&appex_id);
-
-        // remove build phase files
-        for build_phase_id in target.build_phases.clone() {
-            match self.copy_file_build_phase_by_id_mut(&build_phase_id) {
-                Some(x) => {
-                    if x.name.as_ref().unwrap() == "Embed App Extensions"
-                        || x.name.as_ref().unwrap() == "Embed Foundation Extensions"
-                    {
-                        x.files.remove(&build_file_id_to_remove);
-                        return;
-                    }
-                }
-                None => continue,
-            };
-        }
+        let Some(Object::CopyFilesBuildPhase(phase)) = self.objects.get_mut(&phase_id) else {
+            unreachable!("embed_extensions_phase_id returns a copy-files phase");
+        };
+        phase.files.remove(&build_file_id);
+        Ok(())
     }
 
-    // [spec:kbdgen:req:xcode.localization]
-    pub fn update(&mut self, target_name: &str, locale_list: BTreeSet<String>) {
-        tracing::debug!("Updating target {} with new locales", &target_name);
+    /// Adds `locales` to the project's known regions, and their `InfoPlist.strings` to the
+    /// target's resources and to the `HostingApp/Supporting Files` group.
+    // [spec:kbdgen:req:xcode.localization+1]
+    pub fn add_locales(&mut self, target_name: &str, locales: &BTreeSet<String>) -> Result<()> {
+        self.project_mut()?
+            .known_regions
+            .extend(locales.iter().cloned());
 
-        let known_regions = self.known_regions_mut().unwrap();
-        known_regions.extend(locale_list.clone());
+        let strings_ids = locales
+            .iter()
+            .map(|locale| {
+                self.create_localized_file_reference(
+                    "text.plist.strings",
+                    locale,
+                    "InfoPlist.strings",
+                )
+            })
+            .collect();
+        let variant_group_id = self.create_variant_group(strings_ids, "InfoPlist.strings");
+        let build_file_id = self.create_build_file(&variant_group_id);
 
-        let mut new_locale_ids: BTreeSet<ObjectId> = BTreeSet::new();
-        for locale in locale_list {
-            // create and add plist file: self.create_file_reference("text.plist.strings", locale, name)
-            let temp =
-                self.create_file_reference("text.plist.strings", &locale, "InfoPlist.strings");
-            new_locale_ids.insert(temp);
-        }
+        let (_, target) = self.native_target(target_name)?;
+        let resources_phase_id = target
+            .build_phases
+            .iter()
+            .rev()
+            .find(|id| matches!(self.objects.get(id), Some(Object::ResourcesBuildPhase(_))))
+            .cloned()
+            .with_context(|| format!("target {target_name} has no resources build phase"))?;
+        let Some(Object::ResourcesBuildPhase(resources_phase)) =
+            self.objects.get_mut(&resources_phase_id)
+        else {
+            unreachable!("the phase was found as a resources build phase");
+        };
+        resources_phase.files.insert(build_file_id);
 
-        // create and add variant group for locales
-        let variant_group_id =
-            self.create_variant_group(new_locale_ids, Some("InfoPlist.strings".to_string()), None);
-        // create buildfile
-        let locale_group_build_file_id = self.create_build_file(&variant_group_id);
-        // add buildfile reference to resources phase files
-        let target_resources_phase = self
-            .resources_build_phase_by_target_name_mut(target_name)
-            .unwrap();
-        target_resources_phase
-            .files
-            .insert(locale_group_build_file_id);
-        // add variant reference to HostingApp/SupportingFiles group
-        self.add_ref_to_group(
-            &variant_group_id,
-            &PathBuf::from_str("HostingApp/Supporting Files").unwrap(),
-        );
-    }
-
-    pub fn set_build_target_setting(&mut self, target_name: &str, key: &str, value: &str) {
-        tracing::debug!(
-            target_name = target_name,
-            key = key,
-            value = value,
-            "Setting build target setting"
-        );
-        let target = self.native_target_by_name(target_name).unwrap().clone();
-        let list = self
-            .configuration_list_by_id(&target.build_configuration_list)
-            .unwrap()
-            .clone();
-
-        for id in list.build_configurations.iter() {
-            let cfg = self.configuration_by_id_mut(id).unwrap();
-            cfg.build_settings.insert(key.to_string(), value.into());
-        }
+        self.add_ref_to_group(&variant_group_id, Path::new("HostingApp/Supporting Files"))
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PBXCopyFilesBuildPhase {
-    build_action_mask: String,
-    dst_path: String,
-    dst_subfolder_spec: String,
-    files: BTreeSet<ObjectId>,
-    name: Option<String>,
-    run_only_for_deployment_postprocessing: String,
-}
-
-// [spec:kbdgen:def:pbxproj.model+1]
+// [spec:kbdgen:def:pbxproj.model+2]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "isa")]
 pub enum Object {
@@ -1014,20 +809,137 @@ pub enum Object {
     SwiftPackageProductDependency(SwiftPackageProductDependency),
 }
 
-// [spec:kbdgen:req:pbxproj.model.read]
-pub fn convert_pbxproj_to_json(path: &Path) -> Pbxproj {
-    tracing::debug!("Getting .pbxproj as json");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let tempdir = tempfile::tempdir().unwrap();
-    let pbxproj_path = tempdir.path().join("tmp.pbxproj");
-    std::fs::copy(path, &pbxproj_path).unwrap();
+    fn about_project() -> Pbxproj {
+        serde_json::from_value(serde_json::json!({
+            "archiveVersion": "1",
+            "classes": {},
+            "objectVersion": "52",
+            "rootObject": "P0",
+            "objects": {
+                "V0": {
+                    "isa": "PBXVariantGroup",
+                    "children": ["F0"],
+                    "name": "About.txt",
+                    "sourceTree": "<group>"
+                },
+                "F0": {
+                    "isa": "PBXFileReference",
+                    "lastKnownFileType": "text",
+                    "name": "Base",
+                    "path": "Base.lproj/About.txt",
+                    "sourceTree": "<group>"
+                }
+            }
+        }))
+        .unwrap()
+    }
 
-    std::process::Command::new("plutil")
-        .args(["-convert", "json"])
-        .arg(&pbxproj_path)
-        .status()
-        .unwrap();
+    fn about_paths(pbxproj: &Pbxproj) -> Vec<&str> {
+        let Some(Object::VariantGroup(group)) = pbxproj.objects.get(&ObjectId("V0".into())) else {
+            panic!("V0 is not a variant group");
+        };
+        let mut paths: Vec<&str> = group
+            .children
+            .iter()
+            .map(|id| pbxproj.file_reference(id).unwrap().path.as_str())
+            .collect();
+        paths.sort();
+        paths
+    }
 
-    let reader = std::fs::File::open(pbxproj_path).unwrap();
-    serde_json::from_reader(reader).unwrap()
+    // [spec:kbdgen:req:xcode.localization+1/test]
+    #[test]
+    fn add_localized_about_adds_each_locale_once() {
+        let mut pbxproj = about_project();
+
+        pbxproj.add_localized_about("Base").unwrap();
+        pbxproj.add_localized_about("nb").unwrap();
+        pbxproj.add_localized_about("nb").unwrap();
+
+        assert_eq!(
+            about_paths(&pbxproj),
+            ["Base.lproj/About.txt", "nb.lproj/About.txt"]
+        );
+    }
+
+    // [spec:kbdgen:req:xcode.targets+2/test]
+    #[test]
+    fn missing_target_is_an_error() {
+        let mut pbxproj = about_project();
+
+        let error = pbxproj.remove_target("Keyboard").unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "the project has no target named Keyboard"
+        );
+    }
+
+    // [spec:kbdgen:def:pbxproj.model+2/test]
+    #[test]
+    fn project_attributes_must_be_a_dictionary() {
+        let project = |attributes: serde_json::Value| {
+            serde_json::from_value::<Object>(serde_json::json!({
+                "isa": "PBXProject",
+                "attributes": attributes,
+                "buildConfigurationList": "CL",
+                "compatibilityVersion": "Xcode 3.2",
+                "developmentRegion": "en",
+                "hasScannedForEncodings": "0",
+                "knownRegions": [],
+                "mainGroup": "G0",
+                "productRefGroup": "G1",
+                "projectDirPath": "",
+                "projectRoot": "",
+                "targets": []
+            }))
+        };
+
+        assert!(project(serde_json::json!({ "LastUpgradeCheck": "1130" })).is_ok());
+        assert!(project(serde_json::json!("1130")).is_err());
+    }
+
+    // [spec:kbdgen:req:pbxproj.model.read+1/test/golden]
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn reads_what_it_writes_through_plutil() {
+        let golden =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/build/ios/testdata/every-kind.pbxproj");
+
+        let written = Pbxproj::from_path(&golden).unwrap().to_pbxproj_string();
+
+        // plutil does not keep the file's buildSettings key order, so only the lines are compared.
+        let sorted_lines = |text: &str| {
+            let mut lines: Vec<String> = text.lines().map(str::to_string).collect();
+            lines.sort();
+            lines
+        };
+        assert_eq!(
+            sorted_lines(&written),
+            sorted_lines(&std::fs::read_to_string(&golden).unwrap())
+        );
+    }
+
+    // [spec:kbdgen:req:pbxproj.model.read+1/test]
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn plutil_failure_is_an_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("project.pbxproj");
+        std::fs::write(&path, "garbage {").unwrap();
+
+        let error = Pbxproj::from_path(&path).unwrap_err().to_string();
+
+        assert!(
+            error.starts_with(&format!(
+                "`plutil -convert json {}` failed with exit status: 1: ",
+                path.display()
+            )),
+            "{error}"
+        );
+    }
 }

@@ -143,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
                     TargetIosCommand::PrintPkgIds(_) => {
                         use IosProjectExt;
 
-                        for id in bundle.all_pkg_ids() {
+                        for id in bundle.all_pkg_ids()? {
                             println!("{}", id);
                         }
                     }

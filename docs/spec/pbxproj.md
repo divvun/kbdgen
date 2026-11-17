@@ -9,7 +9,7 @@ re-serialized result.
 
 ## Model
 
-> [spec:kbdgen:def:pbxproj.model+1]
+> [spec:kbdgen:def:pbxproj.model+2]
 > The pbxproj model is the top-level object with exactly the string fields
 > `archiveVersion`, `objectVersion`, `rootObject`, an untyped `classes`, and
 > `objects`, mapping ids to objects discriminated by `isa`. Exactly 18 kinds
@@ -25,18 +25,21 @@ re-serialized result.
 > and `PBXNativeTarget.packageProductDependencies` are optional id lists. A
 > package reference has `repositoryURL` and a string-to-string `requirement`;
 > a product dependency has `productName` and an optional `package`. Scalars
-> are strings, except the untyped JSON of `PBXProject.attributes`,
-> `buildSettings` values and `PBXBuildFile.settings` values. The top level
-> and every kind except the six build phases reject unknown fields; build
-> phases silently drop them.
+> are strings, except the untyped JSON of `buildSettings` values and
+> `PBXBuildFile.settings` values; `PBXProject.attributes` MUST be a
+> dictionary of untyped JSON values. The top level and every kind except the
+> six build phases reject unknown fields; build phases silently drop them.
 
-> [spec:kbdgen:req:pbxproj.model.read]
+> [spec:kbdgen:req:pbxproj.model.read+1]
 > A pbxproj MUST be read by copying it to `tmp.pbxproj` in a fresh temporary
-> directory, running `plutil -convert json` on the copy (exit status
-> ignored), and parsing the result as JSON into the model; the original file
-> is untouched. Any failure (`plutil` not launchable, invalid JSON, unknown
-> `isa`, unknown field on a strict kind, missing field) MUST panic, as do
-> operations needing the project when `rootObject` is not a `PBXProject`.
+> directory, running `plutil -convert json` on the copy, and parsing the
+> result as JSON into the model; the original file is untouched. Reading MUST
+> fail with an error when the copy fails, `plutil` cannot be started, `plutil`
+> exits non-zero (the error names the command and quotes the tail of its
+> stderr), or the JSON does not fit the model (invalid JSON, unknown `isa`,
+> unknown field on a strict kind, missing field, non-dictionary
+> `attributes`). Operations needing the project MUST fail with an error when
+> `rootObject` is not a `PBXProject`.
 
 > [spec:kbdgen:sem:pbxproj.model.ordering+1]
 > Reading normalizes order: `objects` is ordered by id, and every id list
@@ -59,7 +62,7 @@ re-serialized result.
 
 ## Serialization
 
-> [spec:kbdgen:syn:pbxproj.serialize+1]
+> [spec:kbdgen:syn:pbxproj.serialize+2]
 > Output is `// !$*UTF8*$!`, then a `{ … }` block of tab-indented
 > `archiveVersion`, an always-empty `classes = {` / `};`, `objectVersion`,
 > `objects = {` + empty line + sections + `};`, and `rootObject`, ending with
@@ -70,11 +73,14 @@ re-serialized result.
 > `/* End <isa> section */` plus an empty line. Objects appear in id order as
 > `\t\t<id> /* <c> */ = {`, `\t\t\tisa = <isa>;`, one `\t\t\t<key> = <value>;`
 > per field, `\t\t};`; lists as `(` + `\n\t\t\t\t<item> /* <p> */,` per item +
-> `\n\t\t\t)`, where `<p>` is the fixed placeholder word T-O-D-O. `<c>` is the `name`, else `path`, for file references and
-> groups (omitted if neither), `PBXContainerItemProxy` or `Project object`
-> for those kinds, else that same placeholder word.
+> `\n\t\t\t)`, where `<p>` is the fixed placeholder word T-O-D-O, except the
+> shell-script path lists of `pbxproj.quoting`, whose items are
+> `\n\t\t\t\t"<item>",` with no comment. `<c>` is the `name`, else `path`,
+> for file references and groups (omitted if neither),
+> `PBXContainerItemProxy` or `Project object` for those kinds, else that
+> same placeholder word.
 
-> [spec:kbdgen:def:pbxproj.serialize.fields+1]
+> [spec:kbdgen:def:pbxproj.serialize.fields+2]
 > The field layout of a kind is the fields the serializer writes, in order
 > (`?` = when present); others, notably `PBXFileReference.explicitFileType`
 > and `PBXResourcesBuildPhase.name`, are dropped. ContainerItemProxy:
@@ -94,37 +100,41 @@ re-serialized result.
 > requirement`, the latter as `requirement = {`, one `<key> = <value>;` line
 > per entry a tab deeper, and `};`. SwiftPackageProductDependency: `package?
 > productName`. `PBXBuildFile` (`fileRef? productRef? settings?`) and
-> `PBXFileReference` are single-line `{isa = …; key = value; …}`, build-file
-> array settings as `(a, b, )`.
+> `PBXFileReference` are single-line `{isa = …; key = value; …}`. Build-file
+> settings are `settings = {` + `<key> = <value>;` per entry + `};`, an array
+> value as `(a, b, )` and a string value Debug-quoted; any other value kind,
+> or a non-string array item, MUST panic.
 
-> [spec:kbdgen:req:pbxproj.quoting+1]
+> [spec:kbdgen:req:pbxproj.quoting+2]
 > "Debug-quoted" means Rust `{:?}` formatting (wrapped in `"`; `"`, `\`,
 > control and non-printable characters backslash-escaped, the latter as
 > `\u{…}`). The serializer MUST quote exactly so: `PBXFileReference.name`
-> iff the name contains `-` or the path contains `+` (quirk kept);
-> `PBXFileReference.path` iff it contains `-` or `+`; `PBXGroup` `path` and
-> `name` iff they contain a space; `sourceTree` equal to `<group>` as
-> `"<group>"`. Always Debug-quoted: `PBXVariantGroup.name`,
+> and `PBXFileReference.path` each iff it contains `-` or `+`; `PBXGroup`
+> `path` and `name` iff they contain a space; `sourceTree` equal to `<group>`
+> as `"<group>"`. Always Debug-quoted: `PBXVariantGroup.name`,
 > `PBXNativeTarget.name`, CopyFiles `dstPath` and `name`, `PBXProject`
 > `compatibilityVersion`/`projectDirPath`/`projectRoot`, shell-script `name`
 > and `shellScript`, `XCBuildConfiguration.name`, string build-setting
-> values, a package reference's `repositoryURL` and `requirement` values,
-> and a product dependency's `productName`. Shell-script
-> `inputPaths`/`outputPaths` items are wrapped in `"`
-> unescaped. Everything else is written raw.
+> values, string build-file settings, a package reference's `repositoryURL`
+> and `requirement` values, and a product dependency's `productName`.
+> Shell-script `inputPaths`, `outputPaths`, `inputFileListPaths` and
+> `outputFileListPaths` items are wrapped in `"` unescaped. Everything else is
+> written raw.
 
-> [spec:kbdgen:req:pbxproj.serialize.build-settings]
+> [spec:kbdgen:req:pbxproj.serialize.build-settings+1]
 > `buildSettings` MUST be written as an empty line, `\t\t\tbuildSettings = {`,
 > the entries in model order, then `\n\t\t\t};`. A string entry is
 > `\n\t\t\t\t<key> = <Debug-quoted value>;`, where `<key>` is wrapped in `"`
 > (unescaped) iff it contains `[`. An array entry is `\n\t\t\t<key> = (`
 > (raw key, three tabs), `\n\t\t\t\t<element>,` per element rendered as JSON,
-> then `\n\t\t\t);\n`. Any other value kind MUST panic (`Disagreeable`).
+> then `\n\t\t\t);\n`. Any other value kind MUST panic
+> (`build setting <key> has an unsupported value <value>`).
 
-> [spec:kbdgen:req:pbxproj.serialize.attributes]
+> [spec:kbdgen:req:pbxproj.serialize.attributes+1]
 > `PBXProject.attributes` MUST be written between `\t\t\tattributes = {` and
 > `\t\t\t};`. At depth d (starting at 4 tabs) each key, in sorted order, is
 > written as d tabs + `<key> = ` and then either `{`, newline, its children
-> at depth d+1, d tabs and `};` for an object, or the raw string and `;` for
-> a string, each line newline-terminated. Null, boolean, number and array
-> values, and a non-object `attributes`, MUST panic.
+> at depth d+1, d tabs and `};` for an object; `(`, newline, each item as
+> d+1 tabs, the raw string and `,`, then d tabs and `);` for an array; or the
+> raw string and `;` for a string, each line newline-terminated. Null,
+> boolean and number values, and non-string array items, MUST panic.
