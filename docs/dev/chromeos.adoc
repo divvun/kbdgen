@@ -1,2 +1,370 @@
-== Chrome OS
+== ChromeOS
+The ChromeOS target writes a Manifest V3 input-method extension whose
+service worker runs `kbd-engine`, compiled to WebAssembly, on each layout's
+compiled `chromeOS` keyboard. Nothing is translated into a native table, so
+the extension types what the engine types. The rules are in two specs:
 
+* `docs/spec/chromeos.md` (`+chromeos.*+`): the extension's files, the
+  manifest, the locales, the icon, and how kbdgen embeds the engine.
+* `docs/spec/ldml/chromeos.md` (`+ldml.chromeos.*+`): which layouts are
+  built, the module's ABI, how key events, modifiers, edits and context
+  map onto the engine, what is reported, and the tests.
+
+The Windows text service is the reference host (`docs/spec/tsf.md`); the
+ChromeOS spec says where ChromeOS differs from it.
+
+=== Where things are
+[cols="1,3"]
+|===
+|Path |What it is
+
+|`src/build/chromeos/mod.rs`
+|`ChromeOsBuild`, with the one step `GenerateChromeOs`.
+
+|`src/build/chromeos/source.rs`
+|The layouts (`ldml.chromeos.input`): every v4 layout, and every v3 layout
+with a `chromeOS` section, migrated in memory with `migrate_bundle_layout`.
+Each `chromeOS` host document is compiled, its keyboard encoded as the
+engine reads it, and its `targets.chromeOS` `locale` and `xkbLayout` read.
+
+|`src/build/chromeos/classify.rs`
+|The warnings of `ldml.chromeos.classify`. `REACHABLE_SCAN_CODES` must
+equal the values of `SCAN_CODES` in `background.js`; a test compares them.
+
+|`src/build/chromeos/manifest.rs`
+|`manifest.json` and `_locales/*/messages.json`, and the check of `build`
+as a Chrome extension version.
+
+|`src/build/chromeos/generate_chromeos.rs`
+|`GenerateChromeOs`: every check, then every write. `ENGINE_WASM` is the
+module the build script compiled (`include_bytes!`), and
+`SERVICE_WORKER_JS` is `extension/background.js` (`include_str!`).
+
+|`src/build/chromeos/extension/background.js`
+|The service worker, written to every extension unchanged.
+
+|`src/build/chromeos/tests.rs`, `testdata/`
+|The generator's tests and golden files.
+
+|`src/build/chromeos/differential/`
+|The typing test: a Rust driver and a Deno harness.
+
+|`crates/kbd-wasm`
+|The engine module.
+
+|`build.rs`
+|Builds `crates/kbd-wasm` for `wasm32-unknown-unknown`.
+|===
+
+`GenerateChromeOs` fails before writing anything: on a missing
+`targets/chromeos.yaml`, a `project.yaml` without an `en` locale, a layout
+that does not migrate or compile, no layouts, a non-PNG icon, or a
+`build` Chrome would refuse. Only then does it write `background.js`,
+`engine.wasm`, `models/` (emptied first), `manifest.json`, `_locales/`
+(emptied first) and `icon.png`, removing a stale `icon.png` when the bundle
+has none.
+
+=== The engine module
+`crates/kbd-wasm` is a `cdylib` over `kbd-engine` and `kbd-model`. It
+builds for `wasm32-unknown-unknown` with no imports, and exports `memory`
+and a C ABI of integers; there is no `wasm-bindgen` and no generated
+JavaScript, so a host needs only `+WebAssembly.instantiate(bytes, {})+`.
+
+Text crosses the boundary as UTF-8 in two buffers the module owns. The host
+calls `kbd_input(len)`, writes `len` bytes at the address it returns, then
+makes the call that reads them. Results are read from the output buffer
+before the next call. Any call may grow the memory, so the host takes a
+fresh view of `memory.buffer` after each one.
+
+A loaded model is a _session_: the model and its engine `State`, named by a
+handle of at least 1. `kbd_key` runs `Model::key` with the session's state
+and keeps the next state, so the host never holds engine state; it only
+resets it.
+
+[cols="2,3"]
+|===
+|Export |Meaning
+
+|`+kbd_input(len) -> addr+`
+|Sizes the input buffer to `len` zero bytes and gives its address.
+
+|`+kbd_load(len) -> handle+`
+|Loads the `DVKB` model in the first `len` input bytes into a new
+session. 0 on failure, with the error message as output.
+
+|`kbd_unload(handle)`
+|Drops the session; its handle is reused.
+
+|`+kbd_key(handle, key, modifiers, context_len, flags) -> i32+`
+|Sends a key, with the UTF-8 context before the caret in the first
+`context_len` input bytes. Returns `0` pass, `1` edit, `-1` no such
+session, `-2` unknown key or modifier bit, `-3` context not UTF-8, `-4`
+the instance is busy.
+
+|`+kbd_output() -> addr+`, `+kbd_output_len() -> len+`
+|The output buffer: after an edit, the inserted text then the preedit.
+
+|`+kbd_insert_len() -> len+`
+|How many bytes of the output are the inserted text.
+
+|`+kbd_delete() -> n+`
+|How many scalar values the edit deletes before the caret.
+
+|`kbd_reset(handle)`
+|Resets the session's state.
+
+|`+kbd_pending(handle) -> n+`
+|How many markers are pending (`Model::pending_markers`): whether a
+`Commit` would type anything.
+
+|`+kbd_context_len(handle) -> n+`
+|`Model::context_len`.
+
+|`+kbd_extra_modifiers(handle) -> bits+`
+|The keys bound as extra modifiers, two bits per slot from `extra1`: 1
+Right Ctrl, 2 Caps Lock, 3 `B00`.
+
+|`+kbd_shift_lock(handle) -> 0 or 1+`
+|Whether Caps Lock works as Shift Lock on this keyboard.
+|===
+
+`key` is a scan code below `0x100`, or `0x100` `Decimal`, `0x101`
+`Backspace`, `0x102` `Commit`. `modifiers` has one bit per `ModifierState`
+field: bit 0 `shift_l`, 1 `shift_r`, 2 `caps`, 3 `ctrl_l`, 4 `ctrl_r`, 5
+`alt_l`, 6 `alt_r`, 7 `altgr`, 8 `cmd`, 9 to 11 `extra1` to `extra3`.
+`flags` bit 0 is `at_start` and bit 1 `authoritative`. Every session runs
+with `OutputForm::Nfc`, `BackspacePolicy::CancelOrPass` and host
+`chromeOS`.
+
+No export may panic. The crate denies `panic`, `unwrap`, `expect`,
+indexing and `unreachable!`; every failure is a return code. All state is
+one thread-local `Instance`, which `with_instance` borrows, giving a
+fallback value instead of panicking if it cannot. The only unsafe construct
+is `no_mangle` on the exports, all prefixed `kbd_`, and no export
+dereferences a raw pointer: the host reads and writes the module's own
+`Vec` buffers through `memory`.
+
+`background.js` repeats the key codes, modifier bits, flags and results
+as constants. Change the ABI in both; the typing test fails if they
+disagree.
+
+=== How kbdgen embeds the module
+`build.rs` runs a nested cargo:
+
+[source,sh]
+----
+cargo build --package kbd-wasm --release --locked \
+  --target wasm32-unknown-unknown \
+  --manifest-path <workspace>/Cargo.toml \
+  --target-dir $OUT_DIR/kbd-wasm \
+  --config 'profile.release.opt-level="s"' --config profile.release.lto=true \
+  --config profile.release.codegen-units=1 --config 'profile.release.panic="abort"' \
+  --config profile.release.strip=true
+----
+
+and copies `wasm32-unknown-unknown/release/kbd_wasm.wasm` to
+`$OUT_DIR/kbd_wasm.wasm`, which `generate_chromeos.rs` includes.
+
+* The nested build has its own target directory, because the outer build
+  holds the lock on its own and the nested one would wait forever.
+* The size settings are passed with `--config`, so they apply to the nested
+  build only.
+* It removes `CARGO_ENCODED_RUSTFLAGS`, `RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS`,
+  `RUSTC_WORKSPACE_WRAPPER`, `CARGO_TARGET_DIR` and `CARGO_BUILD_TARGET`
+  from its environment: they belong to the host build, or to clippy when
+  this runs under `cargo clippy`.
+* It reruns only when `crates/kbd-wasm`, `crates/kbd-engine/src`,
+  `crates/kbd-engine/Cargo.toml`, `crates/kbd-model/src`,
+  `crates/kbd-model/Cargo.toml` or `Cargo.lock` change.
+
+Building from the same workspace keeps the engine in every extension in
+step with the model encoding that kbdgen writes, and lets a released binary
+generate an extension without a Rust toolchain. No built module is checked
+in. Without the target installed, the build script panics with:
+
+----
+kbdgen: building kbd-wasm for wasm32-unknown-unknown failed with <status>. The ChromeOS target embeds kbd-engine compiled to WebAssembly; if the target is missing, install it with `rustup target add wasm32-unknown-unknown`
+----
+
+The module is about 230 KB.
+
+=== The service worker
+`background.js` registers every listener synchronously on its first
+evaluation, as a Manifest V3 service worker must. It never logs typed text
+or keys.
+
+==== Loading
+`loadEngine` fetches `engine.wasm` once and instantiates it; `loadSession`
+fetches `models/<engine id>.dvkb`, loads it and reads the extra-modifier
+keys and Shift Lock from it. `onActivate` starts loading the activated
+input method. A key that arrives before its session has loaded, or while
+earlier keys still wait, is queued on one promise chain: the listener
+returns `undefined`, and the key is answered later with
+`keyEventHandled(requestId, handled)`, so keys apply in arrival order.
+
+==== Keys
+A key down is classified by `KeyboardEvent.code`, never by `key`
+(`ldml.chromeos.keys`):
+
+* Shift, Ctrl, Alt, Meta/OS (the Search key) and Caps Lock are modifiers:
+  they pass and reset nothing.
+* `Backspace` is `Backspace`. `NumpadDecimal` is `Decimal`, unless its
+  `key` is `Delete` (Num Lock off).
+* A code in `SCAN_CODES`, the PC/AT set 1 scan codes without `E0`, is sent
+  as that scan code.
+* Any other code, such as the arrows, `Delete` or `NumpadEnter`, is a frame
+  key: it passes and resets the state.
+
+Key ups pass. Every key down and up updates the set of keys seen held,
+which gives modifiers their side, and the Shift Lock state (Caps Lock sets
+it, Shift clears it). `modifierBits` turns a captured event into `kbd_key`
+bits: Right Alt is `alt_r` and `altgr` whether the XKB layout beneath
+reports it as AltGr or as Alt, Left Alt is `alt_l` (which the engine passes
+on ChromeOS), Search held is `cmd`, Caps Lock is `caps` or, on a Shift Lock
+keyboard, the Shift Lock state, and a held Caps Lock or `IntlBackslash`
+bound as an extra modifier sets its `extra` bit (`ldml.chromeos.modifiers`).
+
+==== Edits
+`handle` sends an engine key with the context and applies the result
+(`ldml.chromeos.semantics`):
+
+* No focused field, or a modifier: the key passes.
+* A frame key, or an engine key the engine passes: `pass` sends `Commit`
+  first if a composition is shown or `kbd_pending` is non-zero, applies its
+  edit, then resets. The listener returns `false`.
+* An edit: `apply` calls, as needed and in this order, `clearComposition`
+  (when text changes under a shown composition, or the preedit empties),
+  `deleteSurroundingText` with offset −_u_ and length _u_, `commitText` of
+  the inserted text, and `setComposition` of the preedit with the cursor at
+  its end. _u_ is the UTF-16 length of the last `delete` scalar values of
+  the context, since ChromeOS counts UTF-16 units. The listener returns
+  `true`.
+
+A password field gets an empty context and no flags, and shows no preedit.
+An exception, or a rejected IME call, resets the session and forgets the
+context.
+
+==== Context
+ChromeOS reports the text around the caret only afterwards, through
+`onSurroundingTextChanged`, at most 100 characters each way, and does not
+say whether that text includes the composition (`ldml.chromeos.context`).
+So `field` keeps its own view:
+
+* `text`, the committed text before the caret, at most 128 scalar values
+  (`MAX_CONTEXT`; a model's `context_len` is at most 64). Each edit updates
+  it; a passing key keeps it, since a change brings a notification.
+* `snapshots`, the states the glue's own IME calls lead to, oldest first,
+  at most 64.
+
+`reconcile` matches each reading, the text before the focus, against the
+snapshots from newest to oldest, with the composition stripped and not;
+two texts agree when one ends with the other. A reading of the newest
+snapshot completes the context and makes it authoritative; a reading of an
+older one lags and is dropped; any other reading replaces the context,
+keeping the engine state. A reading with a selection makes the next key
+reset and start from an empty context. `at_start` is set when the
+reading's offset is 0.
+
+`onFocus`, `onBlur`, `onActivate` and `onDeactivated` forget the held keys,
+reset every session and forget the context. `onReset`, which ChromeOS sends
+when it ends the input session, resets the sessions and forgets the
+context. All of this lives in the service worker's globals, so when Chrome
+stops an idle worker a pending dead key goes with it.
+
+=== Tests
+[source,sh]
+----
+cargo test -p kbdgen --lib build::chromeos
+cargo test -p kbd-wasm
+----
+
+`kbd-wasm` is not a default workspace member, so a plain `cargo test` skips
+it. Its tests call the exports natively, through the input and output
+buffers by address, as a host does on wasm.
+
+`tests.rs` checks the generated files, the errors (each before anything is
+written), the icon, regeneration over an earlier extension, the warnings,
+and that `REACHABLE_SCAN_CODES` matches `background.js`. The manifest,
+every `_locales/*/messages.json` and the warnings of a mixed v3 and v4
+bundle are compared with `testdata/golden/` byte for byte; after an
+intended change, rewrite them with
+
+[source,sh]
+----
+KBDGEN_BLESS=1 cargo test -p kbdgen --lib build::chromeos::tests
+----
+
+==== The typing test
+`differential::the_extension_types_what_the_engine_types`
+(`ldml.chromeos.test.typing`) runs the generated extension's own
+`background.js`, `engine.wasm` and model in Deno, against `kbd-engine`
+running natively on the same model. It needs `deno` on `PATH`, or its path
+in `DENO`; without it the test prints
+
+----
+skipping the ChromeOS typing test: deno is not on PATH and DENO is not set; install Deno to run src/build/chromeos/differential/harness/typing_test.ts
+----
+
+and passes.
+
+[source,sh]
+----
+cargo test -p kbdgen --lib the_extension_types_what_the_engine_types -- --nocapture
+----
+
+The Rust side (`differential/mod.rs`) generates an extension for each of
+seven fixtures: the golden v4 Võro and `und-x-mods` layouts, the golden v3
+`se-NO`, the v3 ChromeOS Võro fixture in `testdata/vro-v3.yaml`, the macOS
+and Windows feature fixtures as `chromeOS` variants, and a `context`
+fixture whose edits delete (text transforms, an astral character,
+normalization). For each it builds the cases:
+
+* every position of the form under no modifier, either Shift, Caps Lock,
+  Caps Lock with Shift, AltGr reported as Alt and as AltGr, AltGr with
+  Shift or Caps Lock, Left Alt, either Ctrl, Ctrl with AltGr, Search, and
+  each bound extra-modifier key;
+* the decimal key and Backspace on their own;
+* every dead-key path up to three keys, continued once from each distinct
+  pending state: each pending state is ended by every position (plain,
+  with Shift, with Caps Lock and with AltGr), and by Backspace, the decimal
+  key, an arrow and Enter;
+* for the `context` fixture, every pair of positions.
+
+Each case is the key downs and ups ChromeOS would send. `Host` plays it on
+the engine natively, following `ldml.chromeos.semantics`, for the expected
+committed text, composition and handled keys. The cases go to a JSON file,
+and the driver runs, in `differential/harness/`:
+
+[source,sh]
+----
+KBDGEN_CHROMEOS_CASES=<cases.json> deno test --allow-read --allow-env typing_test.ts
+----
+
+`typing_test.ts` installs a fake `chrome.input.ime` and imports each
+extension's `background.js` afresh (a query string makes each import a new
+module instance). Its fake text field applies the IME calls and reports the
+text before the caret after each key, in two modes: with the composition
+and on time, and without the composition and one key late. Every case must
+give the same handled keys, text and composition as the engine, and the
+field also flags calls ChromeOS would refuse or misapply: a wrong context
+or engine ID, a `deleteSurroundingText` reaching past the text or made
+while a composition is shown, and a composition cursor not at its end. A
+run on 2026-11-17:
+
+----
+composition shown, on time, layouts/vro: 4688 of 4688 cases agree
+composition shown, on time, layouts/und-x-mods: 835 of 835 cases agree
+composition shown, on time, v3/se-NO: 688 of 688 cases agree
+composition shown, on time, chromeos/vro-v3: 6688 of 6688 cases agree
+composition shown, on time, macos/features: 1288 of 1288 cases agree
+composition shown, on time, windows/features: 2130 of 2130 cases agree
+composition shown, on time, context: 3091 of 3091 cases agree
+composition hidden, one key late, layouts/vro: 4688 of 4688 cases agree
+...
+38816 case runs, 0 failures
+----
+
+Without `KBDGEN_CHROMEOS_CASES` the Deno test is ignored, so the harness is
+run through cargo. After editing `typing_test.ts`, type-check it with
+`deno check` in `differential/harness/`, whose `deno.json` turns on strict
+mode.

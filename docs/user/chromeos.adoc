@@ -5,59 +5,83 @@ keyboard engine as the Windows text service, compiled to WebAssembly, on
 each layout's compiled keyboard, so dead keys, transforms and everything
 else the layout says type on ChromeOS as they do in the engine.
 
-```
+[source,sh]
+----
 kbdgen target -b sme.kbdgen -o chromeos-out chromeos
-```
+----
 
-=== What is generated
-The output directory is the unpacked extension:
+=== Prerequisites
+Generating an extension needs only kbdgen: the engine is built into the
+kbdgen binary. To try the extension you need a ChromeOS device on which you
+may load unpacked extensions; `chrome.input.ime`, which the extension runs
+on, exists only on ChromeOS.
 
-* `manifest.json` - the extension manifest, with one input method per layout
-* `background.js` - the service worker that runs the engine
-* `engine.wasm` - the keyboard engine
-* `models/<tag>.dvkb` - each layout's compiled keyboard
-* `_locales/<language>/messages.json` - the names of the extension and of
-  each input method, in every language the layouts have a display name in
-* `icon.png` - the extension icon, if the bundle has one
+Building kbdgen itself from source needs Rust's WebAssembly target, because
+kbdgen's build compiles the engine for it:
 
-kbdgen warns about anything a layout uses that ChromeOS cannot give, such as
-layers that need Left Alt (on ChromeOS only Right Alt types), long-press
-keys, or key labels.
-
-=== Trying it on a Chromebook
-. Copy the output directory to the Chromebook.
-. Open `chrome://extensions`, turn on *Developer mode* and choose
-  *Load unpacked*, then pick the directory.
-. In *Settings*, *Device*, *Keyboard and inputs*, *Input*, add the new input
-  method; it is listed under the language of its `locale`.
-. Switch to it from the input menu in the shelf, or with Ctrl+Space.
-
-To publish, zip the directory's contents and upload them to the Chrome Web
-Store.
+[source,sh]
+----
+rustup target add wasm32-unknown-unknown
+----
 
 === Target configuration
-`targets/chromeos.yaml`:
-```
+`targets/chromeos.yaml` is required; without it the build stops with
+`targets/chromeos.yaml is missing`. Any scalar is read as a string.
+
+[source,yaml]
+----
 appId: dnihbfekindancgddjehgonciaopmkbe
 build: 11
 version: 1.0.0
-```
+----
 
-* `build` - the extension version Chrome compares, one to four
-  dot-separated numbers such as `11` or `1.0.3`
-* `version` - the version shown to users
-* `appId` - not used by kbdgen
+[cols="1,1,4"]
+|===
+|Field |Required |Meaning
 
-The extension's name and description come from `project.yaml` `locales`,
-which must have an `en` entry. The icon is `resources/chromeos/icon.png`, a
-PNG of at least 128 by 128 pixels.
+|`build`
+|yes
+|The extension version Chrome compares, written to `manifest.json` as
+`version`: one to four dot-separated integers from 0 to 65535, without
+leading zeros, such as `11` or `1.0.3`. Anything else, such as
+`1.0.3-beta`, stops the build.
+
+|`version`
+|yes
+|The version shown to users, written as `version_name`. Any text.
+
+|`appId`
+|yes
+|Read but not used. The manifest has no `key`, so Chrome gives an unpacked
+extension an ID of its own, and the Chrome Web Store assigns the published
+one.
+|===
+
+The extension's name and description come from `locales` in
+`project.yaml`, which must have an `en` entry; without one the build stops
+with `project.yaml: locales has no en entry`.
 
 === Keyboard layouts
-Both layout formats work. A v4 layout (`format: 4`) gets a ChromeOS input
-method from its `chromeOS` hardware variant, or from `default` when it has
-none:
+Both layout formats work, side by side in one bundle:
 
-```
+* A v4 layout (`format: 4`) gets an input method from its `chromeOS`
+  hardware variant, or from `default` when it has none. A v4 layout with
+  neither has no input method.
+* A v3 layout gets an input method from its `chromeOS` section, and a v3
+  layout without one has none. kbdgen converts the layout in memory, as
+  `kbdgen ldml migrate` would, without changing the file.
+
+If no layout has a ChromeOS keyboard, the build stops with
+`no layout has a chromeOS keyboard`.
+
+[[chromeos-v4-layouts]]
+==== v4 layouts
+A v4 layout names its ChromeOS settings under `targets.chromeOS`:
+
+[source,yaml]
+----
+format: 4
+displayNames: {se: Davvisámegiella (Suopma), en: Northern Sami (Finland)}
 targets:
   chromeOS:
     locale: fi
@@ -82,18 +106,25 @@ hardware:
         q w € \u{0} ŧ \u{0} \u{0} ï õ \u{0} ¨ ~
         â \u{0} \u{0} \u{0} ǧ ǥ \u{0} ǩ \u{0} ø æ '
         ǯ ʒ x \u{0} \u{0} \u{0} \u{0} µ < > \u{0}
-```
+----
 
-Write AltGr layers as `altR` (or `alt`): ChromeOS reserves Left Alt for
-shortcuts, so layers that need it are never typed.
+Write AltGr layers as `altR` (or `alt`). ChromeOS reserves Left Alt for
+shortcuts, so the input method lets every Left Alt key through, and a
+layer that needs `altL` never types. Ctrl without AltGr, and the Search
+key, are shortcuts too: layers for them are kept but never type.
 
-A v3 layout needs a `chromeOS` section. kbdgen converts it in memory, as
-`kbdgen ldml migrate` would, without changing the file. If the conversion
-reports a blocking problem, such as a layer without exactly 48 keys, the
-build stops and names the layout; `kbdgen ldml migrate --dry-run` lists the
-problems.
+[[chromeos-v3-layouts]]
+==== v3 layouts
+A v3 layout needs a `chromeOS` section. Each layer is 48 keys in ISO
+order, split over lines as you like. `+\u{...}+` writes a character by its
+code point, and `\u{0}` means no key. Layers may be `default`, `shift`,
+`caps`, `caps+shift`, `alt`, `alt+shift` and `ctrl`; `alt` is typed with
+Right Alt (AltGr), and `ctrl` never types. `deadKeys` lists, per layer, the
+keys that are dead; what they compose comes from the layout's top-level
+`transforms`.
 
-```
+[source,yaml]
+----
 chromeOS:
   config:
     locale: fi
@@ -101,39 +132,208 @@ chromeOS:
     layers:
       default: |
         § 1 2 3 4 5 6 7 8 9 0 + ´
-          á š e r t y u i o p å ŋ
-          a s d f g h j k l ö ä đ
-        ž z č c v b n m , . -
+          q w e r t y u i o p å ¨
+          a s d f g h j k l ö ä '
+        < z x c v b n m , . -
       shift: |
         ½ ! " # ¤ % & / ( ) = ? `
-          Á Š E R T Y U I O P Å Ŋ
-          A S D F G H J K L Ö Ä Đ
-        Ž Z Č C V B N M ; : _
+          Q W E R T Y U I O P Å ^
+          A S D F G H J K L Ö Ä *
+        > Z X C V B N M ; : _
   deadKeys:
     default: [´]
-```
+transforms:
+  ´:
+    ' ': ´
+    a: á
+    e: é
+----
 
-==== Config
-Both are optional:
+If the conversion finds a blocking problem, such as a layer without
+exactly 48 keys, the build stops and names the layout and the defect
+codes:
+
+----
+Error: vro: the v3 layout's migration is blocked by defects M05; `kbdgen ldml migrate --dry-run` reports them
+----
+
+`target chromeos` prints only blocking problems. The conversion can also
+change what a key types, for example on Caps Lock with AltGr;
+`kbdgen ldml migrate --dry-run -b <bundle>` lists every such change for
+each layout.
+
+==== Locale and XKB layout
+Each input method has two settings, from `targets.chromeOS` in a v4 layout
+or from `chromeOS.config` in a v3 one. Both are optional:
 
 * `locale` - the language ChromeOS lists the input method under; `en-US`
   by default
-* `xkbLayout` - the ChromeOS keyboard layout beneath the input method, which
-  gives Ctrl shortcuts their keys; `us` by default
+* `xkbLayout` - the ChromeOS keyboard layout beneath the input method; `us`
+  by default. Keys the input method lets through, such as Ctrl and Search
+  shortcuts, take their meaning from this layout.
 
-==== Layers
-In v3, each layer is 48 keys in ISO order, split over lines as you like.
-`\u{...}` writes a character by its code point, and `\u{0}` means no key.
-Layers may be `default`, `shift`, `caps`, `caps+shift`, `alt`, `alt+shift`
-and `ctrl`; `alt` is typed with Right Alt (AltGr).
+=== Icon
+The extension icon is the default icon of the bundle's ChromeOS resources:
+`icon.png` in `resources/chromeos`, or in `resources/chrome`, the name
+older bundles use. A bundle may have only one of the two directories.
+kbdgen copies the file to the extension unchanged, and Chrome scales it to
+16, 48 and 128 pixels, so use a square PNG of at least 128 by 128 pixels.
 
-=== Building kbdgen from source
-kbdgen embeds the engine compiled to WebAssembly, so building kbdgen needs
-Rust's WebAssembly target:
+* An icon in any other format, such as `icon.svg`, stops the build:
+  `<path>/icon.svg: a ChromeOS extension icon must be a PNG`.
+* Per-layout icons (`icon.<tag>.png`) are not used: an input method has no
+  icon of its own.
+* Without an icon the extension has none, and kbdgen says
+  `The bundle has no ChromeOS icon.png, so the extension has no icon`.
 
-```
-rustup target add wasm32-unknown-unknown
-```
+=== Output
+The output directory is the unpacked extension:
 
-Released kbdgen binaries already contain the engine; generating an extension
-needs no Rust.
+* `manifest.json` - the extension manifest, with one input method per layout
+* `background.js` - the service worker that runs the engine
+* `engine.wasm` - the keyboard engine
+* `models/<tag>.dvkb` - each layout's compiled keyboard
+* `_locales/<language>/messages.json` - the names of the extension and of
+  each input method, in `en` and in every language the layouts have a
+  display name in
+* `icon.png` - the extension icon, if the bundle has one
+
+kbdgen checks everything before it writes anything, so a failed build
+leaves the directory as it was. A successful build empties `models/` and
+`_locales/` first, and removes an `icon.png` the bundle no longer has, so
+nothing of an earlier build remains.
+
+For the North Sami bundle, whose three v3 layouts have `chromeOS` sections,
+the manifest lists:
+
+[source,json]
+----
+"input_components": [
+  {
+    "name": "__MSG_se_FI__",
+    "id": "se-FI",
+    "language": "fi",
+    "layouts": [
+      "us"
+    ]
+  },
+  {
+    "name": "__MSG_se_NO__",
+    "id": "se-NO",
+    "language": "nb",
+    "layouts": [
+      "no"
+    ]
+  },
+  ...
+]
+----
+
+Each input method's name is its layout's display name followed by the word
+for keyboard: `tastatur` in `nb`, `no`, `nn` and `da`, `tangentbord` in
+`sv`, `näppäimistö` in `fi`, and `keyboard` in every other language. From
+`_locales/nb/messages.json`:
+
+[source,json]
+----
+{
+  "se_FI": {
+    "message": "Nordsamisk (Finland) tastatur"
+  },
+  ...
+  "name": {
+    "message": "Nordsamisk tastatur"
+  },
+  "description": {
+    "message": "Mobiltastatur for nordsamisk fra Divvun-gruppa."
+  }
+}
+----
+
+A language without its own entry in `project.yaml` `locales` takes the
+`en` name and description.
+
+=== Trying it on a Chromebook
+. Copy the output directory to the Chromebook.
+. Open `chrome://extensions`, turn on *Developer mode* and choose
+  *Load unpacked*, then pick the directory.
+. Add the new input method in the ChromeOS input settings (*Settings*,
+  *Device*, *Keyboard and inputs*, *Input* on current releases; the path
+  differs between ChromeOS versions). It is listed under the language of
+  its `locale`.
+. Switch to it from the input menu in the shelf, or with Ctrl+Space.
+
+After rebuilding, copy the directory again and press the extension's
+reload button on `chrome://extensions`. If a layout cannot load, the
+service worker logs `Divvun keyboard <tag> could not load: <reason>`, which
+shows under the extension's *Errors*.
+
+=== Publishing
+Zip the contents of the output directory, with `manifest.json` at the top
+of the archive, and upload the zip in the Chrome Web Store developer
+dashboard. Each upload needs a higher `build` than the one before.
+
+=== Diagnostics
+kbdgen warns, once per layout and kind, about what a layout says that a
+ChromeOS key event cannot reach. Each warning gives a count and up to ten
+examples. The layout still builds; only those parts are lost.
+
+----
+WARN sme: ChromeOS cannot use 2 modifier set(s) needing Left Alt, because Left Alt is ChromeOS's shortcut modifier and only Right Alt types (e.g. altL; altL caps)
+WARN sme: ChromeOS cannot use 1 key(s) with long-press, multi-tap or flick gestures, because hardware keys have no gestures (e.g. u-0061)
+WARN sme: ChromeOS cannot use 2 display(s) and key label(s), because the input method draws no keyboard (e.g. Å; ¨)
+WARN und: ChromeOS cannot use 1 key position(s), because no ChromeOS key event carries their scan codes (e.g. scan code 5B)
+----
+
+[cols="1,3"]
+|===
+|Warning |What to do
+
+|modifier set(s) needing Left Alt
+|Move the layer to `altR` or `alt` if it should type on ChromeOS.
+
+|key position(s)
+|The form has a position that no ChromeOS key reaches. Move its output to
+a position on the ISO keyboard.
+
+|key(s) with long-press, multi-tap or flick gestures
+|Nothing: a hardware key has no gestures, and the key's own output still
+types.
+
+|display(s) and key label(s)
+|Nothing: the input method draws no keyboard, so labels and `keyNames`
+have nowhere to show.
+|===
+
+These stop the build, before anything is written:
+
+* `targets/chromeos.yaml is missing`
+* `project.yaml: locales has no en entry`
+* `targets/chromeos.yaml: build "1.0.3-beta" is not a Chrome extension version: one to four dot-separated integers from 0 to 65535, without leading zeros`
+* `<tag>: the v3 layout's migration is blocked by defects …`, described
+  under <<chromeos-v3-layouts>>
+* `no layout has a chromeOS keyboard`
+* `<path>/icon.svg: a ChromeOS extension icon must be a PNG`
+* `<bundle>/resources/chrome and <bundle>/resources/chromeos both hold ChromeOS resources; keep one`,
+  when the bundle is loaded
+
+=== How it types
+* A dead key shows what it would type as a composition, which the next key
+  completes or replaces.
+* Backspace runs the layout's backspace rules, if it has any. Otherwise it
+  cancels a pending dead key, and with none pending the application deletes
+  as usual.
+* Keys the layout does not handle, such as the arrows, Enter, Tab and
+  shortcuts, go to the application. A pending dead key is typed first, as
+  it is on macOS.
+* In a password field nothing is shown as a composition, and the input
+  method keeps no text from the field.
+
+=== Limits
+* ChromeOS stops an extension's service worker when it has been idle for a
+  while. A dead key left pending that long is dropped, and the next key
+  types on its own.
+* Left Alt never types (see <<chromeos-v4-layouts>>), and neither does a key whose
+  position no ChromeOS key event carries.
+* The input method draws no on-screen keyboard: long-press keys, key
+  labels and `keyNames` are not used.

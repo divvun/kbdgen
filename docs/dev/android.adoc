@@ -1,1 +1,211 @@
 == Android
+The Android target lives in `src/build/android/`. It does not write an app:
+it patches a clone of https://github.com/divvun/giellakbd-android[giellakbd-android]
+(an Android Open Source Project LatinIME fork) with resource files for each
+layout, and builds that clone with its own Gradle wrapper. The rules are in
+`docs/spec/android.md` (`+android.*+`); the layout fields it reads are in
+`docs/spec/layout.md` (`layout.schema.targets`, `+layout.transforms.*+`), and
+`targets/android.yaml` with its environment overrides in
+`docs/spec/bundle.md` (`+bundle.structure.targets*+`).
+
+The target reads v3 layouts only. `KbdgenBundle::reject_v4_layouts`
+(`src/bundle/mod.rs`) stops `kbdgen target … android` on the first v4 layout
+before any step runs. `docs/spec/ldml/android.md` specifies an adapter from
+the compiled model, the _Android layout input_ shared by v3 and v4; none of
+it is implemented yet.
+
+=== Steps
+`src/main.rs` loads the bundle, rejects v4 layouts, creates and
+canonicalises the output directory, then runs:
+
+[cols="1,3"]
+|===
+|Command |Steps
+
+|`android build`
+|`AndroidBuild::build_full`: `CloneGiellaKbd`, `DownloadDependencies`,
+`GenerateAndroid`, in order, stopping at the first error
+
+|`android clone`
+|`CloneGiellaKbd`
+
+|`android generate`
+|`GenerateAndroid`
+|===
+
+Every step takes the bundle and the canonical output directory, `+{out}+`.
+The checkout is `+{out}/repo+` (`REPOSITORY_FOLDER`), and most files go under
+`+{out}/repo/app/src/main+` (`MAIN_FOLDER`).
+
+[cols="1,3"]
+|===
+|File |What it does
+
+|`mod.rs`
+|`AndroidBuild`, the step list, and `DownloadDependencies`.
+
+|`clone_giellakbd.rs`
+|Runs `git clone https://github.com/divvun/giellakbd-android repo` in
+`+{out}+`. A failed clone is not an error when `+{out}/repo+` is already a
+directory: later steps use that checkout as it is.
+
+|`dependencies.rs`
+|Fetches the native libraries (below) and unpacks them with `tar -xzf`
+into `app/src/main`, where the archives' `jniLibs/<abi>/` land.
+
+|`generate_android.rs`
+|`GenerateAndroid`: every resource file, the icons, `app/local.gradle` and
+the Gradle build.
+|===
+
+The layout model is in `src/bundle/layout/`: `AndroidTarget` (`config`,
+`primary`, `tablet-600`), `AndroidPlatform`, `AndroidConfig` and
+`android::AndroidKbdLayer` (`default`, `shift`). `longpress` and
+`transforms` are top-level fields of `Layout`. `targets/android.yaml` is
+`bundle::target::Android`.
+
+=== Toolchain
+Each external tool is started with `std::process::Command` and its output
+captured; a non-zero exit becomes an error carrying the command's stderr.
+
+. *git* - the clone, above.
+. *GitHub REST API* - `dependencies.rs` sends an unauthenticated
+  `+GET https://api.github.com/repos/{org}/{repo}/releases?per_page=100+`
+  (`User-Agent: kbdgen-rust-client`) with `reqwest`, skips drafts and
+  prereleases, and takes the first asset whose name contains the filter,
+  case-insensitively, from the newest release that has one. It walks the
+  releases rather than asking for `latest` because these repositories cut
+  several release trains, and the newest release may not carry the asset.
+  For `divvun/divvunspell` the filter is `android-jnilibs`; for
+  `divvun/pahkat` it is `android`. In a run on 2026-11-17 they matched
+  `libdivvunspell-android-jniLibs-v1.0.0-beta.6.tgz` and
+  `libpahkat-android-v2.3.1.tgz`.
+. *tar* - `tar -xzf <download> -C app/src/main`.
+. *ImageMagick* - only when the bundle has `resources/android/icon.png`:
+  `+convert -resize {d}x{d} <icon> res/drawable-{density}/ic_launcher_keyboard.png+`
+  for mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144 and xxxhdpi 192. `-resize`
+  keeps the aspect ratio.
+. *Gradle* - only when `targets/android.yaml` exists:
+  `gradlew assembleRelease -Dorg.gradle.jvmargs=-Xmx4096M --info --stacktrace`
+  in `+{out}/repo+`, through `cmd /C gradlew` on Windows and the canonical
+  path of `+{out}/repo/gradlew+` elsewhere. stdout and stderr are logged at
+  trace level; on failure the error carries stderr. The Android SDK and
+  JDK are whatever Gradle finds (`ANDROID_HOME`, `local.properties`,
+  `JAVA_HOME`).
+
+=== GenerateAndroid
+`GenerateAndroid::build` does this, in order:
+
+. Warns if no layout has an `android` section, then carries on.
+. Creates `assets/layouts`, `res/xml` and `res/xml-sw600dp`, and lists the
+  app's `res/values-*` directories, which decide the languages it writes
+  names for.
+. Reads `res/xml/method.xml` and `res/xml/spellchecker.xml` and removes the
+  first `<subtype>` of each (`read_without_first_subtype`).
+. For each layout, in bundle layout order:
+.. Flattens its `transforms` (`flatten_transforms`) into
+   `+{dead key: {next: output}}+`. This runs before the `android` check, so it
+   runs for every layout.
+.. Skips the layout if it has no `android` section.
+.. Derives the keyboard name from `displayNames.en` (`keyboard_name`):
+   lowercase, `(` and `)` dropped, anything outside `[a-z0-9]` becomes `x`.
+.. Writes `+assets/layouts/{tag}.json+` (`assets_layout`): the transforms and
+   the speller with `android.config`, else `+{"transforms": {}, "speller": null}+`.
+.. Writes the rows and row keys of `primary` to `res/xml` and of
+   `tablet-600` to `res/xml-sw600dp` (`create_and_write_rows_keys_for_layer`),
+   then `+res/xml/kbd_{name}.xml+` and `+res/xml/keyboard_layout_set_{name}.xml+`.
+.. Sets `english_ime_name` in `res/values/strings-appname.xml` and appends
+   the `+subtype_{sub}+` string to `res/values/strings.xml`
+   (`create_and_write_values_strings`), `+{sub}+` being the tag lowercased
+   with `-` as `_`. Then adds the localised `+subtype_{sub}+` strings where
+   `+res/values-{lang}+` exists, unless one is already there.
+.. Appends a `<subtype>` to `method.xml` (`append_method_subtype`) and to
+   `spellchecker.xml`.
+. Appends `english_ime_name` from each `project.yaml` locale to
+  `+res/values-{locale}/strings-appname.xml+`, where `+res/values-{locale}+`
+  exists.
+. Writes `method.xml` and `spellchecker.xml`.
+. Generates the launcher icons (`generate_icons`).
+. Writes `app/local.gradle` (`generate_gradle_local`) and runs Gradle
+  (`run_gradle`), or warns that `targets/android.yaml` is missing.
+
+XML is read, queried and written with `xmlem`. Every file kbdgen touches is
+written back pretty-printed, so `git diff` in the checkout shows whole
+files reformatted, and text such as a `<string>` value gains surrounding
+whitespace, which the Android resource compiler trims.
+
+==== Rows and keys
+`resources/template-android-rows.xml` and
+`resources/template-android-rowkeys.xml`, compiled in with `include_str!`,
+are the starting documents. Each line of a layer is split on whitespace
+(`util::split_keys`); line _i_ of every layer goes into
+`+rowkeys_{name}{i+1}.xml+`, the `default` layer into its `<default>` element
+and `shift` into its `<case>` for the shifted states. The rows file gets
+one `<Row>` per line between the template's `key_styles_common` and
+`row_qwerty4` includes, with `latin:keyWidth` `100/L` percent on phones and
+`90/L` on tablets, `L` being the longest `default` line.
+
+[cols="1,2,2"]
+|===
+|Token |Line 1 (the number row) |Other lines
+
+|`+\s{shift}+`
+|`keyStyle="shiftKeyStyle"`
+|the same, with the row's remaining width shared among the `\s` tokens
+
+|`+\s{backspace}+`
+|`keyStyle="deleteKeyStyle"`
+|the same, with `keyWidth="fillRight"`
+
+|anything else
+|`keySpec`; for the first ten positions, `keyHintLabel` and
+`additionalMoreKeys` set to the digit `1`…`9`, `0`; a `longpress` entry
+adds `moreKeys`
+|`keySpec`; a `longpress` entry adds `keyHintLabel` (its first key) and
+`moreKeys` (all, joined with `,`)
+|===
+
+Every token equal to a top-level `transforms` key also gets
+`latin:deadKey="True"`, and `preserveCase` is added for the tag `lut` only.
+Tokens are written undecoded: `+\u{...}+` reaches the app as written, and
+other `+\s{...}+` tokens become `keySpec` values.
+
+=== Testing
+The unit tests need no network or SDK:
+
+[source,sh]
+----
+cargo test -p kbdgen --lib build::android
+----
+
+They cover the keyboard name, the number-row hints, the key attributes,
+the empty long-press error, the `assets/layouts` JSON, the removal of the
+first subtype, a failing `gradlew` (Unix only, with a stub script) and a
+clone over an existing checkout.
+
+An end-to-end run needs network access, the Android SDK and a JDK. Copy a
+v3 bundle with an `android` section, such as `sme.kbdgen` from `keyboard-sme`,
+and run `android build`; the release APK lands in
+`+{out}/repo/app/build/outputs/apk/release/+`. Without a `targets/android.yaml`
+`android generate` writes the resources and skips Gradle, which is the
+quicker loop for generator changes; `+git -C {out}/repo status+` and `diff`
+show what changed.
+
+Reset the checkout between runs with
+`+git -C {out}/repo checkout -- . && git -C {out}/repo clean -fd+`. Without
+that, a second `generate` appends `english_ime_name` again to each
+`+values-{locale}/strings-appname.xml+`, and Gradle's resource merger fails
+with `Found item String/english_ime_name more than one time`. With more
+than one layout the subtypes duplicate too, since each run removes one and
+adds one per layout. `android.metadata` and `android.metadata.strings`
+specify this behaviour.
+
+=== Known gaps
+* `flatten_transforms` handles one level of branching; a deeper one hits
+  `todo!("Recursion required ahead")` and panics, for any layout in the
+  bundle, after some files of earlier layouts are written
+  (`layout.transforms.dead-key-entries`).
+* A second `generate` on one checkout breaks the Gradle build, as above.
+* Layouts whose English names give the same keyboard name overwrite each
+  other's files.
+* No v4 support: `docs/spec/ldml/android.md` is unimplemented.

@@ -1,71 +1,436 @@
 == Android
+kbdgen builds an Android keyboard app from
+https://github.com/divvun/giellakbd-android[giellakbd-android], a keyboard
+app based on the Android Open Source Project keyboard. `kbdgen target
+android build` clones the app, downloads its native libraries, writes a
+keyboard into it for every layout with an `android` section, and runs
+Gradle to build a release APK. One app holds all of the bundle's Android
+layouts.
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o android-out android build
+----
+
+=== Prerequisites
+* `git` and `tar` on `PATH`.
+* Network access to GitHub: the build clones the app and asks the GitHub
+  API, without authentication, for the native libraries' latest releases.
+  GitHub limits how often an address may do that.
+* The Android SDK, found through `ANDROID_HOME` or `sdk.dir` in
+  `repo/local.properties`, and a JDK that the app's
+  Gradle build accepts; giellakbd-android asks for JDK 17 or newer. Gradle
+  itself comes with the app.
+* ImageMagick's `convert`, but only when the bundle has an Android icon
+  (see <<android-icon>>).
+
+=== Commands
+All three take the bundle and the output directory before `android`, as in
+the example above.
+
+[cols="1,4"]
+|===
+|Command |What it does
+
+|`android build`
+|Clones the app as `clone` does, downloads the native libraries, then
+generates as `generate` does. Use this.
+
+|`android clone`
+|Clones `https://github.com/divvun/giellakbd-android` into
+`<output>/repo`. If `<output>/repo` already exists, the clone fails and
+kbdgen uses the existing checkout as it is: `Using the existing checkout
+at <output>/repo`.
+
+|`android generate`
+|Writes the layouts, names, input method subtypes and icons into
+`<output>/repo` and, when there is a `targets/android.yaml`, writes
+`app/local.gradle` and runs Gradle. It needs a
+checkout from an earlier `build` or `clone`; it does not download the
+native libraries.
+|===
+
+The download step, which only `build` runs, takes `libdivvunspell` from the
+newest release of https://github.com/divvun/divvunspell/releases[divvunspell]
+that has an `android-jnilibs` asset, and `libpahkat_client` from the newest
+release of https://github.com/divvun/pahkat/releases[pahkat] that has an
+`android` asset, skipping drafts and prereleases. Both are unpacked into
+`repo/app/src/main`, where their libraries land in `jniLibs/<abi>/`.
 
 === Target configuration
-A file for the desired target has to be specified, and in this case for Android, it could look like this:
-```
-packageId: no.uit.giella.keyboards.Sami
+`targets/android.yaml` configures the app and its signing:
+
+[source,yaml]
+----
+packageId: no.uit.giella.keyboards.sme
 keyAlias: sami_keyboard
-sentryDsn: https://8f857d788e764bd2a13aaafdf0018c92@sentry.io/1341912
-version: 3.2.0
-build: 113
+version: 0.1.0
+build: 1
+----
 
-```
+[cols="1,1,4"]
+|===
+|Field |Required |Meaning
 
-The fields define what follows:
+|`packageId`
+|yes
+|The app's package name.
 
-* `packageId` - the id of the package
-* `keyAlias` - name
-* `sentryDsn` - url to sentry
-* `version` - current app version
-* `build` - current app build
-* `key_store` - store ??
-* `key_alias` - alias ??
-* `play_store_account` - play store email ??
-* `play_store_p12` - play store ??
-* `store_password` - password ??
-* `key_password` - password ??
+|`version`
+|yes
+|The version shown to users (`versionName`).
+
+|`build`
+|yes
+|The version code, a whole number that must grow with each release
+(`versionCode`).
+
+|`keyStore`
+|no
+|Path to the signing keystore, relative to the directory kbdgen runs in.
+Environment variables in it are not expanded.
+
+|`keyAlias`
+|no
+|The key's alias in the keystore.
+
+|`storePassword`
+|no
+|The keystore's password.
+
+|`keyPassword`
+|no
+|The key's password.
+
+|`playStoreAccount`
+|no
+|Written to `local.gradle` as `playEmail`.
+
+|`playStoreP12`
+|no
+|Written to `local.gradle` as `playCredentials`.
+|===
+
+Other fields are ignored. Strings must be YAML strings and `build` a
+number, so `version: 1.0` stops the build:
+
+----
+Error: Error parsing YAML for path: …/sme.kbdgen/targets/android.yaml at version
+
+Caused by:
+    version: invalid type: floating point `1.0`, expected a string
+----
+
+Write `version: "1.0"` instead.
+
+The secrets are best kept out of the bundle. Each of these environment
+variables, when set, replaces its field:
+
+[cols="1,1"]
+|===
+|Variable |Field
+
+|`ANDROID_KEYSTORE` |`keyStore`
+|`ANDROID_KEYALIAS` |`keyAlias`
+|`STORE_PW` |`storePassword`
+|`KEY_PW` |`keyPassword`
+|`PLAY_STORE_ACCOUNT` |`playStoreAccount`
+|`PLAY_STORE_P12` |`playStoreP12`
+|===
+
+kbdgen writes the settings to `repo/app/local.gradle`, which the app's
+Gradle build reads:
+
+[source,groovy]
+----
+ext.app = [
+    storeFile: "",
+    keyAlias: "sami_keyboard",
+    storePassword: "",
+    keyPassword: "",
+    packageName: "no.uit.giella.keyboards.sme",
+    versionCode: 1,
+    versionName: "0.1.0",
+    playEmail: "",
+    playCredentials: ""
+]
+----
+
+`storeFile` is the keystore's full path. It is empty when there is no
+`keyStore`, or when the file cannot be found, which kbdgen warns about; the
+app then builds an unsigned APK. kbdgen uploads nothing to Google Play.
+
+Without `targets/android.yaml`, kbdgen writes no `local.gradle` and does not
+run Gradle: `No targets/android.yaml; skipping local.gradle and the Gradle
+build`.
 
 === Keyboard layouts
-Android layouts tend to be quite simple:
+Android builds v3 layouts only. A v4 layout anywhere in the bundle stops
+every `android` command before it starts:
 
-```
-    android:
-    config:
-        spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
-        spellerPath: se.bhfst
-    primary:
-        layers:
-            default: |
-                á š e r t y u i o p ŋ
-                a s d f g h j k l đ ŧ
-                \s{shift} ž z č c v b n m \s{backspace}
-            shift: |
-                Á Š E R T Y U I O P Ŋ
-                A S D F G H J K L Đ Ŧ
-                \s{shift} Ž Z Č C V B N M \s{backspace}
-```
+----
+Error: layout sme is a v4 layout (`format: 4`); the android target cannot build v4 layouts yet
+----
 
-==== Longpress
-A longpress section like this is also needed for alternative keys but isn't specifically exclusive to Android but rather defined independently in the layout file and shared between Android and iOS
-```
-  longpress:
-    A: Å Æ Ä   À Â Ã Ā Ạ
-    Á: Q
-    E: Ë É È Ê Ẽ Ē Ẹ Ė Ǝ
-    I: Ï Í Ì Î Ĩ Ī Ị I
-    ...
-```
+Each layout with an `android` section becomes one keyboard; layouts without
+one are skipped. If none has one, kbdgen warns `No layout in the bundle has
+an android section` and still runs every step.
 
-==== Config
-The `config` section is used by Pahkat for spellchecking, the fields:
+[source,yaml]
+----
+displayNames:
+  se: Davvisámegiella
+  en: Northern Sami
+  nb: Nordsamisk
+android:
+  config:
+    spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
+    spellerPath: se.bhfst
+  primary:
+    layers:
+      default: |
+        á š e r t y u i o p ŋ
+        a s d f g h j k l đ ŧ
+        \s{shift} ž z č c v b n m \s{backspace}
+      shift: |
+        Á Š E R T Y U I O P Ŋ
+        A S D F G H J K L Đ Ŧ
+        \s{shift} Ž Z Č C V B N M \s{backspace}
+  tablet-600:
+    layers:
+      default: |
+        á š e r t y u i o p ŋ
+        a s d f g h j k l đ ŧ
+        \s{shift} ž z č c v b n m \s{backspace}
+      shift: |
+        Á Š E R T Y U I O P Ŋ
+        A S D F G H J K L Đ Ŧ
+        \s{shift} Ž Z Č C V B N M \s{backspace}
+longpress:
+  a: å æ ä à â ã ā ạ
+  á: q
+  A: Å Æ Ä À Â Ã Ā Ạ
+  Á: Q
+----
 
-* `spellerPackageKey` - defines the url for the spellchecking files of the layout we want to generate
-* `spellerPath` - defines which spellchecker file to use.
+[[android-names]]
+==== Names
+The layout must have an English display name: kbdgen names the keyboard's
+resource files after it, lowercased with every character other than `a`-`z`
+and `0`-`9` replaced by `x`, so `Northern Sami` gives `northernxsami`. Two
+layouts whose English names give the same resource name overwrite each
+other's files.
 
-==== Layers
-Just two layers are standard, `default` and `shift`. Each layer is split by line,
-typically to 3 lines of the keyboard. Special keys need to be preceeded by `\s`:
+The English name is also the keyboard's name in Android's list of
+keyboards. Its names in other languages are added for each language the app
+has resources for (a `res/values-<language>` directory), and skipped for
+the rest. The app's name, as Android lists it among input methods, is the last
+layout's English name followed by `Keyboard`; in each language of
+`project.yaml` `locales` that the app has resources for, it is that
+locale's `name`.
 
-* `\s{shift}` - Shift
-* `\s{backspace}` - Delete
-* `\s{return}` - Enter
+==== Platforms and layers
+`primary` is the phone keyboard and `tablet-600` the keyboard for screens at
+least 600dp wide; both are required. Each has a `default` layer and may
+have a `shift` layer; there are no other layers. The symbol, phone and
+number keyboards, and the bottom row with the symbols key, comma, space,
+period and return, come from the app.
+
+Each line of a layer is one row of keys, split on whitespace:
+
+* `\s{shift}` is the Shift key and `\s{backspace}` the Backspace key. Other
+  `+\s{...}+` tokens are not special keys.
+* Every other token is a key that types the token. kbdgen does not decode
+  `+\u{...}+` escapes for Android, so write the characters themselves.
+* The first ten keys of the first row show the digits `1` to `9` and `0`
+  as hints, in order, and type them on a long press.
+* Key widths follow the longest line of the `default` layer: with __n__
+  keys in it, each key is 1/__n__ of the keyboard's width (of 90% of it on
+  tablets), and Shift and Backspace share what is left of their row.
+
+==== Long press
+The top-level `longpress` section lists, for a key, the keys a long press
+offers, separated by spaces. Outside the first row, the first of them is
+also shown on the key as a hint. A key with an empty list stops the build,
+naming the layout, platform, layer and line.
+
+==== Dead keys
+Every key whose output is a top-level entry of the layout's `transforms` is
+a dead key, on every layer. What it composes is written to the app, in
+`assets/layouts/<tag>.json`, only when the layout has an `android.config`
+section; without one, its keys are still dead but compose nothing.
+
+[source,json]
+----
+{
+  "transforms": {
+    "´": {
+      "a": "á"
+    }
+  },
+  "speller": {
+    "path": "se.bhfst",
+    "package_url": "https://pahkat.uit.no/main/packages/speller-sme?platform=mobile"
+  }
+}
+----
+
+Android supports one level of transforms: a dead key followed by one key. A
+deeper transform, in any layout of the bundle, stops the build (see
+<<android-limits>>).
+
+==== Speller
+`android.config` names the layout's speller, which the app downloads with
+Pahkat:
+
+* `spellerPath` - the speller file the keyboard uses, such as `se.bhfst`;
+  required in `config`
+* `spellerPackageKey` - the URL of the speller's package; optional, but it
+  must be a valid URL
+
+[[android-icon]]
+=== Icon
+If the bundle has `resources/android/icon.png`, kbdgen scales it with
+ImageMagick to the app's five launcher icon sizes, 48 to 192 pixels, as
+`res/drawable-<density>/ic_launcher_keyboard.png`. Scaling keeps the
+picture's proportions, so use a square icon. Without the file, the app keeps
+its own icon: `No resources/android/icon.png; keeping the app's launcher
+icon`.
+
+=== Output
+`<output>/repo` is a git checkout of giellakbd-android with the keyboards
+written into it. `git status` in it lists what kbdgen changed. For the
+North Sami bundle, with one Android layout (`se`, `Northern Sami` in
+English) and `en` and `nb` in `project.yaml` `locales`:
+
+----
+ M app/src/main/res/values-da/strings.xml
+ M app/src/main/res/values-fi/strings.xml
+ M app/src/main/res/values-nb/strings.xml
+ M app/src/main/res/values-nn/strings.xml
+ M app/src/main/res/values-se/strings.xml
+ M app/src/main/res/values-sv/strings.xml
+ M app/src/main/res/values/strings-appname.xml
+ M app/src/main/res/values/strings.xml
+ M app/src/main/res/xml/method.xml
+ M app/src/main/res/xml/spellchecker.xml
+?? app/src/main/assets/
+?? app/src/main/res/values-en/strings-appname.xml
+?? app/src/main/res/values-nb/strings-appname.xml
+?? app/src/main/res/xml-sw600dp/rowkeys_northernxsami1.xml
+?? app/src/main/res/xml-sw600dp/rowkeys_northernxsami2.xml
+?? app/src/main/res/xml-sw600dp/rowkeys_northernxsami3.xml
+?? app/src/main/res/xml-sw600dp/rows_northernxsami.xml
+?? app/src/main/res/xml/kbd_northernxsami.xml
+?? app/src/main/res/xml/keyboard_layout_set_northernxsami.xml
+?? app/src/main/res/xml/rowkeys_northernxsami1.xml
+?? app/src/main/res/xml/rowkeys_northernxsami2.xml
+?? app/src/main/res/xml/rowkeys_northernxsami3.xml
+?? app/src/main/res/xml/rows_northernxsami.xml
+----
+
+`app/src/main/assets/` holds `layouts/se.json`. The native libraries in
+`app/src/main/jniLibs` and `app/local.gradle` are ignored by git, so they
+are not listed.
+
+Gradle leaves the APK in `repo/app/build/outputs/apk/release/`; without a
+keystore it is `app-release-unsigned.apk`. Android installs only signed
+APKs, so give a keystore for a build to install, or open `repo` in Android
+Studio to build, run and change the app there.
+
+[[android-building-again]]
+==== Building again
+Generating twice into the same checkout breaks it: kbdgen appends the app's
+names again, and Gradle then stops with
+
+----
+Error: `gradlew assembleRelease` failed with exit status: 1: ERROR: <output>/repo/app/src/main/res/values-en/strings-appname.xml: Resource and asset merger: Found item String/english_ime_name more than one time
+----
+
+With more than one layout, the input method subtypes are duplicated as well.
+Reset the checkout before generating again; the native libraries and
+`local.gradle` stay:
+
+[source,sh]
+----
+git -C android-out/repo checkout -- .
+git -C android-out/repo clean -fd
+kbdgen target -b sme.kbdgen -o android-out android generate
+----
+
+=== Diagnostics
+Warnings, after which the build goes on:
+
+[cols="2,3"]
+|===
+|Warning |Meaning
+
+|`No layout in the bundle has an android section`
+|The app is built without any of the bundle's keyboards.
+
+|`Transform ended too soon for dead key <key> in <tag>: it outputs <text> with no following key`
+|A top-level transform is a plain string. Its key is still dead, but
+composes nothing.
+
+|`No resources/android/icon.png; keeping the app's launcher icon`
+|See <<android-icon>>.
+
+|`Leaving storeFile empty in local.gradle: cannot resolve keyStore <path>: <reason>`
+|The keystore was not found, so the APK is unsigned.
+
+|`No targets/android.yaml; skipping local.gradle and the Gradle build`
+|Only the app's resources are written.
+|===
+
+Errors, which stop the build:
+
+[cols="2,3"]
+|===
+|Error |Meaning
+
+|`+layout <tag> is a v4 layout (`format: 4`); the android target cannot build v4 layouts yet+`
+|Android needs v3 layouts.
+
+|`<tag>: displayNames has no 'en' entry`
+|See <<android-names>>.
+
+|`<tag>: android.config has no spellerPath`
+|A `config` section needs `spellerPath`.
+
+|`<tag>: android.config.spellerPackageKey <value> is not a valid URL`
+|Fix the URL.
+
+|`<tag>: android.<platform>.layers.<layer>, line <n>: the longpress entry for <key> is empty`
+|Give the key at least one long-press key, or remove its entry.
+
+|`open <output>/repo/app/src/main/res/xml/method.xml`
+|`android generate` ran without a checkout; run `android build` or
+`android clone` first.
+
+|`list the releases of divvun/divvunspell`, followed by the HTTP error
+|The GitHub API refused the request, usually because of its rate limit.
+Wait and run `android build` again.
+
+|`no android-jnilibs asset found in any release for divvun/divvunspell`
+|No published release has the native libraries.
+
+|`+`convert` could not be started; install ImageMagick and make sure `convert` is on PATH+`
+|See <<android-icon>>.
+
+|`+`gradlew assembleRelease` failed with exit status: <n>: <Gradle's errors>+`
+|Gradle failed; the error carries Gradle's error output. The rest of
+Gradle's output is logged at the trace level: run with
+`RUST_LOG=kbdgen=trace` to see it, or run `./gradlew assembleRelease` in
+`repo` yourself.
+|===
+
+[[android-limits]]
+=== Limits
+* Only v3 layouts build.
+* Transforms deeper than one level crash kbdgen, even in a layout without
+  an `android` section, with `not yet implemented: Recursion required
+  ahead`. The checkout is left half written; reset it as in
+  <<android-building-again>>.
+* Generating twice into one checkout breaks the Gradle build; see
+  <<android-building-again>>.
+* A keyboard has only a `default` and a `shift` layer.
