@@ -34,9 +34,9 @@ This is a developer oriented Readme.
 
 # asciidoc
 
-`asciidoctor docs/user/kbdgen.adoc`
+`asciidoctor -a last-update-label! docs/user/kbdgen.adoc`
 
-`asciidoctor docs/dev/kbdgen.adoc`
+`asciidoctor -a last-update-label! docs/dev/kbdgen.adoc`
 
 # old keyboard gen commands
 
