@@ -51,6 +51,35 @@ impl From<Refusal> for Error {
     }
 }
 
+/// Why registration failed. A refusal is kept apart from other errors
+/// until the export returns, so diagnostics can name it
+/// (`tsf.component.events`); its Win32 code alone is ambiguous.
+pub(super) enum Failure {
+    Refused(Refusal),
+    Failed(Error),
+}
+
+impl From<Refusal> for Failure {
+    fn from(refusal: Refusal) -> Failure {
+        Failure::Refused(refusal)
+    }
+}
+
+impl From<Error> for Failure {
+    fn from(error: Error) -> Failure {
+        Failure::Failed(error)
+    }
+}
+
+impl From<Failure> for Error {
+    fn from(failure: Failure) -> Error {
+        match failure {
+            Failure::Refused(refusal) => refusal.into(),
+            Failure::Failed(error) => error,
+        }
+    }
+}
+
 /// Registration fails with real Win32 errors, never `Error::empty()`: its
 /// code is `S_OK`, which `DllRegisterServer` would then return.
 pub(super) fn check(status: WIN32_ERROR) -> Result<()> {
@@ -111,11 +140,11 @@ pub(super) fn module_path() -> Result<String> {
 }
 
 /// The machine's native architecture, also from an emulated process.
-pub(super) fn native_machine() -> Result<Machine> {
+pub(super) fn native_machine() -> std::result::Result<Machine, Failure> {
     let mut process = IMAGE_FILE_MACHINE::default();
     let mut native = IMAGE_FILE_MACHINE::default();
     unsafe { IsWow64Process2(GetCurrentProcess(), &mut process, Some(&mut native)) }?;
-    Machine::from_image(native.0).ok_or_else(|| Refusal::Unsupported.into())
+    Machine::from_image(native.0).ok_or(Failure::Refused(Refusal::Unsupported))
 }
 
 /// An open registry key, closed when dropped.
@@ -282,7 +311,7 @@ fn aces(acl: &ACL) -> Result<Vec<Ace>> {
 
 /// The DACL of the file at `path`; `None` for a null DACL. A missing file
 /// is [`Refusal::Missing`].
-pub(super) fn dacl(path: &str) -> Result<Option<Vec<Ace>>> {
+pub(super) fn dacl(path: &str) -> std::result::Result<Option<Vec<Ace>>, Failure> {
     let name = wide(path);
     let mut acl: *mut ACL = std::ptr::null_mut();
     let mut descriptor = PSECURITY_DESCRIPTOR::default();
@@ -309,5 +338,5 @@ pub(super) fn dacl(path: &str) -> Result<Option<Vec<Ace>>> {
         None => Ok(None),
     };
     unsafe { LocalFree(Some(HLOCAL(descriptor.0))) };
-    result
+    Ok(result?)
 }

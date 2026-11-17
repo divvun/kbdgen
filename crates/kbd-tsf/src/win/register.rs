@@ -2,7 +2,8 @@
 //! the server path of `tsf.arch.registration`, and the text service's TSF
 //! categories. Registration first checks where the DLL lies and what its
 //! files grant (`crate::registration`), and writes nothing otherwise.
-//! Profiles are `kbdi`'s to register.
+//! Profiles are `kbdi`'s to register. Each call records its outcome
+//! (`tsf.component.events`).
 
 use windows::Win32::Foundation::ERROR_FILE_NOT_FOUND;
 use windows::Win32::System::Com::{
@@ -18,15 +19,36 @@ use windows::Win32::UI::TextServices::{
     GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT, GUID_TFCAT_TIPCAP_SECUREMODE,
     GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT, GUID_TFCAT_TIPCAP_UIELEMENTENABLED, ITfCategoryMgr,
 };
-use windows_core::{GUID, PCWSTR, Result};
+use windows_core::{Error, GUID, PCWSTR, Result};
 
+use crate::diag::{self, Event, Registration};
 use crate::guid::{CLSID, braced};
 use crate::registration::{Plan, Refusal, VERSION, place, plan, ungranted};
 
 use super::facts::{
-    OWN, check, dacl, module_path, native_machine, profiles_remain, program_files, read_string,
+    Failure, OWN, check, dacl, module_path, native_machine, profiles_remain, program_files,
+    read_string,
 };
 use super::wide;
+
+/// `outcome` as the export returns it, recorded with `event`.
+// [spec:kbdgen:req:tsf.component.events]
+fn report(
+    outcome: std::result::Result<(), Failure>,
+    event: fn(Registration) -> Event,
+) -> Result<()> {
+    let refusal = match &outcome {
+        Err(Failure::Refused(refusal)) => Some((refusal.reason(), refusal.file())),
+        _ => None,
+    };
+    let result = outcome.map_err(Error::from);
+    diag::record(event(Registration {
+        hresult: result.as_ref().map_or_else(|error| error.code().0, |()| 0),
+        refusal: refusal.map(|(reason, _)| reason),
+        file: refusal.and_then(|(_, file)| file),
+    }));
+    result
+}
 
 /// The categories of `tsf.register.server`. Secure mode support lets the
 /// text service run under `TF_TMF_SECUREMODE` (`tsf.security.secure-mode`).
@@ -97,7 +119,7 @@ fn with_categories(body: impl FnOnce(&ITfCategoryMgr) -> Result<()>) -> Result<(
 /// read and execute to both package SIDs.
 // [spec:kbdgen:req:tsf.register.upgrade+2]
 // [spec:kbdgen:req:tsf.security.appcontainer+2]
-fn verify(plan: &Plan) -> Result<()> {
+fn verify(plan: &Plan) -> std::result::Result<(), Failure> {
     place(&module_path()?, &program_files()?, VERSION)?;
     for file in &plan.files {
         if !ungranted(dacl(file)?.as_deref()).is_empty() {
@@ -113,6 +135,10 @@ fn verify(plan: &Plan) -> Result<()> {
 // [spec:kbdgen:req:tsf.register.server]
 // [spec:kbdgen:req:tsf.arch.registration+1]
 pub fn register() -> Result<()> {
+    report(try_register(), Event::Register)
+}
+
+fn try_register() -> std::result::Result<(), Failure> {
     let plan = plan(&module_path()?, OWN, native_machine()?)?;
     verify(&plan)?;
     let key = class_key();
@@ -129,7 +155,8 @@ pub fn register() -> Result<()> {
         CATEGORIES
             .iter()
             .try_for_each(|category| unsafe { manager.RegisterCategory(&clsid, category, &clsid) })
-    })
+    })?;
+    Ok(())
 }
 
 /// Removes what [`register`] added, unless `InprocServer32` names another
@@ -139,6 +166,10 @@ pub fn register() -> Result<()> {
 // [spec:kbdgen:req:tsf.register.server]
 // [spec:kbdgen:req:tsf.register.upgrade+2]
 pub fn unregister() -> Result<()> {
+    report(try_unregister(), Event::Unregister)
+}
+
+fn try_unregister() -> std::result::Result<(), Failure> {
     let plan = plan(&module_path()?, OWN, native_machine()?)?;
     let key = class_key();
     let server = format!("{key}\\InprocServer32");

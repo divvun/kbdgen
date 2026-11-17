@@ -2,11 +2,14 @@
 //! `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts` whose
 //! `Layout Product Code` is the profile GUID, and the model resource of its
 //! `Layout File`, loaded from the system directory as a resource-only
-//! image. Nothing is written, and results are cached per process.
+//! image. Nothing is written, and results are cached per process, the
+//! reason a profile is inert included (`tsf.data.inert`).
 
 use std::sync::Arc;
 
-use windows::Win32::Foundation::{ERROR_SUCCESS, FreeLibrary, HMODULE};
+use windows::Win32::Foundation::{
+    ERROR_INSUFFICIENT_BUFFER, ERROR_INVALID_DATA, ERROR_SUCCESS, FreeLibrary, HMODULE,
+};
 use windows::Win32::System::LibraryLoader::{
     FindResourceW, LOAD_LIBRARY_AS_DATAFILE, LOAD_LIBRARY_AS_IMAGE_RESOURCE, LoadLibraryExW,
     LoadResource, LockResource, SizeofResource,
@@ -16,9 +19,9 @@ use windows::Win32::System::Registry::{
     RegOpenKeyExW,
 };
 use windows::Win32::System::SystemInformation::GetSystemDirectoryW;
-use windows_core::{PCWSTR, PWSTR, w};
+use windows_core::{Error, PCWSTR, PWSTR, w};
 
-use crate::locate::{Keyboard, Keyboards, is_layout_file, names_profile};
+use crate::locate::{Inert, Keyboard, Keyboards, Reason, check_layout_file, names_profile};
 
 use super::wide;
 
@@ -28,19 +31,25 @@ const RT_RCDATA: PCWSTR = PCWSTR(10 as _);
 /// The model's resource name, `MAKEINTRESOURCE(1)` (`tsf.data.resource`).
 const MODEL_NAME: PCWSTR = PCWSTR(1 as _);
 
-/// The keyboard of `profile`, or `None` when the profile is inert.
+/// The keyboard of `profile`, or why the profile is inert.
 // [spec:kbdgen:req:tsf.data.locate+1]
+// [spec:kbdgen:req:tsf.data.inert]
 // [spec:kbdgen:req:tsf.component.self-contained]
 // [spec:kbdgen:req:tsf.security.secure-mode+1]
-pub fn keyboard(profile: u128) -> Option<Arc<Keyboard>> {
+pub fn keyboard(profile: u128) -> Result<Arc<Keyboard>, Inert> {
     KEYBOARDS.get(profile, || {
         let file = layout_file(profile)?;
         model_resource(&file)
     })
 }
 
-/// A `REG_SZ` value of subkey `subkey` (NUL-terminated) of `root`.
-fn string_value(root: HKEY, subkey: &[u16], value: &str) -> Option<String> {
+fn last_error(reason: Reason) -> Inert {
+    Inert::failed(reason, Error::from_thread().code().0)
+}
+
+/// A `REG_SZ` value of subkey `subkey` (NUL-terminated) of `root`, or the
+/// `HRESULT` of the failed read.
+fn string_value(root: HKEY, subkey: &[u16], value: &str) -> Result<String, i32> {
     let value = wide(value);
     let mut size = 0u32;
     let status = unsafe {
@@ -55,9 +64,12 @@ fn string_value(root: HKEY, subkey: &[u16], value: &str) -> Option<String> {
         )
     };
     if status != ERROR_SUCCESS {
-        return None;
+        return Err(status.to_hresult().0);
     }
-    let mut buffer = vec![0u16; usize::try_from(size).ok()?.div_ceil(2)];
+    let units = usize::try_from(size)
+        .map_err(|_| ERROR_INSUFFICIENT_BUFFER.to_hresult().0)?
+        .div_ceil(2);
+    let mut buffer = vec![0u16; units];
     let status = unsafe {
         RegGetValueW(
             root,
@@ -70,10 +82,11 @@ fn string_value(root: HKEY, subkey: &[u16], value: &str) -> Option<String> {
         )
     };
     if status != ERROR_SUCCESS {
-        return None;
+        return Err(status.to_hresult().0);
     }
     let end = buffer.iter().position(|&u| u == 0).unwrap_or(buffer.len());
-    String::from_utf16(buffer.get(..end)?).ok()
+    String::from_utf16(buffer.get(..end).unwrap_or_default())
+        .map_err(|_| ERROR_INVALID_DATA.to_hresult().0)
 }
 
 fn subkey(root: HKEY, index: u32) -> Option<Vec<u16>> {
@@ -100,7 +113,8 @@ fn subkey(root: HKEY, index: u32) -> Option<Vec<u16>> {
 
 /// The `Layout File` of the layout whose `Layout Product Code` names
 /// `profile`.
-fn layout_file(profile: u128) -> Option<String> {
+// [spec:kbdgen:req:tsf.data.inert]
+fn layout_file(profile: u128) -> Result<String, Inert> {
     let mut root = HKEY::default();
     let status = unsafe {
         RegOpenKeyExW(
@@ -112,48 +126,57 @@ fn layout_file(profile: u128) -> Option<String> {
         )
     };
     if status != ERROR_SUCCESS {
-        return None;
+        return Err(Inert::failed(
+            Reason::LayoutsUnreadable,
+            status.to_hresult().0,
+        ));
     }
-    let file = (0..)
+    let found = (0..)
         .map_while(|index| subkey(root, index))
         .find(|name| {
             string_value(root, name, "Layout Product Code")
-                .is_some_and(|code| names_profile(&code, profile))
+                .is_ok_and(|code| names_profile(&code, profile))
         })
-        .and_then(|name| string_value(root, &name, "Layout File"));
+        .map(|name| string_value(root, &name, "Layout File"));
     let _ = unsafe { RegCloseKey(root) };
-    file.filter(|file| is_layout_file(file))
+    check_layout_file(found)
 }
 
-fn resource_bytes(module: HMODULE) -> Option<Vec<u8>> {
+// [spec:kbdgen:req:tsf.data.inert]
+fn resource_bytes(module: HMODULE) -> Result<Vec<u8>, Inert> {
     let info = unsafe { FindResourceW(Some(module), MODEL_NAME, RT_RCDATA) };
     if info.is_invalid() {
-        return None;
+        return Err(last_error(Reason::NoModelResource));
     }
-    let size = usize::try_from(unsafe { SizeofResource(Some(module), info) }).ok()?;
-    let data = unsafe { LoadResource(Some(module), info) }.ok()?;
+    let size = unsafe { SizeofResource(Some(module), info) };
+    let data = unsafe { LoadResource(Some(module), info) }
+        .map_err(|error| Inert::failed(Reason::ModelResourceUnreadable, error.code().0))?;
     let pointer = unsafe { LockResource(data) };
+    let size = usize::try_from(size).unwrap_or(0);
     if pointer.is_null() || size == 0 {
-        return None;
+        return Err(Reason::ModelResourceUnreadable.into());
     }
     // SAFETY: a locked resource is `size` bytes that stay mapped until
     // `module` is freed, after this copy.
     let bytes = unsafe { std::slice::from_raw_parts(pointer.cast::<u8>(), size) };
-    Some(bytes.to_vec())
+    Ok(bytes.to_vec())
 }
 
 /// The model resource of layout DLL `file`, loaded from the system
 /// directory with `LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE`.
 /// In a 32-bit process on 64-bit Windows the file system redirects this to
 /// the `SysWOW64` variant, which carries identical data.
-fn model_resource(file: &str) -> Option<Vec<u8>> {
+// [spec:kbdgen:req:tsf.data.inert]
+fn model_resource(file: &str) -> Result<Vec<u8>, Inert> {
     let mut directory = vec![0u16; 260];
-    let len = usize::try_from(unsafe { GetSystemDirectoryW(Some(&mut directory)) }).ok()?;
+    let len = unsafe { GetSystemDirectoryW(Some(&mut directory)) };
+    let len = usize::try_from(len).unwrap_or(usize::MAX);
     if len == 0 || len >= directory.len() {
-        return None;
+        return Err(last_error(Reason::NoSystemDirectory));
     }
     directory.truncate(len);
-    let mut path = String::from_utf16(&directory).ok()?;
+    let mut path = String::from_utf16(&directory)
+        .map_err(|_| Inert::failed(Reason::NoSystemDirectory, ERROR_INVALID_DATA.to_hresult().0))?;
     path.push('\\');
     path.push_str(file);
     let path = wide(&path);
@@ -164,8 +187,43 @@ fn model_resource(file: &str) -> Option<Vec<u8>> {
             LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE,
         )
     }
-    .ok()?;
+    .map_err(|error| Inert::failed(Reason::LayoutDllUnloadable, error.code().0))?;
     let bytes = resource_bytes(module);
     let _ = unsafe { FreeLibrary(module) };
     bytes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // [spec:kbdgen:req:tsf.data.inert/test]
+    #[test]
+    fn unknown_profile_names_no_layout() {
+        let profile = 0x0BAD_F00D_0000_4000_8000_0000_0000_0001;
+        assert_eq!(keyboard(profile).unwrap_err(), Reason::NoLayout.into());
+    }
+
+    // [spec:kbdgen:req:tsf.data.inert/test]
+    #[test]
+    fn missing_dll_is_unloadable_with_its_hresult() {
+        let inert = model_resource("kbd-tsf-no-such-layout.dll").unwrap_err();
+        assert_eq!(inert.reason, Reason::LayoutDllUnloadable);
+        // ERROR_MOD_NOT_FOUND, or ERROR_FILE_NOT_FOUND for a data file.
+        assert!(
+            matches!(
+                inert.hresult.map(|hr| hr as u32),
+                Some(0x8007_007E | 0x8007_0002)
+            ),
+            "{inert:?}"
+        );
+    }
+
+    // [spec:kbdgen:req:tsf.data.inert/test]
+    #[test]
+    fn layout_without_model_has_no_model_resource() {
+        let inert = model_resource("kbdus.dll").unwrap_err();
+        assert_eq!(inert.reason, Reason::NoModelResource, "{inert:?}");
+        assert!(inert.hresult.is_some_and(|hr| hr < 0), "{inert:?}");
+    }
 }

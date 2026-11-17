@@ -18,6 +18,7 @@ mod input;
 mod register;
 mod session;
 mod tip;
+pub(crate) mod trace;
 
 #[cfg(test)]
 mod tests;

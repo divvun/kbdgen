@@ -5,11 +5,16 @@
 //! Every export and every COM method therefore runs its body through
 //! [`contain`], which turns a panic into `E_UNEXPECTED` and poisons the
 //! process's text service: from then on it eats no key and requests no edit
-//! session until it is unloaded.
+//! session until it is unloaded. A poisoned service passes keys just as an
+//! inert one does, so the panic hook records where the panic happened
+//! (`tsf.component.events`).
 
+use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Once;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use crate::diag::{self, Event};
 
 #[cfg(panic = "abort")]
 compile_error!("kbd-tsf must build with panic = \"unwind\" to contain panics");
@@ -108,14 +113,83 @@ pub fn poisoned() -> bool {
     POISON.load(Ordering::SeqCst)
 }
 
-/// Replaces the default panic hook, which would print the panic message,
-/// and with it possibly typed text, to the host's standard error.
-// [spec:kbdgen:req:tsf.component.logging]
-fn silence_panics() {
-    static HOOK: Once = Once::new();
-    if cfg!(not(test)) {
-        HOOK.call_once(|| std::panic::set_hook(Box::new(|_| {})));
+impl Entry {
+    /// The entry point's name, as diagnostics record it.
+    // [spec:kbdgen:req:tsf.component.events]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Entry::DllGetClassObject => "DllGetClassObject",
+            Entry::DllCanUnloadNow => "DllCanUnloadNow",
+            Entry::DllRegisterServer => "DllRegisterServer",
+            Entry::DllUnregisterServer => "DllUnregisterServer",
+            Entry::CreateInstance => "CreateInstance",
+            Entry::LockServer => "LockServer",
+            Entry::Activate => "Activate",
+            Entry::ActivateEx => "ActivateEx",
+            Entry::Deactivate => "Deactivate",
+            Entry::OnInitDocumentMgr => "OnInitDocumentMgr",
+            Entry::OnUninitDocumentMgr => "OnUninitDocumentMgr",
+            Entry::OnSetFocus => "OnSetFocus",
+            Entry::OnPushContext => "OnPushContext",
+            Entry::OnPopContext => "OnPopContext",
+            Entry::OnKeySetFocus => "OnKeySetFocus",
+            Entry::OnTestKeyDown => "OnTestKeyDown",
+            Entry::OnTestKeyUp => "OnTestKeyUp",
+            Entry::OnKeyDown => "OnKeyDown",
+            Entry::OnKeyUp => "OnKeyUp",
+            Entry::OnPreservedKey => "OnPreservedKey",
+            Entry::OnEndEdit => "OnEndEdit",
+            Entry::OnCompositionTerminated => "OnCompositionTerminated",
+            Entry::OnCompartmentChange => "OnCompartmentChange",
+            Entry::OnActivated => "OnActivated",
+            Entry::EnumDisplayAttributeInfo => "EnumDisplayAttributeInfo",
+            Entry::GetDisplayAttributeInfo => "GetDisplayAttributeInfo",
+            Entry::DoEditSession => "DoEditSession",
+            Entry::InfoGetGuid => "InfoGetGuid",
+            Entry::InfoGetDescription => "InfoGetDescription",
+            Entry::InfoGetAttributeInfo => "InfoGetAttributeInfo",
+            Entry::InfoSetAttributeInfo => "InfoSetAttributeInfo",
+            Entry::InfoReset => "InfoReset",
+            Entry::EnumClone => "EnumClone",
+            Entry::EnumNext => "EnumNext",
+            Entry::EnumReset => "EnumReset",
+            Entry::EnumSkip => "EnumSkip",
+        }
     }
+}
+
+thread_local! {
+    /// The innermost entry point running on this thread. Entry points
+    /// nest: `OnKeyDown` runs `DoEditSession` through a synchronous edit
+    /// session, so [`contain`] restores the outer one when it returns.
+    static ENTRY: Cell<Option<Entry>> = const { Cell::new(None) };
+}
+
+/// Replaces the default panic hook, which would print the panic message,
+/// and with it possibly typed text, to the host's standard error. The hook
+/// records the entry point and the location instead, never the message.
+/// It must not panic: a panic in a panic hook aborts the host process.
+/// Test builds keep the previous hook after it, so failures still print.
+// [spec:kbdgen:req:tsf.component.logging+1]
+// [spec:kbdgen:req:tsf.component.events]
+fn install_hook() {
+    static HOOK: Once = Once::new();
+    // `set_hook` panics on a thread that is panicking.
+    if std::thread::panicking() {
+        return;
+    }
+    HOOK.call_once(|| {
+        #[cfg(test)]
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            diag::record(Event::Panicked {
+                entry: ENTRY.try_with(Cell::get).ok().flatten(),
+                location: info.location(),
+            });
+            #[cfg(test)]
+            previous(info);
+        }));
+    });
 }
 
 /// Runs the body of entry point `entry`. A panic in it returns
@@ -126,14 +200,17 @@ pub fn contain<T, E: From<Panicked>>(
     entry: Entry,
     body: impl FnOnce() -> Result<T, E>,
 ) -> Result<T, E> {
-    silence_panics();
+    install_hook();
+    let outer = ENTRY
+        .try_with(|current| current.replace(Some(entry)))
+        .ok()
+        .flatten();
     let outcome = catch_unwind(AssertUnwindSafe(|| {
         #[cfg(test)]
         faults::inject(entry);
-        #[cfg(not(test))]
-        let _ = entry;
         body()
     }));
+    let _ = ENTRY.try_with(|current| current.set(outer));
     match outcome {
         Ok(result) => result,
         Err(payload) => {
@@ -214,5 +291,24 @@ mod tests {
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(!ENTRIES[..i].contains(entry), "{entry:?} twice");
         }
+    }
+
+    // [spec:kbdgen:req:tsf.component.events/test]
+    #[test]
+    fn entry_names_are_their_identifiers() {
+        for entry in ENTRIES {
+            assert_eq!(entry.name(), format!("{entry:?}"));
+        }
+    }
+
+    #[test]
+    fn nested_entries_restore_the_outer_one() {
+        let poison = AtomicBool::new(false);
+        let inner: Result<Option<Entry>, Hr> = contain(&poison, Entry::OnKeyDown, || {
+            let _: Result<(), Hr> = contain(&poison, Entry::DoEditSession, || Ok(()));
+            Ok(ENTRY.with(Cell::get))
+        });
+        assert_eq!(inner, Ok(Some(Entry::OnKeyDown)));
+        assert_eq!(ENTRY.with(Cell::get), None);
     }
 }

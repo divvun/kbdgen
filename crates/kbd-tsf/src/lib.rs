@@ -10,9 +10,9 @@
 //!
 //! The logic that needs no TSF call (key identity, claims, the edit
 //! planner, the per-context document with its cache and resets, locating
-//! data, panic containment) lives in host-independent modules and is
-//! tested on every host. The COM component, under `win`, only adapts TSF
-//! to them.
+//! data, panic containment, the diagnostic events and their gate) lives in
+//! host-independent modules and is tested on every host. The COM
+//! component, under `win`, only adapts TSF and ETW to them.
 
 // [spec:kbdgen:req:ldml.crate.tsf+1]
 // [spec:kbdgen:req:tsf.component.crate]
@@ -22,7 +22,9 @@
 // [spec:kbdgen:sem:tsf.security.integrity]
 
 pub mod claim;
+pub mod diag;
 pub mod document;
+pub mod etw;
 pub mod guard;
 pub mod guid;
 pub mod keys;

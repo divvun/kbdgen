@@ -199,6 +199,24 @@ fn refusals_return_distinct_win32_errors() {
     codes.sort_unstable();
     codes.dedup();
     assert_eq!(codes.len(), refusals.len());
+    let mut reasons: Vec<&str> = refusals.iter().map(Refusal::reason).collect();
+    reasons.sort_unstable();
+    reasons.dedup();
+    assert_eq!(reasons.len(), refusals.len());
+}
+
+// [spec:kbdgen:req:tsf.component.events/test]
+// [spec:kbdgen:req:tsf.component.logging+1/test]
+#[test]
+fn refusals_name_known_files_never_paths() {
+    let missing = Refusal::Missing(at("DIVVUN_TIP_ARM64.DLL"));
+    assert_eq!(missing.reason(), "missing");
+    assert_eq!(missing.file(), Some(Machine::Arm64.dll()));
+    let access = Refusal::Access(at(FORWARDER));
+    assert_eq!(access.file(), Some(FORWARDER));
+    let elsewhere = Refusal::Missing(r"C:\Users\someone\kbd_tsf.dll".to_owned());
+    assert_eq!(elsewhere.file(), None);
+    assert_eq!(Refusal::Version.file(), None);
 }
 
 #[test]

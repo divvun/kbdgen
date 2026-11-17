@@ -10,6 +10,7 @@ use windows::Win32::Foundation::{
 use windows::Win32::System::Com::{IClassFactory, IClassFactory_Impl};
 use windows_core::{BOOL, GUID, HRESULT, IUnknown, Interface, Ref, Result, implement};
 
+use crate::diag;
 use crate::guard::{Entry, POISON, contain};
 use crate::guid::CLSID;
 use crate::server::{Live, can_unload, lock};
@@ -96,17 +97,22 @@ pub extern "system" fn DllCanUnloadNow() -> HRESULT {
     }))
 }
 
+/// Registers the text service (`tsf.register.server`). An installer or
+/// `regsvr32` calls it, never the secure desktop, so it may write
+/// diagnostics without an activation (`tsf.component.logging`).
+// [spec:kbdgen:req:tsf.component.logging+1]
 #[unsafe(no_mangle)]
 pub extern "system" fn DllRegisterServer() -> HRESULT {
     hresult(contain(&POISON, Entry::DllRegisterServer, || {
-        register::register().map(|()| S_OK)
+        diag::installing(|| register::register().map(|()| S_OK))
     }))
 }
 
+// [spec:kbdgen:req:tsf.component.logging+1]
 #[unsafe(no_mangle)]
 pub extern "system" fn DllUnregisterServer() -> HRESULT {
     hresult(contain(&POISON, Entry::DllUnregisterServer, || {
-        register::unregister().map(|()| S_OK)
+        diag::installing(|| register::unregister().map(|()| S_OK))
     }))
 }
 

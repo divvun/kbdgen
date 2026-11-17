@@ -20,11 +20,12 @@ use windows::Win32::UI::TextServices::{
 use windows_core::{Error, GUID, IUnknown, IUnknownImpl, Interface, Ref, Result, implement};
 
 use crate::claim::Claims;
+use crate::diag::{self, Event};
 use crate::document::Document;
 use crate::guard::{Entry, POISON, contain};
 use crate::guid::{CLSID, PREEDIT_ATTRIBUTE};
 use crate::keys::{Chord, Tracker};
-use crate::locate::Keyboard;
+use crate::locate::{Inert, Keyboard, Reason};
 use crate::server::Live;
 
 use super::data;
@@ -75,11 +76,6 @@ pub(super) struct Inner {
     pub thread_mgr: Option<ITfThreadMgr>,
     /// The `TfClientId` that activation was given.
     pub client: u32,
-    /// `ITfThreadMgrEx::GetActiveFlags` at activation: `TF_TMF_SECUREMODE`,
-    /// `TF_TMF_IMMERSIVEMODE` and the rest, recorded as
-    /// `tsf.component.interfaces` requires: in secure or immersive mode no
-    /// diagnostic may be written (`tsf.component.logging`).
-    pub active_flags: u32,
     pub keyboard: Option<Arc<Keyboard>>,
     pub document: Document,
     /// The context `document` belongs to.
@@ -126,23 +122,49 @@ pub(super) fn same<A: Interface, B: Interface>(a: &A, b: &B) -> bool {
     }
 }
 
-/// The GUID of this text service's active keyboard profile, if one is
-/// active.
-fn active_profile() -> Option<u128> {
+/// The GUID of this text service's active keyboard profile, or
+/// `no-profile` with the `HRESULT` of the call that failed.
+// [spec:kbdgen:req:tsf.data.inert]
+fn active_profile() -> std::result::Result<u128, Inert> {
+    let no_profile = |error: Error| Inert::failed(Reason::NoProfile, error.code().0);
     let profiles: ITfInputProcessorProfileMgr =
         unsafe { CoCreateInstance(&CLSID_TF_InputProcessorProfiles, None, CLSCTX_INPROC_SERVER) }
-            .ok()?;
+            .map_err(no_profile)?;
     let mut profile = TF_INPUTPROCESSORPROFILE::default();
-    unsafe { profiles.GetActiveProfile(&GUID_TFCAT_TIP_KEYBOARD, &mut profile) }.ok()?;
-    (profile.clsid.to_u128() == CLSID).then(|| profile.guidProfile.to_u128())
+    unsafe { profiles.GetActiveProfile(&GUID_TFCAT_TIP_KEYBOARD, &mut profile) }
+        .map_err(no_profile)?;
+    if profile.clsid.to_u128() == CLSID {
+        Ok(profile.guidProfile.to_u128())
+    } else {
+        Err(Reason::NoProfile.into())
+    }
+}
+
+/// Records that activation failed at a call on `interface`.
+// [spec:kbdgen:req:tsf.component.events]
+fn failed(interface: &'static str) -> impl FnOnce(Error) -> Error {
+    move |error| {
+        diag::record(Event::ActivationFailed {
+            interface,
+            hresult: error.code().0,
+        });
+        error
+    }
 }
 
 impl Tip_Impl {
     /// Loads the keyboard of `profile`, or makes the service inert, and
     /// resets.
     // [spec:kbdgen:req:tsf.data.locate+1]
-    pub(super) fn select_profile(&self, profile: Option<u128>) {
+    // [spec:kbdgen:req:tsf.data.inert]
+    // [spec:kbdgen:req:tsf.component.events]
+    pub(super) fn select_profile(&self, profile: std::result::Result<u128, Inert>) {
         let keyboard = profile.and_then(data::keyboard);
+        diag::record(match &keyboard {
+            Ok(_) => Event::KeyboardLoaded,
+            Err(inert) => Event::KeyboardInert(*inert),
+        });
+        let keyboard = keyboard.ok();
         self.unpreserve();
         if let Some(keyboard) = keyboard.as_ref().filter(|k| k.altgr) {
             self.preserve(&keyboard.chords.preserved, false);
@@ -255,11 +277,22 @@ impl Tip_Impl {
     }
 
     /// Activates on `thread_mgr`, or, if that fails part way, deactivates
-    /// again.
+    /// again. The activation flags open this thread's diagnostic gate
+    /// unless they name secure or immersive mode (`tsf.component.logging`).
+    // [spec:kbdgen:req:tsf.component.interfaces+2]
+    // [spec:kbdgen:req:tsf.component.events]
     fn activate(&self, thread_mgr: Ref<ITfThreadMgr>, client: u32) -> Result<()> {
         let thread_mgr = thread_mgr.ok()?;
+        let flags = thread_mgr
+            .cast::<ITfThreadMgrEx>()
+            .and_then(|tm| unsafe { tm.GetActiveFlags() })
+            .ok();
+        diag::activated(flags);
         self.advise(thread_mgr, client)
             .inspect_err(|_| self.deactivate())?;
+        if let Some(flags) = flags {
+            diag::record(Event::Activated { flags });
+        }
         self.select_profile(active_profile());
         self.follow_focus();
         Ok(())
@@ -268,10 +301,6 @@ impl Tip_Impl {
     /// Advises the key event sink and the thread sinks, keeping in `Inner`
     /// what [`Tip_Impl::deactivate`] needs to unadvise them.
     fn advise(&self, thread_mgr: &ITfThreadMgr, client: u32) -> Result<()> {
-        let active_flags = thread_mgr
-            .cast::<ITfThreadMgrEx>()
-            .and_then(|tm| unsafe { tm.GetActiveFlags() })
-            .unwrap_or(0);
         let categories: Option<ITfCategoryMgr> =
             unsafe { CoCreateInstance(&CLSID_TF_CategoryMgr, None, CLSCTX_INPROC_SERVER) }.ok();
         let attribute = categories
@@ -283,24 +312,29 @@ impl Tip_Impl {
                 .map_err(|_| Error::from(E_UNEXPECTED))?;
             inner.thread_mgr = Some(thread_mgr.clone());
             inner.client = client;
-            inner.active_flags = active_flags;
             inner.attribute = attribute;
         }
-        let keys: ITfKeystrokeMgr = thread_mgr.cast()?;
+        let keys: ITfKeystrokeMgr = thread_mgr.cast().map_err(failed("ITfKeystrokeMgr"))?;
         let key_sink: ITfKeyEventSink = self.to_interface();
-        unsafe { keys.AdviseKeyEventSink(client, &key_sink, true) }?;
-        let source: ITfSource = thread_mgr.cast()?;
+        unsafe { keys.AdviseKeyEventSink(client, &key_sink, true) }
+            .map_err(failed("ITfKeystrokeMgr::AdviseKeyEventSink"))?;
+        let source: ITfSource = thread_mgr.cast().map_err(failed("ITfSource"))?;
         let thread_sink: ITfThreadMgrEventSink = self.to_interface();
         let profile_sink: ITfActiveLanguageProfileNotifySink = self.to_interface();
-        for (iid, sink) in [
-            (ITfThreadMgrEventSink::IID, thread_sink.cast::<IUnknown>()?),
+        for (iid, sink, interface) in [
+            (
+                ITfThreadMgrEventSink::IID,
+                thread_sink.cast::<IUnknown>()?,
+                "ITfSource::AdviseSink(ITfThreadMgrEventSink)",
+            ),
             (
                 ITfActiveLanguageProfileNotifySink::IID,
                 profile_sink.cast::<IUnknown>()?,
+                "ITfSource::AdviseSink(ITfActiveLanguageProfileNotifySink)",
             ),
         ] {
             let advice = Advice {
-                cookie: unsafe { source.AdviseSink(&iid, &sink) }?,
+                cookie: unsafe { source.AdviseSink(&iid, &sink) }.map_err(failed(interface))?,
                 source: source.clone(),
             };
             match self.shared.try_borrow_mut() {
@@ -315,6 +349,11 @@ impl Tip_Impl {
     }
 
     fn deactivate(&self) {
+        self.release();
+        diag::deactivated();
+    }
+
+    fn release(&self) {
         self.reset_document();
         self.unpreserve();
         let (thread_mgr, client, sinks) = {

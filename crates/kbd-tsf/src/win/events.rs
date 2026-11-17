@@ -13,6 +13,7 @@ use windows_core::{BOOL, GUID, IUnknown, IUnknownImpl, Interface, Ref, Result};
 
 use crate::guard::{Entry, POISON, contain};
 use crate::guid::CLSID;
+use crate::locate::Reason;
 
 use super::tip::{Advice, Tip_Impl, same};
 
@@ -196,7 +197,8 @@ impl ITfActiveLanguageProfileNotifySink_Impl for Tip_Impl {
             let ours = unsafe { clsid.as_ref() }.is_some_and(|c| c.to_u128() == CLSID);
             if ours {
                 let profile = unsafe { guidprofile.as_ref() }.map(GUID::to_u128);
-                self.select_profile(profile.filter(|_| factivated.as_bool()));
+                let profile = profile.filter(|_| factivated.as_bool());
+                self.select_profile(profile.ok_or_else(|| Reason::NoProfile.into()));
             }
             Ok(())
         })

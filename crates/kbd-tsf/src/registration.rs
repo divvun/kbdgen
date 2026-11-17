@@ -83,6 +83,38 @@ impl Refusal {
             Refusal::Access(_) => 1336, // ERROR_INVALID_ACL
         }
     }
+
+    /// The refusal's reason code in diagnostics (`tsf.component.events`).
+    // [spec:kbdgen:req:tsf.component.events]
+    pub const fn reason(&self) -> &'static str {
+        match self {
+            Refusal::Name => "name",
+            Refusal::Unsupported => "unsupported",
+            Refusal::Version => "version",
+            Refusal::Location => "location",
+            Refusal::Missing(_) => "missing",
+            Refusal::Access(_) => "access",
+        }
+    }
+
+    /// The name of the file a `Missing` or `Access` refusal is about, as
+    /// one of the names of `tsf.arch.builds` and `tsf.arch.arm64x`.
+    /// Diagnostics record this name rather than the path.
+    // [spec:kbdgen:req:tsf.component.events]
+    pub fn file(&self) -> Option<&'static str> {
+        let (Refusal::Missing(path) | Refusal::Access(path)) = self else {
+            return None;
+        };
+        let (_, name) = split(path);
+        [
+            FORWARDER,
+            Machine::X86.dll(),
+            Machine::X64.dll(),
+            Machine::Arm64.dll(),
+        ]
+        .into_iter()
+        .find(|known| known.eq_ignore_ascii_case(name))
+    }
 }
 
 /// What one DLL registers.

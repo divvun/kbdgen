@@ -185,18 +185,101 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > MUST behave fully. Its key path MUST NOT block on I/O after the keyboard
 > data has loaded.
 
-> [spec:kbdgen:req:tsf.component.logging]
+> [spec:kbdgen:req:tsf.component.logging+1]
 > The text service MUST NOT record typed text, context text or key
-> identities anywhere. Diagnostics MAY record:
+> identities anywhere. Its only diagnostics are the ETW TraceLogging
+> events of `tsf.component.events`, from the provider
+> `Divvun.Keyboard.TextService`. Its GUID, which ETW derives from that
+> name, is `{B7732613-C499-504F-2AB7-FF5A4E513A9B}`. An event's fields MAY
+> hold only:
 >
 > - HRESULTs
 > - interface names
-> - context flags
-> - process names
-> - panic locations
+> - activation flags (`ITfThreadMgrEx::GetActiveFlags`)
+> - the process's image file name, without its directory
+> - panic locations: source file, line and column, never the message
+> - the names of the text service's entry points, and the reason codes and
+>   file names that `tsf.component.events` lists
 >
-> It MAY write them only when a machine-wide diagnostic switch is on. It
-> MUST NOT write them in secure or immersive mode.
+> Every string in an event MUST be compiled into the text service, and the
+> type of an event MUST NOT be able to hold text read at run time.
+>
+> ETW keeps an event only while a trace session enables the provider, and
+> only an administrator can start one: that session is the machine-wide
+> diagnostic switch. With no session, nothing is written. Events go to the
+> kernel's trace buffers, not to a file or to a process the text service
+> talks to (`tsf.component.self-contained`).
+>
+> The text service MUST NOT write an event on a thread where TSF activated
+> it in secure or immersive mode (`TF_TMF_SECUREMODE`,
+> `TF_TMF_IMMERSIVEMODE`). It MUST NOT write one on a thread where it is
+> not activated, or whose activation flags it could not read, either:
+> there it cannot tell the secure desktop from any other. The exceptions
+> are `DllRegisterServer` and `DllUnregisterServer`, which installers and
+> `regsvr32` call, never the secure desktop, and which handle no text.
+>
+> Writing MUST NOT panic or change what an entry point returns. An event
+> that cannot be written is dropped. The provider MUST be registered only
+> while an event is written, and without an enable callback. The text
+> service has no `DllMain` to unregister from, and COM may unload it
+> without calling `DllCanUnloadNow`. A registration kept between events
+> would therefore outlive the DLL: it leaks, and with a callback it crashes
+> the host when a session next changes. No event is written on the key
+> path, so registering costs nothing there. The events are encoded as
+> `TraceLoggingProvider.h` defines and written with `EventWriteTransfer`.
+> Microsoft's `tracelogging` crate is not used: it links
+> `OneCore_apiset.lib`, which moves most of the DLL's `kernel32` imports to
+> `api-ms-win-core-*` API sets.
+
+> [spec:kbdgen:req:tsf.component.events]
+> The text service writes these events and no others
+> (`tsf.component.logging`):
+>
+> | Event | Level | When | Fields |
+> |---|---|---|---|
+> | `Activated` | Informational | activation succeeded | `Flags`: the activation flags; `Process`: the image file name |
+> | `ActivationFailed` | Error | a call during activation failed, and the service deactivated again | `Interface`: the interface or method; `HResult` |
+> | `KeyboardLoaded` | Informational | on activation and on each switch to one of its profiles, the profile's keyboard loaded (`tsf.data.locate`) | none |
+> | `KeyboardInert` | Warning | at the same points, the profile is inert | `Reason` (`tsf.data.inert`); `HResult` of the call that failed, or 0 |
+> | `Panicked` | Critical | a panic was contained and the service poisoned (`tsf.component.panic`) | `Entry`: the export or COM method; `File`, `Line`, `Column` |
+> | `DllRegisterServer`, `DllUnregisterServer` | Informational on success, Error otherwise | every call | `HResult`, `Refusal`, `File` |
+>
+> Every event carries keyword 1. `Refusal` is empty or names the check
+> that refused registration:
+>
+> - `name`: the DLL is not named as `tsf.arch.builds` names it
+> - `unsupported`: the DLL cannot serve the machine (`tsf.arch.registration`)
+> - `version`, `location`: `tsf.register.upgrade` and
+>   `tsf.security.appcontainer`
+> - `missing`, `access`: a file that the registration loads is missing,
+>   or does not grant the package SIDs read and execute
+>
+> For `missing` and `access`, `File` is the file's name as
+> `tsf.arch.builds` or `tsf.arch.arm64x` gives it, never its path; it is
+> empty otherwise.
+>
+> (Verified on Windows 11 x64 with the commands below: `regsvr32` of the
+> release x64 DLL, misnamed, outside a version directory, outside
+> `%ProgramFiles%` and without the restricted packages' grant, wrote
+> `DllRegisterServer` events with `Refusal` `name`, `version`, `location`
+> and `access`, the last with `File` `divvun_tip_x64.dll`. The unit tests
+> wrote every other event, and `tracerpt` decoded all of them with their
+> fields. The same calls with no session left no event in any trace.
+> Unverified: events from a TSF host, which needs a signed-in session.)
+
+To collect a trace on a user's machine, start a session for the provider
+from an elevated prompt, reproduce the problem, then stop the session and
+decode the file. `tracerpt` puts each event's name in
+`RenderingInfo/Task`:
+
+```text
+logman start divvun-tsf -p {B7732613-C499-504F-2AB7-FF5A4E513A9B} 0xffffffffffffffff 5 -o %TEMP%\divvun-tsf.etl -ets
+logman stop divvun-tsf -ets
+tracerpt %TEMP%\divvun-tsf.etl -o %TEMP%\divvun-tsf.xml -of XML -y
+```
+
+The trace holds only the fields above. ETW adds a process id, a thread id
+and a time to each event.
 
 ## Keyboard data
 
@@ -226,6 +309,27 @@ bundles divvun-wind (`tsf.installer.bundle`).
 > resource of `tsf.data.resource`. Results are cached per process. If any
 > step fails, the profile is inert (it eats no keys). (Unverified: that this
 > key is readable from AppContainers.)
+
+> [spec:kbdgen:req:tsf.data.inert]
+> An inert profile MUST keep why: the step of `tsf.data.locate` that
+> failed, and the HRESULT of the Windows call that failed there, where one
+> did. The reason is cached with the profile, and `KeyboardInert` reports
+> it (`tsf.component.events`). Keys still pass. The reasons are:
+>
+> | Reason | What failed |
+> |---|---|
+> | `no-profile` | no profile of the text service's CLSID is active, as after a switch to another input |
+> | `layouts-unreadable` | opening the `Keyboard Layouts` key |
+> | `no-layout` | no layout's `Layout Product Code` names the profile |
+> | `no-layout-file` | reading that layout's `Layout File` |
+> | `layout-file-not-bare` | the `Layout File` is not a bare file name |
+> | `no-system-directory` | `GetSystemDirectoryW` |
+> | `layout-dll-unloadable` | `LoadLibraryExW` of the layout DLL |
+> | `no-model-resource` | finding the resource of `tsf.data.resource` |
+> | `model-resource-unreadable` | loading that resource, or it is empty |
+> | `model-version` | `Model::from_bytes` refused its major version (`tsf.data.version`) |
+> | `model-malformed` | the resource is not an encoded model |
+> | `model-invalid` | the model violates an invariant, or needs an engine feature the build lacks |
 
 > [spec:kbdgen:req:tsf.data.version]
 > The model's header is that of `ldml.model.encoding`: the ASCII magic
