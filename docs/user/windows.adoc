@@ -1,29 +1,303 @@
 == Windows
-Generating a Windows keyboard layout in the current implementation of `kbdgen` mainly
-concerns the generation of .klc files, and then subsequent building of those files
-on a Windows system.
+`kbdgen target … windows` builds a Windows keyboard layout DLL for every layout
+that has a Windows keyboard. Each layout gets a DLL for each of four
+architectures: x86, x64, arm64, and the "WOW64" build that 32-bit programs
+load on 64-bit Windows. kbdgen generates a small Rust crate per layout and
+builds it with `cargo` and the `rust-lld` linker that comes with Rust, so the
+build runs on Windows, macOS or Linux. You do not need Visual Studio, the
+Windows SDK or any other Microsoft tool.
 
-KLC is Windows's format for keyboard layouts, meaning Keyboard
-Layout Creator, which is also the tool that can be used to view and modify
-.klc files. The tool can be downloaded from Microsoft:
-https://www.microsoft.com/en-us/download/details.aspx?id=102134
+Each DLL also carries the layout's compiled keyboard. The Divvun text service
+(see <<windows-text-service>>) runs that keyboard on Windows and types what a
+layout DLL cannot, such as long dead-key outputs and transforms.
 
-Installing MSKLC requires enabling .NET Framework 3.5 in Windows Programs and Features.
+=== Prerequisites
+* Rust 1.85 or later, installed with https://rustup.rs[rustup]. The
+  toolchain must ship `rust-lld`, which rustup toolchains do.
+* The standard libraries of the three Windows targets:
++
+[source,sh]
+----
+rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc aarch64-pc-windows-msvc
+----
 
-\.klc is a format that has specific requirements for how a keyboard is described and
-must be encoded as UTF-16, with Windows style CRLF, or the file will be perceived
-as invalid.
+`cargo` and `rustc` must be on `PATH`. Before building, kbdgen checks all of
+this and stops with a message naming what is missing:
 
-For details on the .klc format, please see the developer documentation.
+[source,text]
+----
+Error: the Rust standard library is missing for i686-pc-windows-msvc, aarch64-pc-windows-msvc; install it with `rustup target add i686-pc-windows-msvc aarch64-pc-windows-msvc`
+----
+
+[source,text]
+----
+Error: `rustc 1.83.0 (90b35a623 2024-11-26)` is too old to build layout crates, which use edition 2024; Rust 1.85 or later is required (`rustup update`)
+----
+
+To build with a particular toolchain, set `RUSTUP_TOOLCHAIN` or a rustup
+override for the output directory; the check and the builds both use it.
+
+=== Building
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o windows-out windows
+----
+
+`-b` and `-o` are required, and come before `windows`. kbdgen loads the
+whole bundle, generates one crate per layout, then builds each crate four
+times and checks each DLL it builds. Nothing is written if any layout has a
+fatal error.
+
+The build ignores `RUSTFLAGS`, `CARGO_ENCODED_RUSTFLAGS`,
+`CARGO_BUILD_RUSTFLAGS`, `CARGO_BUILD_TARGET`, and the `+CARGO_TARGET_*+`
+and `+CARGO_PROFILE_*+` variables in your environment, since they would
+change how the DLLs are linked.
+
+[[windows-output]]
+=== What is generated
+For the `sme` bundle, which has three layouts with a Windows keyboard:
+
+[source,text]
+----
+windows-out/
+├── build/
+│   ├── kbdse-FI/
+│   │   ├── Cargo.toml
+│   │   ├── Cargo.lock
+│   │   ├── kbdse-FI.res
+│   │   ├── lib.rs
+│   │   ├── target/
+│   │   └── target-wow64/
+│   ├── kbdse-NO/
+│   └── kbdse-SE/
+├── arm64/
+│   ├── kbdse-FI.dll
+│   ├── kbdse-NO.dll
+│   └── kbdse-SE.dll
+├── wow64/
+├── x64/
+└── x86/
+----
+
+The DLLs in `x86`, `x64`, `arm64` and `wow64` are the output. Each
+architecture has its own directory, and a layout's DLL has the same file name
+in all four:
+
+[cols="1,2,3"]
+|===
+|Directory |Rust target |Installed to
+
+|`x64`
+|`x86_64-pc-windows-msvc`
+|`System32` on x64 Windows
+
+|`arm64`
+|`aarch64-pc-windows-msvc`
+|`System32` on Arm64 Windows
+
+|`wow64`
+|`i686-pc-windows-msvc`
+|`SysWOW64` on x64 and Arm64 Windows, for 32-bit programs
+
+|`x86`
+|`i686-pc-windows-msvc`
+|`System32` on 32-bit Windows
+|===
+
+The `wow64` DLL is 32-bit code that holds its tables in the 64-bit layout,
+because Windows reads them in the 64-bit kernel. The plain `x86` DLL does not
+load from `SysWOW64`.
+
+`build/<name>/` is the generated crate that kbdgen builds:
+
+* `lib.rs` - the layout's tables, as a `no_std` Rust library with no
+  dependencies
+* `Cargo.toml` - the crate manifest
+* `<name>.res` - the DLL's resources: its version information, the layout's
+  name, language and locale, and the compiled keyboard the text service reads
+* `Cargo.lock`, `target/` and `target-wow64/` - written by cargo
+
+When you build into the same directory again, kbdgen replaces the generated
+files and removes anything else in the crate directory, but keeps the
+`target` directories, so cargo rebuilds only what changed. `lib.rs` and the
+`.res` file are byte-for-byte the same for the same input.
+
+The version information comes from `targets/windows.yaml` and
+`project.yaml`. For `kbdse-FI` it reads:
+
+[cols="1,3"]
+|===
+|`CompanyName` |`UiT Norgga árktalaš universitehta` (`organisation`)
+|`FileDescription` |`Davvisámegiella (Suopma) Keyboard Layout`
+|`FileVersion`, `ProductVersion` |`1.0.6.1` (`version` and `build`)
+|`InternalName` |`kbdse-FI`
+|`LegalCopyright` |`+(c) 2017 Divvun/Giellatekno/UiT+` (`copyright`)
+|`OriginalFilename` |`kbdse-FI.dll`
+|`ProductName` |`Davvisámegiella (Suopma)`
+|===
+
+The DLL's string 1000 is the layout's display name, which the registry's
+`Layout Display Name` (`@%SystemRoot%\system32\<name>.dll,-1000`) points
+to. Strings 1100 and 1200 are the language name and the locale name.
 
 === Target configuration
-A Windows target file does not have to be specified. ??
+`targets/windows.yaml`:
+
+[source,yaml]
+----
+appName: North Sami Keyboard
+version: 1.0.6
+url: 'http://divvun.no'
+uuid: 108880AA-3489-4E88-9BA3-8A14B159B13B
+build: 1
+----
+
+* `version` - up to three dot-separated numbers from 0 to 65535: the first
+  three parts of the DLLs' file version
+* `build` - a number from 0 to 65535: the fourth part. `1.0.6` with build `1`
+  gives `1.0.6.1`.
+* `appName`, `url` and `uuid` - required when the file exists, but not used
+  by kbdgen
+
+The file is optional. Without it, or when `version` or `build` is not in the
+form above, kbdgen warns and uses version `1.0.0.0`.
+
+Keyboard options such as Shift Lock belong to each layout, not to this file.
+A `shiftLock`, `lrmRlm` or `keyNames` here fails loading:
+
+[source,text]
+----
+Error: …/sme.kbdgen/targets/windows.yaml: shiftLock is a keyboard option, not a Windows target setting; set targets.windows.shiftLock in each v4 layout file instead
+----
 
 === Keyboard layouts
+A bundle can mix v3 and v4 layouts; kbdgen builds both side by side. The
+Windows-only options (Shift Lock, LRM/RLM, extra modifiers, the 49th key,
+key names and dead-key names) need v4.
 
-```
+==== v4 layouts
+A v4 layout (`format: 4`) gets a Windows keyboard from its `windows` hardware
+variant, or from `default` when it has none. A layout with neither has no
+Windows output.
+
+This layout uses each Windows option. It builds with no warnings:
+
+[source,yaml]
+----
+format: 4
+displayNames: {sme: Davvisámegiella, en: Northern Sami}
+decimal: ','
+deadKeys:
+  ´: {name: AKUHTTA, compose: {a: á, A: Á, e: é, E: É}}
+  ˇ: {name: HÁČEK, compose: {c: č, C: Č, z: ž, Z: Ž}}
+hardware:
+  windows:
+    form: abnt2
+    extraModifiers: [rightCtrl]
+    layers:
+      none: |
+        \d{ˇ} 1 2 3 4 5 6 7 8 9 0 + \d{´}
+        á š e r t y u i o p å ŋ
+        a s d f g h j k l ö ä đ
+        ž z č c v b n m , . - /
+      shift: |
+        § ! " # ¤ % & / ( ) = ? `
+        Á Š E R T Y U I O P Å Ŋ
+        A S D F G H J K L Ö Ä Đ
+        Ž Z Č C V B N M ; : _ ?
+      altR: |
+        \u{0} \u{0} @ £ $ € \u{0} { [ ] } \ \u{0}
+        q w € \u{0} ŧ \u{0} \u{0} ï õ \u{0} \u{0} \u{0}
+        â \u{0} \u{0} \u{0} ǧ ǥ \u{0} ǩ \u{0} ø æ \u{0}
+        ǯ ʒ x \u{0} \u{0} \u{0} \u{0} µ < > \u{0} \u{0}
+      extra1: |
+        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
+        ; ς ε ρ τ υ θ ι ο π \u{0} \u{0}
+        α σ δ φ γ η ξ κ λ \u{0} \u{0} \u{0}
+        \u{0} ζ χ ψ ω β ν μ \u{0} \u{0} \u{0} \u{0}
+targets:
+  windows:
+    id: sme
+    locale: se-Latn-NO
+    shiftLock: true
+    lrmRlm: true
+    keyNames: {Caps Lock: Stuorrabustávat, Space: Gaskka}
+----
+
+A layout DLL has a fixed set of modifier states. Each takes the layer that
+the keyboard engine would choose for it:
+
+[cols="2,3"]
+|===
+|Windows state |Layer that serves it
+
+|no modifier |`none`
+|Shift |`shift`
+|Caps Lock, Caps Lock with Shift |`caps`, `caps shift`, or the layers
+`impliedLayers` derives
+|AltGr (Right Alt, or Ctrl with Alt) |`altR`, `alt` or `ctrl alt`
+|AltGr with Shift, AltGr with Caps Lock |the same with `shift` or `caps`
+|Ctrl |a `ctrl` layer, matched exactly
+|an extra modifier, with or without Shift |`extra1` to `extra3`, with or
+without `shift`
+|===
+
+Layers for other modifier states, such as `cmd` or Left Alt alone, are not
+part of the DLL.
+
+The Windows options:
+
+* `targets.windows.id` - names the DLL: `kbd` followed by the id, here
+  `kbdsme`. Without an id the name is `kbd` followed by the first five
+  characters of the language tag (`kbdse-FI`). See <<windows-names>>.
+* `targets.windows.locale` - the locale name stored in the DLL (string
+  1200). Without it, kbdgen uses the language tag. It does not change the
+  DLL's LCID, which always comes from the language tag.
+* `targets.windows.shiftLock` - Caps Lock works as Shift Lock: Caps Lock
+  turns it on and Shift turns it off.
+* `targets.windows.lrmRlm` - Left Shift+Backspace types the left-to-right
+  mark (U+200E) and Right Shift+Backspace the right-to-left mark (U+200F).
+* `targets.windows.keyNames` - replaces the names Windows gives keys, as
+  programs read them with `GetKeyNameText`. Each entry is one of Windows'
+  English key names: `Esc`, `Backspace`, `Tab`, `Enter`, `Ctrl`, `Shift`,
+  `Right Shift`, `Alt`, `Space`, `Caps Lock`, `F1` to `F24`, `Pause`,
+  `Scroll Lock`, `Sys Req`, the `Num` keypad names (`Num 7`, `Num Del`, …),
+  `Num Enter`, `Right Ctrl`, `Num /`, `Prnt Scrn`, `Right Alt`, `Num Lock`,
+  `Break`, `Home`, `Up`, `Page Up`, `Left`, `Right`, `End`, `Down`,
+  `Page Down`, `Insert`, `Delete`, `Help`, `Left Windows`, `Right Windows`
+  and `Application`. Any other name fails loading:
++
+[source,text]
+----
+…/layouts/sme.yaml: targets.windows.keyNames.CapsLock: CapsLock is not a Windows key name
+----
+* `deadKeys.<identity>.name` - the dead key's name, which
+  `GetKeyNameText` returns for a key whose unshifted output is that dead
+  key. Only top-level dead keys have names.
+* `extraModifiers` - up to three more modifier keys, chosen from
+  `rightCtrl`, `capsLock` and `B00` (the key left of Z on ISO keyboards).
+  The first selects the `extra1` layers, the second `extra2` and the third
+  `extra3`. A `capsLock` used this way no longer toggles Caps Lock. With
+  `B00` as a modifier, every layer must have `+\u{0}+` at `B00`.
+* `form: abnt2` - adds the 49th key, `B11`, the key left of Right Shift on
+  Brazilian ABNT2 keyboards, as a twelfth key in the last row. With the
+  default `iso` form the DLL has no `B11`.
+* `decimal` - the character the keypad's decimal key types. Only the first
+  character is used; without `decimal` the key types `.`.
+
+Keys the DLL has no place for are dropped with a warning: keys of a form
+outside the 49 ISO positions (such as the `jis` key `7D`), and any space bar
+output other than U+0020.
+
+[[windows-v3]]
+==== v3 layouts
+A v3 layout gets a Windows keyboard from its `windows` section:
+
+[source,yaml]
+----
 windows:
   config:
+    id: sme
     locale: se-Latn-FI
   primary:
     layers:
@@ -37,46 +311,339 @@ windows:
           Á Š E R T Y U I O P Å Ŋ
           A S D F G H J K L Ö Ä Đ
         Ž Z Č C V B N M ; : _
-      caps: |
-        § 1 2 3 4 5 6 7 8 9 0 + ´
-          Á Š E R T Y U I O P Å Ŋ
-          A S D F G H J K L Ö Ä Đ
-        Ž Z Č C V B N M , . -
-      caps+shift: |
-        ½ ! " # ¤ % & / ( ) = ? `
-          á š e r t y u i o p å ŋ
-          a s d f g h j k l ö ä đ
-        ž z č c v b n m ; : _
-      alt: |
-        |     \u{0} @     £     $     €     \u{0} {     [     ]     }     \     \u{0}
-              q     w     €     \u{0} ŧ     \u{0} \u{0} ï     õ     \u{0} ¨     ~
-              â     \u{0} \u{0} \u{0} ǧ     ǥ     \u{0} ǩ     \u{0} ø     æ     '
-        ǯ     ʒ     x     \u{0} \u{0} \u{0} \u{0} µ     <     >     \u{0}
-      alt+shift: |
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-              Q     W     \u{0} \u{0} Ŧ     \u{0} \u{0} Ï     Õ     \u{0} ^     ˇ
-              Â     \u{0} \u{0} \u{0} Ǧ     Ǥ     \u{0} Ǩ     \u{0} Ø     Æ     *
-        Ǯ     Ʒ     X     \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-      ctrl: |
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
-        \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0} \u{0}
   deadKeys:
     default: [´]
     shift: ['`']
-    caps: [´]
-    caps+shift: ['`']
-    alt: ['~', ¨]
-    alt+shift: [^, ˇ]
-```
+----
 
-==== Config
-The `config` section is used by Pahkat for spellchecking, the fields:
+* `config.id` and `config.locale` - as `targets.windows.id` and
+  `targets.windows.locale` in v4. Both are optional.
+* `primary.layers` - any of `default`, `shift`, `caps`, `caps+shift`, `alt`,
+  `alt+shift`, `alt+caps` and `ctrl`, each 48 keys in ISO order, split over
+  lines as you like. `alt` is AltGr. `+\u{...}+` writes a character by its
+  code point, and `+\u{0}+` means no key. A layer with fewer than 48 keys is
+  a fatal error.
+* `deadKeys` - for each layer, the keys in it that are dead keys. What each
+  dead key composes comes from the layout's `transforms`.
 
-* `locale` - defines the language locale
-* `id` - defines the id
+The text service runs a v3 layout's keyboard as `kbdgen ldml migrate` would
+convert it. kbdgen converts the layout in memory for this and leaves the
+file unchanged. If the conversion is blocked, the DLL is built without a
+compiled keyboard, the text service does nothing for that layout, and kbdgen
+warns:
 
-==== Layers
-Each layer is split by line,
-typically to 3 lines of the keyboard. Keys in the format of \u{} are written in Unicode to avoid display issues. In particular, \u{0} is an absent key. Note that KLC cannot support keys outside the Basic Multilingual Plane, even if Unicode supports them.
+[source,text]
+----
+WARN kbdse-FI: v3 layout: its migration is blocked by defects M05; no engine model is embedded, so the text service stays inert for this layout
+----
+
+`kbdgen ldml migrate --dry-run -b <bundle>` lists the defects. A blocking
+defect anywhere in the file blocks the conversion, even outside the
+`windows` section: in this example, a macOS layer with 47 keys. The
+converted keyboard can also type otherwise than the v3 DLL tables; `migrate`
+reports where as `M09` defects.
+
+[[windows-names]]
+==== Names and languages
+Each layout's keyboard name names its crate, its DLL and its resources.
+Without an id it is `kbd` and the first five characters of the language tag,
+so long tags are cut short (`sjd-Cyrl-RU` gives `kbdsjd-C`). The name must
+start with an ASCII letter and contain only ASCII letters, digits, `-` and
+`_`. Two layouts with the same name are a fatal error:
+
+[source,text]
+----
+Error: two Windows layouts are named kbdsme; set the Windows id to tell them apart
+----
+
+divvun-actions also derives the keyboard's product code from this name (see
+<<windows-installing>>), so changing the id changes the DLL's file name and
+makes it a different keyboard to Windows.
+
+The layout's display name, the DLL's description and its language name are
+all the layout's `displayNames` entry for its primary language subtag (`se`
+for `se-FI`). The DLL's LCID, the language of its strings, comes from the
+language tag alone. For a tag kbdgen has no LCID for, it is `0x2000`, and the
+default locale name is `<language>-<script>-<region>`, with `Latn` and `001`
+when the tag has no script or region.
+
+=== Diagnostics
+kbdgen reports every problem with a layout's DLL as it generates it. Each
+message starts with the keyboard name. There are three kinds:
+
+* *Errors* stop the build. An error in any layout stops it before any crate
+  is written. The message names the layout and what is wrong:
++
+[source,text]
+----
+Error: Windows layout for se-FI
+
+Caused by:
+    kbdse-FI: layer default has 47 keys, expected at least 48
+----
+* *Warnings* (`WARN`) mean the DLL types something other than the layout
+  says, or drops something. The DLL is still built.
+* *Information* (`INFO`), once per v4 layout, says what users get only
+  through the text service.
+
+==== What a layout DLL cannot express
+A layout DLL is a set of tables that Windows looks keys up in. It cannot
+express:
+
+* dead-key outputs longer than one UTF-16 unit, such as `b` with a combining
+  acute accent, or a character outside the Basic Multilingual Plane
+* transforms that rewrite text already typed, `reorder` rules, and
+  `backspace` rules
+* outputs that mix text and dead keys
+* normalization
+* a key output longer than 16 UTF-16 units
+* a key that both has its own Caps Lock output and is a dead key
+* a space bar that types anything but a plain space
+
+The Divvun text service does all of these, so where it is installed users get
+the whole layout. The DLL is what users type with where the text service does
+not run: at the Windows sign-in screen and on the secure desktop, in some
+games, on machines without the text service, and wherever the text service
+cannot load the keyboard (see <<windows-trace>>).
+
+For a v4 layout kbdgen sums this up in one message, with counts and up to
+ten examples of each kind. For the acceptance-test layout in
+`crates/kbd-tsf/tests/acceptance/fixture.kbdgen`:
+
+[source,text]
+----
+INFO kbdtsfa: without the text service, for example at the sign-in screen, users do not get: 7 transform rule(s) that do not start with a marker (e.g. group 3 rule 1: q'; group 3 rule 2: z'; group 3 rule 3: 𝕫'; group 3 rule 4: sch'; group 3 rule 5: ([…])-; group 3 rule 6: á'; group 4 rule 1: aʠ); 7 dead-key output(s) of more than one UTF-16 unit (e.g. ´ e → ẹ́; ´ z → 𝕫́; ´ b → b́; ´ B → B́; ~ ´ ˇ o → ṍ̌; ~ ´ ˇ space → ~´ˇ; ~ ´ space → ~´)
+----
+
+When the DLL covers everything, the message is:
+
+[source,text]
+----
+INFO kbdsme: the layout DLL reproduces the whole keyboard; the text service adds nothing
+----
+
+v3 layouts get the warnings below, but not this summary.
+
+One difference has no warning: on a letter key with Caps Lock on, Shift gives
+the lowercase letter in the DLL, as in Windows' own layouts. The text service
+types the layout's `caps shift` layer, which `impliedLayers: macOS` makes
+uppercase, as on macOS.
+
+==== Common warnings
+A dead-key composition the DLL cannot hold is left out:
+
+[source,text]
+----
+WARN kbdse-FI: dead-key input "ˇ -> J" -> output "J\\u{30C}": the output must be exactly one UTF-16 unit outside 0xF000-0xF002; omitted
+----
+
+In the DLL, `ˇ` then `J` types `ˇJ`, as for any key the dead key has no
+composition for. The text service types `J̌`. If the DLL matters for this
+composition, use a precomposed character where Unicode has one.
+
+A key that is a dead key without Caps Lock, and has its own Caps Lock
+output, different from both its unshifted and its shifted output, cannot
+have both in the DLL:
+
+[source,text]
+----
+WARN kbdtsfa: key E12: SGCAPS cannot be combined with a dead key on the same key; the caps layers are ignored
+----
+
+In the DLL, Caps Lock on that key behaves as if the layout had no Caps Lock
+layer for it.
+
+A chained dead key (a dead key typed after another) needs a single character
+that Windows types when the next key does not compose with it. That is its
+`standalone` output. When the standalone is longer, kbdgen uses a character
+from the Private Use Area instead:
+
+[source,text]
+----
+WARN kbdtsfa: chained dead-key state "~ -> ´": its standalone output cannot serve as its dead id; using U+F8FF, which an unmatched key emits
+----
+
+Give the nested dead key a one-character `standalone` to avoid this. A
+chained dead key none of whose compositions fit the DLL is left out:
+
+[source,text]
+----
+WARN kbdtsfa: chained dead-key state "~ -> ´ -> ˇ": none of its children fit the tables; omitted
+----
+
+Space bar outputs other than U+0020 are dropped, as are keys outside the 49
+ISO positions:
+
+[source,text]
+----
+WARN kbdtsfa: space bar in layer caps: the DLL's space row always types U+0020, so its output "\u{a0}" is dropped
+----
+
+Other warnings name the key and layer, and say what the DLL does instead.
+
+[[windows-text-service]]
+=== The text service
+The Divvun text service is a Windows Text Services Framework (TSF) input
+method that every Divvun keyboard shares. It runs kbdgen's keyboard engine on
+the compiled keyboard in each layout DLL, so it types everything the layout
+says: dead-key and transform output of any length, chains of dead keys of
+any depth, rules on text already typed, and outputs of any length, emoji
+included. While a dead key is pending, it shows the pending text underlined
+with dots, in programs that let it read their text.
+
+When the text service is installed, users see one entry for each keyboard
+in Windows' input list, and that entry is the text service. The layout DLL
+stays installed, as the fallback described above.
+
+==== Building the text service
+Keyboard builds do not build the text service: it is released and installed
+on its own, and one installation serves every keyboard. divvun-actions builds
+its installer from the kbdgen repository. Builds of `main` replace the
+`kbd-tsf-dev-latest` prerelease of divvun/kbdgen, a `kbd-tsf-v<version>` tag
+gets its own release, and keyboard builds embed the installer of
+`kbd-tsf-dev-latest`.
+
+To build it yourself, run `kbdgen tsf` in a checkout of kbdgen:
+
+[source,sh]
+----
+kbdgen tsf -w <kbdgen checkout> -o tsf-out
+----
+
+* `-w`, `--workspace` - the kbdgen workspace, which holds `crates/kbd-tsf`
+* `-o`, `--output-path` - the directory to write the DLLs to
+
+Unlike a layout DLL, the text service uses Rust's standard library, which
+needs Microsoft's linker and libraries. Build it on Windows, with the Visual
+Studio Build Tools (C++), the Windows SDK and the three Rust targets above.
+On other systems cargo stops with:
+
+[source,text]
+----
+error: linker `link.exe` not found
+----
+
+`kbdgen tsf` writes four files, only once all four have passed its checks:
+
+* `divvun_tip_x86.dll` - for 32-bit programs
+* `divvun_tip_x64.dll` - for x64 programs, also on Arm64 Windows
+* `divvun_tip_arm64.dll` - for Arm64 programs
+* `divvun_tip.dll` - for Arm64 Windows: a forwarder that loads the arm64 or
+  the x64 DLL, depending on the program
+
+It prints each file's absolute path on its own line to stdout, and its log to
+stderr. The files are unsigned; the release pipeline signs them.
+
+[[windows-installing]]
+==== Installing
+kbdgen does not install anything. The keyboard installer that divvun-actions
+builds:
+
+* runs the text service's installer first, which installs it into
+  `%ProgramFiles%\Divvun\Text Service\<version>` and never replaces a newer
+  one. If that fails, the keyboard is installed without it.
+* copies the layout DLLs to `System32` and `SysWOW64` as the table in
+  <<windows-output>> shows
+* registers the layout with `kbdi`, which also registers a text service
+  profile for it and enables that for the user. The profile's GUID is the
+  layout's product code, which divvun-actions derives from the keyboard
+  name.
+
+The text service finds a keyboard's data through the layout registered under
+`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts` whose
+`Layout Product Code` is the profile's GUID. It reads the compiled keyboard
+from the DLL that the key's `Layout File` names in `System32`.
+
+Uninstalling the last Divvun keyboard also removes the text service.
+
+[[windows-trace]]
+==== Collecting a diagnostic trace
+The text service never records typed text, the text around the caret, or
+which keys were pressed. It reports what it does as Windows events (ETW)
+from the provider `Divvun.Keyboard.TextService`, whose GUID is
+`+{B7732613-C499-504F-2AB7-FF5A4E513A9B}+`. Windows keeps these events only
+while a trace session is collecting them, and only an administrator can
+start one.
+
+To collect a trace on a user's machine, open an elevated Command Prompt and
+start a session:
+
+[source,bat]
+----
+logman start divvun-tsf -p {B7732613-C499-504F-2AB7-FF5A4E513A9B} 0xffffffffffffffff 5 -o %TEMP%\divvun-tsf.etl -ets
+----
+
+Reproduce the problem, then stop the session and decode the trace:
+
+[source,bat]
+----
+logman stop divvun-tsf -ets
+tracerpt %TEMP%\divvun-tsf.etl -o %TEMP%\divvun-tsf.xml -of XML -y
+----
+
+In the XML, each event's name is in `RenderingInfo/Task`. Windows adds a
+process id, a thread id and a time to each event. The events are:
+
+[cols="2,1,4"]
+|===
+|Event |Level |Meaning
+
+|`Activated`
+|Information
+|The text service started in a program. `Process` is the program's file
+name, `Flags` the activation flags.
+
+|`ActivationFailed`
+|Error
+|Starting failed. `Interface` names the call that failed, `HResult` its
+error.
+
+|`KeyboardLoaded`
+|Information
+|On activation or a switch to another Divvun keyboard: the keyboard's data
+loaded.
+
+|`KeyboardInert`
+|Warning
+|The keyboard's data could not be loaded, so the text service passes every
+key on. `Reason` says why (below), `HResult` gives the error of the failing
+call, or 0.
+
+|`Panicked`
+|Critical
+|The text service hit a bug and stopped handling keys in this program.
+`Entry`, `File`, `Line` and `Column` say where.
+
+|`DllRegisterServer`, `DllUnregisterServer`
+|Information, or Error on failure
+|The text service's installer registered or unregistered it. `Refusal`
+names a check that refused: `name`, `unsupported`, `version`, `location`,
+`missing` or `access`, with `File` naming the file for the last two.
+|===
+
+The `Reason` of a `KeyboardInert` event:
+
+[cols="1,3"]
+|===
+|Reason |What failed
+
+|`no-profile` |No Divvun keyboard is active, as after a switch to another input
+|`layouts-unreadable` |Opening the `Keyboard Layouts` registry key
+|`no-layout` |No installed layout has the profile's GUID as its
+`Layout Product Code`: the keyboard's layout is not installed
+|`no-layout-file` |Reading that layout's `Layout File`
+|`layout-file-not-bare` |The `Layout File` is a path, not a file name
+|`no-system-directory` |Finding the `System32` directory
+|`layout-dll-unloadable` |Loading the layout DLL
+|`no-model-resource` |The layout DLL has no compiled keyboard. For a v3
+layout, the build log says why (see <<windows-v3>>).
+|`model-resource-unreadable` |Reading the compiled keyboard, or it is empty
+|`model-version` |The keyboard was built for a newer text service; update
+the text service
+|`model-malformed` |The data is not a compiled keyboard
+|`model-invalid` |The compiled keyboard is inconsistent, or needs a feature
+this text service lacks
+|===
+
+The text service writes no events at the sign-in screen and other secure
+screens, nor in Store apps.

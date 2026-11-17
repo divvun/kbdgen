@@ -1,422 +1,536 @@
 == Windows
+The Windows target has two parts:
 
-=== Useful Sites
+* the *layout DLL generator*, `src/build/windows/kbdl`, which
+  `kbdgen target … windows` runs. It writes a `no_std` Rust crate per layout and builds it
+  into a keyboard layout DLL for x86, x64, arm64 and WOW64. The DLL is
+  specified in `docs/spec/kbdl.md` (rules `kbdl.*`), and the derivation of its
+  input from a v4 layout in `docs/spec/ldml/kbdl.md` (`ldml.kbdl.*`).
+* the *text service*, the crate `crates/kbd-tsf`: a TSF text input processor
+  that runs `kbd-engine` on the compiled keyboard each layout DLL carries.
+  `kbdgen tsf` builds it, from `src/build/windows/tsf`. It is specified in
+  `docs/spec/tsf.md` (`tsf.*`).
 
-Windows Keyboard Layout info: https://kbdlayout.info/
+The specs are normative and exhaustive; this chapter is a map of the code.
+Code cites the rules it implements as `[spec:kbdgen:req:kbdl.build]` and
+the tests that verify them as `[spec:kbdgen:req:kbdl.build/test]`, so
+searching for a rule id finds both.
 
-=== KLC Generation
+=== Layout DLL generator
+==== Pipeline
+`WindowsBuild` in `src/build/windows/mod.rs` runs two build steps, both in
+`kbdl/mod.rs`:
 
-See the .klc file example below for an overview.
+. `GenerateKbdl` calls `generate_bundle`, which, for each layout with Windows
+  output in bundle layout order, derives the generator input and the encoded
+  engine model (`source_layout`), then generates the crate files
+  (`generate`). Any error fails the whole bundle before anything is written.
+  `write` then puts each crate in `<out>/build/<name>/`, removing stale files
+  but keeping cargo's `target` and `target-wow64`.
+. `BuildKbdl` lists the crates again with `layout_names`, which for v4
+  layouts only lowers and resolves, so no diagnostic is reported twice. It
+  checks the toolchain once, then builds every crate for every variant.
 
-It is currently assumed that Windows only has the core platform (`primary`).
-.klc files _must_ be encoded in UTF-16 and _must_ have Windows style CRLF or MSKLC
-will refuse to read them.
+`generate` is the core, and does no I/O:
 
-The .klc file has multiple sections, and the important ones are
-LAYOUT, LIGATURE, and DEADKEY.
+[source,rust]
+----
+pub fn generate(
+    input: &LayoutInput,
+    model: Option<&[u8]>,
+    diag: &mut Diagnostics,
+) -> Result<GeneratedLayout> {
+    check_metadata(&input.metadata)?;
+    let tables = tables::build(input, diag)?;
+    let version = resources::file_version(&input.metadata, diag);
+    Ok(GeneratedLayout {
+        name: input.metadata.name.clone(),
+        cargo_toml: source::cargo_toml(&input.metadata.name),
+        lib_rs: source::lib_rs(&tables),
+        res: resources::res_file(&input.metadata, version, model),
+    })
+}
+----
 
-For the LAYOUT section, .klc expects rows for each set of keys across all supported
-layers (i.e., `default`, `shift`, etc.), in the following format:
+Warnings and information go through `diag::Diagnostics`, which logs each
+message with the keyboard name as it is raised and keeps it, so tests and
+golden files can see what was reported. Fatal conditions are returned as
+errors.
 
-scancode | virtual_key | default | shift | ctrl | alt | alt + shift
+==== Input
+`input.rs` defines `LayoutInput`, the format-independent input of
+`kbdl.input`: metadata, the decimal separator, a value or "no key" per
+`Layer` at each of the 49 positions `E00`…`B11`, up to three extra
+modifiers, the dead-key tree (`DeadKeyNode`, a leaf or a branch whose `" "`
+child is the standalone output), dead-key names, key-name overrides, and the
+Shift Lock and LRM/RLM flags. Two producers fill it.
 
-(note that the format of the columns beyond `virtual_key` is actually variable and 
-described in the SHIFTSTATE section above, but we only support
-the format presented here)
+*v3 layouts* (`bundle.rs`, `kbdl.input.bundle`) read the layout's `windows`
+section and its `transforms`. v3 cannot express extra modifiers, names,
+flags or `B11`, so those stay empty. The engine model of a v3 layout comes
+from `v3_model` in `mod.rs`: the layout file is migrated in memory
+(`ldml::migrate`) and its `windows` keyboard encoded. When the migration
+fails, is blocked or has no `windows` keyboard, the DLL is built without the
+model and a warning says why (`ldml.kbdl.model-resource`).
 
-If a given key has no key on a layer, it is represented with `-1`.
+*v4 layouts* (`adapter/`, `ldml.kbdl.*`) start from the compiled model.
+`adapter::load` lowers the layout's host documents and compiles the
+`windows` one; `adapter::adapt` then derives the input:
 
-Only ASCII keys can be represented as-is. All other keys must be converted to 
-Unicode hex.
+* `layers.rs` gives each `kbdl` layer the engine's modifier state for it
+  (`layer_states`) and takes the hardware layer the engine would select, then
+  the key at each position by scan code and its value. `kbd-engine` exposes
+  no layer-selection API, so this repeats the engine's selection; a test
+  checks that the two agree.
+* `dead_tree.rs` builds each dead key's tree by running `kbd-engine`: press
+  the dead key, then each distinct value of the layers, and record what is
+  committed or left pending (`ldml.kbdl.dead-tree`). The DLL's dead keys
+  therefore compose as the engine does wherever the tables can.
+* `classify.rs` reports, once per layout, what only the text service
+  provides (`ldml.kbdl.classify`).
+* `windows_inputs` in `adapter/mod.rs` copies the Windows-only options of
+  the model: extra modifiers, the flags, dead-key names, key names and the
+  decimal separator.
 
-The creation of .klc files is performed as follows:
+The model the DLL embeds is the encoding of the same compiled layout, so the
+DLL and the text service derive from one source. Metadata comes from
+`bundle::metadata` for both formats (`kbdl.metadata.bundle`,
+`kbdl.metadata.locale`): the keyboard name `kbd<id>` or `kbd` and the first
+five characters of the tag, the display name for the primary language
+subtag, the LCID from `iso639::lcid` and the tag, the project's
+`organisation` and `copyright`, and the Windows target's `version` and
+`build`.
 
-* a .klc file is created per `language-tag`, i.e., per `layout` file
-* various metadata required by .klc is generated
-* the keymap for the `layouts` are expected to be in the ISO keyboard format:
-https://en.wikipedia.org/wiki/ISO/IEC_9995#ISO/IEC_9995-1
-A variable called `cursor` is an incrementing integer that
-keeps track of which key we're on
-* the generation occurs in two steps. The first step, for every key, creates
-a `WindowsLayerSet`, which lists the set of the key on
-every layer, and notes any missing characters (nulls) and converts them to
-`None`. This step also converts any Unicode escapes into Unicode characters
-* the `WindowsLayerSet` is used to calculate the status of `caps_mode`,
-which is one of the expected .klc columns and roughly corresponds to
-whether a given key is related to the `shift` layer, `alt` layer,
-or both
-* the second step, the final .klc key is created, including any available information
-on its dead key or ligature status. Dead keys must be formatted such as `@`,
-and ligatures as `%%`
-* both steps validate to make sure the incoming characters are within BMP
-* SGCap rows are added
-* space and decimal rows are added
+==== Tables
+`tables::build` computes `Tables`, the contents of the `KBDTABLES` of `kbd.h`,
+from the input:
 
-Finally, after all this, PahkatClient is used to download the MS KLC installer
-and run on the resulting .klc files. This step only works on Windows.
+* the modifier bindings and character-table columns (`kbdl.layers`,
+  `kbdl.modifiers`), with up to three extra modifiers bound to spare
+  virtual keys
+* one character row per position, with Caps Lock attributes, the SGCAPS
+  rows and the dead rows that follow them (`kbdl.vk-chars`, `kbdl.caps`)
+* dead keys: the dead id of each dead state, one `aDeadKey` group per state,
+  and chained states, falling back to Private Use units downward from
+  `U+F8FF` (`kbdl.dead-keys*`)
+* ligatures of 2 to 16 UTF-16 units (`kbdl.ligatures`)
+* the scan-code maps, with the keys of extra modifiers rebound
+  (`kbdl.scancodes*`), key names with overrides, and the locale flags
 
-=== Nomenclature
+Most warnings come from here. `build` ends with `check_invariants`
+(`kbdl.tables.invariants`), so a generator bug fails generation instead of
+producing a DLL that Windows misreads.
 
-*BMP* - Basic Multilingual Plane. The true encoding Windows .klc actually expects: https://en.wikipedia.org/wiki/Plane_(Unicode)#Basic_Multilingual_Plane
+==== Source
+`source.rs` writes `Cargo.toml` and `lib.rs` (`kbdl.crate`, `kbdl.source`).
+`lib.rs` is ASCII and byte-for-byte deterministic: every piece of layout text
+is written as hexadecimal UTF-16 literals (`kbdl.escaping`). It holds:
 
-This means characters > `0xFFFF` cannot be represented in .klc at all. Not to be confused with keys, 
-as there are keys that require multiple UTF-16 codepoints to represent (see ligatures), 
-but no character can be > `0xFFFF`.
+* the `kbd.h` structures as `+#[repr(C)]+` types, with variable-length members
+  as const-generic arrays (`kbdl.structs`)
+* a pointer slot `P<T>`, which under the `wow64` feature is a 32-bit pointer
+  padded to 8 bytes, so a 32-bit build has the 64-bit table layout that
+  WOW64 needs (`kbdl.structs.pointers`, `kbdl.wow64`)
+* `const` assertions of every size and offset, so a layout mismatch fails
+  compilation (`kbdl.structs.layout`)
+* the tables as immutable statics, and the one export, `KbdLayerDescriptor`
+  (`kbdl.export`)
 
-*Ligatures* - ligatures are a Windows-specific term for keys that require 2 or 3 UTF-16 codepoints to represent. 
-This is required for certain languages.
+There is no `.def` file: rust-lld ignores a `/DEF` given after rustc's own,
+and rustc already exports `KbdLayerDescriptor` under that name on every
+target.
 
-See also: https://kbdlayout.info/features/ligatures
+==== Resources
+`resources.rs` writes `<name>.res` directly, without `rc.exe`
+(`kbdl.resources*`). It holds an empty entry, the `RT_VERSION` resource, the
+engine model as `RT_RCDATA` 1 when the layout has one (`tsf.data.resource`),
+and string table blocks with strings 1000 (description) and 1100 (language
+name) under the layout's LCID, and 1200 (locale name) under `0x0409`. The
+bytes are what `rc.exe` writes for the equivalent script. `file_version`
+turns the target's `version` and `build` into `a.b.c.d`.
 
-*SGCap* - "Some keyboards do not associate the CapsLock and Shift keys together for all keystrokes; 
-instead, pressing the CapsLock key defines an additional two shift states for specific keys. 
-Therefore, some languages cannot by typed without the CapsLock key. The "SG" in the name 
-orginiates from the first keyboard layout to use the functionality, the Swiss German 
-keyboard layout."
+==== Build and image verification
+`build.rs` builds each crate for the four `VARIANTS`:
 
-(Copied from: https://kbdlayout.info/features/SGCAPS)
+[cols="1,2,1,1"]
+|===
+|Variant |Target |Features |Target directory
 
+|`x86` |`i686-pc-windows-msvc` | |`target`
+|`x64` |`x86_64-pc-windows-msvc` | |`target`
+|`arm64` |`aarch64-pc-windows-msvc` | |`target`
+|`wow64` |`i686-pc-windows-msvc` |`wow64` |`target-wow64`
+|===
 
-While alt caps is mentioned as a potential layer, it does not seem to be used.
-Currently, we accept the keys but do not write them anywhere.
+`check_toolchain` first checks that `cargo` and `rustc` start, that rustc
+is 1.85 or later (edition 2024), that the directory
+`rustc --print target-libdir --target <triple>` prints exists for the three
+triples, and that `rust-lld` is in
+`<sysroot>/lib/rustlib/<host>/bin`. The probes are a closure, so
+`check_toolchain_with` is unit-tested with fake `cargo` and `rustc`. They run
+in `<out>/build`, which holds the crate directories the builds run in, so a
+rustup override applies to both.
 
-=== KLC Example
+`cargo_command` then runs, in the crate directory, for example for x64:
 
-```
-KBD	kbdse-FI	"Davvisámegiella (Suopma)"
+[source,sh]
+----
+cargo rustc --release --lib --target x86_64-pc-windows-msvc \
+  --target-dir <crate>/target -- -C linker=rust-lld \
+  -C link-arg=/NOENTRY -C link-arg=/NODEFAULTLIB -C link-arg=/SUBSYSTEM:NATIVE \
+  -C link-arg=<crate>/<name>.res \
+  -C link-arg=/MERGE:.rdata=.data -C link-arg=/MERGE:.text=.data \
+  -C link-arg=/MERGE:.bss=.data -C link-arg=/SECTION:.data,RE \
+  -C link-arg=/DEBUG:NONE -C link-arg=/Brepro
+----
 
-COPYRIGHT	"(c) 2017 Divvun/Giellatekno/UiT"
+The merges put code and data in one read-execute `.data` section, because
+Windows 11's `LoadKeyboardLayout` rejects a layout DLL whose code and data
+lie in separate sections (`kbdl.image`). `/NODEFAULTLIB` drops `msvcrt.lib`,
+which non-Windows hosts lack, so the build needs no MSVC on any host. The
+environment is scrubbed of `RUSTFLAGS` and the cargo variables that would
+change the link or the profile (`kbdl.build.environment`).
 
-COMPANY	"UiT Norgga árktalaš universitehta"
+`image::verify` reads each DLL's PE headers and fails unless the machine,
+the DLL flag, entry point 0, the native subsystem, exactly the sections
+`.data` (executable, readable, not writable), `.rsrc` and `.reloc`, no
+imports, and the single export `KbdLayerDescriptor` at ordinal 1 are as
+`kbdl.image.verify` requires. The DLL is then copied to
+`<out>/<variant>/<name>.dll`.
 
-LOCALENAME	"se-Latn-FI"
+==== Tests
+Run the generator's tests with:
 
-LOCALEID	"00000c3b"
+[source,sh]
+----
+cargo test --lib build::windows::kbdl
+----
 
-VERSION	1.0
+*Golden tests* (`kbdl/golden/`) generate four fixtures and compare their
+`Cargo.toml`, `lib.rs`, `.res` and diagnostics with files under
+`kbdl/testdata/golden/<fixture>/`:
 
-SHIFTSTATE
+* `vro` - the v4 Võro layout, `crates/kbd-engine/tests/golden/layouts/vro.yaml`
+* `vro-v3` and `se-NO-v3` - the v3 layouts of
+  `crates/kbd-engine/tests/golden/v3/`, whose tables come from
+  `kbdl.input.bundle` and models from migration
+* `features` - `kbdl/testdata/features.yaml`, a v4 layout with chained and
+  named dead keys, ligatures, an extra modifier, SGCAPS, the 49th key, Shift
+  Lock, LRM/RLM, a decimal separator and key-name overrides
 
-0 // 4
-1 // 5 Shift
-2 // 6 Ctrl
-6 // 7 Alt
-7 // 8 Alt + Shift
+`fixture_dlls_hold_their_golden_tables` is ignored by default because it
+needs the three Windows targets. It runs both build steps on each fixture,
+verifies every variant's image, and decodes the `KBDTABLES` that
+`KbdLayerDescriptor` returns by following every pointer
+(`golden/kbdtables.rs`), comparing the result with `kbdtables.txt`. The DLL
+bytes are not golden: they are reproducible for one toolchain, but code
+generation changes between Rust releases, while the decoded tables do not.
 
-LAYOUT
+[source,sh]
+----
+cargo test --lib build::windows::kbdl::golden -- --include-ignored
+KBDGEN_BLESS=1 cargo test --lib build::windows::kbdl::golden -- --include-ignored
+----
 
-29	OEM_3	4	00a7	00bd	-1	|	-1
-02	1	4	1	!	-1	-1	-1
-03	2	4	2	"	-1	@	-1
-04	3	4	3	#	-1	00a3	-1
-05	4	4	4	00a4	-1	$	-1
-06	5	4	5	%	-1	20ac	-1
-07	6	4	6	&	-1	-1	-1
-08	7	4	7	/	-1	{	-1
-09	8	4	8	(	-1	[	-1
-0a	9	4	9	)	-1	]	-1
-0b	0	4	0	=	-1	}	-1
-0c	OEM_MINUS	4	+	?	-1	\	-1
-0d	OEM_PLUS	4	@00b4	@`	-1	-1	-1
-10	Q	1	00e1	00c1	-1	q	Q
-11	W	1	0161	0160	-1	w	W
-12	E	5	e	E	-1	20ac	-1
-13	R	5	r	R	-1	-1	-1
-14	T	1	t	T	-1	0167	0166
-15	Y	5	y	Y	-1	-1	-1
-16	U	5	u	U	-1	-1	-1
-17	I	1	i	I	-1	00ef	00cf
-18	O	1	o	O	-1	00f5	00d5
-19	P	5	p	P	-1	-1	-1
-1a	OEM_4	1	00e5	00c5	-1	@00a8	@^
-1b	OEM_6	1	014b	014a	-1	@~	@02c7
-1e	A	1	a	A	-1	00e2	00c2
-1f	S	5	s	S	-1	-1	-1
-20	D	5	d	D	-1	-1	-1
-21	F	5	f	F	-1	-1	-1
-22	G	1	g	G	-1	01e7	01e6
-23	H	1	h	H	-1	01e5	01e4
-24	J	5	j	J	-1	-1	-1
-25	K	1	k	K	-1	01e9	01e8
-26	L	5	l	L	-1	-1	-1
-27	OEM_1	1	00f6	00d6	-1	00f8	00d8
-28	OEM_7	1	00e4	00c4	-1	00e6	00c6
-2b	OEM_5	1	0111	0110	-1	'	*
-56	OEM_102	1	017e	017d	-1	01ef	01ee
-2c	Z	1	z	Z	-1	0292	01b7
-2d	X	1	010d	010c	-1	x	X
-2e	C	5	c	C	-1	-1	-1
-2f	V	5	v	V	-1	-1	-1
-30	B	5	b	B	-1	-1	-1
-31	N	5	n	N	-1	-1	-1
-32	M	5	m	M	-1	00b5	-1
-33	OEM_COMMA	4	,	;	-1	<	-1
-34	OEM_PERIOD	4	.	:	-1	>	-1
-35	OEM_2	4	-	_	-1	-1	-1
-39	SPACE	0	0020	0020	0020	-1	-1
-53	DECIMAL	0	.	.	-1	-1	-1
+The second command rewrites the golden files; review the diff.
 
-DEADKEY 00b4
+*Differential tests* (`kbdl/differential/`, `tsf.test.differential`) check
+that the DLL types what the text service types. For every fixture layout (the
+v4 and v3 golden layouts of `kbd-engine` and `kbdl/testdata/vro-v3.yaml`)
+they compare `kbd-engine`, on the model embedded in the generated `.res`,
+with `simulate::Dll`, which applies the generated tables as `ToUnicodeEx`
+does. The cases are every layer at each of the 49 positions and the space
+bar, then every dead-key path up to four keys. Each difference must be one
+of the exceptions listed in `exceptions.rs`, each documented in the spec,
+such as Caps+Shift on `CAPLOK` keys or multi-unit dead-key outputs.
+`each_listed_exception_explains_a_difference` and
+`corrupted_tables_are_not_explained` keep that list honest. The same module
+checks that every built `.res` decodes to the layout's model
+(`tsf.test.engine`) and how embedded model versions load
+(`tsf.data.version`).
 
-0061	00e1
-0041	00c1
-00e5	01fb
-00c5	01fa
-00e6	01fd
-00c6	01fc
-0063	0107
-0043	0106
-0065	00e9
-0045	00c9
-0067	01f5
-0047	01f4
-0069	00ed
-0049	00cd
-006b	1e31
-004b	1e30
-006c	013a
-004c	0139
-006d	1e3f
-004d	1e3e
-006e	0144
-004e	0143
-006f	00f3
-004f	00d3
-00f8	01ff
-00d8	01fe
-0070	1e55
-0050	1e54
-0072	0155
-0052	0154
-0073	015b
-0053	015a
-0075	00fa
-0055	00da
-0076	01d8
-0056	01d7
-0077	1e83
-0057	1e82
-0079	00fd
-0059	00dd
-007a	017a
-005a	0179
-0020	00b4
+On Windows, `differential/windows.rs` checks the simulation against the real
+`ToUnicodeEx`: it installs each fixture's DLL under a test KLID (`a0f00409`
+upwards, as `kbdzf<n>.dll` in `System32`), types every case, and removes
+them again. Run it elevated, in an interactive session:
 
-DEADKEY 0060
+[source,sh]
+----
+cargo test real_dlls -- --ignored
+----
 
-0061	00e0
-0041	00c0
-0065	00e8
-0045	00c8
-0069	00ec
-0049	00cc
-006e	01f9
-004e	01f8
-006f	00f2
-004f	00d2
-0075	00f9
-0055	00d9
-0076	01dc
-0056	01db
-0077	1e81
-0057	1e80
-0079	1ef3
-0059	1ef2
-0020	0060
+*Adapter tests* (`adapter/tests/`) check each `ldml.kbdl.*` rule on small
+layouts, the embedded model, and the v4 Võro layout against its v3
+counterpart through the tables both produce. `migrated.rs` compares a v3
+layout's DLL with the DLL of its migration; the migration tests in
+`src/ldml/migrate/tests` use it to split the differences into those the
+migration's defects explain and the rest.
 
-DEADKEY 00a8
+=== Text service
+==== Crate structure
+`crates/kbd-tsf` builds `kbd_tsf.dll`, a `cdylib` with `windows` and
+`windows-core` 0.62. Everything that needs no TSF call is in host-independent
+modules, tested on every host; `src/win/`, compiled only on Windows, adapts
+TSF and ETW to them.
 
-0061	00e4
-0041	00c4
-0065	00eb
-0045	00cb
-0068	1e27
-0048	1e26
-0069	00ef
-0049	00cf
-006f	00f6
-004f	00d6
-0074	1e97
-0075	00fc
-0055	00dc
-0077	1e85
-0057	1e84
-0078	1e8d
-0058	1e8c
-0079	00ff
-0059	0178
-0020	00a8
+[cols="1,3"]
+|===
+|Module |Contents
 
-DEADKEY 005e
+|`keys.rs` |Key identity: scan code and extended flag, never the virtual key, which comes from the hidden US dummy layout beneath the text service. Modifier state, AltGr, extra modifiers, Shift Lock.
+|`claim.rs` |Which key events are eaten: a key down exactly when the engine's action is not `Pass`, a key up exactly when its key down was.
+|`document.rs` |Per-context state: the engine `State`, the text cache for contexts whose text cannot be read, whether a preedit is shown, and the key, pass and reset logic.
+|`planner.rs` |Turns an engine `Action` and the context's mode into text operations, with no TSF calls.
+|`text.rs` |`TextContext`, the trait those operations run against.
+|`locate.rs` |Finding and decoding a profile's keyboard data, the per-process cache, and the `Reason` a profile is inert.
+|`registration.rs` |What `DllRegisterServer` decides: the `InprocServer32` path per architecture, where the DLLs may lie, and the package grants their DACLs need.
+|`guard.rs` |Panic containment and the poisoned flag.
+|`diag.rs`, `etw.rs` |Diagnostic events, the per-thread gate, and their TraceLogging encoding.
+|`server.rs`, `guid.rs` |Object and lock counts for `DllCanUnloadNow`; the CLSID and GUID parsing.
+|`win/exports.rs` |The four exports and the class factory.
+|`win/tip.rs` |The text input processor object, its per-thread state, and activation.
+|`win/input.rs` |The key event sink and preserved keys.
+|`win/session.rs` |Edit sessions, `TextContext` over `ITfContext`, and the `SendInput` fallback.
+|`win/events.rs` |The sinks that reset the engine: focus, foreign edits, composition end, compartments, profile switches.
+|`win/display.rs` |The display attribute of the preedit, a dotted underline.
+|`win/data.rs` |Reading the keyboard data from the registry and the layout DLL.
+|`win/register.rs`, `win/facts.rs` |Registration, and the facts it decides on.
+|`win/trace.rs` |The ETW writer.
+|===
 
-0061	00e2
-0041	00c2
-0063	0109
-0043	0108
-0065	00ea
-0045	00ca
-0067	011d
-0047	011c
-0068	0125
-0048	0124
-0069	00ee
-0049	00ce
-006a	0135
-004a	0134
-006f	00f4
-004f	00d4
-0073	015d
-0053	015c
-0075	00fb
-0055	00db
-0077	0175
-0057	0174
-0079	0177
-0059	0176
-0020	005e
+The crate's Clippy configuration denies `panic!`, `unwrap`, `expect`,
+indexing and `unreachable!`, since any panic takes the host application's
+keyboard input with it.
 
-DEADKEY 007e
+==== COM entry points
+The DLL exports exactly `DllGetClassObject`, `DllCanUnloadNow`,
+`DllRegisterServer` and `DllUnregisterServer` (`tsf.component.crate`).
+`DllGetClassObject` serves only the CLSID
+`+{5E668C8A-2FB8-41D2-90B1-9C132653FA9D}+`. Building with `KBD_TSF_CLSID` set
+to another GUID compiles that one in instead, which the Windows tests use to
+register a build beside an installed text service. `build.rs` silences the
+linker's LNK4104 warning about the exports.
 
-0061	00e3
-0041	00c3
-0069	0129
-0049	0128
-006e	00f1
-004e	00d1
-006f	00f5
-004f	00d5
-0075	0169
-0055	0168
-0020	007e
+The `Tip` object (`win/tip.rs`) implements `ITfTextInputProcessorEx` and the
+sinks of `tsf.component.interfaces`: thread manager events, key events,
+text edits, compositions, compartments, the display attribute provider and
+language profile switches. Every Divvun keyboard is a profile of this one
+CLSID, so switching between them does not reactivate it; the profile sink
+loads the new profile's keyboard data instead.
 
-DEADKEY 02c7
+==== Keyboard data and the engine
+On activation and on each profile switch, `win/data.rs` looks under
+`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts` for the layout
+whose `Layout Product Code` is the profile GUID, loads its `Layout File` from
+`System32` as a resource-only image, and decodes `RT_RCDATA` 1 with
+`Model::from_bytes` (`tsf.data.locate`). Results are cached per process. A
+profile whose data cannot be loaded is *inert*: it eats no keys, and keeps
+the `locate::Reason` for diagnostics (`tsf.data.inert`).
 
-0061	01ce
-0041	01cd
-0063	010d
-0043	010c
-0064	010f
-0044	010e
-0065	011b
-0045	011a
-0067	01e7
-0047	01e6
-0068	021f
-0048	021e
-0069	01d0
-0049	01cf
-006a	01f0
-006b	01e9
-004b	01e8
-006c	013e
-004c	013d
-006e	0148
-004e	0147
-006f	01d2
-004f	01d1
-0072	0159
-0052	0158
-0073	0161
-0053	0160
-0074	0165
-0054	0164
-0075	01d4
-0055	01d3
-0076	01da
-0056	01d9
-007a	017e
-005a	017d
-0292	01ef
-01b7	01ee
-0020	02c7
+Each context has a `Document` with one engine `State`. For each key,
+`Model::key(&State, &Context, &KeyEvent)` gives an `Action`, and the planner
+turns it into text operations:
 
+* in a context whose text can be read, a `SetText` over the range before the
+  caret, inside a read-write edit session (`tsf.edit.apply`)
+* in a *transitory* context, such as a Win32 `EDIT`, which returns no text
+  before the caret: insertions with `SetText` at the selection, and edits
+  that delete with one `SendInput` of Backspaces and Unicode characters. The
+  engine's context is then a cache of what the text service typed
+  (`tsf.edit.inject`, `tsf.edit.cache`).
+* a non-empty preedit as a TSF composition, in contexts whose text can be
+  read (`tsf.edit.preedit`)
 
-KEYNAME
+TSF calls `OnKeyDown` only for keys `OnTestKeyDown` ate, so `OnTestKeyDown`
+decides every key in a read-only synchronous session, without changing
+engine state, and `OnKeyDown` applies the kept decision
+(`tsf.keys.phases`). The engine is pure, so that decision is exact. TSF
+calls no key sink while Alt is held, so AltGr and Ctrl+Alt chords arrive as
+preserved keys (`tsf.keys.preserved`). The engine is reset whenever the
+document changes in a way the text service did not cause
+(`tsf.edit.reset`).
 
-01	Esc
-0e	Backspace
-0f	Tab
-1c	Enter
-1d	Ctrl
-2a	Shift
-36	"Right Shift"
-37	"Num *"
-38	Alt
-39	Space
-3a	"Caps Lock"
-3b	F1
-3c	F2
-3d	F3
-3e	F4
-3f	F5
-40	F6
-41	F7
-42	F8
-43	F9
-44	F10
-45	Pause
-46	"Scroll Lock"
-47	"Num 7"
-48	"Num 8"
-49	"Num 9"
-4a	"Num -"
-4b	"Num 4"
-4c	"Num 5"
-4d	"Num 6"
-4e	"Num +"
-4f	"Num 1"
-50	"Num 2"
-51	"Num 3"
-52	"Num 0"
-53	"Num Del"
-54	"Sys Req"
-57	F11
-58	F12
-7c	F13
-7d	F14
-7e	F15
-7f	F16
-80	F17
-81	F18
-82	F19
-83	F20
-84	F21
-85	F22
-86	F23
-87	F24
+==== Registration
+`DllRegisterServer` writes the CLSID's `InprocServer32` and the TSF
+categories; profiles are registered by `kbdi`, not the text service
+(`tsf.register.server`). `registration.rs` decides first and `win/facts.rs`
+gathers what it decides on. Registration refuses, writing nothing, unless
+the DLL is named as `kbdgen tsf` names it, lies in a directory named for its
+own `kbd-tsf` version under the 64-bit `%ProgramFiles%`, and every file the
+registration loads grants read and execute to `ALL APPLICATION PACKAGES` and
+`ALL RESTRICTED APPLICATION PACKAGES` (`tsf.arch.registration`,
+`tsf.register.upgrade`, `tsf.security.appcontainer`). To register a local
+build, copy it to `%ProgramFiles%\Divvun\Text Service\<version>` first.
 
-KEYNAME_EXT
+==== Diagnostics
+The text service records no typed text, context text or key identities
+(`tsf.component.logging`). Its only output is ETW TraceLogging events from
+the provider `Divvun.Keyboard.TextService`
+(`+{B7732613-C499-504F-2AB7-FF5A4E513A9B}+`), listed in
+`tsf.component.events`; the
+link:../user/kbdgen.html#windows-trace[user guide] shows how to collect
+them.
 
-1c	"Num Enter"
-1d	"Right Ctrl"
-35	"Num /"
-37	"Prnt Scrn"
-38	"Right Alt"
-45	"Num Lock"
-46	Break
-47	Home
-48	Up
-49	"Page Up"
-4b	Left
-4d	Right
-4f	End
-50	Down
-51	"Page Down"
-52	Insert
-53	Delete
-54	<00>
-56	Help
-5b	"Left Windows"
-5c	"Right Windows"
-5d	Application
+* `diag::Event` is `Copy + 'static`, checked at compile time, so no event can
+  hold a string read at run time.
+* A per-thread gate drops every event on a thread where the text service is
+  not activated, or is activated in secure or immersive mode. Only the
+  registration exports are exempt.
+* `etw.rs` encodes events as `TraceLoggingProvider.h` defines them.
+  `win/trace.rs` registers the provider only while it writes one event, with
+  no enable callback: the DLL has no `DllMain` and COM may unload it without
+  asking `DllCanUnloadNow`, so a longer registration would outlive it.
+  Microsoft's `tracelogging` crate is not used because it links
+  `OneCore_apiset.lib`.
 
-DESCRIPTIONS
+`tests/self_contained.rs` scans the sources for anything that talks to other
+processes, the network or files, starts processes, writes the registry
+outside registration, creates windows, or logs other than through the gate
+(`tsf.component.self-contained`).
 
-0c3b	Davvisámegiella (Suopma)
+==== Panic containment
+TSF loads the text service into every process the user types in, and an
+unwind that reaches an `extern "system"` function aborts the process. Every
+export and COM method therefore runs its body through `guard::contain`,
+which turns a panic into `E_UNEXPECTED`, writes a `Panicked` event with the
+panic's location but never its message, and poisons the text service for
+the process: from then on it passes every key and requests no edit session
+(`tsf.component.panic`). This needs `panic = "unwind"`, the release default,
+which the workspace keeps.
 
-LANGUAGENAMES
+==== Building
+`kbdgen tsf -w <workspace> -o <out>` (`src/build/windows/tsf/mod.rs`) runs
+the toolchain check of the layout build, then for each of
+`i686-pc-windows-msvc`, `x86_64-pc-windows-msvc` and
+`aarch64-pc-windows-msvc`:
 
-0c3b	Davvisámegiella (Suopma)
+[source,sh]
+----
+cargo rustc --package kbd-tsf --release --lib --target <triple> \
+  --target-dir <workspace>/target -- -C target-feature=+crt-static
+----
 
-ENDKBD
-```
+The C runtime is linked statically, because the text service loads into
+processes on machines without the Visual C++ runtime. The DLL links `std`,
+which needs MSVC and the Windows SDK, so this runs on Windows.
+`verify::verify_tip` checks each DLL's machine, the DLL flag, exactly the
+four exports with none forwarded, and no C runtime among its imports; the
+DLL is renamed `divvun_tip_x86.dll`, `divvun_tip_x64.dll` or
+`divvun_tip_arm64.dll`.
+
+For Windows on Arm, `divvun_tip.dll` is an Arm64X pure forwarder whose native
+exports forward to `divvun_tip_arm64` and whose x64 exports forward to
+`divvun_tip_x64` (`tsf.arch.arm64x`). A merged Arm64X Rust DLL crashes in x64
+processes (rust-lang/rust#145154). `coff.rs` writes the native and Arm64EC
+load configuration objects, with the data of LLD's own test inputs, so no C
+compiler or assembler is needed; `link_forwarder` links them with
+`rust-lld -flavor link -machine:arm64x` and two generated `.def` files, and
+`verify::verify_forwarder` checks both views. This part runs on any host,
+and so do its tests:
+
+[source,sh]
+----
+cargo test --lib build::windows::tsf
+----
+
+`write_release` writes the four files only when all have passed, and
+`kbdgen tsf` prints their paths to stdout for signing
+(`tsf.security.signing`).
+
+==== Tests
+`kbd-tsf` is not a default workspace member, so name it:
+
+[source,sh]
+----
+cargo test -p kbd-tsf
+----
+
+On every host this runs the unit tests in `src/tests/` against a fixture
+keyboard (`tests/fixture.rs`) and an in-memory context (`tests/fake.rs`):
+key identity, AltGr, extra modifiers, Shift Lock, edits, preedits, the
+cache, resets and registration decisions (`tsf.test.host`). It also runs
+`tests/self_contained.rs`. On Windows it adds `src/win/tests.rs`: the
+exports, the interfaces the object answers to, the display attribute, and a
+forced panic in every entry point, which must return `E_UNEXPECTED` and
+poison the service.
+
+The VM and acceptance tests type through TSF, which needs a desktop. They
+run on a Windows 11 machine, elevated, over SSH or a console, while the same
+user is signed in interactively: each drives the signed-in session through a
+scheduled task and sends scan codes with `SendInput`.
+
+The *VM test* (`tests/vm.rs`, `tests/vm/`, `tsf.test.vm`) tests a build
+that its script registers itself, without the installers:
+
+[source,bat]
+----
+kbdgen target -b crates/kbd-tsf/tests/vm/fixture.kbdgen -o <out> windows
+set KBD_TSF_VM_LAYOUT=<out>
+cargo test -p kbd-tsf --test vm -- --ignored --nocapture
+----
+
+`run-vm.ps1` builds the x64 and x86 DLLs under a test CLSID and checks where
+`DllRegisterServer` refuses: a misnamed DLL, one outside a version
+directory, one outside `%ProgramFiles%`, and one without the restricted
+packages' grant. It then registers both, installs each fixture layout (Võro,
+and the emoji layout `und-Zsye` of `tsf.test.emoji`) under a test KLID and
+profile, and types every case into a Win32 `EDIT`, a RichEdit and a WPF
+`TextBox` from 64-bit PowerShell, an `EDIT` and a WPF `TextBox` from 32-bit
+PowerShell, an `EDIT` with the layout DLL alone, and a console switched to
+the profile with Win+Space (`TsfDriver.cs`, `ConsoleReader.cs`,
+`type.ps1`). Finally it removes everything and reports what is left.
+`vm.rs` holds the cases and checks the output.
+
+The *acceptance test* (`tests/acceptance.rs`, `tests/acceptance/`,
+`tsf.test.acceptance`) installs a keyboard as a user gets it. It also needs
+Inno Setup 6, a kbdi checkout, divvun-actions' `divvun-tip.iss`, and the
+keyboard installer script divvun-actions generates for
+`tests/acceptance/fixture.kbdgen`, saved as `install.all.iss`:
+
+[source,bat]
+----
+set KBD_TSF_ACCEPTANCE_ISS=<dir with divvun-tip.iss and install.all.iss>
+set KBD_TSF_ACCEPTANCE_KBDI=<kbdi checkout>
+cargo test -p kbd-tsf --test acceptance -- --ignored --nocapture
+----
+
+`acceptance.ps1` builds kbdgen, the fixture's layout DLLs, the text service
+(`kbdgen tsf`) and kbdi under a test CLSID, and both installers under test
+AppIds. It records the machine's state, runs the keyboard installer
+silently, and types the cases of `acceptance/cases.rs` through the profile
+kbdi enabled, into the controls of the VM test, a console, and an `EDIT`
+with the layout DLL alone. It then uninstalls, installs again and uninstalls
+while a process holds the text service loaded (`hold.ps1`), and checks that
+the state is as before. The expected text is what `kbd-engine` types on the
+model embedded in the built x64 layout DLL.
+
+Neither test loads the arm64 DLL or the Arm64X forwarder, which needs a
+Windows on Arm machine.
+
+=== References
+* `docs/spec/kbdl.md`, `docs/spec/ldml/kbdl.md` and `docs/spec/tsf.md`, with
+  the sources each one lists
+* `docs/spec/ldml/engine.md`, the engine both the adapter and the text service
+  run
+* Windows keyboard layouts and their features, such as SGCAPS and
+  ligatures: https://kbdlayout.info/
+* Microsoft's keyboard layout samples (`kbdus`, `kbdfr`, `kbdgr`):
+  https://github.com/microsoft/Windows-driver-samples/tree/main/input/layout
+* `kbd.h` in ReactOS and Wine:
+  https://github.com/reactos/reactos/blob/master/sdk/include/ndk/kbd.h,
+  https://github.com/wine-mirror/wine/tree/master/include
+* `KBDTABLES` in the `windows` crate:
+  https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/UI/Input/KeyboardAndMouse/struct.KBDTABLES.html
+* Resource formats:
+  https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource,
+  https://learn.microsoft.com/en-us/windows/win32/menurc/resource-file-formats
+* Text Services Framework:
+  https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework
+* Input method requirements for Store apps:
+  https://learn.microsoft.com/en-us/windows/apps/develop/input/input-method-editor-requirements
+* Microsoft's sample IME, `Samples/IME/cpp/SampleIME` in
+  https://github.com/microsoft/Windows-classic-samples[Windows-classic-samples],
+  and Keyman's TSF text service, `windows/src/engine/kmtip` in
+  https://github.com/keymanapp/keyman[keymanapp/keyman]
+* Arm64X: https://learn.microsoft.com/en-us/windows/arm/arm64x-pe,
+  https://learn.microsoft.com/en-us/windows/arm/arm64x-build
