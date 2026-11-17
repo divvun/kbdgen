@@ -78,7 +78,7 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 
 ## Build chain
 
-> [spec:kbdgen:req:ios.build-chain+2]
+> [spec:kbdgen:req:ios.build-chain+3]
 > `ios build` MUST run, per `[spec:kbdgen:sem:pipeline.steps]`: `git clone
 > https://github.com/divvun/giellakbd-ios.git repo` in `<out>`;
 > `ios.keyboard-json`; Xcode generation (`xcode.targets`); provisioning;
@@ -91,7 +91,7 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 > fail the step with an error naming it: `git`, `fastlane` and `security`
 > run captured, and the error quotes the tail of their stderr (of stdout
 > when stderr is empty); `pod`, `xcodebuild` and `xcbeautify` stream their
-> output, which the error points to. Provisioning requires `teamId` and
+> output to kbdgen's stderr, never its stdout, and the error points to it. Provisioning requires `teamId` and
 > `appStoreKeyJson`, and archiving `teamId` and `codeSignId`; a missing one
 > is an error. Provisioning spawns, for every id of `ios.pkg-ids.all`, both
 > `fastlane match appstore` and `fastlane sigh` (writing

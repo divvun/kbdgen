@@ -184,7 +184,8 @@ target's `productName`.
   configuration `Release`, destination `generic/platform=iOS`, one job per
   CPU, and `CODE_SIGN_IDENTITY`/`DEVELOPMENT_TEAM` overrides; its stdout is
   piped into `xcbeautify`. Then `xcodebuild -exportArchive` into `<out>/ipa`
-  with `repo/opts.plist`.
+  with `repo/opts.plist`. `pod`, `xcbeautify` and the export write to
+  kbdgen's stderr, so its stdout holds only results.
 
 `fastlane_env` passes the target's credentials to every fastlane run as
 `MATCH_GIT_URL`, `MATCH_PASSWORD`, `FASTLANE_USER`, `PRODUCE_USERNAME`,

@@ -60,8 +60,8 @@ Stdout carries only a command's results, so it can be piped or captured:
 * the identifiers from `target … ios print-pkg-ids`
 * the report of `ldml migrate` and the results of `ldml test`
 
-The one exception is `target … ios build`: `pod install` and `xcodebuild`
-print their own progress to stdout while they run.
+Tools that kbdgen runs and whose progress you see, such as `pod install` and
+`xcodebuild` during `target … ios build`, print to stderr too.
 
 kbdgen exits with status 0 on success. On failure it prints `Error:` and the
 reason to stderr, followed by `Caused by:` lines when there is more detail,

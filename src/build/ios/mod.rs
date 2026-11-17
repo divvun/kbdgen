@@ -88,7 +88,7 @@ pub struct IosBuild {
 
 #[async_trait(?Send)]
 impl BuildSteps for IosBuild {
-    // [spec:kbdgen:req:ios.build-chain+2]
+    // [spec:kbdgen:req:ios.build-chain+3]
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self {
         let steps: Vec<Box<dyn BuildStep>> = vec![
             Box::new(CloneGiellaKbd),
@@ -503,7 +503,7 @@ mod tests {
         );
     }
 
-    // [spec:kbdgen:req:ios.build-chain+2/test]
+    // [spec:kbdgen:req:ios.build-chain+3/test]
     // [spec:kbdgen:req:ios.build-chain.init+1/test]
     #[cfg(unix)]
     #[test]

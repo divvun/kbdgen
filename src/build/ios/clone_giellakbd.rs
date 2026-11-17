@@ -11,7 +11,7 @@ const REPOSITORY_URL: &str = "https://github.com/divvun/giellakbd-ios.git";
 
 pub struct CloneGiellaKbd;
 
-// [spec:kbdgen:req:ios.build-chain+2]
+// [spec:kbdgen:req:ios.build-chain+3]
 #[async_trait(?Send)]
 impl BuildStep for CloneGiellaKbd {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {

@@ -58,7 +58,12 @@ fn xcodebuild_archive(
         .take()
         .expect("xcodebuild's stdout is piped");
 
-    let beautified = Command::new("xcbeautify").stdin(log).status();
+    // Every streamed tool writes to stderr, keeping kbdgen's stdout for
+    // results (`ios.build-chain`).
+    let beautified = Command::new("xcbeautify")
+        .stdin(log)
+        .stdout(std::io::stderr())
+        .status();
     let status = xcodebuild.wait().context("wait for `xcodebuild archive`")?;
     let beautified = beautified
         .context("`xcbeautify` could not be started; install it with `brew install xcbeautify`")?;
@@ -86,6 +91,7 @@ fn xcodebuild_export_ipa(
         .arg(ipa_path)
         .arg("-exportOptionsPlist")
         .arg(plist_path)
+        .stdout(std::io::stderr())
         .status()
         .context("`xcodebuild` could not be started; install Xcode")?;
     if !status.success() {
@@ -94,7 +100,7 @@ fn xcodebuild_export_ipa(
     Ok(())
 }
 
-// [spec:kbdgen:req:ios.build-chain+2]
+// [spec:kbdgen:req:ios.build-chain+3]
 #[async_trait(?Send)]
 impl BuildStep for BuildXcarchive {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
@@ -188,7 +194,7 @@ async fn load_provisioning_profile(
     plist::from_bytes(&output.stdout).with_context(|| format!("parse {profile}"))
 }
 
-// [spec:kbdgen:req:ios.build-chain+2]
+// [spec:kbdgen:req:ios.build-chain+3]
 async fn embed_profiles(
     bundle: &KbdgenBundle,
     target: &iOS,
@@ -226,7 +232,7 @@ async fn embed_profiles(
     plist::to_file_xml(&opts_path, &plist).with_context(|| format!("write {}", opts_path.display()))
 }
 
-// [spec:kbdgen:req:ios.build-chain+2]
+// [spec:kbdgen:req:ios.build-chain+3]
 #[async_trait(?Send)]
 impl BuildStep for FastlaneProvisioning {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {

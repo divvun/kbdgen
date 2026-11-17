@@ -9,7 +9,7 @@ use super::REPOSITORY_FOLDER;
 
 pub struct PodInstall;
 
-// [spec:kbdgen:req:ios.build-chain+2]
+// [spec:kbdgen:req:ios.build-chain+3]
 #[async_trait(?Send)]
 impl BuildStep for PodInstall {
     async fn build(&self, _bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
@@ -21,6 +21,7 @@ impl BuildStep for PodInstall {
         let status = Command::new("pod")
             .args(["install", "--repo-update"])
             .arg(project_directory)
+            .stdout(std::io::stderr())
             .status()
             .context("`pod` could not be started; install CocoaPods")?;
         if !status.success() {
