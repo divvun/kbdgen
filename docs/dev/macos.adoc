@@ -1,4 +1,290 @@
-== MacOS
+== macOS
 
-=== XML Generation
+The macOS target writes one Apple `.keylayout` per layout into a
+keyboard-layout bundle, and can package the bundle as a `.pkg`. Layouts come
+from two places: the `macOS` section of a v3 layout, and the `macOS` keyboard
+of a compiled v4 layout. Both are turned into the same plain-data
+*keylayout input*, and one writer turns that into XML. So v3 output stays
+exactly as it was, and the two paths can be compared document by document.
 
+The rules live in two spec files:
+
+* `docs/spec/macos.md`: the document, key maps, dead keys and transforms
+  as the v3 path writes them (`+keylayout.*+`), and the bundle and
+  installer (`+macbundle.*+`);
+* `docs/spec/ldml/macos.md`: the keylayout input, the v4 adapter, what it
+  reports, and the tests (`+ldml.macos.*+`), including three open questions.
+
+=== Code map
+
+All of it is under `src/build/macos/`.
+
+[cols="1,3"]
+|===
+|File |Contents
+
+|`mod.rs`
+|Exports `GenerateMacOs` and `GenerateInstaller`, the two build steps.
+
+|`generate_macos.rs`
+|`GenerateMacOs` and `generate_bundle`: picks the v3 path or the adapter
+per layout, writes each document, and fills the bundle.
+
+|`input.rs`
+|`KeylayoutInput`, `KeyMap`, `Key`, `Binding` and `When`
+(`ldml.macos.input`).
+
+|`v3.rs`
+|The v3 path: a `macOS` section to a keylayout input.
+
+|`adapter/`
+|The v4 adapter: `mod.rs` (`load`, `adapt`, key map assembly),
+`layers.rs` (key maps, cells, values), `modifiers.rs` (modifier terms),
+`dead_keys.rs` (states from the engine), `classify.rs` (what is lost).
+
+|`writer.rs`
+|Keylayout input to XML, from `resources/template-macos-layout.xml`.
+
+|`keymap.rs`
+|`MACOS_KEYS` (ISO position to key code) and `MACOS_HARDCODED` (the fixed
+non-ISO keys).
+
+|`layers.rs`
+|The v3 layer-to-modifier-term table.
+
+|`util.rs`
+|`keyboard_name`, `keyboard_id` (CRC-HQX) and `run`, which runs an external
+tool with its output captured.
+
+|`macos_bundle.rs`
+|`MacOsBundle`: `Info.plist`, `InfoPlist.strings`, `.keylayout` files and
+icons.
+
+|`package_macos.rs`
+|`GenerateInstaller`: `pkgbuild`, `distribution.xml`, `productbuild`.
+
+|`differential/`
+|Test-only (`#[cfg(test)]`): reads a `.keylayout` back, simulates it and
+compares it with the engine and with the v3 path.
+
+|`testdata/`
+|`features.yaml` and the golden `.keylayout`/`.diag` files.
+|===
+
+=== How a build runs
+
+`src/main.rs` dispatches `target macos`. `KbdgenBundle::reject_v4_layouts`
+lets `macos` through with v4 layouts. `macos build` runs `GenerateMacOs`,
+then `GenerateInstaller` unless `--no-installer` is given or the binary was
+not compiled for macOS (`cfg!(target_os = "macos")`), in which case it
+warns. `generate` and `installer` run one step each.
+
+[source]
+----
+GenerateMacOs::build
+  macos_target()                  targets/macos.yaml, or an error
+  generate_bundle()               v3 and v4 tags together, sorted byte-wise
+    layout_input()
+      v3::layout_input()          v3 layout with a macOS section
+      adapter::load(), adapt()    v4 layout with a macOS host document
+    writer::write()               one String per layout
+  MacOsBundle::new(), add_key_layout(), write_all()
+GenerateInstaller::build          packages <out>/<bundleId>.bundle as it is
+----
+
+Every document is generated in memory before `MacOsBundle::new` creates a
+directory, so a layout that fails writes nothing. `generate_bundle` also
+rejects two layouts with one keyboard name.
+
+=== The keylayout input
+
+`KeylayoutInput` is one document in emission order: the keyboard name,
+tag and display names, the default map index, the key maps and the
+terminators. A `KeyMap` holds the `keys` attributes of its `<modifier>`
+elements and its keys in order. A `Key` is a key code with a `Binding`:
+`Output(text)`, or `Action { id, whens }`. A `When` has a state and an
+output, a next state, or both. All texts are already decoded; the writer
+copies them.
+
+A map with no modifier terms is only reachable as the default index, and
+the writer gives it no `<keyMapSelect>` (the DTD requires one `<modifier>`
+in each). v3 never produces one; the adapter does for an `other` layer.
+
+=== The v3 path
+
+`v3::layout_input` returns `None` without a `macOS` section. Otherwise:
+
+. `initialize_key_transition_map` splits each layer into tokens, requires
+  48, and assigns them to `MACOS_KEYS` in ISO order. Transitions are kept per
+  layer in an `IndexMap` from the raw token to its positions, which is what
+  groups the `<key>` elements by token, in order of first occurrence
+  (`keylayout.keymaps.tokens`).
+. Only when the layout has `transforms` and `macOS.deadKeys` has an entry
+  for one of its layers:
+.. `register_dead_keys` makes every top-level transform a `dead_keyNNN`
+   state, with its `' '` child as the terminator;
+.. `process_transforms` turns each matching position on a layer with a
+   `deadKeys` entry into an action with a `none` output plus one `when` per
+   dead key;
+.. `create_dead_key_actions` replaces each dead-key token with an action
+   whose only `when` is `none` → `next`.
+. `key_maps` adds the fixed keys, code 65 with `decimal`, and code 49 with
+  a space, and takes each map's term from `layers::layer_attributes`.
+
+Action ids come from one counter as the steps run, so replaced actions
+leave gaps; that is part of the specified output. Behaviours the spec pins
+and the tests keep: `macOS.space` is ignored, `+\u{0}+` is an ordinary
+output, a dead-key token repeated on one layer ends up at the last
+position only (`keylayout.actions.dead-key-next`), and a nested transform
+panics (`layout.transforms.dead-key-entries`).
+
+=== The v4 adapter
+
+`adapter::load` lowers the layout's file (`ldml::layouts::host_documents`)
+and returns `None` when no document is for the `macOS` host, which happens
+when the layout has neither a `hardware.macOS` nor a `hardware.default`
+variant. Otherwise it compiles the layout (`compiled_layouts`).
+
+`adapter::adapt` takes the `macOS` keyboard of the compiled layout:
+
+. `layers::derive` makes one `MapPlan` per hardware layer macOS can select.
+  `selectable_sets` drops sets with an extra modifier, and `caps` sets
+  when Caps Lock is bound as an extra modifier, and warns about sided
+  sets. Each plan has a cell for each of the 48 ISO positions that types
+  something, located by scan code through the Windows KBDL tables
+  (`POSITION_NAMES`, `POSITION_KEYS`) and coded through `MACOS_KEYS`, plus
+  the space bar at scan code `39`. Each distinct value, text or a single
+  dead-key marker, is interned in `Derived::values` with the first key
+  press that gives it, which the dead-key probe reuses.
+. `modifiers::terms` writes each layer's terms. A set that a v3 layer
+  migrates to gets that layer's v3 term, so migrated layouts keep their
+  modifier maps; others get a term built from their components, with
+  `command?` on typing sets.
+. `dead_keys::derive` loads the keyboard into `kbd_engine` (`Nfc`,
+  `CancelOrPass`, host `MacOs`). Pressing each dead key from the reset state
+  must commit nothing and leave exactly its marker pending, else the layout
+  fails. From each state it presses every value and compares the result
+  with what the `.keylayout` would do by default: type the terminator, then
+  the value. A difference becomes a `when`; a result that leaves a single
+  marker and commits nothing becomes `next`, and a state found that way is
+  probed too, which is how chained dead keys appear. Anything else is
+  omitted with a warning. States are numbered in `deadKeys` order.
+. `classify::classify` counts what the `.keylayout` cannot express, and
+  `classify::report` turns that into one warning per feature, or the single
+  information message.
+. `key_map` assembles each map: the cells grouped by value, the fixed keys,
+  the decimal key and the space bar. A value with `when` elements, or a dead key, is
+  an action, numbered in emission order.
+
+Warnings go to `Diagnostics`, the type the Windows KBDL adapter uses
+(`crate::build::windows::kbdl::diag`). It logs each message through
+`tracing` as it is recorded, which is why the log names that module, and
+keeps them for the tests. `generate_bundle` only keeps `Adapted::input`.
+The adapter also reuses `starts_with_marker` and `is_generated_backspace`
+from the Windows adapter.
+
+=== Writer, bundle and installer
+
+`writer::write` parses the embedded template with `xmlem`, sets the
+keyboard's `id` (`util::keyboard_id`) and `name`, appends each map and its
+actions, removes `<actions>` when empty (macOS refuses an empty one), adds
+`<terminators>` when there is a state, and prints with two-space indent in
+hex entity mode.
+
+`MacOsBundle` serializes `Info.plist` with the `plist` crate; `KLInfo_*`
+entries are a flattened `IndexMap`, so they follow the `CFBundle*` keys in
+the order layouts were added. `InfoPlist.strings` lines use Rust `Debug`
+quoting, not Apple's escaping. Icons are converted with `convert` and
+`iconutil` in a temporary `.iconset` directory, on macOS hosts only.
+
+`GenerateInstaller` checks that the bundle exists, runs `pkgbuild` into a
+temporary directory, writes `distribution.xml` there with `xmlem`, and runs
+`productbuild` into `<out>/<bundleId>.pkg`. Every external tool goes through
+`util::run`, which keeps the tool's output off kbdgen's stdout and puts its
+stderr in the error.
+
+=== Tests
+
+Run them with:
+
+[source,shell]
+----
+cargo test --lib build::macos
+----
+
+[cols="2,3"]
+|===
+|Test |What it checks
+
+|`adapter::tests::golden_layouts_write_their_golden_keylayouts`
+|`ldml.macos.test.golden`. The adapter's `.keylayout` and its warnings for
+`crates/kbd-engine/tests/golden/layouts/vro.yaml` and
+`src/build/macos/testdata/features.yaml` must equal
+`src/build/macos/testdata/golden/{vro,features}.{keylayout,diag}` byte for
+byte. `features.yaml` exercises a chained dead key, an empty standalone, an
+`other` layer, a left-Option layer, a native Command layer, a long press
+and a display.
+
+|`differential::tests::fixture_keylayouts_type_what_the_engine_types`
+|`ldml.macos.test.typing`. Every layout in
+`crates/kbd-engine/tests/golden/layouts/`, and every v3 layout in
+`crates/kbd-engine/tests/golden/v3/` migrated in memory, is adapted,
+written, parsed back (`parse.rs`) and simulated (`simulate.rs`, the
+`ldml.macos.semantics` model of TN2056). Each ISO key and the space bar,
+in every Shift, Caps Lock, Option and Control state, and dead-key paths up
+to three keys, must type what `kbd_engine` types.
+
+|`differential::tests::each_listed_exception_explains_a_difference`
+|Each documented exception (`exceptions.rs`) explains a difference in a
+small synthetic layout. An exception is accepted when removing that
+feature from the model makes the engine type what the `.keylayout` types.
+
+|`differential::tests::corrupted_keylayouts_are_not_explained`
+|The comparison catches a deliberately broken document.
+
+|`differential::tests::v3_fixtures_match_their_migrations`
+|`ldml.macos.test.differential`. For `vro`, `se-NO` and a synthetic
+dead-key-after-dead-key layout, the v3 path's document and the adapter's
+document for the migrated layout match, maps paired by their terms and
+states by the dead keys entering them. Every difference must carry one of
+the explanations in `migrated.rs`, and each explanation must occur.
+
+|`differential::tests::plain_v3_layouts_migrate_byte_for_byte`
+|A v3 layout without dead keys gives the same bytes either way.
+
+|`differential::tests::written_keylayouts_read_back_unchanged`, `simulated_dead_keys_compose_chain_and_terminate`
+|The parser inverts the writer; the simulator follows the semantics rule.
+
+|`v3::tests::*`, `generate_macos::tests::*`, `util::tests::*`, `adapter::modifiers::tests::*`
+|Unit tests of the v3 rules, the bundle (layout order, missing target),
+names, ids, `run`, and modifier terms.
+|===
+
+To accept a deliberate change to a golden file, rerun the golden test with
+`KBDGEN_BLESS` set and review the diff:
+
+[source,shell]
+----
+KBDGEN_BLESS=1 cargo test --lib build::macos::adapter::tests::golden_layouts_write_their_golden_keylayouts
+----
+
+The typing and differential tests print a line per fixture, which
+`--nocapture` shows:
+
+....
+layouts/vro: 1820 cases, 1820 equal, 0 unexplained
+v3/se-NO: 5128 cases, 5128 equal, 0 unexplained
+se-NO: 73 × UnlistedLayer, e.g. ["anyShift? caps? anyOption? anyControl"] code 10: v3 {"none": (Some("0"), None)}, migrated {"dead_key011": (Some("°"), None), "none": (Some("0"), None)}
+....
+
+=== Making changes
+
+* A change to the v3 path changes v3 output, which `docs/spec/macos.md`
+  pins; the differential tests will show it against the migrated layouts.
+* A new v4 feature the `.keylayout` cannot express needs a `Classification`
+  category and its warning in `classify.rs`. If it makes typing differ, it
+  also needs an `Exception` in `differential/exceptions.rs`, with its
+  synthetic layout in `differential/tests.rs`.
+* To try a change on a real bundle, run
+  `kbdgen target -b <bundle> -o <out> macos generate` and read the
+  `.keylayout` files under `<out>/<bundleId>.bundle/Contents/Resources`.

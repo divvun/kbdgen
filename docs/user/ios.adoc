@@ -1,36 +1,57 @@
 == iOS
 
-=== Target configuration
-A file for the desired target has to be specified, and in this case for iOS, it could look like this:
-```
-codeSignId: "Apple Distribution: The University of Tromso (2K5J2584NX)"
-teamId: 2K5J2584NX
-packageId: no.uit.giella.keyboards.Sami
-bundleName: Divvun Keyboards
-sentryDsn: https://94b33a64dc8e4471a7c8cb2f40ce37dc@sentry.io/1227106
-aboutDir: ../aboutFiles
-version: 3.2.1
-build: 278
+The iOS target builds the Divvun keyboard app for iPhone and iPad from the
+https://github.com/divvun/giellakbd-ios[giellakbd-ios] template. kbdgen
+clones the template, adds one keyboard extension per layout, sets the app's
+names, identifiers, versions and icons, fetches signing material with
+fastlane, and archives and exports the app with Xcode for upload to App
+Store Connect.
 
-```
+Only v3 layouts are supported. When the bundle has any v4 layout, every
+`ios` command fails:
 
-The fields define what follows:
+....
+Error: layout sme is a v4 layout (`format: 4`); the ios target cannot build v4 layouts yet
+....
 
-* `codeSignId` - the id for codesigning
-* `teamId` - team id
-* `packageId` - package id
-* `bundleName` - name of the bundle
-* `sentryDsn` - url to sentry
-* `aboutDir` - a path to files each containing a localized description about the app
-* `version` - current app version
-* `build` - current app build
+=== Prerequisites
 
+`ios print-pkg-ids` only needs `kbdgen`. `ios build` and `ios init` need:
 
-=== Keyboard layouts
-iOS is one of the few keyboard layouts that handle more than one platform.
-Additionally, it also requires the `symbols` layers.
+* macOS with Xcode (`xcodebuild`). `plutil` and `security` ship with macOS.
+* `git`, CocoaPods (`pod`), fastlane (`brew install fastlane`), `xcbeautify`
+  (`brew install xcbeautify`) and ImageMagick's `convert`
+  (`brew install imagemagick`).
+* Network access: the build clones the template from GitHub, and
+  `pod install --repo-update` updates the CocoaPods spec repository.
+* An Apple developer team and App Store Connect access:
+** for `build`, an App Store Connect API key file and a fastlane match
+   repository holding the team's certificates;
+** for `init`, an Apple ID that fastlane can log in with.
 
-```
+=== Layouts
+
+A layout is built for iOS when it has an `iOS` section. Every such layout
+also needs top-level `keyNames` (the labels of the space and return keys)
+and an English display name; otherwise generation fails and lists every
+problem:
+
+....
+Some iOS layouts are incomplete:
+  en: missing `keyNames` (space and return key labels)
+  sma: missing `displayNames.en`
+....
+
+kbdgen orders the keyboards by their English display name, ignoring case,
+then by language tag; this is their order in `KeyboardDefinitions.json`.
+
+This is adapted from `se.yaml` in `keyboard-sme`:
+
+[source,yaml]
+----
+displayNames:
+  se: Davvisámegiella
+  en: Northern Sami
 iOS:
   config:
     spellerPackageKey: https://pahkat.uit.no/main/packages/speller-sme?platform=mobile
@@ -49,84 +70,408 @@ iOS:
         1 2 3 4 5 6 7 8 9 0
         - / : ; ( ) kr & @ "
         \s{shiftSymbols} \s{spacer:0.25} . , ? ! ' \s{spacer:0.25} \s{backspace}
-      symbols-2: |
-        [ ] { } # % ^ * + =
-        _ \ | ~ < > € $ £ •
-        \s{shiftSymbols} \s{spacer:0.25} . , ? ! ' \s{spacer:0.25} \s{backspace}
-      
   iPad-9in:
     layers:
       default: |
         \s{"`":0.75}  á š e r t y u i o p ŋ \s{backspace:1.25}
         \s{shift}     a s d f g h j k l đ ŧ \s{shift}
-          \s{spacer:0.5}  ž z č c v b n m , . \s{spacer:0.5} \s{return:2}
-      shift: |
-        \s{"@":0.75}  Á Š E R T Y U I O P Ŋ \s{backspace:1.25}
-        \s{shift}     A S D F G H J K L Đ Ŧ \s{shift}
-        \s{spacer:0.5}  Ž Z Č C V B N M ! ? \s{spacer:0.5} \s{return:2}
-      alt: |
-        \s{"@":0.75}  1 2 3  4 5 6 7 8 9 0 å \s{backspace:1.25}
-        \s{shift}     % # kr & * ( ) ' " ø æ \s{shift}
-        \s{spacer:0.5}  q w  x - = / ; : ! ? \s{spacer:0.5} \s{return:2}
-      alt+shift: |
-        \s{"@":0.75}  1 2 3  4 5 6 7 8 9 0 Å \s{backspace:1.25}
-        \s{shift}     % # kr & * ( ) ' " Ø Æ \s{shift}
-        \s{spacer:0.5}  Q W  X - = / ; : ! ? \s{spacer:0.5} \s{return:2}
-      symbols-1: |
-        \s{spacer:0.75} 1 2 3 4 5 6 7 8 9 0 ` \s{backspace:1.25}
-        \s{shiftSymbols} @ # kr & * ( ) ' " + • \s{shiftSymbols}
-        \s{spacer:1.5} % _ - = / ; : , . \s{spacer:0.5} \s{return:2}
-      symbols-2: |
-        \s{spacer:0.75}  1 2 3 4 5 6 7 8 9 0 ´ \s{backspace:1.25}
-        \s{shiftSymbols} € $ £ ^ [ ] { } — ° … \s{shiftSymbols}
-        \s{spacer:1.5}    § | ~ ≠ \ < > ! ?    \s{spacer:0.5} \s{return:2}
-    
-  iPad-12in:
-    layers:
+        \s{spacer:0.5}  ž z č c v b n m , . \s{spacer:0.5} \s{return:2}
+longpress:
+  A: Å Æ Ä   À Â Ã Ā Ạ
+  E: Ë É È Ê Ẽ Ē Ẹ Ė Ǝ
+keyNames:
+  space: gaska
+  return: linnjámolsun
+----
+
+==== Devices and layers
+
+The `iOS` section has up to three device sizes, each optional: `primary`
+(iPhone), `iPad-9in` and `iPad-12in`. A size left out is written as empty,
+so give every size the keyboard should support.
+
+Each size has `layers`, from this set (any other name fails loading):
+
+[cols="1,1"]
+|===
+|Layer |Name in the app
+
+|`default` |`normal`
+|`shift` |`shifted`
+|`caps` |`caps`
+|`alt` |`alt`
+|`+alt+shift+` |`+alt+shift+`
+|`symbols-1` |`symbols-1`
+|`symbols-2` |`symbols-2`
+|===
+
+Each line of a layer is a row and each whitespace-separated token a key.
+A token of the form `\s{id}` or `\s{id:width}` is a special key, and
+`\s{"x":width}` is a key typing `x` with a custom width. The width is a
+decimal number with a leading digit (`0.5`, `1.25`; default 1). Anything
+else, including a near miss such as `\s{shift:.5}`, is a key that types
+the token as written.
+
+kbdgen passes the special key's id to the app with a `_` in front, and does
+not check it. The template's keyboard understands `spacer`, `shift`,
+`backspace`, `spacebar`, `return`, `symbols`, `shiftSymbols`, `keyboard`,
+`comma`, `fullstop`, `tab`, `caps` and `keyboardMode`.
+
+kbdgen does not decode `+\u{…}+` escapes for iOS: every string reaches the
+app exactly as written in the YAML. Write characters as themselves.
+`keyboard-sme` has `+return: linnjá\u00ADmolsun+`, meant as a soft hyphen;
+the app receives the six characters `+\u00AD+` instead.
+
+==== Long press, dead keys and transforms
+
+* `longpress` (top level) maps a key to its long-press alternatives,
+  separated by spaces.
+* `iOS.deadKeys` maps layer names (`default`, `shift`, …) to the keys that
+  are dead keys on them. It is passed to the app as it is, for all three
+  device sizes.
+* `transforms` (top level) gives the dead keys' compositions, as for the
+  other targets. Every top-level transform is passed to the app, whether
+  its dead key is on an iOS layer or not. Only one level is supported: a
+  composition whose value is itself a mapping makes kbdgen abort. A
+  top-level transform that is a string is passed as empty, with a warning.
+
+==== Speller and contact email
+
+When `iOS.config` has both `spellerPackageKey` and `spellerPath`, they are
+written to the keyboard's `Info.plist` as `DivvunSpellerPackageKey` (the
+speller package) and `DivvunSpellerPath` (the speller file in it). With
+either missing, both keys are left out, and the keyboard has no speller.
+
+The keyboard's contact email is the `email` of `projects/<tag>.yaml`, which
+`kbdgen fetch` writes for layouts fetched from other bundles. Layouts
+without one keep the template's address. A file that cannot be read or
+parsed is ignored with a warning.
+
+=== Target configuration
+
+`targets/ios.yaml` configures the app:
+
+[source,yaml]
+----
+packageId: no.uit.giella.keyboards.sme
+bundleName: North Sami Keyboard
+version: 0.1.0
+build: 2
+teamId: 2K5J2584NX
+codeSignId: "iPhone Distribution: The University of Tromso (2K5J2584NX)"
+appStoreKeyJson: /Users/ci/secrets/app-store-connect-key.json
+matchGitUrl: git@github.com:example/certificates.git
+sentryDsn: https://example@sentry.io/1
+----
+
+String fields must be YAML strings: `version: 1.0` is a number and fails
+loading with `+version: invalid type: floating point `1.0`, expected a string+`;
+write `version: "1.0"`. Unknown fields are ignored.
+
+[cols="1,1,3"]
+|===
+|Field |Required |Use
+
+|`packageId`
+|yes
+|The app's bundle identifier. Each keyboard's identifier is built from it
+(see <<ios-package-ids>>), and the app group is `group.<packageId>`.
+
+|`bundleName`
+|yes
+|The app's display name.
+
+|`version`
+|yes
+|`CFBundleShortVersionString` of the app and every keyboard.
+
+|`build`
+|yes
+|`CFBundleVersion`; an unsigned integer.
+
+|`teamId`
+|for `build`
+|The development team of every target; `Unknown` until set. Provisioning
+and archiving fail without it.
+
+|`codeSignId`
+|for `build`
+|The code signing identity for `xcodebuild archive`.
+
+|`appStoreKeyJson`
+|for `build`
+|Path of the App Store Connect API key file fastlane uses to fetch
+certificates and profiles. fastlane runs in `<out>/repo`, so give an
+absolute path.
+
+|`matchGitUrl`, `matchPassword`
+|no
+|The fastlane match repository holding the certificates, and its
+passphrase. Passed to fastlane as `MATCH_GIT_URL` and `MATCH_PASSWORD`.
+
+|`fastlaneUser`, `fastlanePassword`
+|no
+|The Apple ID for `ios init`. Passed to fastlane as `FASTLANE_USER` and
+`PRODUCE_USERNAME`, and `FASTLANE_PASSWORD`.
+
+|`sentryDsn`
+|no
+|`SentryDSN` of the app and every keyboard; left out when unset.
+
+|`provisioningProfileId`
+|no
+|Accepted but not used.
+|===
+
+Keep secrets out of the file: when `targets/ios.yaml` exists, each of
+these environment variables that is set replaces the field, even when set
+to an empty string.
+
+[cols="1,1"]
+|===
+|Variable |Field
+
+|`MATCH_GIT_URL` |`matchGitUrl`
+|`MATCH_PASSWORD` |`matchPassword`
+|`PRODUCE_USERNAME` |`fastlaneUser`
+|`FASTLANE_USER` |`fastlaneUser` (wins over `PRODUCE_USERNAME`)
+|`FASTLANE_PASSWORD` |`fastlanePassword`
+|`APP_STORE_KEY_JSON` |`appStoreKeyJson`
+|`TEAM_ID` |`teamId`
+|`CODE_SIGN_ID` |`codeSignId`
+|===
+
+The app icon is `resources/ios/icon.<ext>` (`icon.png`), and it is
+required: `ios build` fails without a `resources/ios` directory or without
+a default icon in it. Per-layout icons (`icon.<tag>.<ext>`) are ignored on
+iOS. The icon is resized to every size the template's app icon set lists,
+centred on a transparent square, so use a square image of at least
+1024 pixels.
+
+The app's name in each language comes from `project.yaml`: every entry of
+`locales` gives the name for that language (`en` is the base language).
+
+=== Commands
+
+The bundle and output options come before `ios`, and the output directory
+is created if it does not exist:
+
+[source,shell]
+----
+kbdgen target -b sme.kbdgen -o out ios print-pkg-ids
+kbdgen target -b sme.kbdgen -o out ios init
+kbdgen target -b sme.kbdgen -o out ios build
+----
+
+==== print-pkg-ids
+
+Prints every bundle identifier the app needs, sorted: the app's own, then
+one per layout with an `iOS` section. For `keyboard-sme`:
+
+....
+no.uit.giella.keyboards.sme
+no.uit.giella.keyboards.sme.se
+....
+
+It fails when the bundle has no `targets/ios.yaml`.
+
+==== init
+
+Registers the app with App Store Connect, once per app, before the first
+`build`. It needs `targets/ios.yaml` and an `en` entry in the `locales`
+of `project.yaml`, whose `name` is the app's name. In the output directory, it
+runs:
+
+. `fastlane produce -a <packageId> --app_name <name>`, creating the app;
+. `fastlane produce group -g group.<packageId> -n "<name> Group"`, creating
+  the app group;
+. for every keyboard identifier, `fastlane produce -a <id> --app_name
+  "<name>: <folder>" --skip_itc`, creating its App ID;
+. for every identifier, the app's included, `fastlane produce
+  enable_services -a <id> --app-group` and `fastlane produce
+  associate_group -a <id> group.<packageId>`.
+
+The per-identifier commands run in parallel. A failing command stops
+`init` with an error that quotes the end of fastlane's output.
+
+==== build
+
+Runs these steps, stopping at the first that fails:
+
+. *Clone*: `git clone https://github.com/divvun/giellakbd-ios.git repo`
+  in the output directory. Use an empty output directory: the clone fails
+  when `repo` already exists.
+. *Keyboard definitions*: writes `repo/Keyboard/Models/KeyboardDefinitions.json`.
+. *Xcode project*: adds a keyboard target per layout, and writes the
+  plists, app names and icons.
+. *Provisioning*: for every bundle identifier, runs `fastlane match
+  appstore` and `fastlane sigh`, at most twelve at a time, then records
+  each provisioning profile in the Xcode project and in `repo/opts.plist`.
+. *Pods*: `pod install --repo-update` in `repo`.
+. *Archive*: `xcodebuild archive` of scheme `HostingApp` (Release, any iOS
+  device) into `<packageId>.xcarchive`, its log shown through
+  `xcbeautify`, then `xcodebuild -exportArchive` into `ipa`.
+
+The output of `pod` and `xcodebuild` goes to the terminal; when one fails,
+its log is above the error. `git`, `fastlane` and `security` run quietly,
+and a failure quotes the end of their error output.
+
+[[ios-package-ids]]
+=== Package identifiers
+
+A keyboard's bundle identifier is `<packageId>.<tag>`: layout `se` in
+`no.uit.giella.keyboards.sme` gives `no.uit.giella.keyboards.sme.se`. The
+last part, here `se`, names the keyboard's Xcode target and its folder
+`Keyboard/se`.
+
+Divvun's Sami app, `packageId: no.uit.giella.keyboards.Sami`, keeps the
+identifiers it was first published with:
+
+[cols="1,2"]
+|===
+|Tag |Last part
+
+|`se`, `sme` |`northern-sami-keyboard`
+|`sms` |`skolt-sami-keyboard`
+|`smn` |`inari-sami-keyboard`
+|`smj-SE` |`julev-sami-keyboard`
+|`smj-NO` |`julev-sami-keyboard-no`
+|`sma` |`south-sami-keyboard`
+|===
+
+So the same layouts under that package id print:
+
+....
+no.uit.giella.keyboards.Sami
+no.uit.giella.keyboards.Sami.northern-sami-keyboard
+....
+
+=== Output
+
+After `ios build` the output directory holds:
+
+....
+out/
+├── repo/                                   the template, changed as below
+├── no.uit.giella.keyboards.sme.xcarchive
+└── ipa/                                    the exported app
+....
+
+Generation changes these files in `repo` (shown for `keyboard-sme`, whose
+`project.yaml` has the locales `en` and `nb`):
+
+....
+repo/
+├── GiellaKeyboard.xcodeproj/project.pbxproj   keyboard targets, identifiers, team, profiles
+├── HostingApp/
+│   ├── Base.lproj/InfoPlist.strings           app name from locale en
+│   ├── nb.lproj/InfoPlist.strings             app name from locale nb
+│   ├── HostingApp.entitlements                app group
+│   ├── Images.xcassets/AppIcon.appiconset/    Contents.json and one PNG per icon size
+│   ├── Info.plist                             name, version, build, URL scheme, Sentry
+│   └── Settings.bundle/Root.plist             app group
+├── Keyboard/
+│   ├── Keyboard.entitlements                  app group
+│   ├── Models/KeyboardDefinitions.json        every layout's keys
+│   └── se/Info.plist                          one folder per layout
+├── opts.plist                                 export options: team and profiles
+└── <id>.mobileprovision                       one per bundle identifier
+....
+
+`pod install` then adds the CocoaPods workspace that `xcodebuild` builds.
+
+`KeyboardDefinitions.json` has one entry per layout, in the app's order.
+The start of the entry for `se` (abridged):
+
+[source,json]
+----
+[
+  {
+    "name": "Davvisámegiella",
+    "locale": "se",
+    "return": "linnjámolsun",
+    "space": "gaska",
+    "longPress": {
+      "A": [
+        "Å",
+        "Æ",
+        "Ä",
+        "À",
+        "Â",
+        "Ã",
+        "Ā",
+        "Ạ"
+      ],
       ...
-```
-
-==== Longpress
-A longpress section like this is also needed for alternative keys but isn't specifically exclusive to iOS but rather defined independently in the layout file and shared between Android and iOS
-```
-  longpress:
-    A: Å Æ Ä   À Â Ã Ā Ạ
-    Á: Q
-    E: Ë É È Ê Ẽ Ē Ẹ Ė Ǝ
-    I: Ï Í Ì Î Ĩ Ī Ị I
-    ...
-```
-
-==== Config
-The `config` section is used by Pahkat for spellchecking, the fields:
-
-* `spellerPackageKey` - defines the url for the spellchecking files of the layout we want to generate
-* `spellerPath` - defines which spellchecker file to use.
-* `space` - name of space key
-* `r#return` - name of return key
-
-==== Platforms
-Three platforms are supported, all of which have to be defined, `primary`, `iPad-9in`, `iPad-12in`.
-```
-iPad-9in:
-    layers:
-      default: |
+    },
+    "deadKeys": {
+      "iphone": {},
+      "ipad-9in": {},
+      "ipad-12in": {}
+    },
+    "transforms": {},
+    "iphone": {
+      "normal": [
         ...
-```
+        [
+          {
+            "id": "_shift",
+            "width": 1.25
+          },
+          {
+            "id": "_spacer",
+            "width": 0.25
+          },
+          "ž",
+          "z",
+          ...
+----
 
-==== Layers
-iOS supports some standard keyboard layers in addition to `symbols-1` and `symbols-2`. 
+Each keyboard's `Keyboard/<folder>/Info.plist` is the template's
+`Keyboard/Info.plist` with the layout's English display name, the target's
+version and build, the speller, the contact email, the language tag as the
+primary language, and the keyboard's position in
+`KeyboardDefinitions.json`.
 
-Each layer is split by line,
-typically to 3 lines of the keyboard. 
+=== Warnings and errors
 
-Special keys need to be preceeded by `\s`,
-and is sometimes followed by a number after `:` representing the desired width of the key (keywidth is 1
- by default, centered):
+[cols="2,3"]
+|===
+|Message |Meaning
 
-* `\s{spacer:0.5}` - not a key, just a spacer
-* `\s{shift}` - Shift
-* `\s{backspace:1.25}` - Delete
-* `\s{return:2}` - Enter
-* `\s{"@":0.75}` - a given key, but with a custom width
-* `\s{shiftSymbols}` - switch between symbols-1 and symbols-2 layers
+|`+layout sme is a v4 layout (`format: 4`); the ios target cannot build v4 layouts yet+`
+|iOS only builds v3 layouts.
+
+|`Some iOS layouts are incomplete: …`
+|Add the listed `keyNames` or `displayNames.en`.
+
+|`the bundle has no iOS target (targets/ios.yaml)`
+|Add `targets/ios.yaml`.
+
+|`+project.yaml has no `en` locale to name the app+`
+|`ios init` needs `locales.en` in `project.yaml`.
+
+|`the bundle has no resources/ios directory`, `resources/ios has no default icon (icon.png)`
+|Add `resources/ios/icon.png`.
+
+|`targets/ios.yaml has no appStoreKeyJson`, `… has no teamId`, `… has no codeSignId`
+|Set the field, or its environment variable.
+
+|`Transform ended too soon for dead key ´ in se; ignoring its output ´`
+|A top-level transform is a string; it is passed as empty.
+
+|`Ignoring …/projects/se.yaml, so se keeps the template's contact email: …`
+|That file cannot be read or parsed.
+
+|`+`git clone https://github.com/divvun/giellakbd-ios.git` failed with exit status: 128: …+`
+|Usually `repo` already exists in the output directory.
+
+|`+`fastlane sigh -a …` failed with exit status: 1: …+`
+|fastlane failed; the message ends with its output.
+
+|`+`pod install` failed with exit status: 1; its output is above+`, `+`xcodebuild archive` failed with …; its log is above+`
+|See the tool's output in the terminal.
+
+|`+`xcbeautify` could not be started; install it with `brew install xcbeautify`+`
+|Install the tool named.
+|===

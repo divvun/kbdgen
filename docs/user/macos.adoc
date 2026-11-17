@@ -1,88 +1,498 @@
-== MacOS
+== macOS
+
+The macOS target writes a keyboard-layout bundle: one Apple `.keylayout`
+file per layout, an icon for each layout, and the names macOS shows in its
+list of input sources. `macos build` also wraps the bundle in an installer
+package that puts it in `/Library/Keyboard Layouts`.
+
+A `.keylayout` is a static description of key maps and dead keys; there is
+no Input Method behind it. Whatever a layout needs beyond that is lost on
+macOS, and for v4 layouts kbdgen warns about each such feature (see
+<<macos-messages>>).
+
+=== Prerequisites
+
+* `kbdgen`. `macos generate` runs on any operating system.
+* On macOS, to convert icons: ImageMagick's `convert`
+  (`brew install imagemagick`) and `iconutil`, which ships with macOS.
+  Neither is needed when `resources/macos` has no icons.
+* To build the installer: `pkgbuild` and `productbuild`, which ship with
+  macOS.
+
+On other operating systems the bundle is written without icons (with a
+warning for each one skipped), and `macos build` leaves out the installer
+with a warning. `macos installer` is not checked in advance: it fails
+because `pkgbuild` cannot be started.
 
 === Target configuration
-A MacOS target file does not have to be specified. ??
 
-=== Keyboard layouts
+The bundle needs `targets/macos.yaml`; without it every `macos` command
+fails with `sme: the bundle has no targets/macos.yaml`.
 
-```
+[source,yaml]
+----
+codeSignId: 'Developer ID Installer: The University of Tromso (2K5J2584NX)'
+packageId: no.uit.giella.keyboards.sme
+bundleName: North Sami Keyboard
+version: 1.0.4
+build: 1
+----
+
+Every field is required. Any scalar is accepted and read as a string, so
+`version: 1.0` is fine.
+
+[cols="1,3"]
+|===
+|Field |Use
+
+|`packageId`
+|The prefix of the bundle identifier, which is
+`+{packageId}.keyboardlayout.{bundle}+`, `+{bundle}+` being the bundle
+directory's name without `.kbdgen` (`sme.kbdgen` gives
+`no.uit.giella.keyboards.sme.keyboardlayout.sme`). It names the `.bundle`
+directory and the `.pkg`, and prefixes each layout's input source ID.
+
+|`bundleName`
+|`CFBundleName` of the bundle, and the title of the installer.
+
+|`version`
+|`CFBundleShortVersionString`, and the version of the installer package.
+
+|`build`
+|`CFBundleVersion`.
+
+|`codeSignId`
+|Required, but not used: kbdgen does not sign the bundle or the package.
+|===
+
+=== Layouts
+
+The layout formats have chapters of their own; this section covers what
+the macOS target does with them. A bundle may mix v3 and v4 layouts; both
+are written into the one macOS bundle, in the order of their language
+tags. A layout without macOS
+layers is skipped silently: a v3 layout without a `macOS` section, or a v4
+layout with neither a `hardware.macOS` nor a `hardware.default` variant.
+
+Each layout's *keyboard name* is its language tag with `+-+` and `+_+`
+removed: `se-NO` becomes `seNO`. It names the `.keylayout` and `.icns`
+files and the layout's `+KLInfo_+` entry in `Info.plist`, and ends its
+input source ID. Two layouts with the same keyboard name are an error. The
+keyboard's numeric `id` in the `.keylayout` is derived from the name.
+
+==== v3 layouts
+
+A v3 layout gets a `.keylayout` when it has a `macOS` section. This is part
+of `se-NO.yaml` from `keyboard-sme`:
+
+[source,yaml]
+----
 macOS:
   primary:
     layers:
       default: |
         ' 1 2 3 4 5 6 7 8 9 0 + ´
           á š e r t y u i o p å ŋ
-          a s d f g h j k l ö ä đ
+          a s d f g h j k l ø æ đ
         ž z č c v b n m , . -
       shift: |
         § ! " # $ % & / ( ) = ? `
           Á Š E R T Y U I O P Å Ŋ
-          A S D F G H J K L Ö Ä Đ
+          A S D F G H J K L Ø Æ Đ
         Ž Z Č C V B N M ; : _
       caps: |
         ' 1 2 3 4 5 6 7 8 9 0 + ´
           Á Š E R T Y U I O P Å Ŋ
-          A S D F G H J K L Ö Ä Đ
+          A S D F G H J K L Ø Æ Đ
         Ž Z Č C V B N M , . -
-      alt: |
-        ' © ™ £ € ˆ § | [ ] ˝ ± \u{301}
-          q w é ˇ ŧ þ ˀ ʼ œ ˙ ˚ ¨
-          ¯ ß ð ƒ . ˛ ˘ ˜ - ø æ @
-        < ÷ x ¸ ‹ › ‘ ’ ‚ … –
-      alt+shift: |
-        § ¡       ® ¥       ¢       \u{302} ¶       \       {       }       \u{30B} ¿       \u{300}
-          Q       W É       \u{30C} Ŧ       Þ       \u{309} \u{31B} Œ       \u{307} \u{30A} \u{308}
-          \u{304} № Ð       ʔ       \u{323} \u{328} \u{306} \u{303} \u{335} Ø       Æ       *
-        > ⁄       X \u{327} «       »       “       ”       „       ·       —
-      alt+caps: |
-        ' © ™  £ € ˆ § | [ ] ˝ ± \u{301}
-          Q W  É ˇ Ŧ Þ ˀ ʼ Œ ˙ ˚ ¨
-          ¯ SS Ð ƒ . ˛ ˘ ˜ - Ø Æ @
-        < ÷ X  ¸ ‹ › ‘ ’ ‚ … –
-      ctrl: |
-        0 1 2 3 4 5 6 7 8 9 0 \u{1F} =
-          \u{11} \u{17} \u{5} \u{12} \u{14} \u{19} \u{15} \u{9} \u{F} \u{10} \u{1B} \u{1D}
-          \u{1} \u{13} \u{4} \u{6} \u{7} \u{8} \u{A} \u{B} \u{C} ; ' \u{1C}
-        ` \u{1A} \u{18} \u{3} \u{16} \u{2} \u{E} \u{D} , . /
-      cmd: |
-        § 1 2 3 4 5 6 7 8 9 0 + ´
-          q w e r t y u i o p å ¨
-          a s d f g h j k l ö ä '
-        < z x c v b n m , . -
-      cmd+shift: |
-        ° ! " # € % & / ( ) = ? `
-          Q W E R T Y U I O P Å ˆ
-          A S D F G H J K L Ö Ä *
-        > Z X C V B N M ; : _
-      cmd+alt: |
-        € © ™ £ € § \u{0} | [ ] ≈ ± `
-          • , é \u{0} ŧ µ ü ı œ þ ˙ ˜
-          ¯ ß ð ƒ \u{0} ħ ˝ ª ł ø æ '
-        ≤ ÷ đ ¸ ‹ › ‘ ’ ‚ … –
   deadKeys:
-    default: [´]
+    default: ['´']
     shift: ['`']
-    caps: [´]
-    alt: ['-', ., ¨, ¯, ¸, ƒ, ʼ, ˀ, ˆ, ˇ, ˘, ˙, ˚, ˛, ˜, ˝]
-    alt+shift: [ʔ, №]
-    alt+caps: ['-', ., ¨, ¯, ¸, ƒ, ʼ, ˀ, ˆ, ˇ, ˘, ˙, ˚, ˛, ˜, ˝]
-    cmd+alt: [',', ¯, ¸, ƒ, ˙, ˜, ˝]
-    
-  space:
-    caps: '\u{A0}'
-    alt: '\u{A0}'
-    alt+shift: '\u{A0}'
-    alt+caps: '\u{A0}'
-    cmd+alt: '\u{A0}'
-```
+    caps: ['´']
+transforms:
+  ´:
+    ' ': ´
+    a: á
+    A: Á
+----
 
-==== Layers
-Each layer is split by line,
-typically to 3 lines of the keyboard. Keys in the format of `\u{}` are written in Unicode to avoid display issues. In
-particular, `\u{0}` is an absent key.
+===== Layers
 
-==== Dead keys
-Dead keys
+`primary.layers` maps layer names to key strings. Each string is split on
+whitespace, line breaks included, and the tokens fill the 48 ISO positions
+in order: `E00`–`E12` (the number row, starting left of `1`), `D01`–`D12`,
+`C01`–`C12`, then `B00`–`B10` (`B00` is the ISO key left of `Z`). How the
+tokens are spread over lines does not matter. A layer with fewer than 48
+tokens is an error; tokens after the 48th are ignored.
 
-==== Space
-Space
+Each layer becomes one key map, in YAML order, selected by these modifier
+states (the `keys` of its `<modifier>` element; `?` marks a key that may be
+held or not):
+
+[cols="1,2"]
+|===
+|Layer |Selected by
+
+|`default` |`command?`
+|`shift` |`anyShift caps? command?`
+|`caps` |`caps`
+|`+caps+shift+` |`anyShift caps command?`
+|`alt` |`anyOption command?`
+|`+alt+shift+` |`anyOption anyShift caps? command?`
+|`+alt+caps+` |`caps anyOption command?`
+|`ctrl` |`anyShift? caps? anyOption? anyControl`
+|`cmd` |`command`
+|`+cmd+shift+` |`command anyShift`
+|`+cmd+alt+` |`command anyOption`
+|`+cmd+alt+shift+` |`command anyOption anyShift`
+|===
+
+The first layer in the file is the default key map, used when no other
+one matches, whatever its name; list `default` first.
+
+The typing layers also match with Command held (`command?`). If macOS takes
+the first key map that matches, Command shortcuts use those layers and a
+later `cmd` layer is never reached. This is an open question in the spec;
+kbdgen keeps these terms as they have always been.
+
+Token rules:
+
+* `+\u{…}+` escapes are decoded in every output kbdgen writes.
+* `+\u{0}+` is not "no key" here: it is written as the output U+0000.
+* The space bar types a space (U+0020) in every layer. `macOS.space` is
+  read but ignored. A v4 layout can put other characters on the space bar.
+* The keypad's decimal key types the layout's top-level `decimal`, or `.`
+  when there is none.
+* Return, Tab, Delete, Escape, the arrows, the function keys and the rest
+  of the keypad are fixed by kbdgen and the same in every layer.
+
+===== Dead keys
+
+Dead keys need both `macOS.deadKeys` and the layout's top-level
+`transforms`:
+
+* `deadKeys` lists, per layer, the tokens that are dead keys on it.
+* Each top-level `transforms` key is a dead key, mapping the token typed
+  next to the result. Its `' '` entry is the dead key's standalone output:
+  what it types when followed by a key with no composition, or by the
+  space bar. Every top-level transform needs a `' '` entry, and it must be
+  a string; otherwise building the layout fails.
+* Compositions apply on every layer that has a `deadKeys` entry, and only
+  there. A key on a layer without one, pressed after a dead key, types the
+  dead key's standalone output and then its own.
+* One level only: a composition whose value is itself a mapping makes
+  kbdgen abort (`nested transforms under … are not supported on macOS`).
+* A token listed in `deadKeys` with no transform of its own is an error.
+* A layout with `transforms` but no `macOS.deadKeys`, or the other way
+  round, builds without dead keys and logs a warning.
+* Put a dead key on a layer only once. When the same dead-key token is at
+  two positions of one layer, only the last position works.
+
+==== v4 layouts
+
+A v4 layout (`format: 4`) gets a `.keylayout` when it has a
+`hardware.macOS` variant, or failing that a `hardware.default` one. kbdgen
+compiles the layout and adapts the `macOS` keyboard to the `.keylayout`
+format:
+
+* Each hardware layer becomes a key map. Its modifier sets give the
+  `<modifier>` terms; a layer read from v3 gets the term v3 gave it. The
+  `other` layer, if there is one, is the default key map; otherwise the
+  first layer is.
+* The keys are the 48 ISO positions and the space bar. The space bar
+  follows the layout, so `space:` entries work: `vro.yaml` has
+  `+space: {caps: '\u{A0}'}+`, and its Caps Lock map writes
+  `+<key code="49" output="&#x00A0;" />+`.
+* The keypad's decimal key types the layout's `decimal`, or `.`.
+* The `deadKeys` table becomes dead-key states. kbdgen runs the keyboard
+  engine on each dead key and every key value to find what the `.keylayout`
+  must type, so chained dead keys (a dead key that composes with another
+  dead key) work.
+* The display names are the layout's `displayNames`.
+
+What a `.keylayout` cannot express is left out, with one warning per
+layout and feature:
+
+* transforms that do not start with a dead key, `reorder` groups, and
+  custom `backspace` rules;
+* outputs mixing text and dead-key markers;
+* dead-key results that leave text and a marker, or several markers;
+* long-press, multi-tap and flick gestures;
+* key displays other than the automatic ones, and `keyNames` labels;
+* extra modifiers and other Windows-only options;
+* `normalization: enabled`.
+
+A layout that loses nothing gets one information message instead:
+`the .keylayout expresses every feature of the keyboard`.
+
+The exhaustive rules are in `docs/spec/ldml/macos.md`.
+
+==== Migrating a v3 layout
+
+After `kbdgen ldml migrate`, a layout's `.keylayout` is the same as
+before, except where v3 behaved oddly. kbdgen's tests compare the two
+documents for its test layouts, and allow only these differences:
+
+* `+\u{0}+` becomes no key, where v3 typed U+0000.
+* The space bar follows the old `macOS.space` entries and composes with
+  dead keys, where v3 always typed a plain space.
+* Dead keys compose on every layer, not only on layers listed in
+  `macOS.deadKeys`.
+* A dead key pressed after another dead key types their composition when
+  the transforms define one, where v3 typed the first dead key's standalone
+  output and started the second.
+* A transform whose dead key is on no macOS layer gets no dead-key state;
+  it could not be reached anyway.
+* The `ctrl` and `cmd` layers come after the others in the file, which
+  changes nothing when typing.
+
+=== Commands
+
+The bundle and output options come before `macos`:
+
+[source,shell]
+----
+kbdgen target -b sme.kbdgen -o out macos build
+kbdgen target -b sme.kbdgen -o out macos build --no-installer
+kbdgen target -b sme.kbdgen -o out macos generate
+kbdgen target -b sme.kbdgen -o out macos installer
+----
+
+[cols="1,3"]
+|===
+|Command |What it does
+
+|`macos build`
+|Writes the bundle, then the installer. On an operating system other
+than macOS the installer is skipped with a warning.
+
+|`macos build --no-installer`
+|Writes the bundle only, for wrapping in another installer.
+
+|`macos generate`
+|Writes the bundle. Same as `build --no-installer`.
+
+|`macos installer`
+|Packages the bundle already in `out` as it is, without regenerating it.
+It fails when the bundle is missing:
+`…/out/no.uit.giella.keyboards.sme.keyboardlayout.sme.bundle does not exist; run the macOS generate step first`.
+|===
+
+The output directory is created if it does not exist. Every layout is
+generated before anything is written, so a layout that fails leaves no
+bundle behind.
+
+=== Output
+
+`macos build` on `keyboard-sme` (layouts `se`, `se-FI`, `se-NO` and
+`se-SE`; `se` has no `macOS` section) writes:
+
+....
+out/
+├── no.uit.giella.keyboards.sme.keyboardlayout.sme.bundle/
+│   └── Contents/
+│       ├── Info.plist
+│       └── Resources/
+│           ├── seFI.icns
+│           ├── seFI.keylayout
+│           ├── seNO.icns
+│           ├── seNO.keylayout
+│           ├── seSE.icns
+│           ├── seSE.keylayout
+│           ├── da.lproj/InfoPlist.strings
+│           ├── en.lproj/InfoPlist.strings
+│           ├── fi.lproj/InfoPlist.strings
+│           ├── nb.lproj/InfoPlist.strings
+│           ├── nn.lproj/InfoPlist.strings
+│           ├── no.lproj/InfoPlist.strings
+│           ├── se.lproj/InfoPlist.strings
+│           ├── se-FI.lproj/InfoPlist.strings
+│           ├── se-NO.lproj/InfoPlist.strings
+│           ├── se-SE.lproj/InfoPlist.strings
+│           ├── sma.lproj/InfoPlist.strings
+│           └── sv.lproj/InfoPlist.strings
+└── no.uit.giella.keyboards.sme.keyboardlayout.sme.pkg
+....
+
+`Info.plist` identifies the bundle and registers each layout, in tag
+order:
+
+[source,xml]
+----
+<key>CFBundleIdentifier</key>
+<string>no.uit.giella.keyboards.sme.keyboardlayout.sme</string>
+<key>CFBundleName</key>
+<string>North Sami Keyboard</string>
+<key>CFBundleVersion</key>
+<string>1</string>
+<key>CFBundleShortVersionString</key>
+<string>1.0.4</string>
+<key>KLInfo_seFI</key>
+<dict>
+	<key>TISInputSourceID</key>
+	<string>no.uit.giella.keyboards.sme.keyboardlayout.sme.seFI</string>
+	<key>TISIntendedLanguage</key>
+	<string>se-FI</string>
+</dict>
+----
+
+There is one `<tag>.lproj/InfoPlist.strings` for every language tag in any
+layout's `displayNames`, with the full tag (`se.lproj` and `se-NO.lproj`
+are separate). Each lists, by keyboard name, the layouts named in that
+language. `en.lproj/InfoPlist.strings`:
+
+....
+"seFI" = "Northern Sami (Finland)";
+"seNO" = "Northern Sami (Norway)";
+"seSE" = "Northern Sami (Sweden)";
+....
+
+The `.pkg` is unsigned. It installs the bundle into
+`/Library/Keyboard Layouts` for all users, asks for a restart when it
+finishes, and has the target's `version`.
+
+When no layout has macOS layers, kbdgen warns
+(`sme: no layout has macOS layers, so the bundle holds no keyboard layouts`)
+and still writes the bundle, with an `Info.plist` and no layouts.
+
+=== Icons
+
+Icons are read from `resources/macos`:
+
+* `icon.<tag>.<ext>` is the icon of the layout tagged `<tag>`, such as
+  `icon.se-NO.png`. Tags are compared as language tags, so `icon.se-no.png`
+  also matches `se-NO`.
+* `icon.<ext>`, such as `icon.png`, is the default, used by every layout
+  without an icon of its own.
+
+A layout with neither has no icon, and nothing is logged. Each icon is
+resized to 16, 32 and 64 pixels, centred on a transparent square, and
+written as `<name>.icns` next to the `.keylayout`, so a square image of at
+least 64 pixels works best. Other files in `resources/macos` are ignored.
+A tag that is not a valid language tag (`icon.se_FI.png`), or two files
+for one tag or for the default, make loading the bundle fail.
+
+=== Trying it
+
+Install the package and log out and in again, or restart:
+
+[source,shell]
+----
+sudo installer -pkg out/no.uit.giella.keyboards.sme.keyboardlayout.sme.pkg -target /
+----
+
+Without the package, copy the `.bundle` directory into
+`~/Library/Keyboard Layouts` for yourself, or `/Library/Keyboard Layouts`
+for every user, and log out and in. The layouts are then listed among the
+input sources in System Settings, under Keyboard, with the names from
+`InfoPlist.strings`.
+
+[[macos-messages]]
+=== Warnings and errors
+
+Building the bundle and the installer:
+
+[cols="2,3"]
+|===
+|Message |Meaning
+
+|`sme: the bundle has no targets/macos.yaml`
+|Add `targets/macos.yaml`.
+
+|`sme: no layout has macOS layers, so the bundle holds no keyboard layouts`
+|No layout has a `macOS` section or a macOS hardware variant. The bundle
+is written empty.
+
+|`two macOS layouts are named seNO; their .keylayout files would collide`
+|Two language tags differ only in `+-+` or `+_+`.
+
+|`seNO: skipping icon …: iconutil only exists on macOS`
+|Icons are only converted on macOS.
+
+|`Skipping the installer: pkgbuild and productbuild only exist on macOS`
+|`macos build` ran on another operating system.
+
+|`+`convert` could not be started+`, `+`pkgbuild` failed with exit status: 1: …+`
+|An external tool is missing or failed; the message ends with its error
+output.
+|===
+
+v3 layouts:
+
+[cols="2,3"]
+|===
+|Message |Meaning
+
+|`macOS layout for se-NO` +
+`macOS layer Default does not have enough keys, expected 48 keys but got 37`
+|A layer has fewer than 48 tokens. The layer is named as kbdgen spells it
+internally (`Default` for `default`).
+
+|`seNO: the layout has transforms but no macOS.deadKeys, so it has no dead keys on macOS`
+|Add `macOS.deadKeys`, or ignore if the transforms are for other targets.
+
+|`seNO: macOS.deadKeys is set but the layout has no transforms, so its dead keys type themselves`
+|Add `transforms`.
+
+|`+dead key `´` of layer Default is in macOS.deadKeys but not in the transforms+`
+|Every listed dead key needs a top-level transform.
+
+|`+the escape transform ` ` not found for dead key `´`+`
+|Add a `' '` entry to the dead key's transform.
+
+|`+the escape transform of dead key `´` should be a string, not another transform+`
+|The `' '` entry is a mapping.
+
+|`+seNO: transform ended too soon for dead key `´`; ignored+`
+|A top-level transform is a string, not a mapping.
+|===
+
+v4 layouts are reported by the keyboard name. These are the real warnings
+for `vro.yaml` and `features.yaml`, two of kbdgen's test layouts:
+
+....
+WARN kbdgen::build::windows::kbdl::diag: sme: layer altL, altL caps: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart
+WARN kbdgen::build::windows::kbdl::diag: sme: the .keylayout cannot express 1 key(s) with long-press, multi-tap or flick gestures (e.g. u-0061)
+WARN kbdgen::build::windows::kbdl::diag: sme: the .keylayout cannot express 2 key display(s) and label(s) (e.g. Å; ¨)
+WARN kbdgen::build::windows::kbdl::diag: vro: the .keylayout cannot express 2 key(s) with long-press, multi-tap or flick gestures (e.g. u-006F; u-0061)
+WARN kbdgen::build::windows::kbdl::diag: vro: the .keylayout cannot express 2 key display(s) and label(s) (e.g. vaih; sisse)
+....
+
+The log names `kbdgen::build::windows::kbdl::diag` because the macOS
+adapter reports through the same diagnostics as the Windows one; these
+lines are about the macOS layout. Each `cannot express` warning gives a
+count and up to ten examples. The other v4 messages:
+
+[cols="2,3"]
+|===
+|Message |Meaning
+
+|`layer extra1: macOS has no extra modifiers, so its set extra1 is dropped`
+|A layer set with `extra1`–`extra3` never matches on macOS.
+
+|`layer caps: Caps Lock is bound as an extra modifier, so no Caps Lock state selects its caps set; dropped`
+|Caps Lock is rebound by `extraModifiers`.
+
+|`layer altL: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart`
+|Sided layers are written as `option`/`rightOption` or
+`control`/`rightControl`.
+
+|`layer extra1: no modifier state on macOS selects it; dropped`
+|Every set of the layer was dropped.
+
+|`key at scan code 73 in layer none: macOS has no key code for it here; dropped`
+|Only the 48 ISO positions and the space bar are written.
+
+|`key E00 in layer none: its output mixes text and markers or holds several markers, which a .keylayout cannot express; treated as no key`
+|The key is left out of the map.
+
+|`the decimal key's output holds markers or nothing; the keypad types "."`
+|`decimal` is not plain text.
+
+|`+dead key \m{x} then "q": the engine types "x" and leaves 1 marker(s) pending, which a .keylayout cannot express; omitted+`
+|That composition is left out.
+
+|`+sme: dead key \m{x}: pressing it does not leave exactly its marker pending+`
+|An error: a dead key whose first press already types something cannot be
+a `.keylayout` dead key.
+|===

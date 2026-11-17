@@ -1,1 +1,243 @@
 == iOS
+
+The iOS target does not write an app of its own. It clones the
+`giellakbd-ios` template, writes the keyboards' data into it, rewrites the
+template's Xcode project and plists, and drives fastlane, CocoaPods and
+`xcodebuild` to sign, archive and export the app. Only v3 layouts are read:
+`KbdgenBundle::reject_v4_layouts` stops every `ios` command when the bundle
+has a v4 layout.
+
+The rules are in `docs/spec/ios.md` (`+ios.*+` for the layout list, JSON,
+package ids and build chain; `+xcode.*+` for the project changes) and
+`docs/spec/pbxproj.md` (`+pbxproj.*+`, the project model and its
+serializer).
+
+=== Code map
+
+All of it is under `src/build/ios/`.
+
+[cols="1,3"]
+|===
+|File |Contents
+
+|`mod.rs`
+|`IosBuild` and its step list, `ios_layouts`, package ids (`pkg_id`,
+`IosProjectExt::all_pkg_ids`), `init`, and `ensure_success`, which turns a
+failed command into an error quoting the last 20 lines of its stderr (or
+stdout when stderr is empty).
+
+|`clone_giellakbd.rs`
+|`CloneGiellaKbd`: `git clone` of the template into `<out>/repo`.
+
+|`generate_ios.rs`
+|`GenerateIos`: `Keyboard/Models/KeyboardDefinitions.json`.
+
+|`generate_xcode.rs`
+|`GenerateXcode`: keyboard targets, plists, localizations and app icons.
+
+|`pbxproj.rs`
+|The `project.pbxproj` model, reading it through `plutil`, and the
+mutations `generate_xcode.rs` and provisioning use.
+
+|`serialize_pbxproj.rs`
+|`Pbxproj::to_pbxproj_string`, which writes the model in Xcode's format.
+
+|`xcode_structures.rs`
+|Typed structs for the plists and JSON kbdgen rewrites.
+
+|`xcodebuild.rs`
+|`FastlaneProvisioning`, `BuildXcarchive`, and the `fastlane` runner with
+its environment.
+
+|`pod_install.rs`
+|`PodInstall`.
+
+|`testdata/every-kind.pbxproj`
+|The golden serialization.
+|===
+
+`ios print-pkg-ids` and `ios init` are handled in `src/main.rs`;
+`ios build` runs `IosBuild::build_full`, which awaits the steps in order and
+stops at the first error.
+
+=== The layout list
+
+`ios_layouts` is the one list of iOS layouts: those with an `iOS` section,
+sorted by lower-cased `displayNames.en`, then by tag. It fails, listing
+every problem, when one lacks `keyNames` or `displayNames.en`.
+`GenerateIos` and `GenerateXcode` must both use it: a keyboard finds its
+entry in `KeyboardDefinitions.json` by `DivvunKeyboardIndex`, its position
+in this list.
+
+Package ids (`ios.pkg-ids`) are `<packageId>.<tag>`, except under
+`no.uit.giella.keyboards.Sami`, where `legacy_divvun_keyboard_id` maps the
+Sami tags to the names first published. The last segment
+(`keyboard_name`) names the Xcode target and `Keyboard/<folder>`.
+`all_pkg_ids` adds the base id and sorts.
+
+=== Keyboard definitions
+
+`GenerateIos` maps each layout of `ios_layouts` to an
+`IosKeyboardDefinitions` and writes the array with
+`serde_json::to_string_pretty`. The struct's field order is the JSON key
+order (`ios.keyboard-json`). Rows come from `generate_platform`: trim the
+layer, split it on `\n`, split each row with `util::split_keys`, and turn a
+token matching `SPECIAL_KEY` into an `IosButton` (`ios.rows`); everything
+else stays a string. No `+\u{…}+` decoding is done anywhere on this path.
+
+`process_transforms` flattens each top-level transform into one object.
+A nested transform hits `todo!`, which the spec pins
+(`layout.transforms.dead-key-entries`).
+
+=== The pbxproj model
+
+`Pbxproj::from_path` copies the project to a temporary `tmp.pbxproj`, runs
+`plutil -convert json` on the copy, and deserializes the JSON into
+`Pbxproj`: the top-level fields and `objects`, a `BTreeMap` from
+`ObjectId` to `Object`, an enum tagged by `isa` with one variant per
+modelled kind (`pbxproj.model` lists the 18). The structs reject unknown
+fields, except the build phases, so a template that starts using a new
+field fails loudly instead of losing it. Reading needs `plutil`, so it only
+works on macOS.
+
+Reading normalizes order: objects by id, and id lists as sorted sets
+(`BTreeSet`, `pbxproj.model.ordering`). `buildSettings` is an `IndexMap` in the order
+`plutil` produced, which need not be the file's.
+
+`serialize_pbxproj.rs` writes the model back in the old-style plist format
+Xcode uses: a section per kind, even when empty, objects in id order, and
+fixed quoting rules per field (`pbxproj.serialize`, `pbxproj.quoting`).
+kbdgen does not know object names, so most comments are the placeholder
+`TODO`; Xcode ignores comments when reading and rewrites them when it next
+saves the project.
+
+New objects get random 24-character hex ids (`ObjectId::new_random`). The
+example `pbxproj-roundtrip` reads a project and prints it re-serialized,
+which is the quickest way to check the model against a new template:
+
+[source,shell]
+----
+cargo run --example pbxproj-roundtrip -- repo/GiellaKeyboard.xcodeproj/project.pbxproj
+----
+
+=== Xcode project changes
+
+`GenerateXcode::build` reads `repo/GiellaKeyboard.xcodeproj/project.pbxproj`
+and, when the bundle has `targets/ios.yaml`, runs `configure_targets`:
+
+. For each project locale (`en` written `Base`), write
+  `HostingApp/<locale>.lproj/InfoPlist.strings`, and add
+  `<locale>.lproj/About.txt` to the `About.txt` variant group when the
+  template has that file (`add_localized_about`).
+. For each layout of `ios_layouts`, in order: write
+  `Keyboard/<folder>/Info.plist` from the template's `Keyboard/Info.plist`
+  (`keyboard_plist`); add a reference to it in group `Keyboard/<folder>`
+  (`create_plist_file_reference`, `add_path`, `add_ref_to_group`); clone
+  target `Keyboard` as `<folder>` (`duplicate_target`: new ids for the
+  target, its configuration list, its configurations and its `.appex`; same
+  build phases; `INFOPLIST_FILE` and `PRODUCT_NAME` set); set
+  `PRODUCT_BUNDLE_IDENTIFIER` and `DEVELOPMENT_TEAM`; and embed the `.appex`
+  in `HostingApp` (`add_appex_to_target_embedded_binaries`, which finds the
+  phase named `Embed App Extensions` or `Embed Foundation Extensions`).
+. Rewrite `HostingApp/Info.plist`, both `.entitlements` files and
+  `HostingApp/Settings.bundle/Root.plist`.
+. Give `HostingApp` the base id and team, then remove target `Keyboard`
+  (`remove_target`, `remove_appex_from_target_embedded_binaries`).
+. Add the locales to `knownRegions`, and an `InfoPlist.strings` variant
+  group to the resources of `HostingApp` and to `HostingApp/Supporting Files`
+  (`add_locales`).
+
+With or without the target, `generate_icons` then renders the default icon
+for every entry of the template's `AppIcon.appiconset/Contents.json`, in
+parallel with `rayon`, and the project is written back.
+
+The plists go through the structs in `xcode_structures.rs`: anything the
+template has that a struct does not model is dropped when the file is
+written. When the template gains a key, add it to the struct. A key a
+struct requires but the template lacks makes the step fail.
+
+`remove_target` leaves the removed target's configuration list and
+configurations, and the build file that embedded its `.appex`, in the
+project unreferenced; Xcode ignores them. A cloned target keeps the source
+target's `productName`.
+
+=== Build chain
+
+`IosBuild::new` lists the steps:
+
+. `CloneGiellaKbd`: `git clone https://github.com/divvun/giellakbd-ios.git
+  repo` in the output directory. It fails when `repo` exists.
+. `GenerateIos`, then `GenerateXcode`, as above. Neither checks for
+  `targets/ios.yaml` up front; without it `GenerateXcode` only renders the
+  icons, and the next step fails.
+. `FastlaneProvisioning`: requires `appStoreKeyJson` and `teamId`. For
+  every id of `all_pkg_ids` it spawns `fastlane match appstore` and
+  `fastlane sigh` (writing `<id>.mobileprovision`) as independent tokio
+  tasks, at most 12 running at once (a `Semaphore`), all in `repo`, and
+  awaits them in spawn order. `embed_profiles` then decodes each profile with
+  `security cms -D -i`, sets `PROVISIONING_PROFILE` and
+  `PROVISIONING_PROFILE_SPECIFIER` on its target (re-reading and rewriting
+  the project), and writes `repo/opts.plist` for the export.
+. `PodInstall`: `pod install --repo-update --project-directory=<repo>`.
+. `BuildXcarchive`: requires `teamId` and `codeSignId`. `xcodebuild archive`
+  with the workspace `GiellaKeyboard.xcworkspace`, scheme `HostingApp`,
+  configuration `Release`, destination `generic/platform=iOS`, one job per
+  CPU, and `CODE_SIGN_IDENTITY`/`DEVELOPMENT_TEAM` overrides; its stdout is
+  piped into `xcbeautify`. Then `xcodebuild -exportArchive` into `<out>/ipa`
+  with `repo/opts.plist`.
+
+`fastlane_env` passes the target's credentials to every fastlane run as
+`MATCH_GIT_URL`, `MATCH_PASSWORD`, `FASTLANE_USER`, `PRODUCE_USERNAME`,
+`FASTLANE_PASSWORD` and `APP_STORE_KEY_JSON`, on top of kbdgen's own
+environment. The environment overrides of the target fields themselves
+(`TEAM_ID`, `CODE_SIGN_ID`, …) are applied when the bundle is loaded
+(`bundle.structure.targets.env`).
+
+`init` (`ios.build-chain.init`) runs `fastlane produce` for the app and
+the app group, then one task per id that creates the App ID (except the
+base id), enables app groups and associates the group.
+
+=== Tests
+
+[source,shell]
+----
+cargo test --lib build::ios
+----
+
+[cols="2,3"]
+|===
+|Test |What it checks
+
+|`serialize_pbxproj::tests::serializes_every_kind`
+|The golden fixture. A model built in the test, with every kind and the
+awkward cases (Swift package products, quoted names, build-file settings,
+nested attributes, array build settings), must serialize to
+`testdata/every-kind.pbxproj` byte for byte.
+
+|`pbxproj::tests::reads_what_it_writes_through_plutil`
+|macOS only. Reading the golden file through `plutil` and writing it again
+gives the same lines. Lines are compared sorted, because `plutil` reorders
+`buildSettings`.
+
+|`pbxproj::tests::*`
+|Reading failures (`plutil` errors, non-dictionary `attributes`), a
+missing target, and `add_localized_about` adding each locale once.
+
+|`tests::*` in `mod.rs`
+|The order of `ios_layouts` and of `KeyboardDefinitions.json`, the
+incomplete-layout error, package ids and the legacy table, the
+preconditions of `init`, and the error text of a failed command.
+
+|`generate_xcode::tests::*`
+|`keyboard_plist` field by field, a template without
+`LSApplicationQueriesSchemes`, missing icon resources, and icon sizes.
+|===
+
+Nothing runs the external commands: `git`, fastlane, CocoaPods and
+`xcodebuild` are only exercised by a real `ios build`. The generation steps
+need no credentials, but no subcommand runs them alone. To check them
+against a fresh template, clone it into `<out>/repo` and call
+`GenerateIos.build(&bundle, out)` and then `GenerateXcode.build(&bundle, out)`
+from a small program that depends on the `kbdgen` crate.
+`xcodebuild -list -project <out>/repo/GiellaKeyboard.xcodeproj` should then
+show one target per layout in place of `Keyboard`.
