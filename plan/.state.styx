@@ -1040,11 +1040,6 @@ impl_evidence (
         {impl_name main, rule chromeos.descriptor.runtime}
         {impl_name main, rule chromeos.keymap}
         {impl_name main, rule chromeos.manifest}
-    ), rule_versions_seen (
-        {id chromeos.descriptor, version 0}
-        {id chromeos.descriptor.runtime, version 0}
-        {id chromeos.keymap, version 0}
-        {id chromeos.manifest, version 0}
     )}
     {id targets.ios.keyboard-json, covered_rules (
         ios.keyboard-json

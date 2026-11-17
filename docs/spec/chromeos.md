@@ -16,7 +16,7 @@ ignored, and the rest are visited in bundle layout order.
 > Letters follow QWERTY order. Tokens are assigned to these positions per
 > `[spec:kbdgen:req:keys.iso-order.desktop-layers]`. `Space` is not mapped.
 
-> [spec:kbdgen:req:chromeos.descriptor]
+> [spec:kbdgen:req:chromeos.descriptor+1]
 > `background.js` MUST be the bundled `template-chromeos-keyboard.js`
 > verbatim, followed by `\n\nconst descriptor = {json}\n\nKeyboard.install(descriptor)`
 > with no trailing newline. `{json}` is pretty JSON keyed by language tag.
@@ -24,13 +24,24 @@ ignored, and the rest are visited in bundle layout order.
 > - `dead_keys` is `chromeOS.deadKeys` as written, or `{}`.
 > - `layers` maps each layer name to `{code: raw token}`, in key-map order.
 > - `transforms` is re-read from `{bundle}/layouts/{tag}.yaml`, using the
->   normalised tag. On a case-sensitive filesystem, a file named
->   `se-fi.yaml` therefore panics. The value is deserialised strictly as
->   `map<string, map<string, string>>`, so a top-level leaf or deeper nesting
->   panics. If the layout has no transforms, it is `{}`.
+>   normalised tag, and deserialised strictly as
+>   `map<string, map<string, string>>`. If the layout has no transforms, it
+>   is `{}`.
 >
-> Tokens are not decoded. If no layout has a `chromeOS` section, the step
-> panics with `Could not generate background.js`.
+> Tokens are not decoded. After the `chromeos.manifest` checks and before
+> writing any file, the step MUST fail with `no layout has a chromeOS section`
+> if no layout has one. It then builds every descriptor, in bundle layout
+> order and transforms before layers, and MUST fail at the first of:
+> - `{tag}: read {path}` or `{tag}: parse {path}` when the re-read file
+>   cannot be read, or parsed as a mapping (on a case-sensitive filesystem,
+>   a file named `se-fi.yaml` is not found);
+> - `{tag}: {path} has no transforms`;
+> - `{tag}: chromeOS transforms must map each dead key to a map of strings`
+>   when the value has another shape, such as a top-level leaf or deeper
+>   nesting;
+> - `{tag}: chromeOS {layer} layer has {n} keys but needs at least 48` for a
+>   layer with fewer tokens (`keys.iso-order.desktop-layers`), `{layer}`
+>   spelt as in the layout file.
 
 > [spec:kbdgen:sem:chromeos.descriptor.runtime]
 > The embedded runtime builds the layer name from `caps`, `ctrl`, `alt` (only
@@ -43,10 +54,11 @@ ignored, and the rest are visited in bundle layout order.
 > generator emits `dead_keys` and no `space`. Every `keydown` on a defined
 > layer therefore throws a `TypeError`.
 
-> [spec:kbdgen:req:chromeos.manifest]
-> If `targets/chromeos.yaml` is missing, the step panics with
-> `Could not generate manifest` after `background.js` is written.
-> Otherwise, `manifest.json` MUST be manifest v2 with these fields:
+> [spec:kbdgen:req:chromeos.manifest+1]
+> Before writing any file, the step MUST fail with
+> `targets/chromeos.yaml is missing` if that file is absent, and then with
+> `project.yaml: locales has no en entry` if `project.yaml` `locales` has no
+> `en`. Otherwise, `manifest.json` MUST be manifest v2 with these fields:
 > - `name` `__MSG_name__` and `description` `__MSG_description__`;
 > - `version` from `build` and `version_name` from `version`; `appId` is
 >   unused;
@@ -57,10 +69,9 @@ ignored, and the rest are visited in bundle layout order.
 > - one input component per layout:
 >   `{"name"/"description": "__MSG_{tag_}__", "type": "ime", "id": tag, "language": config.locale ?? "en-US", "layouts": [config.xkbLayout ?? "us"]}`.
 >
-> `project.yaml` `locales` MUST contain `en`. For each language `k` in any
-> `chromeOS` layout's `displayNames`, kbdgen writes
-> `_locales/{k_}/messages.json`. It has one `{tag_: {"message": T}}` entry
-> per layout that has a name for `k`, then `name` and `description` from
+> For each language `k` in any `chromeOS` layout's `displayNames`, kbdgen
+> writes `_locales/{k_}/messages.json`. It has one `{tag_: {"message": T}}`
+> entry per layout that has a name for `k`, then `name` and `description` from
 > `locales[k]`, falling back to `locales.en`. `T` substitutes the name into
 > `{} tastatur` (`nb`, `no`, `nn`, `da`), `{} tangentbord` (`sv`),
 > `{} näppäimistö` (`fi`), or `{} keyboard` (all other tags). In these
