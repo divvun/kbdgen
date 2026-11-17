@@ -48,17 +48,16 @@ order that desktop generators map layer tokens onto.
 > Strings and Maps are supported within transforms!"), so digits MUST be
 > quoted.
 
-> [spec:kbdgen:req:layout.transforms.dead-key-entries]
-> Generators treat each top-level entry as one dead key and support exactly
-> one level of branching. A top-level leaf is logged ("Transform ended too
-> soon for dead key …") and ignored. A branch child that is itself a branch
-> panics (`todo!`) in the Windows, macOS, iOS and Android generators. The
-> child keyed by a single space, the transform escape, is the dead key's
-> standalone (terminator) output. Windows requires it for every dead key that
-> occurs in its layers, and macOS for every top-level branch once any layer
-> has `deadKeys`; there it MUST be a leaf, else generation panics ("The escape
-> transform ` ` not found …" / "… should be a string …"). iOS and Android
-> do not require it.
+> [spec:kbdgen:req:layout.transforms.dead-key-entries+1]
+> Generators treat each top-level entry as one dead key. The macOS, iOS and
+> Android generators support exactly one level of branching: a branch child
+> that is itself a branch panics (`todo!`), and a top-level leaf is ignored
+> with a warning naming the layout and the dead key. The child keyed by a
+> single space, the transform escape, is the dead key's standalone
+> (terminator) output. Windows requires it for every dead key that occurs in
+> its layers, and macOS for every top-level branch once any layer has
+> `deadKeys`; there it MUST be a leaf, and a missing or non-leaf escape is an
+> error naming the dead key. iOS and Android do not require it.
 
 ## Key notation
 
@@ -84,10 +83,10 @@ order that desktop generators map layer tokens onto.
 > code, ChromeOS `KeyboardEvent.code`) each cover exactly the first 48
 > positions, `E00`…`B10`, in this order; nothing maps `B11`.
 
-> [spec:kbdgen:req:keys.iso-order.desktop-layers]
+> [spec:kbdgen:req:keys.iso-order.desktop-layers+1]
 > For Windows, macOS and ChromeOS, every `primary` layer string is split on
 > whitespace (newlines included) and token *i* is assigned to position *i*
 > of the 48-key order `E00`…`B10`. Each layer MUST have at least 48 tokens;
-> fewer panics with "Provided layer does not have enough keys, expected 48
-> keys but got N" (the ChromeOS message says "Windows"). Tokens past the 48th
-> are silently ignored, so a 49th `B11` token has no effect.
+> fewer is an error naming the layout, the layer, the token count and the 48
+> required. Tokens past the 48th are silently ignored, so a 49th `B11` token
+> has no effect.

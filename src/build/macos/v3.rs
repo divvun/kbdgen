@@ -83,7 +83,7 @@ fn initialize_key_transition_map(
     let mut layered_key_transition_map = TransitionMap::new();
     for (layer, key_map) in layers {
         let keys = split_keys(key_map);
-        // [spec:kbdgen:req:keys.iso-order.desktop-layers]
+        // [spec:kbdgen:req:keys.iso-order.desktop-layers+1]
         if keys.len() < MACOS_KEYS.len() {
             bail!(
                 "macOS layer {layer:?} does not have enough keys, expected {} keys but got {}",
@@ -108,7 +108,7 @@ fn initialize_key_transition_map(
 
 /// Registers each top-level transform as a dead-key state, in YAML order,
 /// with its escape output as the terminator.
-// [spec:kbdgen:req:layout.transforms.dead-key-entries]
+// [spec:kbdgen:req:layout.transforms.dead-key-entries+1]
 // [spec:kbdgen:req:keylayout.transforms+1]
 fn register_dead_keys(
     name: &str,
@@ -159,7 +159,7 @@ fn process_transforms(
             .expect("every layer has its transitions");
         for token in split_keys(key_map).iter().take(MACOS_KEYS.len()) {
             for (dead_key, value) in transforms {
-                // [spec:kbdgen:req:layout.transforms.dead-key-entries]
+                // [spec:kbdgen:req:layout.transforms.dead-key-entries+1]
                 let Transform::More(map) = value else {
                     continue;
                 };

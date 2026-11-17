@@ -13,7 +13,7 @@ pub mod macos;
 pub mod svg;
 pub mod windows;
 
-// [spec:kbdgen:sem:pipeline.steps]
+// [spec:kbdgen:sem:pipeline.steps+1]
 #[async_trait(?Send)]
 pub trait BuildSteps {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self

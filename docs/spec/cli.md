@@ -23,7 +23,7 @@ more build steps against it.
 
 ## Pipeline
 
-> [spec:kbdgen:sem:pipeline.steps]
+> [spec:kbdgen:sem:pipeline.steps+1]
 > A build step receives the loaded bundle and the canonical output path. A
 > full build runs its target's steps strictly in order, awaiting each and
 > stopping at the first error; each target's rule lists its sequence.
@@ -31,7 +31,7 @@ more build steps against it.
 > `svg` has no steps and succeeds without output. `android clone`/`generate`
 > and `macos generate`/`installer` run that single step. `macos build` runs
 > the generate step, then the installer step only when `kbdgen` was compiled
-> for macOS and `--no-installer` is absent. Host-gated steps (Windows DLL
-> build, macOS installer) are chosen at compile time by the binary's target
-> OS; on other hosts a warning is logged and the step omitted (`macos
-> installer` is not gated).
+> for macOS and `--no-installer` is absent; on a binary compiled for any
+> other OS, `macos build` without `--no-installer` logs a warning that the
+> installer step is omitted. That is the only host-gated step: the Windows
+> DLL build runs on any host, and `macos installer` is not gated.

@@ -218,7 +218,7 @@ fn generate_layers(
         .map(|(layer, keys)| {
             let keys = split_keys(keys);
 
-            // [spec:kbdgen:req:keys.iso-order.desktop-layers]
+            // [spec:kbdgen:req:keys.iso-order.desktop-layers+1]
             if keys.len() < CHROMEOS_KEYS.len() {
                 bail!(
                     "{tag}: chromeOS {} layer has {} keys but needs at least {}",

@@ -150,7 +150,7 @@ fn process_transforms(
                 );
             }
             Transform::More(transforms) => {
-                // [spec:kbdgen:req:layout.transforms.dead-key-entries]
+                // [spec:kbdgen:req:layout.transforms.dead-key-entries+1]
                 for (next_char, transform) in transforms {
                     if next_char == TRANSFORM_ESCAPE {
                         transforms_by_char.insert(next_char.clone(), dead_key.clone());

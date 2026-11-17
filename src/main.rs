@@ -34,7 +34,7 @@ async fn android_target(
     Ok(())
 }
 
-// [spec:kbdgen:sem:pipeline.steps]
+// [spec:kbdgen:sem:pipeline.steps+1]
 // [spec:kbdgen:req:macbundle.installer+1]
 async fn macos_target(
     bundle: KbdgenBundle,

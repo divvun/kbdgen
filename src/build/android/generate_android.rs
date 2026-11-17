@@ -288,7 +288,7 @@ fn values_locales(resources_path: &Path) -> Result<HashSet<String>> {
 
 /// `{dead key: {next key: output}}` for a layout's transforms.
 // [spec:kbdgen:req:android.transforms+1]
-// [spec:kbdgen:req:layout.transforms.dead-key-entries]
+// [spec:kbdgen:req:layout.transforms.dead-key-entries+1]
 fn flatten_transforms(
     language_tag: &LanguageTag,
     transforms: &IndexMap<String, Transform>,
