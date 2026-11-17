@@ -35,7 +35,7 @@ async fn android_target(
 }
 
 // [spec:kbdgen:sem:pipeline.steps]
-// [spec:kbdgen:req:macbundle.installer]
+// [spec:kbdgen:req:macbundle.installer+1]
 async fn macos_target(
     bundle: KbdgenBundle,
     output_path: PathBuf,
@@ -43,19 +43,15 @@ async fn macos_target(
 ) -> anyhow::Result<()> {
     match &target.command {
         TargetMacOsCommand::Build(opts) => {
-            // The default Build runs Generate + Installer (.pkg via pkgbuild
-            // + productbuild). With --no-installer we stop after Generate so
-            // the caller can wrap the produced .bundle with their own
-            // installer (e.g. outto).
             GenerateMacOs.build(&bundle, &output_path).await?;
-            #[cfg(target_os = "macos")]
             if !opts.no_installer {
-                GenerateInstaller.build(&bundle, &output_path).await?;
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                let _ = opts;
-                tracing::warn!("Skipping Installer step — pkgutil is only available on macOS");
+                if cfg!(target_os = "macos") {
+                    GenerateInstaller.build(&bundle, &output_path).await?;
+                } else {
+                    tracing::warn!(
+                        "Skipping the installer: pkgbuild and productbuild only exist on macOS"
+                    );
+                }
             }
         }
         TargetMacOsCommand::Generate(_) => GenerateMacOs.build(&bundle, &output_path).await?,

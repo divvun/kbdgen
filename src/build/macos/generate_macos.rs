@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use language_tags::LanguageTag;
 
 use super::input::KeylayoutInput;
-use super::macos_bundle::MacOsBundle;
+use super::macos_bundle::{MacOsBundle, macos_target};
 use super::{adapter, v3, writer};
 use crate::build::BuildStep;
 use crate::bundle::KbdgenBundle;
@@ -26,7 +26,7 @@ pub struct GeneratedLayout {
 // [spec:kbdgen:req:ldml.macos.target]
 fn layout_input(bundle: &KbdgenBundle, tag: &LanguageTag) -> Result<Option<KeylayoutInput>> {
     if let Some(layout) = bundle.layouts.get(tag) {
-        return Ok(v3::layout_input(tag, layout));
+        return v3::layout_input(tag, layout);
     }
     let Some((_, path)) = bundle.v4_layouts.iter().find(|(t, _)| t == tag) else {
         return Ok(None);
@@ -53,6 +53,7 @@ pub fn generate_bundle(bundle: &KbdgenBundle) -> Result<Vec<GeneratedLayout>> {
         let Some(input) =
             layout_input(bundle, tag).with_context(|| format!("macOS layout for {tag}"))?
         else {
+            tracing::debug!("Skipping layout {tag}: it has no macOS layers");
             continue;
         };
         if generated.iter().any(|other| other.input.name == input.name) {
@@ -62,6 +63,7 @@ pub fn generate_bundle(bundle: &KbdgenBundle) -> Result<Vec<GeneratedLayout>> {
             );
         }
         let xml = writer::write(&input);
+        tracing::info!("Generated {}.keylayout from layout {tag}", input.name);
         generated.push(GeneratedLayout { input, xml });
     }
     Ok(generated)
@@ -72,16 +74,21 @@ pub struct GenerateMacOs;
 #[async_trait(?Send)]
 impl BuildStep for GenerateMacOs {
     // [spec:kbdgen:req:ldml.macos.target]
-    // [spec:kbdgen:req:macbundle.plist+1]
+    // [spec:kbdgen:req:macbundle.plist+2]
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
+        macos_target(bundle)?;
         let layouts = generate_bundle(bundle)?;
-        let mut macos_bundle = MacOsBundle::new(output_path.to_path_buf(), bundle.name(), bundle)
-            .expect("the bundle directory can be created");
+        if layouts.is_empty() {
+            tracing::warn!(
+                "{}: no layout has macOS layers, so the bundle holds no keyboard layouts",
+                bundle.name()
+            );
+        }
+        let mut macos_bundle = MacOsBundle::new(output_path, bundle)?;
         for layout in layouts {
             macos_bundle.add_key_layout(&layout.input, layout.xml);
         }
-        macos_bundle.write_all()?;
-        Ok(())
+        macos_bundle.write_all()
     }
 }
 
@@ -135,7 +142,7 @@ mod tests {
     }
 
     // [spec:kbdgen:req:bundle.layouts+1/test]
-    // [spec:kbdgen:req:macbundle.plist+1/test]
+    // [spec:kbdgen:req:macbundle.plist+2/test]
     // [spec:kbdgen:req:macbundle.plist.strings/test]
     #[tokio::test]
     async fn info_plist_and_strings_follow_bundle_layout_order() {
@@ -176,5 +183,29 @@ mod tests {
                 "{file}"
             );
         }
+    }
+
+    // [spec:kbdgen:req:macbundle.plist+2/test]
+    #[tokio::test]
+    async fn bundles_without_a_macos_target_are_an_error() {
+        let fixture = tempfile::tempdir().unwrap();
+        let yaml = format!(
+            "displayNames:\n  en: En\nmacOS:\n  primary:\n    layers:\n      default: {KEYS_48}\n"
+        );
+        let path = crate::bundle::fixture::write_bundle(
+            fixture.path(),
+            "bare",
+            &[("en", &yaml)],
+            &[],
+            &[],
+        );
+        let bundle = crate::bundle::read_kbdgen_bundle(&path).unwrap();
+        let out = fixture.path().join("out");
+        let error = GenerateMacOs.build(&bundle, &out).await.unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "bare: the bundle has no targets/macos.yaml"
+        );
+        assert!(!out.exists(), "nothing is written");
     }
 }

@@ -87,48 +87,54 @@
 > follow document order. Each action key appends its `<action id>` with its
 > `when` children to the single `<actions>` element, in key emission order.
 
-> [spec:kbdgen:req:keylayout.actions.dead-key-next]
+> [spec:kbdgen:req:keylayout.actions.dead-key-next+1]
 > When `transforms` and `macOS.deadKeys` are both present, for every layer
 > with a `deadKeys` entry and every position whose raw token is in that
-> list, the generator MUST find the token's registered dead-key state —
-> panicking with "dead key `X` in target list but not the transforms."
-> otherwise — and replace every transition of that token in the layer with
-> a new action holding only `<when state="none" next="dead_keyNNN"/>`,
-> discarding earlier outputs or actions. A dead-key token repeated within a
+> list, the generator MUST find the token's registered dead-key state — a
+> token without one is an error naming the token and its layer — and
+> replace every transition of that token in the layer with a new action
+> holding only `<when state="none" next="dead_keyNNN"/>`, discarding
+> earlier outputs or actions. A dead-key token repeated within a
 > layer is overwritten position by position: all its positions end up
 > emitting the last position's code and id, with a duplicated `<action>`,
 > and the earlier codes are unmapped.
 
 ## Transforms
 
-> [spec:kbdgen:req:keylayout.transforms]
+> [spec:kbdgen:req:keylayout.transforms+1]
 > Transforms, interpreted per `[spec:kbdgen:req:layout.transforms.dead-key-entries]`,
 > are applied only when the layout has `transforms` and `macOS.deadKeys`
-> (otherwise a "No transforms"/"No dead keys" warning is logged), and only
-> to layers with a `deadKeys` entry — to all of them, whatever their list
-> contains. Every branch entry is registered, in YAML order, as a dead-key
-> state with its space-escape string as terminator output, even if no layer
-> lists it. For each position, each branch whose child key equals the raw
-> token contributes `{dead_keyNNN, child value}` per `keylayout.actions`.
+> has an entry for one of its layers, and only to layers with a `deadKeys`
+> entry — to all of them, whatever their list contains. A layout with
+> `transforms` but no `macOS.deadKeys`, or `macOS.deadKeys` but no
+> `transforms`, MUST log one warning naming its keyboard; one with neither
+> logs nothing. Every branch entry is registered, in YAML order, as a
+> dead-key state with its space-escape string as terminator output, even if
+> no layer lists it. For each position, each branch whose child key equals
+> the raw token contributes `{dead_keyNNN, child value}` per
+> `keylayout.actions`.
 > When any state was registered, `<terminators>` MUST be the last child of
 > `<keyboard>`, with one `<when state="dead_keyNNN" output="<escape>"/>` per
 > state in registration order.
 
 ## Bundle and installer
 
-> [spec:kbdgen:req:macbundle.plist+1]
+> [spec:kbdgen:req:macbundle.plist+2]
 > `macos generate` MUST create `<out>/<bundleId>.bundle/Contents/Resources`
 > with `bundleId` = `{packageId}.keyboardlayout.{stem}`, `stem` being the
 > `.kbdgen` directory's file stem (not `bundleName`). A missing
-> `targets/macos.yaml` or `resources/macos` panics before anything is
-> written. `Contents/Info.plist` is an XML plist with exactly
-> `CFBundleIdentifier` (bundleId), `CFBundleName` (`bundleName`),
+> `targets/macos.yaml` is an error naming the bundle, raised before any
+> layout is generated; a missing `resources/macos` means no icons. Every
+> layout is generated before anything is written, so a failing layout
+> writes nothing. When no layout has macOS output a warning is logged and
+> the bundle is still written. `Contents/Info.plist` is an XML plist with
+> exactly `CFBundleIdentifier` (bundleId), `CFBundleName` (`bundleName`),
 > `CFBundleVersion` (`build`), `CFBundleShortVersionString` (`version`), and
 > per keylayout `KLInfo_<name>` → {`TISInputSourceID` `<bundleId>.<name>`,
 > `TISIntendedLanguage` language tag}; the `KLInfo_*` entries follow the
 > CFBundle keys in bundle layout order. `codeSignId` is required but unused.
 
-> [spec:kbdgen:req:macbundle.plist.bundle-resources]
+> [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
 > Each document MUST be written to `Contents/Resources/<name>.keylayout` as
 > pretty-printed UTF-8 (two-space indent, `<x … />`, trailing newline) in
 > hex entity mode: in attribute values `& ' " < >`, ASCII controls (tab
@@ -137,8 +143,9 @@
 > marks stay literal. On macOS hosts, an `icon.<tag>.*` in `resources/macos`
 > whose tag equals the layout's tag is converted with ImageMagick `convert`
 > to 16, 16@2x, 32 and 32@2x PNGs and `iconutil --convert icns` into
-> `<name>.icns`; exit codes are ignored. Other hosts skip icons with a
-> warning.
+> `<name>.icns`; a tool that cannot be started or exits non-zero is an
+> error naming the layout, the tool and its stderr. Other hosts skip each
+> such icon with a warning; a layout without an icon logs nothing.
 
 > [spec:kbdgen:req:macbundle.plist.strings]
 > For each language tag in any generated layout's `displayNames`,
@@ -149,17 +156,20 @@
 > Quoting is Rust `Debug` escaping (`\"`, `\\`, `\n`, `\r`, `\t`, `\0`,
 > `\u{…}` for non-printables), not Apple `.strings` escaping.
 
-> [spec:kbdgen:req:macbundle.installer]
+> [spec:kbdgen:req:macbundle.installer+1]
 > The installer step, sequenced per `[spec:kbdgen:sem:pipeline.steps]`,
 > MUST package an existing `<out>/<bundleId>.bundle` without regenerating
-> it, in a temporary directory: `pkgbuild --component <bundle> --ownership
-> recommended --install-location "/Library/Keyboard Layouts" --version
-> <version> <tmp>/inner.pkg`; then `distribution.xml`, an
+> it; a missing `targets/macos.yaml` or bundle directory is an error before
+> any tool runs. In a temporary directory: `pkgbuild --component <bundle>
+> --ownership recommended --install-location "/Library/Keyboard Layouts"
+> --version <version> <tmp>/inner.pkg`; then `distribution.xml`, an
 > `<installer-gui-script minSpecVersion="2">` with `<title>` `bundleName`,
 > `<options customize="never" rootVolumeOnly="true"/>`, a choices-outline
 > `default` → `<bundleId>`, `<choice id="default"/>`, a hidden
 > `<choice id="<bundleId>">` referencing `<pkg-ref id="<bundleId>"
 > version="0" auth="root" onConclusion="RequireRestart">inner.pkg</pkg-ref>`;
 > then `productbuild --distribution <dist> --version <version>
-> --package-path <tmp> <out>/<bundleId>.pkg`. Exit codes are ignored and
-> the package is unsigned.
+> --package-path <tmp> <out>/<bundleId>.pkg`. Both tools run with their
+> output captured, off kbdgen's stdout; one that cannot be started or exits
+> non-zero is an error naming the tool and its stderr, and ends the step.
+> The package is unsigned.

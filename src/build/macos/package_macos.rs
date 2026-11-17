@@ -1,34 +1,32 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::path::Path;
+use std::process::Command;
+use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use xmlem::Document;
 
+use super::macos_bundle::{bundle_id, macos_target};
+use super::util::run;
 use crate::{build::BuildStep, bundle::KbdgenBundle};
 
-// [spec:kbdgen:req:macbundle.installer]
-fn generate_distribution_xml(
-    work_dir: &Path,
-    bundle_name: &str,
-    bundle_id: &str,
-) -> Result<PathBuf, std::io::Error> {
+/// The component package's file name, which `distribution.xml` refers to.
+const INNER_PKG: &str = "inner.pkg";
+
+// [spec:kbdgen:req:macbundle.installer+1]
+fn distribution_xml(bundle_name: &str, bundle_id: &str) -> String {
     let mut doc = Document::from_str(
         r#"
         <?xml version="1.1" encoding="UTF-8"?>
         <installer-gui-script minSpecVersion="2" />
     "#,
     )
-    .unwrap();
-
-    let dist_path = work_dir.join("distribution.xml");
+    .expect("the distribution template parses");
 
     let root = doc.root();
     let title = root.append_new_element(&mut doc, "title");
     title.append_text(&mut doc, bundle_name);
-    let _options = root.append_new_element(
+    root.append_new_element(
         &mut doc,
         (
             "options",
@@ -37,7 +35,7 @@ fn generate_distribution_xml(
     );
     let choices_outline = root.append_new_element(&mut doc, "choices-outline");
     let line = choices_outline.append_new_element(&mut doc, ("line", [("choice", "default")]));
-    line.append_new_element(&mut doc, ("line", [("choice", bundle_id.to_string())]));
+    line.append_new_element(&mut doc, ("line", [("choice", bundle_id)]));
 
     root.append_new_element(&mut doc, ("choice", [("id", "default")]));
 
@@ -61,19 +59,15 @@ fn generate_distribution_xml(
         ),
     );
 
-    pkg_ref.append_text(&mut doc, "inner.pkg");
+    pkg_ref.append_text(&mut doc, INNER_PKG);
 
-    let out = doc.to_string_pretty();
-    tracing::trace!("dist.xml: {:#}", &out);
-    std::fs::write(&dist_path, &out)?;
-
-    Ok(dist_path)
+    doc.to_string_pretty()
 }
 
-// [spec:kbdgen:req:macbundle.installer]
-fn create_component_pkg(working_path: &Path, bundle_path: &Path, version: &str) -> PathBuf {
-    let pkg_path = working_path.join("inner.pkg");
-    std::process::Command::new("pkgbuild")
+// [spec:kbdgen:req:macbundle.installer+1]
+fn pkgbuild(bundle_path: &Path, version: &str, pkg_path: &Path) -> Result<()> {
+    tracing::info!("Packaging {} with pkgbuild", bundle_path.display());
+    run(Command::new("pkgbuild")
         .arg("--component")
         .arg(bundle_path)
         .args([
@@ -84,63 +78,57 @@ fn create_component_pkg(working_path: &Path, bundle_path: &Path, version: &str) 
             "--version",
         ])
         .arg(version)
-        .arg(&pkg_path)
-        .status()
-        .unwrap();
+        .arg(pkg_path))
+}
 
-    pkg_path
+// [spec:kbdgen:req:macbundle.installer+1]
+fn productbuild(
+    dist_xml_path: &Path,
+    version: &str,
+    package_path: &Path,
+    pkg_path: &Path,
+) -> Result<()> {
+    tracing::info!("Building {} with productbuild", pkg_path.display());
+    run(Command::new("productbuild")
+        .arg("--distribution")
+        .arg(dist_xml_path)
+        .args(["--version", version, "--package-path"])
+        .arg(package_path)
+        .arg(pkg_path))
 }
 
 pub struct GenerateInstaller;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateInstaller {
+    // [spec:kbdgen:req:macbundle.installer+1]
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
-        create_installer(bundle, output_path);
-        Ok(())
+        let target = macos_target(bundle)?;
+        let version = target.version.as_str();
+        let bundle_id = bundle_id(target, bundle);
+        let bundle_path = output_path.join(format!("{bundle_id}.bundle"));
+        if !bundle_path.is_dir() {
+            bail!(
+                "{} does not exist; run the macOS generate step first",
+                bundle_path.display()
+            );
+        }
+
+        let working_dir = tempfile::tempdir().context("create a directory for the installer")?;
+        let working_path = working_dir.path();
+        pkgbuild(&bundle_path, version, &working_path.join(INNER_PKG))?;
+
+        let dist_xml = distribution_xml(&target.bundle_name, &bundle_id);
+        tracing::trace!("distribution.xml:\n{dist_xml}");
+        let dist_xml_path = working_path.join("distribution.xml");
+        std::fs::write(&dist_xml_path, dist_xml)
+            .with_context(|| format!("write {}", dist_xml_path.display()))?;
+
+        productbuild(
+            &dist_xml_path,
+            version,
+            working_path,
+            &output_path.join(format!("{bundle_id}.pkg")),
+        )
     }
-}
-
-// [spec:kbdgen:req:macbundle.installer]
-fn run_productbuild(
-    working_path: &Path,
-    output_path: &Path,
-    dist_xml_path: &Path,
-    bundle_id: &str,
-    version: &str,
-) {
-    let output = std::process::Command::new("productbuild")
-        .arg("--distribution")
-        .arg(dist_xml_path)
-        .args(["--version", version, "--package-path"])
-        .arg(working_path)
-        .arg(output_path.join(format!("{bundle_id}.pkg")))
-        .status()
-        .unwrap();
-
-    tracing::debug!("{:?}", output);
-}
-
-// [spec:kbdgen:req:macbundle.installer]
-fn create_installer(bundle: &KbdgenBundle, output_path: &Path) {
-    tracing::info!("Creating installer at {:?}...", output_path);
-
-    let working_path = tempfile::tempdir().unwrap();
-    let working_path = working_path.path();
-
-    let target = bundle.targets.macos.as_ref().unwrap();
-    let version = &*target.version;
-
-    let bundle_id = format!("{}.keyboardlayout.{}", target.package_id, bundle.name());
-    let _inner_pkg_path = create_component_pkg(
-        working_path,
-        &output_path.join(format!("{bundle_id}.bundle")),
-        version,
-    );
-
-    let dist_xml =
-        generate_distribution_xml(working_path, &target.bundle_name, &bundle_id).unwrap();
-
-    tracing::info!("Running 'productbuild'...");
-    run_productbuild(working_path, output_path, &dist_xml, &bundle_id, version);
 }

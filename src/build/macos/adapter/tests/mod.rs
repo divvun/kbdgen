@@ -4,11 +4,8 @@
 use std::path::Path;
 
 use super::*;
-use crate::build::macos::differential::{fixture_bundle, subject};
+use crate::build::macos::differential::{WORKSPACE, fixture_bundle, subject};
 use crate::build::macos::input::Binding;
-
-/// The repository root, where fixture paths start.
-const WORKSPACE: &str = env!("CARGO_MANIFEST_DIR");
 
 fn read(path: &str) -> String {
     let full = Path::new(WORKSPACE).join(path);

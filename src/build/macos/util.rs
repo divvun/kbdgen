@@ -1,3 +1,7 @@
+use std::process::Command;
+
+use anyhow::{Context, Result, bail};
+
 const CRCTAB_HQX: [u16; 256] = [
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7, 0x8108, 0x9129, 0xa14a, 0xb16b,
     0xc18c, 0xd1ad, 0xe1ce, 0xf1ef, 0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
@@ -49,6 +53,32 @@ pub fn keyboard_id(name: &str) -> String {
     format!("-{}", crc.clamp(1, 32768))
 }
 
+/// Runs an external tool to completion with its output captured, so it
+/// stays off kbdgen's stdout. Failing to start or exiting unsuccessfully is
+/// an error carrying the tool's stderr.
+pub fn run(command: &mut Command) -> Result<()> {
+    let program = command.get_program().to_string_lossy().into_owned();
+    tracing::debug!("Running {command:?}");
+    let output = command
+        .output()
+        .with_context(|| format!("`{program}` could not be started"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    for (stream, text) in [("stdout", &stdout), ("stderr", &stderr)] {
+        if !text.trim().is_empty() {
+            tracing::trace!("{program} {stream}:\n{}", text.trim_end());
+        }
+    }
+    if !output.status.success() {
+        bail!(
+            "`{program}` failed with {}: {}",
+            output.status,
+            stderr.trim()
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,5 +98,19 @@ mod tests {
             let id: i32 = keyboard_id(name).parse().unwrap();
             assert!((-32768..=-1).contains(&id), "{name}: {id}");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failing_tools_are_errors_with_their_stderr() {
+        run(Command::new("sh").args(["-c", "echo fine"])).unwrap();
+        let error = run(Command::new("sh").args(["-c", "echo boom >&2; exit 3"]))
+            .unwrap_err()
+            .to_string();
+        assert_eq!(error, "`sh` failed with exit status: 3: boom");
+        let error = run(&mut Command::new("kbdgen-no-such-tool"))
+            .unwrap_err()
+            .to_string();
+        assert_eq!(error, "`kbdgen-no-such-tool` could not be started");
     }
 }

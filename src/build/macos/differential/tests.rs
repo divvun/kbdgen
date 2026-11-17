@@ -2,8 +2,6 @@
 //! `ldml.macos.test.differential` on every fixture layout and on small
 //! layouts for the exceptions no fixture exercises.
 
-#![cfg(test)]
-
 use std::collections::BTreeSet;
 
 use super::compare::compare;

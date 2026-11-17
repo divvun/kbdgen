@@ -1,35 +1,55 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
+use anyhow::{Context, Result, anyhow};
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::input::KeylayoutInput;
+use super::util::run;
+use crate::bundle::KbdgenBundle;
+use crate::bundle::target::MacOS;
 
 const TOP_FOLDER: &str = "Contents";
 const RESOURCES_FOLDER: &str = "Resources";
 const KEY_LAYOUT_EXT: &str = "keylayout";
 const LPROJ_EXT: &str = "lproj";
 
-#[derive(Serialize, Deserialize)]
-// [spec:kbdgen:req:macbundle.plist+1]
-pub struct InfoPlist {
+pub fn macos_target(bundle: &KbdgenBundle) -> Result<&MacOS> {
+    bundle
+        .targets
+        .macos
+        .as_ref()
+        .ok_or_else(|| anyhow!("{}: the bundle has no targets/macos.yaml", bundle.name()))
+}
+
+/// `{packageId}.keyboardlayout.{stem}`, which also names the `.bundle`
+/// directory and the installer package.
+// [spec:kbdgen:req:macbundle.plist+2]
+pub fn bundle_id(target: &MacOS, bundle: &KbdgenBundle) -> String {
+    format!("{}.keyboardlayout.{}", target.package_id, bundle.name())
+}
+
+#[derive(Serialize)]
+// [spec:kbdgen:req:macbundle.plist+2]
+struct InfoPlist {
     #[serde(rename = "CFBundleIdentifier")]
-    pub cf_bundle_identifier: String,
+    cf_bundle_identifier: String,
     #[serde(rename = "CFBundleName")]
-    pub cf_bundle_name: String,
+    cf_bundle_name: String,
     #[serde(rename = "CFBundleVersion")]
-    pub cf_bundle_version: String,
+    cf_bundle_version: String,
     #[serde(rename = "CFBundleShortVersionString")]
-    pub cf_bundle_short_version_string: String,
+    cf_bundle_short_version_string: String,
     /// Serialised after the CFBundle keys in insertion order, which is bundle
     /// layout order because keylayouts are added in that order.
     #[serde(flatten)]
-    pub kl_info_map: IndexMap<String, KlInfo>,
+    kl_info_map: IndexMap<String, KlInfo>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct KlInfo {
+#[derive(Serialize)]
+struct KlInfo {
     #[serde(rename = "TISInputSourceID")]
     tis_input_source_id: String,
 
@@ -41,175 +61,148 @@ pub struct MacOsBundle {
     path: PathBuf,
     info_plist: InfoPlist,
     translation_strings: IndexMap<LanguageTag, IndexMap<String, String>>,
-    macos_layouts: IndexMap<LanguageTag, (String, String)>,
+    /// Each layout's keyboard name and `.keylayout` text, by language tag.
+    layouts: IndexMap<LanguageTag, (String, String)>,
     icons: IndexMap<LanguageTag, PathBuf>,
 }
 
 impl MacOsBundle {
-    // [spec:kbdgen:req:macbundle.plist+1]
-    pub fn new(
-        path: PathBuf,
-        name: &str,
-        kbdgen_bundle: &crate::bundle::KbdgenBundle,
-    ) -> Result<MacOsBundle, std::io::Error> {
-        let target = kbdgen_bundle.targets.macos.as_ref().unwrap();
-        let icons = kbdgen_bundle
-            .resources
-            .macos
-            .as_ref()
-            .unwrap()
-            .icons
-            .clone();
-
-        let cf_bundle_identifier = format!("{}.keyboardlayout.{}", target.package_id, name);
-
-        let path = path.join(format!("{cf_bundle_identifier}.bundle"));
-        let contents_path = path.join(TOP_FOLDER);
-        let resources_path = contents_path.join(RESOURCES_FOLDER);
-
-        std::fs::create_dir_all(&contents_path)?;
-        std::fs::create_dir_all(&resources_path)?;
+    // [spec:kbdgen:req:macbundle.plist+2]
+    pub fn new(output_path: &Path, bundle: &KbdgenBundle) -> Result<MacOsBundle> {
+        let target = macos_target(bundle)?;
+        let cf_bundle_identifier = bundle_id(target, bundle);
+        let path = output_path.join(format!("{cf_bundle_identifier}.bundle"));
+        let resources = path.join(TOP_FOLDER).join(RESOURCES_FOLDER);
+        std::fs::create_dir_all(&resources)
+            .with_context(|| format!("create {}", resources.display()))?;
 
         Ok(Self {
             path,
-            macos_layouts: Default::default(),
-            icons,
             info_plist: InfoPlist {
                 cf_bundle_identifier,
-                cf_bundle_name: target.bundle_name.to_string(),
-                cf_bundle_version: target.build.to_string(),
-                cf_bundle_short_version_string: target.version.to_string(),
-                kl_info_map: Default::default(),
+                cf_bundle_name: target.bundle_name.clone(),
+                cf_bundle_version: target.build.clone(),
+                cf_bundle_short_version_string: target.version.clone(),
+                kl_info_map: IndexMap::new(),
             },
-            translation_strings: Default::default(),
+            translation_strings: IndexMap::new(),
+            layouts: IndexMap::new(),
+            icons: bundle
+                .resources
+                .macos
+                .as_ref()
+                .map(|resources| resources.icons.clone())
+                .unwrap_or_default(),
         })
     }
 
-    // [spec:kbdgen:req:macbundle.plist+1]
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
+    fn resources(&self) -> PathBuf {
+        self.path.join(TOP_FOLDER).join(RESOURCES_FOLDER)
+    }
+
+    // [spec:kbdgen:req:macbundle.plist+2]
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
     // [spec:kbdgen:req:macbundle.plist.strings]
     pub fn add_key_layout(&mut self, input: &KeylayoutInput, layout_xml: String) {
-        let name = input.name.as_str();
-        let language_tag = input.tag.clone();
-        let layout_names = &input.display_names;
-
-        let tis_input_source_id = format!("{}.{}", self.info_plist.cf_bundle_identifier, name);
+        let name = &input.name;
         self.info_plist.kl_info_map.insert(
             format!("KLInfo_{name}"),
             KlInfo {
-                tis_input_source_id,
-                tis_intended_language: language_tag.to_string(),
+                tis_input_source_id: format!("{}.{name}", self.info_plist.cf_bundle_identifier),
+                tis_intended_language: input.tag.to_string(),
             },
         );
-
-        for (lang, value) in layout_names.iter() {
+        for (lang, display_name) in &input.display_names {
             self.translation_strings
                 .entry(lang.clone())
-                .and_modify(|e| {
-                    e.insert(name.to_string(), value.to_string());
-                })
-                .or_insert_with(|| {
-                    let mut map = IndexMap::new();
-                    map.insert(name.to_string(), value.to_string());
-                    map
-                });
+                .or_default()
+                .insert(name.clone(), display_name.clone());
         }
-
-        self.macos_layouts
-            .insert(language_tag, (name.to_string(), layout_xml));
+        self.layouts
+            .insert(input.tag.clone(), (name.clone(), layout_xml));
     }
 
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
-    #[cfg(not(target_os = "macos"))]
-    pub fn write_icons(&self, language_tag: LanguageTag, name: &str) -> Result<(), std::io::Error> {
-        tracing::warn!("No icon generation due to not running on macOS!");
-        Ok(())
-    }
-
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
-    #[cfg(target_os = "macos")]
-    pub fn write_icons(
-        &self,
-        language_tag: LanguageTag,
-        file_name: &str,
-    ) -> Result<(), std::io::Error> {
-        const FILES: &[(&str, i32)] = &[
+    /// Converts the layout's `icon.<tag>.*`, if it has one, into
+    /// `<name>.icns`.
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
+    fn write_icon(&self, tag: &LanguageTag, name: &str) -> Result<()> {
+        const SIZES: &[(&str, u32)] = &[
             ("icon_16x16", 16),
             ("icon_16x16@2x", 32),
             ("icon_32x32", 32),
             ("icon_32x32@2x", 64),
         ];
 
-        let icon = match self.icons.get(&language_tag) {
-            Some(v) => v,
-            None => return Ok(()),
+        let Some(icon) = self.icons.get(tag) else {
+            return Ok(());
         };
-
-        let tmpdir = tempfile::tempdir()?;
-        let iconset_path = tmpdir.path().join("tmp.iconset");
-        std::fs::create_dir(&iconset_path)?;
-
-        for (icon_name, d) in FILES {
-            std::process::Command::new("convert")
-                .arg("-resize")
-                .arg(format!("{d}x{d}"))
-                .args([
-                    "-background",
-                    "transparent",
-                    "-gravity",
-                    "center",
-                    "-extent",
-                ])
-                .arg(format!("{d}x{d}"))
-                .arg(icon)
-                .arg(iconset_path.join(format!("{icon_name}.png")))
-                .output()
-                .expect("convert failed to run");
+        if !cfg!(target_os = "macos") {
+            tracing::warn!(
+                "{name}: skipping icon {}: iconutil only exists on macOS",
+                icon.display()
+            );
+            return Ok(());
         }
+        let icns = self.resources().join(format!("{name}.icns"));
+        tracing::info!("Converting {} into {}", icon.display(), icns.display());
 
-        let resources = self.path.join(TOP_FOLDER).join(RESOURCES_FOLDER);
-        std::process::Command::new("iconutil")
+        let tmpdir = tempfile::tempdir().context("create a directory for the iconset")?;
+        let iconset = tmpdir.path().join("tmp.iconset");
+        std::fs::create_dir(&iconset).with_context(|| format!("create {}", iconset.display()))?;
+        for (file, size) in SIZES {
+            let size = format!("{size}x{size}");
+            run(Command::new("convert")
+                .args(["-resize", &size])
+                .args(["-background", "transparent", "-gravity", "center"])
+                .args(["-extent", &size])
+                .arg(icon)
+                .arg(iconset.join(format!("{file}.png"))))
+            .with_context(|| format!("{name}: resize {} to {file}.png", icon.display()))?;
+        }
+        run(Command::new("iconutil")
             .args(["--convert", "icns", "--output"])
-            .arg(resources.join(format!("{file_name}.icns")))
-            .arg(iconset_path)
-            .output()
-            .expect("iconutil failed to run");
-
-        Ok(())
+            .arg(&icns)
+            .arg(&iconset))
+        .with_context(|| format!("{name}: write {}", icns.display()))
     }
 
-    // [spec:kbdgen:req:macbundle.plist+1]
-    // [spec:kbdgen:req:macbundle.plist.bundle-resources]
+    // [spec:kbdgen:req:macbundle.plist+2]
+    // [spec:kbdgen:req:macbundle.plist.bundle-resources+1]
     // [spec:kbdgen:req:macbundle.plist.strings]
-    pub fn write_all(self) -> Result<(), std::io::Error> {
-        plist::to_file_xml(
-            self.path.join(TOP_FOLDER).join("Info.plist"),
-            &self.info_plist,
-        )
-        .expect("Could not serialize Info.plist");
+    pub fn write_all(self) -> Result<()> {
+        let plist_path = self.path.join(TOP_FOLDER).join("Info.plist");
+        tracing::debug!("Writing {}", plist_path.display());
+        plist::to_file_xml(&plist_path, &self.info_plist)
+            .with_context(|| format!("write {}", plist_path.display()))?;
 
-        let resources = self.path.join(TOP_FOLDER).join(RESOURCES_FOLDER);
-        for (language_tag, (name, layout_xml)) in self.macos_layouts.iter() {
-            let key_layout_path = resources.join(format!("{name}.{KEY_LAYOUT_EXT}"));
-            tracing::debug!("Writing {name} to {key_layout_path:?}...");
-            std::fs::write(key_layout_path, layout_xml)?;
-
-            tracing::debug!("Writing icons for {name}...");
-            self.write_icons(language_tag.clone(), name)?;
+        let resources = self.resources();
+        for (tag, (name, layout_xml)) in &self.layouts {
+            let path = resources.join(format!("{name}.{KEY_LAYOUT_EXT}"));
+            tracing::debug!("Writing {}", path.display());
+            std::fs::write(&path, layout_xml)
+                .with_context(|| format!("write {}", path.display()))?;
+            self.write_icon(tag, name)?;
         }
 
-        for (lang, text) in self.translation_strings {
-            let lproj_path = resources.join(format!("{}.{LPROJ_EXT}", lang));
-            std::fs::create_dir_all(&lproj_path)?;
-
-            let output = text
+        for (lang, names) in &self.translation_strings {
+            let lproj_path = resources.join(format!("{lang}.{LPROJ_EXT}"));
+            std::fs::create_dir_all(&lproj_path)
+                .with_context(|| format!("create {}", lproj_path.display()))?;
+            let output = names
                 .iter()
                 .map(|(k, v)| format!("{k:?} = {v:?};"))
                 .collect::<Vec<_>>()
                 .join("\n");
-            std::fs::write(lproj_path.join("InfoPlist.strings"), output)?;
+            let path = lproj_path.join("InfoPlist.strings");
+            tracing::debug!("Writing {}", path.display());
+            std::fs::write(&path, output).with_context(|| format!("write {}", path.display()))?;
         }
 
+        tracing::info!(
+            "Wrote {} keyboard layout(s) to {}",
+            self.layouts.len(),
+            self.path.display()
+        );
         Ok(())
     }
 }

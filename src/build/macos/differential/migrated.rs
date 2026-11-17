@@ -270,7 +270,7 @@ fn compare_keys(
 pub fn compare(tag: &str, yaml: &str) -> Comparison {
     let fixture = fixture_bundle(tag, yaml);
     let (tag_v3, layout) = fixture.bundle.layouts.iter().next().unwrap();
-    let old_xml = writer::write(&v3::layout_input(tag_v3, layout).unwrap());
+    let old_xml = writer::write(&v3::layout_input(tag_v3, layout).unwrap().unwrap());
     let migrated = subject(&format!("{tag} (migrated)"), tag, &migrated_yaml(tag, yaml));
     let mut out = Comparison {
         identical: old_xml == migrated.xml,
