@@ -10,7 +10,6 @@ A tool to build keyboard packages for a multitude of platforms using a single, s
 - ChromeOS
 - iOS/iPadOS
 - Android
-- SVG
 - hit-error correction model as an [FST](https://en.wikipedia.org/wiki/Finite-state_machine), to be used with our spellers
 - [CLDR keyboard definitions](https://cldr.unicode.org/index/keyboard-workgroup) is presently missing, but is in the pipeline
 

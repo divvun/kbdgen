@@ -1731,6 +1731,14 @@ children (
                         title "Generate chromeos output from the v4 model"
                         kind @feat
                         deps (ldml.yaml-v4 ldml.spec-errata)
+                        log (
+                            {
+                                at 2026-11-17T21:10:16.66805Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Operator 2026-11-17: the ChromeOS IME runs kbd-engine compiled to wasm with the compiled model, behind thin Manifest V3 service-worker glue that maps chrome.input.ime key events to engine events and applies its edits. v3 chromeOS layouts are migrated to the model, as Windows does. This replaces the hand-written JS descriptor runtime (resolving targets.chromeos.descriptor-fields) and moves off Manifest V2."
+                            }
+                        )
                     }
                 )
             }

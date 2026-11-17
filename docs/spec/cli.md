@@ -5,14 +5,14 @@ more build steps against it.
 
 ## Commands
 
-> [spec:kbdgen:def:cli.commands+1]
+> [spec:kbdgen:def:cli.commands+2]
 > The commands are `kbdgen fetch -b|--bundle-path <BUNDLE>` (see
 > `bundle.fetch`), `kbdgen tsf -w|--workspace <WORKSPACE> -o|--output-path
 > <OUT>`, both options required, which builds the Windows text service from
 > the kbdgen workspace without a bundle (`tsf.arch.builds`,
 > `tsf.security.signing`), and `kbdgen target -b|--bundle-path <BUNDLE>
 > -o|--output-path <OUT> <PLATFORM>`, both options required and given before
-> `<PLATFORM>`: `windows`, `chromeos`, `svg`,
+> `<PLATFORM>`: `windows`, `chromeos`,
 > `macos {build [--no-installer] | generate | installer}`,
 > `android {build | clone | generate}` or `ios {build | print-pkg-ids | init}`.
 > `target` loads the whole bundle first (a load error creates nothing), then
@@ -23,13 +23,13 @@ more build steps against it.
 
 ## Pipeline
 
-> [spec:kbdgen:sem:pipeline.steps+1]
+> [spec:kbdgen:sem:pipeline.steps+2]
 > A build step receives the loaded bundle and the canonical output path. A
 > full build runs its target's steps strictly in order, awaiting each and
 > stopping at the first error; each target's rule lists its sequence.
 > `windows`, `chromeos`, `android build` and `ios build` run full builds;
-> `svg` has no steps and succeeds without output. `android clone`/`generate`
-> and `macos generate`/`installer` run that single step. `macos build` runs
+> `android clone`/`generate` and `macos generate`/`installer` run that single
+> step. `macos build` runs
 > the generate step, then the installer step only when `kbdgen` was compiled
 > for macOS and `--no-installer` is absent; on a binary compiled for any
 > other OS, `macos build` without `--no-installer` logs a warning that the

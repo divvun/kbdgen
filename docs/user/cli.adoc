@@ -1,7 +1,7 @@
 == CLI
 
 Core `kbdgen` functionality will be within the subcommand `target`, that then allows to select
-among the various linguistic targets: Windows, MacOS, .svg, etc.
+among the various linguistic targets: Windows, macOS, ChromeOS, Android and iOS.
 
 Example usage:
 

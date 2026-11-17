@@ -9,11 +9,9 @@ pub mod android;
 pub mod chromeos;
 pub mod ios;
 pub mod macos;
-#[allow(dead_code)]
-pub mod svg;
 pub mod windows;
 
-// [spec:kbdgen:sem:pipeline.steps+1]
+// [spec:kbdgen:sem:pipeline.steps+2]
 #[async_trait(?Send)]
 pub trait BuildSteps {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self

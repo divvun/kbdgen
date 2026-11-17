@@ -12,7 +12,6 @@ use kbdgen::build::BuildSteps;
 use kbdgen::build::android::AndroidBuild;
 use kbdgen::build::chromeos::ChromeOsBuild;
 use kbdgen::build::ios::{self, IosBuild, IosProjectExt};
-use kbdgen::build::svg::SvgBuild;
 use kbdgen::build::windows::WindowsBuild;
 use kbdgen::bundle::read_kbdgen_bundle;
 use kbdgen::ldml::cli::LdmlCommand;
@@ -34,7 +33,7 @@ async fn android_target(
     Ok(())
 }
 
-// [spec:kbdgen:sem:pipeline.steps+1]
+// [spec:kbdgen:sem:pipeline.steps+2]
 // [spec:kbdgen:req:macbundle.installer+1]
 async fn macos_target(
     bundle: KbdgenBundle,
@@ -86,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
         }
         // [spec:kbdgen:def:ldml.cli.commands+1]
         Command::Ldml { command } => kbdgen::ldml::cli::run(command)?,
-        // [spec:kbdgen:def:cli.commands+1]
+        // [spec:kbdgen:def:cli.commands+2]
         // [spec:kbdgen:req:tsf.security.signing+2]
         Command::Tsf(options) => {
             for path in
@@ -95,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
                 println!("{}", path.display());
             }
         }
-        // [spec:kbdgen:def:cli.commands+1]
+        // [spec:kbdgen:def:cli.commands+2]
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(bundle_path)?;
@@ -122,11 +121,6 @@ async fn main() -> anyhow::Result<()> {
                 }
                 TargetCommand::MacOs(target) => {
                     macos_target(bundle, output_path, target).await?;
-                }
-                TargetCommand::Svg(_svg_command) => {
-                    let build = SvgBuild::new(bundle, output_path.clone());
-
-                    build.build_full().await?;
                 }
                 TargetCommand::Android(target) => {
                     android_target(bundle, output_path, target).await?;
@@ -162,7 +156,7 @@ struct Cli {
     command: Command,
 }
 
-// [spec:kbdgen:def:cli.commands+1]
+// [spec:kbdgen:def:cli.commands+2]
 #[derive(Subcommand)]
 enum Command {
     #[clap(about = "Functionality relating to specific targets")]
@@ -205,7 +199,6 @@ impl TargetCommand {
             TargetCommand::Windows(_) => "windows",
             TargetCommand::ChromeOs(_) => "chromeos",
             TargetCommand::MacOs(_) => "macos",
-            TargetCommand::Svg(_) => "svg",
             TargetCommand::Android(_) => "android",
             TargetCommand::Ios(_) => "ios",
         }
@@ -220,8 +213,6 @@ enum TargetCommand {
     ChromeOs(TargetChromeOsCommand),
     #[clap(name = "macos", about = "macOS functionality")]
     MacOs(TargetMacOs),
-    #[clap(name = "svg", about = "SVG functionality")]
-    Svg(TargetSvgCommand),
     #[clap(about = "Android functionality")]
     Android(TargetAndroid),
     #[clap(about = "iOS functionality")]
@@ -340,8 +331,3 @@ struct TargetMacOsGenerateCommand {}
 
 #[derive(Parser)]
 struct TargetMacOsInstallerCommand {}
-
-// SVG
-
-#[derive(Parser)]
-struct TargetSvgCommand {}
