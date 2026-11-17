@@ -44,7 +44,7 @@ pub struct KeyboardInfoPlistExtension {
     pub ns_extension_principal_class: String,
 }
 
-// [spec:kbdgen:req:xcode.targets.keyboard-plist]
+// [spec:kbdgen:req:xcode.targets.keyboard-plist+1]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct KeyboardInfoPlist {
     #[serde(rename = "DivvunSpellerPath")]

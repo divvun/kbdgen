@@ -9,19 +9,26 @@ re-serialized result.
 
 ## Model
 
-> [spec:kbdgen:def:pbxproj.model]
+> [spec:kbdgen:def:pbxproj.model+1]
 > The pbxproj model is the top-level object with exactly the string fields
 > `archiveVersion`, `objectVersion`, `rootObject`, an untyped `classes`, and
-> `objects`, mapping ids to objects discriminated by `isa`. Exactly 16 kinds
+> `objects`, mapping ids to objects discriminated by `isa`. Exactly 18 kinds
 > are modelled: `PBXBuildFile`, `PBXContainerItemProxy`,
 > `PBXCopyFilesBuildPhase`, `PBXFileReference`, `PBXFrameworksBuildPhase`,
 > `PBXGroup`, `PBXHeadersBuildPhase`, `PBXNativeTarget`, `PBXProject`,
 > `PBXResourcesBuildPhase`, `PBXShellScriptBuildPhase`,
 > `PBXSourcesBuildPhase`, `PBXTargetDependency`, `PBXVariantGroup`,
-> `XCBuildConfiguration`, `XCConfigurationList`. Scalars are strings, except
-> the untyped JSON of `PBXProject.attributes`, `buildSettings` values and
-> `PBXBuildFile.settings` values. The top level and every kind except the six
-> build phases reject unknown fields; build phases silently drop them.
+> `XCBuildConfiguration`, `XCConfigurationList`,
+> `XCRemoteSwiftPackageReference`, `XCSwiftPackageProductDependency`. A
+> `PBXBuildFile` names its subject by `fileRef` or, for a Swift Package
+> product, by `productRef`; neither is required. `PBXProject.packageReferences`
+> and `PBXNativeTarget.packageProductDependencies` are optional id lists. A
+> package reference has `repositoryURL` and a string-to-string `requirement`;
+> a product dependency has `productName` and an optional `package`. Scalars
+> are strings, except the untyped JSON of `PBXProject.attributes`,
+> `buildSettings` values and `PBXBuildFile.settings` values. The top level
+> and every kind except the six build phases reject unknown fields; build
+> phases silently drop them.
 
 > [spec:kbdgen:req:pbxproj.model.read]
 > A pbxproj MUST be read by copying it to `tmp.pbxproj` in a fresh temporary
@@ -31,13 +38,15 @@ re-serialized result.
 > `isa`, unknown field on a strict kind, missing field) MUST panic, as do
 > operations needing the project when `rootObject` is not a `PBXProject`.
 
-> [spec:kbdgen:sem:pbxproj.model.ordering]
+> [spec:kbdgen:sem:pbxproj.model.ordering+1]
 > Reading normalizes order: `objects` is ordered by id, and every id list
 > (`targets`, `children`, `buildPhases`, `dependencies`, `buildRules`, phase
-> `files`, `buildConfigurations`), `knownRegions` and the shell-script path
+> `files`, `buildConfigurations`, `packageReferences`,
+> `packageProductDependencies`), `knownRegions` and the shell-script path
 > lists are sets, deduplicated and sorted byte-wise, so a target's build
 > phases are written in id order rather than authored order.
-> `PBXBuildFile.settings` and `PBXProject.attributes` keys are sorted.
+> `PBXBuildFile.settings`, `PBXProject.attributes` and package `requirement`
+> keys are sorted.
 > `buildSettings` keeps the key order of the JSON that `plutil` produced
 > (which need not match the original file); setting an existing key replaces
 > it in place and a new key is appended.
@@ -50,12 +59,13 @@ re-serialized result.
 
 ## Serialization
 
-> [spec:kbdgen:syn:pbxproj.serialize]
+> [spec:kbdgen:syn:pbxproj.serialize+1]
 > Output is `// !$*UTF8*$!`, then a `{ … }` block of tab-indented
 > `archiveVersion`, an always-empty `classes = {` / `};`, `objectVersion`,
 > `objects = {` + empty line + sections + `};`, and `rootObject`, ending with
 > a newline. Every kind has a section, even when empty, in byte-wise `isa`
-> order; the first three open with `/* Begin <isa> section */`, the rest with
+> order; the first three and the two Swift Package kinds open with
+> `/* Begin <isa> section */`, the rest with
 > `/* Start <isa> section */` plus an empty line, and all close with
 > `/* End <isa> section */` plus an empty line. Objects appear in id order as
 > `\t\t<id> /* <c> */ = {`, `\t\t\tisa = <isa>;`, one `\t\t\t<key> = <value>;`
@@ -64,7 +74,7 @@ re-serialized result.
 > groups (omitted if neither), `PBXContainerItemProxy` or `Project object`
 > for those kinds, else that same placeholder word.
 
-> [spec:kbdgen:def:pbxproj.serialize.fields]
+> [spec:kbdgen:def:pbxproj.serialize.fields+1]
 > The field layout of a kind is the fields the serializer writes, in order
 > (`?` = when present); others, notably `PBXFileReference.explicitFileType`
 > and `PBXResourcesBuildPhase.name`, are dropped. ContainerItemProxy:
@@ -75,14 +85,19 @@ re-serialized result.
 > before and `shellPath shellScript showEnvVarsInLog?` after `runOnly…`.
 > Group: `children path? name? sourceTree` (VariantGroup swaps `name?`
 > and `path?`). NativeTarget: `buildConfigurationList buildPhases buildRules
-> dependencies name productName productReference? productType?`. Project:
-> `attributes`, then its remaining fields alphabetically. TargetDependency:
+> dependencies name packageProductDependencies? productName
+> productReference? productType?`. Project: `attributes`, then its remaining
+> fields alphabetically, `packageReferences?` among them. TargetDependency:
 > `target targetProxy`. XCBuildConfiguration: `buildSettings name` (so
 > `baseConfigurationReference` is dropped). ConfigurationList: its three
-> fields alphabetically. `PBXBuildFile` and `PBXFileReference` are single-line
-> `{isa = …; key = value; …}`, build-file array settings as `(a, b, )`.
+> fields alphabetically. RemoteSwiftPackageReference: `repositoryURL
+> requirement`, the latter as `requirement = {`, one `<key> = <value>;` line
+> per entry a tab deeper, and `};`. SwiftPackageProductDependency: `package?
+> productName`. `PBXBuildFile` (`fileRef? productRef? settings?`) and
+> `PBXFileReference` are single-line `{isa = …; key = value; …}`, build-file
+> array settings as `(a, b, )`.
 
-> [spec:kbdgen:req:pbxproj.quoting]
+> [spec:kbdgen:req:pbxproj.quoting+1]
 > "Debug-quoted" means Rust `{:?}` formatting (wrapped in `"`; `"`, `\`,
 > control and non-printable characters backslash-escaped, the latter as
 > `\u{…}`). The serializer MUST quote exactly so: `PBXFileReference.name`
@@ -92,8 +107,10 @@ re-serialized result.
 > `"<group>"`. Always Debug-quoted: `PBXVariantGroup.name`,
 > `PBXNativeTarget.name`, CopyFiles `dstPath` and `name`, `PBXProject`
 > `compatibilityVersion`/`projectDirPath`/`projectRoot`, shell-script `name`
-> and `shellScript`, `XCBuildConfiguration.name`, and string build-setting
-> values. Shell-script `inputPaths`/`outputPaths` items are wrapped in `"`
+> and `shellScript`, `XCBuildConfiguration.name`, string build-setting
+> values, a package reference's `repositoryURL` and `requirement` values,
+> and a product dependency's `productName`. Shell-script
+> `inputPaths`/`outputPaths` items are wrapped in `"`
 > unescaped. Everything else is written raw.
 
 > [spec:kbdgen:req:pbxproj.serialize.build-settings]

@@ -51,6 +51,7 @@ pub struct Project {
     pub project_dir_path: String,
     pub project_root: String,
     pub targets: BTreeSet<ObjectId>,
+    pub package_references: Option<BTreeSet<ObjectId>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,7 +87,7 @@ pub struct VariantGroup {
     pub path: Option<String>,
 }
 
-// [spec:kbdgen:sem:pbxproj.model.ordering]
+// [spec:kbdgen:sem:pbxproj.model.ordering+1]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
@@ -99,6 +100,7 @@ pub struct NativeTarget {
     pub dependencies: BTreeSet<ObjectId>,
     pub name: String,
     pub build_rules: BTreeSet<String>,
+    pub package_product_dependencies: Option<BTreeSet<ObjectId>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -219,11 +221,30 @@ pub struct ContainerItemProxy {
 #[serde(deny_unknown_fields)]
 pub struct BuildFile {
     pub settings: Option<BTreeMap<String, serde_json::Value>>,
-    pub file_ref: ObjectId,
+    pub file_ref: Option<ObjectId>,
+    /// A Swift Package Manager product. A build file has this or `file_ref`.
+    pub product_ref: Option<ObjectId>,
 }
 
-// [spec:kbdgen:def:pbxproj.model]
-// [spec:kbdgen:sem:pbxproj.model.ordering]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct RemoteSwiftPackageReference {
+    #[serde(rename = "repositoryURL")]
+    pub repository_url: String,
+    pub requirement: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct SwiftPackageProductDependency {
+    pub package: Option<ObjectId>,
+    pub product_name: String,
+}
+
+// [spec:kbdgen:def:pbxproj.model+1]
+// [spec:kbdgen:sem:pbxproj.model.ordering+1]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
@@ -272,8 +293,10 @@ impl Pbxproj {
     pub fn build_file_id_by_file_ref_name(&self, name: &str) -> Option<&ObjectId> {
         for object in &self.objects {
             if let (id, Object::BuildFile(build_file)) = object {
-                if let Some(Object::FileReference(file_ref)) =
-                    self.objects.get(&build_file.file_ref)
+                if let Some(Object::FileReference(file_ref)) = build_file
+                    .file_ref
+                    .as_ref()
+                    .and_then(|file_ref| self.objects.get(file_ref))
                 {
                     if let Some(file_ref_name) = file_ref.name.as_ref() {
                         if file_ref_name == name {
@@ -551,7 +574,8 @@ impl Pbxproj {
         tracing::debug!("Adding build file with ref: {}", &object_id);
 
         let variant_group = BuildFile {
-            file_ref: file_ref.clone(),
+            file_ref: Some(file_ref.clone()),
+            product_ref: None,
             settings: None,
         };
 
@@ -638,7 +662,7 @@ impl Pbxproj {
         variant.children.insert(object_id);
     }
 
-    // [spec:kbdgen:req:xcode.targets]
+    // [spec:kbdgen:req:xcode.targets+1]
     pub fn duplicate_target(
         &mut self,
         source_name: &str,
@@ -734,7 +758,7 @@ impl Pbxproj {
         self.add_target(&new_native_target_id);
     }
 
-    // [spec:kbdgen:req:xcode.targets]
+    // [spec:kbdgen:req:xcode.targets+1]
     pub fn remove_target(&mut self, target_name: &str) {
         let target = self.native_target_by_name_mut(target_name).unwrap();
 
@@ -788,7 +812,7 @@ impl Pbxproj {
         }
     }
 
-    // [spec:kbdgen:req:xcode.targets]
+    // [spec:kbdgen:req:xcode.targets+1]
     pub fn add_appex_to_target_embedded_binaries(&mut self, target_path: &str, appex_path: &str) {
         let appex_id = self
             .file_reference_id_by_path(&format!("{}.appex", appex_path))
@@ -818,7 +842,8 @@ impl Pbxproj {
                         self.objects.insert(
                             build_file_id,
                             Object::BuildFile(BuildFile {
-                                file_ref: appex_id,
+                                file_ref: Some(appex_id),
+                                product_ref: None,
                                 settings: Some(temp),
                             }),
                         );
@@ -930,7 +955,7 @@ pub struct PBXCopyFilesBuildPhase {
     run_only_for_deployment_postprocessing: String,
 }
 
-// [spec:kbdgen:def:pbxproj.model]
+// [spec:kbdgen:def:pbxproj.model+1]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "isa")]
 pub enum Object {
@@ -981,6 +1006,12 @@ pub enum Object {
 
     #[serde(rename = "PBXContainerItemProxy")]
     ContainerItemProxy(ContainerItemProxy),
+
+    #[serde(rename = "XCRemoteSwiftPackageReference")]
+    RemoteSwiftPackageReference(RemoteSwiftPackageReference),
+
+    #[serde(rename = "XCSwiftPackageProductDependency")]
+    SwiftPackageProductDependency(SwiftPackageProductDependency),
 }
 
 // [spec:kbdgen:req:pbxproj.model.read]

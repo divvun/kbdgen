@@ -5,14 +5,27 @@ The iOS target (`kbdgen target -b <bundle> -o <out> ios build`) clones the
 JSON file, rewrites the template's Xcode project, plists and icons, provisions
 signing material with fastlane, and archives the app with `xcodebuild`.
 
+## iOS layout list
+
+> [spec:kbdgen:req:ios.layouts]
+> The iOS layout list is every layout with an `iOS` section, sorted by
+> `displayNames.en` lower-cased and then by language tag, both byte-wise.
+> Producing it MUST fail when any such layout lacks `keyNames` or
+> `displayNames.en`, with `Some iOS layouts are incomplete:` followed by one
+> line per defect, indented two spaces and sorted byte-wise:
+> ``<tag>: missing `keyNames` (space and return key labels)`` or
+> ``<tag>: missing `displayNames.en` ``. `ios.keyboard-json` and
+> `xcode.targets` MUST both iterate this list, because a keyboard finds its
+> definition by its position in it (`xcode.targets.keyboard-plist`).
+
 ## Keyboard definitions JSON
 
-> [spec:kbdgen:def:ios.keyboard-json]
+> [spec:kbdgen:def:ios.keyboard-json+1]
 > The keyboard definitions file is `<out>/repo/Keyboard/Models/KeyboardDefinitions.json`
 > (its directory comes from the cloned template), a pretty-printed JSON array
-> with one object per layout, in bundle layout order, that has both an `iOS`
-> section and `keyNames`; other iOS layouts are silently skipped, and `[]` is
-> written when none qualify. Object keys, in order: `name` (the autonym),
+> with one object per layout of `ios.layouts`, in that order; `[]` is written
+> when the bundle has no iOS layout, and nothing is written when
+> `ios.layouts` fails. Object keys, in order: `name` (the autonym),
 > `locale` (the language tag), `return` and `space` (from `keyNames`),
 > `longPress` (key → whitespace-split alternatives, `{}` if absent),
 > `deadKeys`, `transforms` (`ios.transforms`), and `iphone`, `ipad-9in`,
@@ -64,11 +77,12 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 
 ## Build chain
 
-> [spec:kbdgen:req:ios.build-chain]
+> [spec:kbdgen:req:ios.build-chain+1]
 > `ios build` MUST run, per `[spec:kbdgen:sem:pipeline.steps]`: `git clone
 > https://github.com/divvun/giellakbd-ios.git repo` in `<out>` (exit status
 > ignored); `ios.keyboard-json`; Xcode generation (`xcode.targets`);
-> provisioning; `pod install --project-directory=<out>/repo`; and
+> provisioning; `pod install --repo-update --project-directory=<out>/repo`
+> (the refresh lets a stale spec index resolve the locked versions); and
 > `xcodebuild archive` (workspace `GiellaKeyboard.xcworkspace`, scheme
 > `HostingApp`, Release, to `<out>/<packageId>.xcarchive`, piped through
 > `xcbeautify`) followed by `xcodebuild -exportArchive` to `<out>/ipa` with
@@ -94,11 +108,11 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 
 ## Xcode project generation
 
-> [spec:kbdgen:req:xcode.targets]
+> [spec:kbdgen:req:xcode.targets+1]
 > Xcode generation always reads and rewrites
 > `repo/GiellaKeyboard.xcodeproj/project.pbxproj` (`pbxproj.model.read`,
 > `pbxproj.serialize`), but only with an iOS target (`targets/ios.yaml`)
-> does it, for each iOS layout in bundle layout order: add an `Info.plist`
+> does it, for each layout of `ios.layouts` in that order: add an `Info.plist`
 > reference to group `Keyboard/<folder>` (created as needed); clone native
 > target `Keyboard` as `<folder>` with fresh ids, product `<folder>.appex` in
 > `Products`, shared build phases, and settings `INFOPLIST_FILE =
@@ -110,7 +124,7 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 > base identifier and team, and target `Keyboard` is removed with its
 > dependencies, `Products` entry and embed build file.
 
-> [spec:kbdgen:req:xcode.targets.keyboard-plist]
+> [spec:kbdgen:req:xcode.targets.keyboard-plist+1]
 > With an iOS target, each such layout's `repo/Keyboard/<folder>/Info.plist`
 > MUST be produced from template `repo/Keyboard/Info.plist` deserialized as
 > the typed `KeyboardInfoPlist` (xcode_structures.rs; missing required keys
@@ -122,8 +136,8 @@ signing material with fastlane, and archives the app with `xcodebuild`.
 > `CFBundleShortVersionString`/`CFBundleVersion` = target
 > `version`/`build`; `LSApplicationQueriesSchemes[0]` = `packageId`;
 > `SentryDSN` = `sentryDsn` (omitted if unset); `PrimaryLanguage` = the
-> language tag; `DivvunKeyboardIndex` = the layout's 0-based position among
-> iOS layouts (counting those without `keyNames`).
+> language tag; `DivvunKeyboardIndex` = the layout's 0-based position in
+> `ios.layouts`, which is also its position in the keyboard definitions file.
 
 > [spec:kbdgen:req:xcode.targets.hosting-app]
 > With an iOS target, the generator MUST rewrite, via the typed structs of

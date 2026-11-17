@@ -72,7 +72,7 @@ fn xcodebuild_export_ipa(
         .status()
 }
 
-// [spec:kbdgen:req:ios.build-chain]
+// [spec:kbdgen:req:ios.build-chain+1]
 #[async_trait(?Send)]
 impl BuildStep for BuildXcarchive {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> anyhow::Result<()> {
@@ -147,7 +147,7 @@ async fn load_provisioning_profile(
     Ok(plist::from_bytes(&output.stdout)?)
 }
 
-// [spec:kbdgen:req:ios.build-chain]
+// [spec:kbdgen:req:ios.build-chain+1]
 async fn embed_profiles(
     bundle: &KbdgenBundle,
     deps_path: &Path,
@@ -189,7 +189,7 @@ async fn embed_profiles(
     Ok(())
 }
 
-// [spec:kbdgen:req:ios.build-chain]
+// [spec:kbdgen:req:ios.build-chain+1]
 #[async_trait(?Send)]
 impl BuildStep for FastlaneProvisioning {
     async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> anyhow::Result<()> {

@@ -1055,6 +1055,30 @@ children (
                         kind @fix
                         deps (targets.ios.xcode)
                     }
+
+                    {
+                        id targets.ios.main-parity
+                        title "Bring main's iOS changes to v4: Swift Package objects in pbxproj, CocoaPods index refresh, one sorted iOS layout list"
+                        kind @feat
+                        implements {
+                            main ([spec:kbdgen:req:ios.layouts])
+                        }
+                        log (
+                            {
+                                at 2026-11-17T16:54:32.282909Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+
+                            {
+                                at 2026-11-17T17:01:49.302086Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Found on 2026-11-17: the iOS keyboard job on the macOS builder, running the v4 build, panicked in pbxproj.rs reading giellakbd-ios (24abf10) with \"unknown field `productRef`\". main had three iOS commits by Dylan Hand that v4 never received, all later than v4's previous tip of 2026-10-20: 456edfb (Swift Package objects in pbxproj), 1ad9f8d (pod install --repo-update), 519b5c0 (one sorted iOS layout list, keyboard indices in sync). main is the merge base plus exactly those three, so this node merges origin/main rather than cherry-picking; one conflict, in generate_ios.rs, resolved to main's block under v4's annotation. Spec follows the merged behaviour: new rule ios.layouts; ios.keyboard-json, ios.build-chain, xcode.targets, xcode.targets.keyboard-plist, pbxproj.model, pbxproj.model.ordering, pbxproj.serialize, pbxproj.serialize.fields and pbxproj.quoting revised to version 1, and all 30 references re-read and pinned. Checked against the real template: the round-trip example reads and rewrites its project.pbxproj, and `ios build` on divvun.kbdgen gets through clone, KeyboardDefinitions.json and Xcode generation with DivvunKeyboardIndex matching the JSON order for all nine keyboards; it stops at provisioning, which needs the App Store key that only CI has."
+                            }
+                        )
+                    }
                 )
             }
 

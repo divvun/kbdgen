@@ -14,7 +14,7 @@ use rayon::prelude::*;
 use crate::{
     build::{
         BuildStep,
-        ios::{IosProjectExt, pbxproj::Pbxproj, xcode_structures::*},
+        ios::{IosProjectExt, ios_layouts, pbxproj::Pbxproj, xcode_structures::*},
     },
     bundle::{KbdgenBundle, layout::IOsTarget, project::Project},
 };
@@ -47,7 +47,7 @@ pub fn replace_all_occurances(input: String, character: char, replace_with: char
         .collect::<String>()
 }
 
-// [spec:kbdgen:req:xcode.targets.keyboard-plist]
+// [spec:kbdgen:req:xcode.targets.keyboard-plist+1]
 pub fn generate_keyboard_plist(
     template_path: &Path,
     target: &IOsTarget,
@@ -233,11 +233,10 @@ impl BuildStep for GenerateXcode {
                 sentry_dsn: target.sentry_dsn.clone(),
             };
 
-            for (layout_index, (language_tag, layout)) in bundle
-                .layouts
-                .iter()
-                .filter(|x| x.1.i_os.is_some())
-                .enumerate()
+            // Must use the same list as GenerateIos: `layout_index` becomes DivvunKeyboardIndex, which the
+            // keyboard uses to find its entry in KeyboardDefinitions.json.
+            for (layout_index, (language_tag, layout)) in
+                ios_layouts(bundle)?.into_iter().enumerate()
             {
                 if let Some(_ios_layout) = &layout.i_os {
                     // GENERATE LOCALES
@@ -320,7 +319,7 @@ impl BuildStep for GenerateXcode {
                     );
 
                     // GENERATE .pbxproj
-                    // [spec:kbdgen:req:xcode.targets]
+                    // [spec:kbdgen:req:xcode.targets+1]
                     let temp = pbxproj.create_plist_file(&Path::new(INFO_PLIST));
                     let hmm = path_to_relative(&current_layout_path, REPOSITORY);
                     tracing::debug!("Relpath: {}", hmm.display());
@@ -381,7 +380,7 @@ impl BuildStep for GenerateXcode {
             plist::to_file_xml(root_plist_path.clone(), &root_plist).unwrap();
 
             // UPDATE PBXPROJ
-            // [spec:kbdgen:req:xcode.targets]
+            // [spec:kbdgen:req:xcode.targets+1]
             pbxproj.set_target_build_configuration(
                 HOSTING_APP,
                 "PRODUCT_BUNDLE_IDENTIFIER",

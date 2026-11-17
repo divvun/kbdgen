@@ -1443,6 +1443,11 @@ impl_evidence (
         {id tsf.register.upgrade, version 2}
         {id tsf.security.appcontainer, version 2}
     )}
+    {id targets.ios.main-parity, covered_rules (
+        ios.layouts
+    ), covered_claims (
+        {impl_name main, rule ios.layouts}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}
