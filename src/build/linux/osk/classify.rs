@@ -248,7 +248,7 @@ pub fn report(classification: &Classification, osk: Osk, diag: &mut Diagnostics)
         }
     }
     let which = match osk {
-        Osk::GnomeShell(_) => " without a dead keysym in the XKB layout",
+        Osk::GnomeShell(_) => " without a dead keysym at Level1 to 3 of the XKB layout",
         Osk::PlasmaKeyboard | Osk::Stevia => "",
     };
     warn(

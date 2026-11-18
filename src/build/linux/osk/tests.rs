@@ -363,7 +363,7 @@ fn gnome_reports_only_dead_keys_without_keysyms() {
     let gnome = reported(&layout, Osk::GnomeShell(&keysyms));
     assert!(
         gnome.contains(
-            "warning: GNOME Shell types 1 dead key(s) without a dead keysym in the XKB layout as their standalone output, which composes nothing, or leaves them out where they have none (e.g. ~)\n"
+            "warning: GNOME Shell types 1 dead key(s) without a dead keysym at Level1 to 3 of the XKB layout as their standalone output, which composes nothing, or leaves them out where they have none (e.g. ~)\n"
         ),
         "{gnome}"
     );

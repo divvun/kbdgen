@@ -1688,6 +1688,15 @@ impl_evidence (
         {impl_name main, rule ldml.linux.test.typing}
         {impl_name main, rule linux.test.xkbcommon}
     )}
+    {id targets.linux.osk.gnome, covered_rules (
+        ldml.linux.touch.gnome
+        linux.osk.gnome
+        linux.osk.gnome.selection
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.touch.gnome}
+        {impl_name main, rule linux.osk.gnome}
+        {impl_name main, rule linux.osk.gnome.selection}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

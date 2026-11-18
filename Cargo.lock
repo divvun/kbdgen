@@ -713,6 +713,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gvdb"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c28284f834fe0083db924efe590a684fe81c661c6269fc536ae964ab01adc111"
+dependencies = [
+ "serde",
+ "zerocopy",
+ "zvariant",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1065,6 +1076,7 @@ dependencies = [
  "fs_extra",
  "futures",
  "futures-util",
+ "gvdb",
  "icu_normalizer",
  "indexmap",
  "iso639",

@@ -642,8 +642,13 @@ touch layouts are later work (Decisions).
 >   `/org/gnome/shell/osk-layouts/<L>.json` for each layout
 >   (`ldml.linux.touch.gnome`), the JSON without insignificant whitespace,
 >   as `json-stripblanks` leaves it. kbdgen writes the bundle itself in
->   GLib's GVDB format, with the `gvdb` crate (MIT or Apache-2.0), so no
->   `glib-compile-resources` is needed on any host
+>   GLib's GVDB format, with the `gvdb` crate's GVDB writer (MIT or
+>   Apache-2.0), so no `glib-compile-resources` is needed on any host:
+>   a hash table keyed by path, with an entry for each directory listing
+>   its children, each file's value the variant `(uuay)` of its size, its
+>   flags (0, uncompressed) and its data with a terminating zero, as
+>   `glib-compile-resources` writes them. The crate's `gresource` feature,
+>   which reads XML manifests, is not used
 >
 > GNOME Shell registers its own layouts as a GResource under the same
 > prefix (`js/ui/main.js` `_loadOskLayouts`) and reads one with
@@ -684,6 +689,13 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
   written by the `gvdb` crate loads as `glib-compile-resources` output does.
 - Verified: `gnome-extensions enable` fails for an extension installed
   while the shell runs (`linux.install`).
+- Verified on GNOME Shell 50.6, once `linux.osk.gnome` was built: the
+  extension kbdgen writes for the golden Võro layout, its bundle written
+  by `gvdb` 0.10.1, adds `divvun-vro.json` beside the shell's 68 layouts
+  and shows it for `('xkb', 'divvun-vro')`, its shift level and first
+  symbol level included; its dead keys `ˇ` and `´`, sent as `dead_caron`
+  and `dead_acute` at Level1, pressed on screen before the hardware keys
+  `s` and `e`, type `š` and `é`.
 
 > [spec:kbdgen:sem:linux.osk.gnome.selection]
 > GNOME Shell takes the on-screen layout from the active input source's

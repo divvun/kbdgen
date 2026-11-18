@@ -273,11 +273,16 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 >   (`ldml.linux.dead-keys`) at Level1, 2 or 3 of the first key carrying D
 >   in key-code order: `keyval` D in lowercase `0x` hexadecimal and
 >   `label`, so that it reaches the IBus engine as a hardware key
->   (`linux.ibus.virtual-keys`; mutter presses no higher level); any other
->   dead key: `strings` with `flush[m]`, left out when that is empty
-> - `width`: the key's width rounded to the nearest half key, at least
->   one half, as the shell places keys on a half-key grid (`KEY_SIZE`);
->   gaps add their width to the next key's `leftOffset`
+>   (`linux.ibus.virtual-keys`; mutter presses no higher level). Its
+>   candidates are not written: the shell commits a key's extended keys
+>   only when it has no `keyval` (`_addRowKeys`). Any other dead key:
+>   `strings` with `flush[m]` then its candidates, and `label`, left out
+>   when `flush[m]` is empty. A dead key's `label` is its marker's display
+> - `width`, written when it is not 1: the key's width rounded to the
+>   nearest half key, at least one half, as the shell places keys on a
+>   half-key grid (`KEY_SIZE`). The gaps before a key add their width,
+>   rounded to the nearest half key, to its `leftOffset`; gaps ending a
+>   row, and keys left out, take no space
 > - the added keys: shift is `{"action": "levelSwitch", "iconName":
 >   "osk-shift-symbolic", "level": "shift"}`, with `"level": "default"` on
 >   the shift level; backspace `{"action": "delete", "iconName":
@@ -288,13 +293,16 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > Each level ends with a bottom row: a `levelSwitch` (1.5), to `opt`
 > labelled `?123`, or on a symbol level to `default` labelled `ABC`;
 > `{"action": "emoji", "iconName": "osk-emoji-picker-symbolic"}`; the
-> space key, `strings` `[" "]`; `{"action": "languageMenu", "iconName":
-> "osk-layout-symbolic"}`; `{"action": "hide", "iconName":
-> "osk-hide-symbolic"}`; and return, `{"iconName": "osk-enter-symbolic",
-> "keyval": "0xff0d"}` (1.5). The shell aligns rows left, so a row
-> narrower than its level's widest gets half the difference, rounded down
-> to a half key, as its first key's `leftOffset`, and the space key fills
-> the bottom row to the widest row, at least 3 keys.
+> space key, `strings` `[" "]`, with `label` `labels.space` where K has
+> one; `{"action": "languageMenu", "iconName": "osk-layout-symbolic"}`;
+> `{"action": "hide", "iconName": "osk-hide-symbolic"}`; and return,
+> `{"iconName": "osk-enter-symbolic", "keyval": "0xff0d"}` (1.5), whose
+> icon the shell shows instead of `labels.return`. The shell aligns rows
+> left, so a row narrower than its level's widest, the bottom row with a
+> space key of 3 keys among them, gets half the difference, rounded down
+> to a half key, added to its first key's `leftOffset`, and the space key
+> fills the bottom row to the widest row. Fields are written in GNOME
+> Shell's order, alphabetical.
 
 > [spec:kbdgen:sem:ldml.linux.touch.stevia]
 > `<L>.json` is the presented set in Stevia's format
