@@ -45,8 +45,8 @@ pub enum Key {
         id: String,
         gesture: Gesture,
     },
-    /// Text handled as a key's output, already escape-decoded; used by
-    /// tests.
+    /// Text handled as a key's output, already escape-decoded: what tests
+    /// type, and what a host that receives text rather than keys sends.
     Emit(String),
     /// The host is about to change the context (`ldml.engine.commit`).
     Commit,
@@ -100,7 +100,7 @@ impl ModifierState {
     }
 }
 
-// [spec:kbdgen:def:ldml.engine.event+1]
+// [spec:kbdgen:def:ldml.engine.event+2]
 /// A key event: a key, its modifiers and whether it is an auto-repeat. A
 /// repeat is handled exactly like any other press.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -15,6 +15,21 @@ fn dead_key_composes_with_next_key() {
     assert_eq!(s.text, "á");
 }
 
+/// A host that receives text, as the IBus engine does from an on-screen
+/// keyboard, sends it as `Emit`: a pending dead key composes with it as
+/// with a hardware key, and the unmatched fallback applies.
+// [spec:kbdgen:def:ldml.engine.event+2/test]
+#[test]
+fn emitted_text_composes_with_pending_dead_key() {
+    let m = model(dead_keys(Normalization::Disabled, false));
+    let mut s = Session::new(&m);
+    assert_eq!(s.scan(Q), edit(0, "", "´"));
+    assert_eq!(s.emit("a"), edit(0, "á", ""));
+    assert_eq!(s.scan(Q), edit(0, "", "´"));
+    assert_eq!(s.emit("x"), edit(0, "´x", ""));
+    assert_eq!(s.text, "á´x");
+}
+
 // [spec:kbdgen:def:ldml.scope.v1+1/test]
 // [spec:kbdgen:sem:ldml.engine.transforms/test]
 #[test]
@@ -137,7 +152,7 @@ fn keyboard_without_hardware_passes_scan_codes() {
     assert_eq!(action, Action::Pass);
 }
 
-// [spec:kbdgen:def:ldml.engine.event+1/test]
+// [spec:kbdgen:def:ldml.engine.event+2/test]
 #[test]
 fn repeat_is_handled_like_a_press() {
     let m = model(dead_keys(Normalization::Disabled, false));

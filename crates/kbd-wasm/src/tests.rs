@@ -140,7 +140,7 @@ fn a_session_keeps_the_engine_state_between_keys() {
 }
 
 // [spec:kbdgen:req:ldml.chromeos.wasm/test]
-// [spec:kbdgen:req:ldml.engine.shortcuts+2/test]
+// [spec:kbdgen:req:ldml.engine.shortcuts+3/test]
 #[test]
 fn shortcuts_pass_and_keep_the_state() {
     let handle = load(&keyboard());

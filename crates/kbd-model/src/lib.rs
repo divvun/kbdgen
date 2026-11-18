@@ -26,6 +26,7 @@
 extern crate alloc;
 
 mod encoding;
+mod evdev;
 mod extensions;
 mod keyboard;
 mod layers;
@@ -42,6 +43,7 @@ mod tests;
 pub use encoding::{
     DecodeError, EncodeError, HEADER_LEN, MAGIC, MAJOR_VERSION, MINOR_VERSION, Version, read_header,
 };
+pub use evdev::{evdev_code, scan_code};
 pub use extensions::{ExtraModifierKey, WINDOWS_KEY_NAMES, Windows};
 pub use keyboard::{
     DEFAULT_WIDTH, Direction, Display, DisplayTarget, Displays, Flick, FlickIndex, FlickSegment,

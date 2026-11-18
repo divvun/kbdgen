@@ -1715,6 +1715,17 @@ impl_evidence (
         {impl_name main, rule linux.ibus.logging}
         {impl_name main, rule linux.ibus.panic}
     )}
+    {id targets.linux.ibus.keys, covered_rules (
+        linux.ibus.keys
+        linux.ibus.modifiers
+        linux.ibus.planner
+        linux.ibus.virtual-keys
+    ), covered_claims (
+        {impl_name main, rule linux.ibus.keys}
+        {impl_name main, rule linux.ibus.modifiers}
+        {impl_name main, rule linux.ibus.planner}
+        {impl_name main, rule linux.ibus.virtual-keys}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

@@ -18,6 +18,7 @@ zbus = { version = "5.19", default-features = false, features = ["tokio"] }
 tokio = { version = "1.54", default-features = false, features = ["rt", "sync"] }
 
 [dev-dependencies]
+kbdgen = { path = "../.." }
 tempfile = "3.3.0"
 
 [lints.rust]

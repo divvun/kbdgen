@@ -44,7 +44,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > `authoritative` and `at_start`, which says that `text` begins at a start
 > of text. `Action` is `Pass`, or `Edit { delete, insert, preedit, layer }`.
 
-> [spec:kbdgen:def:ldml.engine.event+1]
+> [spec:kbdgen:def:ldml.engine.event+2]
 > A `KeyEvent` is a key, modifiers and a `repeat` flag. The engine treats a
 > repeat like any other press. A `Touch` key's `set` and `layer` are
 > indices; for a keyboard with no touch sets, set 0 is the hardware set
@@ -57,7 +57,7 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > | `Backspace` | Backspace |
 > | `Touch { set, layer, row, col, gesture }` | a touch key; `gesture` is `Tap`, `LongPress(n)`, `MultiTap(n)` or `Flick(directions)` |
 > | `Id { id, gesture }` | a key named by id; used by tests (`ldml.test.cldr`) |
-> | `Emit(text)` | text handled as a key's output; used by tests |
+> | `Emit(text)` | text handled as a key's output; used by tests, and by hosts that receive text rather than keys, as the IBus engine does from GNOME Shell's on-screen keyboard (`linux.ibus.virtual-keys`) |
 > | `Commit` | the host is about to change the context (`ldml.engine.commit`) |
 >
 > Modifiers are `shift_l`, `shift_r`, `caps` (lock state), `ctrl_l`,
@@ -164,14 +164,14 @@ transform, §Regex-like Syntax, §Replacement syntax, §Element: reorder,
 > AltGr (`tsf.keys.altgr`). LDML is ambiguous about how AltGr relates to
 > `ctrl alt`.
 
-> [spec:kbdgen:req:ldml.engine.shortcuts+2]
+> [spec:kbdgen:req:ldml.engine.shortcuts+3]
 > The engine MUST pass, without matching any layer, an event that meets any
 > of:
 >
 > - `cmd` is set
 > - a ctrl modifier is set and no alt modifier is
-> - `alt_l` is set and the host is `windows` or `chromeOS`, where Left Alt
->   drives menus and system shortcuts and only Right Alt types
+> - `alt_l` is set and the host is `windows`, `chromeOS` or `linux`, where
+>   Left Alt drives menus and system shortcuts and only Right Alt types
 >
 > The host is the keyboard's `host`, or for a keyboard without one (a
 > shared or foreign keyboard, `ldml.model.layout`) `Options.host`. So

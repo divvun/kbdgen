@@ -1,7 +1,9 @@
-//! Scan codes, evdev key codes and the XKB key names the layout writes
-//! (`ldml.linux.keycodes`).
+//! The keys the XKB layout writes and their names (`ldml.linux.keycodes`).
+//! The evdev key code of a scan code is `kbd-model`'s, which the IBus
+//! engine reads keys by too.
 
 use kbd_model::ScanCode;
+pub use kbd_model::{evdev_code, scan_code};
 
 /// A key the XKB layout writes: its scan code and its name in
 /// xkeyboard-config's `keycodes/evdev`.
@@ -88,43 +90,3 @@ pub const KEYS: [XkbKey; 51] = [
 /// The numpad decimal key, written for K's `decimal` (`ldml.linux.decimal`).
 // [spec:kbdgen:def:ldml.linux.keycodes]
 pub const DECIMAL: XkbKey = key(0x53, "KPDL");
-
-/// The scan codes past `58` with an evdev key code, paired as Chromium's
-/// `dom_code_data.inc` pairs them.
-const HIGH: [(ScanCode, u16); 9] = [
-    (0x59, 117),
-    (0x70, 93),
-    (0x71, 123),
-    (0x72, 122),
-    (0x73, 89),
-    (0x79, 92),
-    (0x7B, 94),
-    (0x7D, 124),
-    (0x7E, 121),
-];
-
-/// The evdev key code of a scan code without `E0`, if it has one.
-// [spec:kbdgen:def:ldml.linux.keycodes]
-pub fn evdev_code(scan: ScanCode) -> Option<u16> {
-    match scan {
-        0x45 | 0x54 | 0x55 => None,
-        0x01..=0x58 => Some(u16::from(scan)),
-        _ => HIGH
-            .iter()
-            .find(|(code, _)| *code == scan)
-            .map(|(_, evdev)| *evdev),
-    }
-}
-
-/// The scan code of an evdev key code, if it has one.
-// [spec:kbdgen:def:ldml.linux.keycodes]
-pub fn scan_code(evdev: u16) -> Option<ScanCode> {
-    match evdev {
-        0x45 | 0x54 | 0x55 => None,
-        0x01..=0x58 => ScanCode::try_from(evdev).ok(),
-        _ => HIGH
-            .iter()
-            .find(|(_, code)| *code == evdev)
-            .map(|(scan, _)| *scan),
-    }
-}

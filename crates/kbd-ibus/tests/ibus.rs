@@ -16,14 +16,23 @@
     clippy::indexing_slicing
 )]
 
+#[allow(dead_code)]
+#[path = "../src/tests/fixture.rs"]
+mod fixture;
+
 use std::fs;
+use std::future::poll_fn;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::process::{Child, Command, Stdio};
+use std::task::Poll;
 use std::time::{Duration, Instant};
 
 use kbd_model::{Info, Keyboard};
+use zbus::export::futures_core::Stream;
+use zbus::message::Type;
 use zbus::zvariant::{OwnedObjectPath, OwnedValue, Value};
-use zbus::{Connection, Message};
+use zbus::{Connection, Message, MessageStream};
 
 const PROGRAM: &str = env!("CARGO_BIN_EXE_ibus-engine-divvun");
 const TEMPLATE: &str = include_str!("../data/divvun.xml.in");
@@ -189,9 +198,47 @@ impl Drop for Daemon {
     }
 }
 
+/// A signal of the input context.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[expect(
+    clippy::enum_variant_names,
+    reason = "the variants are named as the D-Bus signals"
+)]
+enum Received {
+    CommitText(String),
+    UpdatePreeditText {
+        text: String,
+        cursor: u32,
+        visible: bool,
+        mode: u32,
+    },
+    DeleteSurroundingText {
+        offset: i32,
+        nchars: u32,
+    },
+    RequireSurroundingText,
+}
+
+/// The text of an `IBusText`.
+fn ibus_text(value: &Value<'_>) -> String {
+    let mut value = value;
+    while let Value::Value(inner) = value {
+        value = inner;
+    }
+    let Value::Structure(structure) = value else {
+        panic!("an IBusText, got {value:?}");
+    };
+    let [Value::Str(kind), _, Value::Str(text), ..] = structure.fields() else {
+        panic!("an IBusText, got {structure:?}");
+    };
+    assert_eq!(kind.as_str(), "IBusText");
+    text.as_str().to_owned()
+}
+
 /// The test's connection to the daemon and its one input context.
 struct Client {
     connection: Connection,
+    stream: MessageStream,
     context: OwnedObjectPath,
 }
 
@@ -202,6 +249,7 @@ impl Client {
             .build()
             .await
             .unwrap();
+        let stream = MessageStream::from(&connection);
         let reply = connection
             .call_method(
                 Some(IBUS),
@@ -215,6 +263,7 @@ impl Client {
         let context: OwnedObjectPath = reply.body().deserialize().unwrap();
         let client = Client {
             connection,
+            stream,
             context,
         };
         client
@@ -278,6 +327,59 @@ impl Client {
             [_, _, Value::Str(name), ..] => name.as_str().to_owned(),
             fields => panic!("an IBusEngineDesc, got {fields:?}"),
         }
+    }
+
+    /// Sends a key event and gives the reply.
+    async fn key(&self, keyval: u32, keycode: u32, state: u32) -> bool {
+        let reply = self
+            .call("ProcessKeyEvent", &(keyval, keycode, state))
+            .await
+            .unwrap();
+        reply.body().deserialize().unwrap()
+    }
+
+    /// The input context's signals received so far. ibus-daemon sends a
+    /// call's signals before its reply, so after a reply they are here.
+    async fn received(&mut self) -> Vec<Received> {
+        let mut received = Vec::new();
+        while let Some(message) = poll_fn(|cx| match Pin::new(&mut self.stream).poll_next(cx) {
+            Poll::Ready(message) => Poll::Ready(message),
+            Poll::Pending => Poll::Ready(None),
+        })
+        .await
+        {
+            let message = message.unwrap();
+            let header = message.header();
+            if message.message_type() != Type::Signal
+                || header.interface().map(|i| i.as_str()) != Some(INPUT_CONTEXT)
+            {
+                continue;
+            }
+            let body = message.body();
+            received.push(match header.member().map(|m| m.as_str()) {
+                Some("CommitText") => {
+                    let (text,): (OwnedValue,) = body.deserialize().unwrap();
+                    Received::CommitText(ibus_text(&text))
+                }
+                Some("UpdatePreeditTextWithMode") => {
+                    let (text, cursor, visible, mode): (OwnedValue, u32, bool, u32) =
+                        body.deserialize().unwrap();
+                    Received::UpdatePreeditText {
+                        text: ibus_text(&text),
+                        cursor,
+                        visible,
+                        mode,
+                    }
+                }
+                Some("DeleteSurroundingText") => {
+                    let (offset, nchars): (i32, u32) = body.deserialize().unwrap();
+                    Received::DeleteSurroundingText { offset, nchars }
+                }
+                Some("RequireSurroundingText") => Received::RequireSurroundingText,
+                _ => continue,
+            });
+        }
+        received
     }
 
     /// Calls the component's factory directly.
@@ -449,4 +551,64 @@ fn engine_exits_with_its_connection() {
         assert!(Instant::now() < deadline, "the engine outlived its bus");
         std::thread::sleep(Duration::from_millis(50));
     }
+}
+
+/// A press and release of `keycode` with `keyval`, whether it was
+/// handled, and the signals of the press but for `RequireSurroundingText`,
+/// which ibus-daemon also sends of its own once it has read
+/// `ActiveSurroundingText`.
+async fn tap(client: &mut Client, keyval: u32, keycode: u32) -> (bool, Vec<Received>) {
+    let handled = client.key(keyval, keycode, 0).await;
+    let mut received = client.received().await;
+    received.retain(|signal| *signal != Received::RequireSurroundingText);
+    assert_eq!(client.key(keyval, keycode, 1 << 30).await, handled);
+    (handled, received)
+}
+
+// [spec:kbdgen:req:linux.ibus.keys/test]
+// [spec:kbdgen:sem:linux.ibus.virtual-keys/test]
+#[test]
+fn keys_type_through_the_daemon() {
+    let vro = fixture::model("vro", &fixture::vro());
+    let keyboard = vro.keyboard().to_bytes().unwrap();
+    let keyboards = [Installed::new("divvun-vro", keyboard)];
+    let Some(daemon) = Daemon::start("keys_type", &keyboards) else {
+        return;
+    };
+    runtime().block_on(async {
+        let mut client = Client::connect(&daemon).await;
+        client.set_engine("divvun-vro").await;
+        assert_eq!(client.engine().await, "divvun-vro");
+        client.received().await;
+        let preedit = |text: &str| Received::UpdatePreeditText {
+            text: text.to_owned(),
+            cursor: u32::try_from(text.chars().count()).unwrap(),
+            visible: !text.is_empty(),
+            mode: 1,
+        };
+        assert_eq!(tap(&mut client, 0x2b, 13).await, (true, vec![preedit("´")]));
+        let (handled, received) = tap(&mut client, 0x61, 30).await;
+        assert!(handled);
+        assert_eq!(
+            received,
+            [
+                Received::UpdatePreeditText {
+                    text: String::new(),
+                    cursor: 0,
+                    visible: false,
+                    mode: 0
+                },
+                Received::CommitText("á".to_owned()),
+            ],
+            "{}",
+            daemon.log()
+        );
+        let (handled, received) = tap(&mut client, 0x71, 0).await;
+        assert_eq!(
+            (handled, received),
+            (true, vec![Received::CommitText("q".to_owned())])
+        );
+        let (handled, received) = tap(&mut client, 0xff51, 105).await;
+        assert_eq!((handled, received), (false, vec![]), "an arrow passes");
+    });
 }

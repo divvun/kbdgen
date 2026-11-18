@@ -19,6 +19,8 @@ mod data;
 mod dbus;
 mod diag;
 mod guard;
+mod keys;
+mod keysym;
 mod planner;
 #[cfg(test)]
 mod tests;
