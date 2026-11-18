@@ -6,7 +6,7 @@ use async_trait::async_trait;
 
 use super::ibus;
 use super::ids::Ids;
-use super::osk::{self, Osk, gnome, plasma};
+use super::osk::{self, Osk, gnome, plasma, stevia};
 use super::source::{self, LinuxLayout};
 use super::xkb;
 use crate::build::BuildStep;
@@ -48,10 +48,11 @@ impl BuildStep for GenerateLinux {
         tracing::debug!("The IBus engine's data has {} file(s)", engine.files.len());
         let osk = on_screen_keyboards(&ids, &target.version, en, &layouts, &xkb)?;
         tracing::debug!(
-            "Built the GNOME Shell extension {} with {} layout(s) and {} plasma-keyboard package(s)",
+            "Built the GNOME Shell extension {} with {} layout(s), {} plasma-keyboard package(s) and {} Stevia layout(s)",
             osk.gnome.uuid,
             osk.gnome.layouts.len(),
-            osk.plasma.len()
+            osk.plasma.len(),
+            osk.stevia.len()
         );
         tracing::info!("Prepared {} layout(s) for Linux", layouts.len());
         Ok(())
@@ -62,6 +63,7 @@ impl BuildStep for GenerateLinux {
 struct OnScreenKeyboards {
     gnome: gnome::Extension,
     plasma: Vec<plasma::Package>,
+    stevia: Vec<stevia::Layout>,
 }
 
 /// Each layout's on-screen keyboards in memory, reported as they are
@@ -77,6 +79,7 @@ fn on_screen_keyboards(
 ) -> Result<OnScreenKeyboards> {
     let mut gnome_layouts = Vec::new();
     let mut plasma = Vec::new();
+    let mut stevia = Vec::new();
     for (layout, adapted) in layouts.iter().zip(&xkb.layouts) {
         let presented = osk::present(layout)?;
         let classification = osk::classify(&layout.keyboard, &presented, &layout.tag);
@@ -86,12 +89,15 @@ fn on_screen_keyboards(
         let sent: BTreeSet<_> = keyvals.keys().copied().collect();
         osk::report(&classification, Osk::GnomeShell(&sent), &mut diag);
         osk::report(&classification, Osk::PlasmaKeyboard, &mut diag);
+        osk::report(&classification, Osk::Stevia, &mut diag);
         let id = ids.layout_id(&layout.tag);
         gnome_layouts.push(gnome::layout(&id, layout, &presented, &keyvals)?);
         plasma.push(plasma::package(ids, version, layout, &presented)?);
+        stevia.push(stevia::layout(&id, layout, &presented)?);
     }
     Ok(OnScreenKeyboards {
         gnome: gnome::extension(ids, version, en, gnome_layouts)?,
         plasma,
+        stevia,
     })
 }

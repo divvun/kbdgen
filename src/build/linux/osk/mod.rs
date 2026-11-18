@@ -1,8 +1,8 @@
 //! The on-screen keyboards of the Linux target (`linux.osk.*`). Every OSK
 //! shows one presented set, the layout's desktop layout as touch
 //! (`presented`), and reports what it cannot show or type (`classify`);
-//! `gnome` writes it into the bundle's GNOME Shell extension and `plasma`
-//! as a plasma-keyboard package.
+//! `gnome` writes it into the bundle's GNOME Shell extension, `plasma` as
+//! a plasma-keyboard package and `stevia` as a Stevia layout.
 
 use anyhow::{Result, anyhow};
 
@@ -12,6 +12,7 @@ pub mod classify;
 pub mod gnome;
 pub mod plasma;
 pub mod presented;
+pub mod stevia;
 #[cfg(test)]
 mod tests;
 

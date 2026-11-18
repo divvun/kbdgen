@@ -1697,6 +1697,13 @@ impl_evidence (
         {impl_name main, rule linux.osk.gnome}
         {impl_name main, rule linux.osk.gnome.selection}
     )}
+    {id targets.linux.osk.stevia, covered_rules (
+        ldml.linux.touch.stevia
+        linux.osk.stevia
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.touch.stevia}
+        {impl_name main, rule linux.osk.stevia}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

@@ -64,9 +64,10 @@ Sources:
 - ibus-keyman (keymanapp/keyman `master`,
   `linux/ibus-keyman/src/keyman.xml.in`, `engine.cpp`) and ibus-m17n
   (`src/m17n.xml.in`)
-- Stevia `810aba7` (0.59.0): `src/pos-osk-widget.c`,
+- Stevia `810aba7` (0.59.0): `src/pos-osk-widget.c`, `src/pos-osk-key.c`,
   `src/pos-input-surface.c`, `src/phosh-osk-stevia.gresources.xml`,
-  `src/layouts/*.json`, `doc/testing-layouts.md`
+  `src/layouts/*.json`, `src/layouts/meson.build`,
+  `tools/write-layout-info.py`, `doc/testing-layouts.md`
 - plasma-keyboard `1e20db4` (6.8.80, the 6.9 development line):
   `README.md`, `layouts/*/metadata.json`, `layouts/nb_NO/`,
   `layouts/ko_KR/`, `layouts/defaultplugin/`, `virtualkeyboard/components/`,
@@ -755,7 +756,10 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
 > `stevia/layouts/<L>.json` per layout (`ldml.linux.touch.stevia`) for
 > contributing upstream: each file goes to Stevia's `src/layouts/` with a
 > line `<file preprocess="json-stripblanks">layouts/<L>.json</file>` in
-> `src/phosh-osk-stevia.gresources.xml`. Until Stevia ships it,
+> `src/phosh-osk-stevia.gresources.xml` and an entry in the `layouts` of
+> `src/layouts/meson.build`, which validates it; Stevia's
+> `tools/write-layout-info.py` then lists it by its `locale` and `name`.
+> Until Stevia ships it,
 > `G_RESOURCE_OVERLAYS=/mobi/phosh/stevia/layouts=<dir>` in Stevia's
 > environment adds the files without rebuilding, the mechanism Stevia
 > documents for testing layouts (`doc/testing-layouts.md`); it serves

@@ -306,20 +306,28 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 
 > [spec:kbdgen:sem:ldml.linux.touch.stevia]
 > `<L>.json` is the presented set in Stevia's format
-> (`src/pos-osk-widget.c` `parse_layout`, `src/layouts/*.json`): an object
-> with `name` (the display name), `locale` (the tag) and `levels`, named
-> `""`, `shift`, `opt` and `opt+shift`, the only ones Stevia knows. `mode`
-> is written as for GNOME Shell; Stevia ignores it. A key is an array, its
-> output then its candidates, or, with a label, a dead key or a width
-> other than 1, an object with `symbol`, `symbols` (the candidates),
-> `label` and `width`. Stevia has no dead keys: a dead key is `symbol`
-> `flush[m]` with its display as `label`, left out when `flush[m]` is
-> empty. Stevia adds shift and backspace to each level's second-to-last
-> row, and its menu, symbol and return keys to the last
-> (`add_common_keys_pre`, `add_common_keys_post`), so the added keys of
-> `ldml.linux.touch` are left out; gaps are too, since Stevia centres
-> rows. Each level ends with `[","]`, `[" "]` and `["."]`, as Stevia's
-> layouts do; Stevia labels the space bar itself.
+> (`src/pos-osk-widget.c` `parse_layout`, `src/pos-osk-key.c`,
+> `src/layouts/*.json`): pretty JSON, indented by two spaces as Stevia's
+> layouts are, of an object with `levels`, `locale` (the tag) and `name`
+> (the display name). The levels are named `""`, `shift`, `opt` and
+> `opt+shift`, the only ones Stevia knows. `mode` is written as for GNOME
+> Shell; Stevia ignores it. A key is an array, its output then its
+> candidates, or, with a label, a dead key or a width other than 1, an
+> object with `symbol`, `symbols` (the candidates), `label` and `width`,
+> the last three where they are set, which Stevia reads as the
+> properties of its `PosOskKey`. `width` is the key's width in keys,
+> held to 1 to 10, the range of that property, outside which GLib warns
+> and keeps 1. Stevia has no dead keys: a dead key is `symbol` `flush[m]`
+> with its display as `label`, left out when `flush[m]` is empty. Stevia
+> adds shift and backspace to each level's second-to-last row, and its
+> menu, symbol and return keys to the last (`add_common_keys_pre`,
+> `add_common_keys_post`), so the added keys of `ldml.linux.touch` are
+> left out; gaps are too, since Stevia centres rows, and a row left with
+> no keys, to which Stevia would add none. Each level ends as Stevia's
+> layouts do: the default and shift levels with `[","]`, `[" "]` and
+> `["."]`, `opt` with `["_"]`, `["/"]`, `[" "]`, `[","]` and `["."]`, and
+> `opt+shift` with `["<"]`, `[">"]`, `[" "]`, `[","]` and `["."]`; Stevia
+> labels the space bar itself.
 
 > [spec:kbdgen:sem:ldml.linux.touch.plasma]
 > `contents/layouts/desktop.qml` is the presented set as a plasma-keyboard
