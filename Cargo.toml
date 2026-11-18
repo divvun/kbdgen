@@ -46,7 +46,7 @@ num_cpus = "1.14.0"
 futures-util = "0.3.25"
 rustls = { version = "0.23.27", default-features = false, features = ["ring"] }
 qname = "0.2.0"
-gvdb = "0.10.1"
+gvdb = { git = "https://github.com/felinira/gvdb-rs", rev = "a58e8a82d34181eeebe4fc817177e516690403cc" }
 
 [dev-dependencies]
 proptest = { version = "1", default-features = false, features = ["std"] }
