@@ -14,7 +14,7 @@ kbd-engine = { path = "crates/kbd-engine" }
 kbd-ldml = { path = "crates/kbd-ldml" }
 clap = { version = "4", features = ["derive"] }
 regex = "1.5.5"
-xmlem = "0.5.0"
+xmlem = "0.5.1"
 tracing = "0.1.32"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
 tokio = { version = "1.17.0", features = ["full"] }

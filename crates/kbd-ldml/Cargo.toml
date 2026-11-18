@@ -7,7 +7,7 @@ publish = false
 [dependencies]
 kbd-model = { path = "../kbd-model" }
 icu_normalizer = { version = "2.0", default-features = false, features = ["compiled_data"] }
-xmlem = "0.5.0"
+xmlem = "0.5.1"
 
 [dev-dependencies]
 kbd-engine = { path = "../kbd-engine" }
