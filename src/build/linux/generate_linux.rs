@@ -80,6 +80,7 @@ type OutputDir<'a> = (&'static str, Vec<(String, &'a [u8])>);
 /// The output's directories in the order they are written, each laid out
 /// as it is installed (`linux.install`).
 // [spec:kbdgen:def:linux.output]
+// [spec:kbdgen:def:linux.install]
 fn output_dirs<'a>(
     xkb: &'a xkb::Tree,
     engine: &'a ibus::Tree,

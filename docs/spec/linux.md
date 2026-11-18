@@ -115,34 +115,45 @@ Sources:
 > Each of `xkb/`, `ibus/`, `gnome-shell/`, `plasma-keyboard/` and `stevia/`
 > is emptied first, so nothing of an earlier run remains, not even a layout
 > or package id since renamed; nothing else in the output directory is
-> touched. Each is laid out as it is installed (`linux.install`). The step MUST fail,
-> before writing, with `targets/linux.yaml is missing` if that file is
-> absent, then with an error of `linux.ids`, then with `project.yaml:
-> locales has no en entry`, then with any error of `ldml.linux.input`,
-> then with `no layout has a linux keyboard` when there are none. There
-> are no subcommands (`cli.commands`): nothing needs a tool beyond kbdgen.
+> touched. Each is laid out as it is installed (`linux.install`). The step
+> MUST fail, before writing, with `targets/linux.yaml is missing` if that
+> file is absent, then with an error of `linux.ids`, then with
+> `project.yaml: locales has no en entry`, then with any error of
+> `ldml.linux.input`, then with `no layout has a linux keyboard` when there
+> are none. There are no subcommands (`cli.commands`): nothing needs a tool
+> beyond kbdgen.
 
-> [spec:kbdgen:req:linux.install]
-> kbdgen installs nothing. A keyboard package or installer MUST install
-> one bundle's output in one scope:
+> [spec:kbdgen:def:linux.install]
+> kbdgen installs nothing. Keyboards reach users as system packages, a
+> `.deb` and an `.rpm` per bundle, which pahkat-3 provides; neither is built
+> in this repository. kbdgen lays each directory of `linux.output` out as
+> it is installed, so a package copies it unchanged, with `<datadir>`
+> `/usr/share`:
 >
-> | Output | System-wide | One user |
-> |---|---|---|
-> | `xkb/` | `/usr/share/xkeyboard-config.d/<packageId>/`, or merged into `/etc/xkb/` (`linux.xkb.install`) | merged into `$XDG_CONFIG_HOME/xkb/` |
-> | `ibus/` | `<datadir>/divvun/keyboards/<packageId>/` | `~/.local/share/divvun/keyboards/<packageId>/` |
-> | `gnome-shell/<uuid>/` | `<datadir>/gnome-shell/extensions/<uuid>/` | `$XDG_DATA_HOME/gnome-shell/extensions/<uuid>/` |
-> | `plasma-keyboard/<id>/` | `<datadir>/plasma/keyboard/keyboardpackages/<id>/` | `$XDG_DATA_HOME/plasma/keyboard/keyboardpackages/<id>/` |
+> | Output | Installed as |
+> |---|---|
+> | `xkb/` | `<datadir>/xkeyboard-config.d/<packageId>/` (`linux.xkb.install`) |
+> | `ibus/` | `<datadir>/divvun/keyboards/<packageId>/` |
+> | `gnome-shell/<uuid>/` | `<datadir>/gnome-shell/extensions/<uuid>/` |
+> | `plasma-keyboard/<id>/` | `<datadir>/plasma/keyboard/keyboardpackages/<id>/` |
 >
-> `stevia/` is not installed (`linux.osk.stevia`). The installer enables
-> the GNOME extension for the user by adding its UUID to `org.gnome.shell
-> enabled-extensions`, which takes effect at the next login;
-> `gnome-extensions enable` cannot be used, as it refuses an extension
-> installed while the shell runs and needs a running shell (Verified:
-> GNOME spike results). A distribution may enable it by a dconf default of
-> that key. The IBus engine is a system package of its own,
-> which keyboard packages depend on (`linux.ibus.component`); a per-user
-> install types through it only where it is installed. Uninstalling
-> removes exactly what installing added.
+> `stevia/` is not installed (`linux.osk.stevia`). A package depends on
+> libxkbcommon 1.13 or later and xkeyboard-config 2.45 or later
+> (`linux.xkb.install`; `libxkbcommon0` and `xkb-data` on Debian and
+> Ubuntu, `libxkbcommon` and `xkeyboard-config` on Fedora), and on the
+> IBus engine, a system package of its own (`linux.ibus.component`).
+> Uninstalling removes exactly what installing added. Desktops read new
+> layouts at their next session.
+>
+> A system package cannot enable the GNOME extension for its users. GNOME
+> Shell runs an extension only while its UUID is in the user's
+> `org.gnome.shell enabled-extensions`, and `gnome-extensions enable`
+> needs a running shell and refuses an extension installed while the shell
+> runs (Verified: GNOME spike results). Each user therefore enables it
+> once after their next login, in the Extensions application or with
+> `gnome-extensions enable <uuid>`; a distribution or administrator may
+> instead set a dconf default of that key. Until then GNOME Shell's
+> on-screen keyboard shows `us` for the layout (`linux.osk.gnome.selection`).
 
 ## XKB layout
 
@@ -215,29 +226,23 @@ Sources:
 > `setUserLayouts`), Stevia does too (`src/pos-input-surface.c`), and the
 > GNOME and KDE settings list layouts from it.
 
-> [spec:kbdgen:req:linux.xkb.install]
-> The `xkb/` tree MUST be installed in one of three places (`linux.install`):
->
-> 1. **Extension directory**, for system packages where libxkbcommon ≥
->    1.13 and xkeyboard-config ≥ 2.45: the tree as
->    `<ext>/<packageId>/`, where `<ext>` is pkg-config `xkbcommon`'s
->    `xkb_unversioned_extensions_path`, `/usr/share/xkeyboard-config.d` by
->    default. libxkbcommon appends each subdirectory to its default include
->    path after `/etc/xkb` and before the xkeyboard-config root, and
->    libxkbregistry reads each one's `rules/evdev.xml`, so each package owns
->    its directory and nothing is merged (Source:
->    doc/packaging-keyboard-layouts.md, `src/registry.c`).
-> 2. **System configuration**, for libxkbcommon from 1.0 to 1.12: each
->    `symbols/<L>` into `$XKB_CONFIG_EXTRA_PATH`, `/etc/xkb` by default,
->    and the `<layout>` entries merged into its `rules/evdev.xml`.
-> 3. **User configuration**, without root (libxkbcommon ≥ 0.10): likewise
->    into `$XDG_CONFIG_HOME/xkb`, `~/.config/xkb` by default.
->
-> Merging MUST add or replace the `<layout>` elements whose `name` is one
-> of the bundle's layout ids and keep every other element, creating the
-> file when it is missing; uninstalling removes them, and removes the file
-> when it then holds no `layout`, `model` or `option`. Desktops read new
-> layouts at their next session.
+> [spec:kbdgen:def:linux.xkb.install]
+> The `xkb/` tree is a libxkbcommon *extension directory*: installed as
+> `<ext>/<packageId>/`, where `<ext>` is pkg-config `xkbcommon`'s
+> `xkb_unversioned_extensions_path`, `/usr/share/xkeyboard-config.d` by
+> default, it holds `symbols/<L>` for each layout and the bundle's own
+> `rules/evdev.xml`, which lists only its layouts. libxkbcommon 1.13 and
+> later append each subdirectory of `<ext>` to the default include path,
+> after `/etc/xkb` and before the xkeyboard-config root, and
+> libxkbregistry reads each one's `rules/evdev.xml` beside
+> xkeyboard-config's, with xkeyboard-config 2.45 or later; so each package
+> owns its directory and no file is shared or merged (Source:
+> doc/packaging-keyboard-layouts.md, `src/registry.c`). Every
+> distribution with GNOME 50 or Plasma 6.8 has both: Fedora 44 ships
+> libxkbcommon 1.13.1 and xkeyboard-config 2.47, Ubuntu 26.04
+> libxkbcommon 1.13.1 and xkb-data 2.46. Older libxkbcommon reads layouts
+> only from `/etc/xkb` and `~/.config/xkb`, where every package's entries
+> share one `rules/evdev.xml`; those are not supported.
 
 > [spec:kbdgen:sem:linux.xkb.desktops]
 > On Wayland the compositor compiles the keymap with libxkbcommon's
@@ -857,9 +862,11 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
 > Without ibus-daemon it says so and passes.
 
 > [spec:kbdgen:req:linux.test.acceptance]
-> An acceptance run MUST install a fixture keyboard as users get it, both
-> system-wide and per user, on a GNOME 50 or later VM, a Plasma 6.9 or
-> later VM and a Phosh VM, and type:
+> An acceptance run MUST install a fixture keyboard's output at the paths
+> of `linux.install`, as its packages would, with the IBus engine
+> installed as `linux.ibus.component` says, on a GNOME 50 or later VM, a
+> Plasma 6.9 or later VM and a Phosh VM, enable the GNOME extension as a
+> user would, and type:
 >
 > - on GNOME, with the XKB source and with the IBus source, into a GTK 4
 >   field, a Qt 6 field, Chromium, a terminal and an XWayland client, by
@@ -946,9 +953,15 @@ The operator settled these on review:
   order without a system service.
 - **Workspace rules**: `ldml.crate.layout` gains `crates/kbd-ibus` (Changes
   to shared rules).
+- **Packages** are a `.deb` and an `.rpm` per bundle from pahkat-3,
+  installed system-wide (`linux.install`). There is no per-user installer
+  and no `rules/evdev.xml` merging, so libxkbcommon before 1.13 is not
+  supported (`linux.xkb.install`).
 
 Later:
 
+- enabling the GNOME extension without each user's action
+  (`linux.install`)
 - authored Linux touch layouts, with a `touch.linux` variant and a touch
   chain for the `linux` host
 - icons: a `resources/linux` directory (`bundle.resources`) for the

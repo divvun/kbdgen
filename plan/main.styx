@@ -1549,11 +1549,20 @@ children (
 
                     {
                         id targets.linux.install
-                        title "divvun-actions: system packages and the per-user installer (registry merge)"
+                        title "Lay the output out for pahkat-3's system .deb and .rpm packages (extension directory, no merge)"
+                        kind @docs
                         implements {
-                            main ([spec:kbdgen:req:linux.install] [spec:kbdgen:req:linux.xkb.install])
+                            main ([spec:kbdgen:def:linux.install] [spec:kbdgen:def:linux.xkb.install])
                         }
                         deps (targets.linux.output targets.linux.ibus.factory)
+                        log (
+                            {
+                                at 2026-11-18T18:19:51.114171Z
+                                author "brendan@necessary.nu"
+                                kind @decision
+                                text "Operator 2026-11-18: Linux keyboards ship as .deb and .rpm system packages provided through pahkat-3, and divvun-actions is not touched (no packaging there, and no CI test step for now). So this repository builds no installer: there is no per-user install and no rules/evdev.xml merge, and xkb/ installs only as a libxkbcommon extension directory. Fedora 44 and Ubuntu 26.04 (GNOME 50) both ship libxkbcommon 1.13.1 and xkeyboard-config 2.47 / xkb-data 2.46. linux.install and linux.xkb.install become def rules for how the output is laid out as installed, plus what the packages depend on. Open: a system package cannot enable the GNOME extension for each user (gnome-extensions enable needs a running shell); for now users enable it once."
+                            }
+                        )
                     }
 
                     {

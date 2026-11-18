@@ -118,6 +118,7 @@ impl Tree {
     /// each, then `rules/evdev.xml`.
     // [spec:kbdgen:syn:linux.xkb.registry]
     // [spec:kbdgen:syn:linux.xkb.symbols]
+    // [spec:kbdgen:def:linux.xkb.install]
     pub fn new(ids: &Ids, layouts: &[LinuxLayout]) -> Result<Tree> {
         let adapted = layouts
             .iter()

@@ -1759,6 +1759,13 @@ impl_evidence (
         {impl_name main, rule linux.test.ibus}
         {impl_name main, rule linux.test.planner}
     )}
+    {id targets.linux.install, covered_rules (
+        linux.install
+        linux.xkb.install
+    ), covered_claims (
+        {impl_name main, rule linux.install}
+        {impl_name main, rule linux.xkb.install}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

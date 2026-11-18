@@ -456,6 +456,8 @@ fn is_binary(name: &str) -> bool {
 }
 
 // [spec:kbdgen:def:linux.output/test]
+// [spec:kbdgen:def:linux.install/test]
+// [spec:kbdgen:def:linux.xkb.install/test]
 // [spec:kbdgen:req:linux.test.golden/test]
 // [spec:kbdgen:req:ldml.linux.target/test]
 // [spec:kbdgen:def:ldml.linux.input/test]

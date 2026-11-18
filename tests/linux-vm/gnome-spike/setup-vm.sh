@@ -4,7 +4,7 @@
 # lock-screen shim, and writes the GNOME settings the spike starts from.
 set -ex
 S=$(dirname "$(readlink -f "$0")")
-# XKB layout, per-user (linux.xkb.install 3)
+# XKB layout, in the user configuration (~/.config/xkb)
 mkdir -p ~/.config/xkb/symbols ~/.config/xkb/rules
 cp "$S/layout/xkb/symbols/test-se" ~/.config/xkb/symbols/
 cp "$S/layout/xkb/rules/evdev.xml" ~/.config/xkb/rules/
