@@ -1726,6 +1726,17 @@ impl_evidence (
         {impl_name main, rule linux.ibus.planner}
         {impl_name main, rule linux.ibus.virtual-keys}
     )}
+    {id targets.linux.output, covered_rules (
+        ldml.linux.target
+        linux.output
+        linux.test.ci
+        linux.test.golden
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.target}
+        {impl_name main, rule linux.output}
+        {impl_name main, rule linux.test.ci}
+        {impl_name main, rule linux.test.golden}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

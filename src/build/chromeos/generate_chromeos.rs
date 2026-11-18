@@ -8,6 +8,7 @@ use serde::Serialize;
 use super::manifest::{DEFAULT_LOCALE, ICON, SERVICE_WORKER, locales, manifest};
 use super::source::{self, ChromeOsLayout};
 use crate::build::BuildStep;
+use crate::build::output::{fresh_dir, write};
 use crate::bundle::KbdgenBundle;
 
 /// `crates/kbd-wasm` for `wasm32-unknown-unknown`, which the build script
@@ -26,26 +27,11 @@ pub const ENGINE_FILE: &str = "engine.wasm";
 pub const MODELS_DIR: &str = "models";
 const LOCALES_DIR: &str = "_locales";
 
-fn write(path: &Path, contents: &[u8]) -> Result<()> {
-    fs::write(path, contents).with_context(|| format!("write {}", path.display()))?;
-    tracing::debug!("Wrote {}", path.display());
-    Ok(())
-}
-
 fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     let mut json = serde_json::to_string_pretty(value)
         .with_context(|| format!("serialise {}", path.display()))?;
     json.push('\n');
     write(path, json.as_bytes())
-}
-
-/// Empties `dir`, which the generator owns, so that no layout or language
-/// of an earlier run stays behind.
-fn fresh_dir(dir: &Path) -> Result<()> {
-    if dir.exists() {
-        fs::remove_dir_all(dir).with_context(|| format!("remove stale {}", dir.display()))?;
-    }
-    fs::create_dir_all(dir).with_context(|| format!("create {}", dir.display()))
 }
 
 /// The extension icon: the default icon among the bundle's ChromeOS
@@ -110,9 +96,7 @@ impl BuildStep for GenerateChromeOs {
         let locales_dir = output_path.join(LOCALES_DIR);
         fresh_dir(&locales_dir)?;
         for (name, messages) in &locales {
-            let dir = locales_dir.join(name);
-            fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
-            write_json(&dir.join("messages.json"), messages)?;
+            write_json(&locales_dir.join(name).join("messages.json"), messages)?;
         }
         let icon_path = output_path.join(ICON);
         match icon {

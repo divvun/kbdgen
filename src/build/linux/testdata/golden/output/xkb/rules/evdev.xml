@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xkbConfigRegistry version="1.1">
+  <layoutList>
+    <layout>
+      <configItem>
+        <name>divvun-se-no</name>
+        <shortDescription>se</shortDescription>
+        <description>Davvisámegiella (Norga)</description>
+        <countryList>
+          <iso3166Id>NO</iso3166Id>
+        </countryList>
+        <languageList>
+          <iso639Id>sme</iso639Id>
+        </languageList>
+      </configItem>
+    </layout>
+    <layout>
+      <configItem>
+        <name>divvun-sme</name>
+        <shortDescription>sme</shortDescription>
+        <description>Davvisámegiella</description>
+        <languageList>
+          <iso639Id>sme</iso639Id>
+        </languageList>
+      </configItem>
+    </layout>
+    <layout>
+      <configItem>
+        <name>divvun-vro</name>
+        <shortDescription>vro</shortDescription>
+        <description>Võro</description>
+        <languageList>
+          <iso639Id>vro</iso639Id>
+        </languageList>
+      </configItem>
+    </layout>
+  </layoutList>
+</xkbConfigRegistry>

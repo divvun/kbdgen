@@ -1,0 +1,25 @@
+{
+  "KPlugin": {
+    "Id": "no.divvun.sme",
+    "Name": "Davvisámegiella",
+    "Name[en]": "Northern Sami",
+    "Version": "1.0"
+  },
+  "X-Plasma-Keyboard": {
+    "KeyboardLayouts": [
+      {
+        "File": "desktop.qml",
+        "FormFactors": [
+          "phone",
+          "desktop",
+          "mediacenter"
+        ],
+        "Id": "desktop",
+        "Name": "Davvisámegiella"
+      }
+    ],
+    "Locales": [
+      "sme"
+    ]
+  }
+}

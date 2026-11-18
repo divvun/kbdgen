@@ -1,17 +1,25 @@
 //! `linux.test.xkbcommon`: each fixture's XKB layout compiled, listed and
 //! typed through the installed libxkbcommon and libxkbregistry. The build
 //! script sets `kbdgen_xkbcommon` when pkg-config finds both for a Linux
-//! target; elsewhere the test says so and passes.
+//! target; elsewhere the test says so and passes, unless
+//! `KBDGEN_REQUIRE_LINUX_TESTS` is set.
 
 // [spec:kbdgen:req:linux.test.xkbcommon+1/test]
+// [spec:kbdgen:sem:linux.test.ci/test]
 #[test]
 fn fixtures_compile_list_and_type_in_libxkbcommon() {
     #[cfg(all(target_os = "linux", kbdgen_xkbcommon))]
     real::run();
+    // [spec:kbdgen:sem:linux.test.ci]
     #[cfg(not(all(target_os = "linux", kbdgen_xkbcommon)))]
-    eprintln!(
-        "linux.test.xkbcommon skipped: pkg-config found no xkbcommon and xkbregistry for this target"
-    );
+    {
+        let missing = "pkg-config found no xkbcommon and xkbregistry for this target";
+        assert!(
+            std::env::var_os("KBDGEN_REQUIRE_LINUX_TESTS").is_none(),
+            "linux.test.xkbcommon cannot run, but KBDGEN_REQUIRE_LINUX_TESTS is set: {missing}"
+        );
+        eprintln!("linux.test.xkbcommon skipped: {missing}");
+    }
 }
 
 #[cfg(all(target_os = "linux", kbdgen_xkbcommon))]

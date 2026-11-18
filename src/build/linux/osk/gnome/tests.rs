@@ -120,9 +120,10 @@ fn golden_layouts_write_their_golden_files() {
     }
 }
 
-// [spec:kbdgen:sem:ldml.linux.touch.gnome/test]
-#[test]
-fn keys_hold_only_the_formats_fields() {
+/// Checks that `document`, the GNOME Shell layout of `layout`, holds only
+/// the fields of GNOME Shell's format, and that every `levelSwitch` names
+/// one of its levels.
+pub(in crate::build::linux) fn assert_format(name: &str, layout: &LinuxLayout, document: &Value) {
     let fields = [
         "action",
         "iconName",
@@ -133,62 +134,67 @@ fn keys_hold_only_the_formats_fields() {
         "strings",
         "width",
     ];
-    for (name, layout) in golden_layouts() {
-        let document = parsed(&layout);
-        let object = document.as_object().unwrap();
-        assert_eq!(
-            object.keys().collect::<Vec<_>>(),
-            ["levels", "locale", "name"]
-        );
-        assert_eq!(document["locale"], layout.tag.as_str());
-        assert_eq!(document["name"], display_name(&layout).unwrap());
-        let levels = document["levels"].as_array().unwrap();
-        let names: Vec<&str> = levels
+    let object = document.as_object().unwrap();
+    assert_eq!(
+        object.keys().collect::<Vec<_>>(),
+        ["levels", "locale", "name"]
+    );
+    assert_eq!(document["locale"], layout.tag.as_str());
+    assert_eq!(document["name"], display_name(layout).unwrap());
+    let levels = document["levels"].as_array().unwrap();
+    let names: Vec<&str> = levels
+        .iter()
+        .map(|level| level["level"].as_str().unwrap())
+        .collect();
+    let modes: Vec<&str> = levels
+        .iter()
+        .map(|level| level["mode"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["default", "shift", "opt", "opt+shift"], "{name}");
+    assert_eq!(modes, ["default", "latched", "locked", "locked"], "{name}");
+    for level in levels {
+        assert_eq!(level.as_object().unwrap().len(), 3, "{name}");
+        for key in level["rows"]
+            .as_array()
+            .unwrap()
             .iter()
-            .map(|level| level["level"].as_str().unwrap())
-            .collect();
-        let modes: Vec<&str> = levels
-            .iter()
-            .map(|level| level["mode"].as_str().unwrap())
-            .collect();
-        assert_eq!(names, ["default", "shift", "opt", "opt+shift"], "{name}");
-        assert_eq!(modes, ["default", "latched", "locked", "locked"], "{name}");
-        for level in levels {
-            assert_eq!(level.as_object().unwrap().len(), 3, "{name}");
-            for key in level["rows"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .flat_map(|row| row.as_array().unwrap())
+            .flat_map(|row| row.as_array().unwrap())
+        {
+            let key = key.as_object().unwrap();
+            assert!(
+                key.keys().all(|field| fields.contains(&field.as_str())),
+                "{name}: {key:?}"
+            );
+            for field in ["width", "leftOffset"] {
+                if let Some(value) = key.get(field) {
+                    let halves = value.as_f64().unwrap() * 2.0;
+                    assert!(halves >= 1.0 && halves.fract() == 0.0, "{name}: {key:?}");
+                }
+            }
+            if key
+                .get("action")
+                .is_some_and(|action| action == "levelSwitch")
             {
-                let key = key.as_object().unwrap();
                 assert!(
-                    key.keys().all(|field| fields.contains(&field.as_str())),
+                    names.contains(&key["level"].as_str().unwrap()),
                     "{name}: {key:?}"
                 );
-                for field in ["width", "leftOffset"] {
-                    if let Some(value) = key.get(field) {
-                        let halves = value.as_f64().unwrap() * 2.0;
-                        assert!(halves >= 1.0 && halves.fract() == 0.0, "{name}: {key:?}");
-                    }
-                }
-                if key
-                    .get("action")
-                    .is_some_and(|action| action == "levelSwitch")
-                {
-                    assert!(
-                        names.contains(&key["level"].as_str().unwrap()),
-                        "{name}: {key:?}"
-                    );
-                }
-                assert!(
-                    key.contains_key("strings")
-                        || key.contains_key("keyval")
-                        || key.contains_key("action"),
-                    "{name}: {key:?} does nothing"
-                );
             }
+            assert!(
+                key.contains_key("strings")
+                    || key.contains_key("keyval")
+                    || key.contains_key("action"),
+                "{name}: {key:?} does nothing"
+            );
         }
+    }
+}
+
+// [spec:kbdgen:sem:ldml.linux.touch.gnome/test]
+#[test]
+fn keys_hold_only_the_formats_fields() {
+    for (name, layout) in golden_layouts() {
+        assert_format(name, &layout, &parsed(&layout));
     }
 }
 

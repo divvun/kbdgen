@@ -112,8 +112,10 @@ Sources:
 > - `plasma-keyboard/<id>/` per layout (`linux.osk.plasma`)
 > - `stevia/layouts/<L>.json` per layout (`linux.osk.stevia`)
 >
-> Each is emptied first, so nothing of an earlier run remains, and each
-> is laid out as it is installed (`linux.install`). The step MUST fail,
+> Each of `xkb/`, `ibus/`, `gnome-shell/`, `plasma-keyboard/` and `stevia/`
+> is emptied first, so nothing of an earlier run remains, not even a layout
+> or package id since renamed; nothing else in the output directory is
+> touched. Each is laid out as it is installed (`linux.install`). The step MUST fail,
 > before writing, with `targets/linux.yaml is missing` if that file is
 > absent, then with an error of `linux.ids`, then with `project.yaml:
 > locales has no en entry`, then with any error of `ldml.linux.input`,
@@ -860,13 +862,17 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
 > settles each Unverified claim of this file.
 
 > [spec:kbdgen:sem:linux.test.ci]
-> CI runs `linux.test.golden`, `linux.test.planner` and
-> `ldml.linux.test.typing` on every host, and `linux.test.xkbcommon` and
-> `linux.test.ibus` on its Linux jobs, which MUST install libxkbcommon
-> and ibus for them. No CI job can run GNOME Shell, KWin,
-> plasma-keyboard, Phosh or Stevia, or a Wayland client: the GNOME spike
-> (GNOME spike results) and `linux.test.acceptance` are manual, on
-> VMs.
+> `linux.test.golden`, `linux.test.planner` and `ldml.linux.test.typing`
+> run on every host. `linux.test.xkbcommon` and `linux.test.ibus` need
+> libxkbcommon and libxkbregistry (found by pkg-config at build time) and
+> `ibus-daemon` with a session bus; without them each says so and passes,
+> unless the environment variable `KBDGEN_REQUIRE_LINUX_TESTS` is set,
+> when each fails instead. A Linux CI job that runs the tests MUST install
+> them and set it, so that a job missing them fails rather than passing
+> untested; CI on other hosts leaves it unset. No CI job can run GNOME
+> Shell, KWin, plasma-keyboard, Phosh or Stevia, or a Wayland client: the
+> GNOME spike (GNOME spike results) and `linux.test.acceptance` are
+> manual, on VMs.
 
 
 ## Changes to shared rules

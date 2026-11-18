@@ -58,6 +58,17 @@ pub struct Package {
     pub layout: String,
 }
 
+impl Package {
+    /// Each file of the package, relative to its directory, and its
+    /// contents.
+    pub fn files(&self) -> [(&'static str, &str); 2] {
+        [
+            (METADATA_FILE, self.metadata.as_str()),
+            (LAYOUT_FILE, self.layout.as_str()),
+        ]
+    }
+}
+
 /// `tag` with `-` replaced by `_`, as KDE names locales.
 fn kde_locale(tag: &str) -> String {
     tag.replace('-', "_")

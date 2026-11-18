@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<engine>
+  <name>divvun-vro</name>
+  <longname>Võro</longname>
+  <description>Võro</description>
+  <language>vro</language>
+  <author>Test</author>
+  <layout>divvun-vro</layout>
+  <symbol>vro</symbol>
+  <version>1.0</version>
+</engine>

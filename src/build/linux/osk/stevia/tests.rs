@@ -77,57 +77,62 @@ fn golden_layouts_write_their_golden_files() {
     }
 }
 
+/// Checks that `document`, the Stevia layout of `layout`, holds only the
+/// fields of Stevia's format.
+pub(in crate::build::linux) fn assert_format(name: &str, layout: &LinuxLayout, document: &Value) {
+    let object = document.as_object().unwrap();
+    assert_eq!(
+        object.keys().collect::<Vec<_>>(),
+        ["levels", "locale", "name"]
+    );
+    assert_eq!(document["locale"], layout.tag.as_str());
+    assert_eq!(document["name"], display_name(layout).unwrap());
+    let levels = document["levels"].as_array().unwrap();
+    let names: Vec<&str> = levels
+        .iter()
+        .map(|level| level["level"].as_str().unwrap())
+        .collect();
+    let modes: Vec<&str> = levels
+        .iter()
+        .map(|level| level["mode"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["", "shift", "opt", "opt+shift"], "{name}");
+    assert_eq!(modes, ["default", "latched", "locked", "locked"], "{name}");
+    for level in levels {
+        for key in level["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|row| row.as_array().unwrap())
+        {
+            match key {
+                Value::Array(symbols) => {
+                    assert!(!symbols.is_empty() && symbols.iter().all(Value::is_string))
+                }
+                Value::Object(key) => {
+                    assert!(key["symbol"].is_string(), "{name}: {key:?}");
+                    assert!(
+                        key.keys()
+                            .all(|field| ["symbol", "symbols", "label", "width"]
+                                .contains(&field.as_str())),
+                        "{name}: {key:?}"
+                    );
+                    if let Some(width) = key.get("width") {
+                        let width = width.as_f64().unwrap();
+                        assert!((1.0..=10.0).contains(&width) && width != 1.0, "{name}");
+                    }
+                }
+                other => panic!("{name}: {other}"),
+            }
+        }
+    }
+}
+
 // [spec:kbdgen:sem:ldml.linux.touch.stevia/test]
 #[test]
 fn keys_hold_only_the_formats_fields() {
     for (name, layout) in golden_layouts() {
-        let document = parsed(&layout);
-        let object = document.as_object().unwrap();
-        assert_eq!(
-            object.keys().collect::<Vec<_>>(),
-            ["levels", "locale", "name"]
-        );
-        assert_eq!(document["locale"], layout.tag.as_str());
-        assert_eq!(document["name"], display_name(&layout).unwrap());
-        let levels = document["levels"].as_array().unwrap();
-        let names: Vec<&str> = levels
-            .iter()
-            .map(|level| level["level"].as_str().unwrap())
-            .collect();
-        let modes: Vec<&str> = levels
-            .iter()
-            .map(|level| level["mode"].as_str().unwrap())
-            .collect();
-        assert_eq!(names, ["", "shift", "opt", "opt+shift"], "{name}");
-        assert_eq!(modes, ["default", "latched", "locked", "locked"], "{name}");
-        for level in levels {
-            for key in level["rows"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .flat_map(|row| row.as_array().unwrap())
-            {
-                match key {
-                    Value::Array(symbols) => {
-                        assert!(!symbols.is_empty() && symbols.iter().all(Value::is_string))
-                    }
-                    Value::Object(key) => {
-                        assert!(key["symbol"].is_string(), "{name}: {key:?}");
-                        assert!(
-                            key.keys()
-                                .all(|field| ["symbol", "symbols", "label", "width"]
-                                    .contains(&field.as_str())),
-                            "{name}: {key:?}"
-                        );
-                        if let Some(width) = key.get("width") {
-                            let width = width.as_f64().unwrap();
-                            assert!((1.0..=10.0).contains(&width) && width != 1.0, "{name}");
-                        }
-                    }
-                    other => panic!("{name}: {other}"),
-                }
-            }
-        }
+        assert_format(name, &layout, &parsed(&layout));
     }
 }
 

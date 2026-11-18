@@ -12,6 +12,7 @@ pub mod ios;
 pub mod linux;
 pub mod macos;
 pub mod migration;
+pub mod output;
 pub mod windows;
 
 // [spec:kbdgen:sem:pipeline.steps+3]

@@ -126,6 +126,7 @@ fn v4_bundle_exports_compiles_and_imports_back() {
 // [spec:kbdgen:req:ldml.macos.target/test]
 // [spec:kbdgen:req:ldml.chromeos.target/test]
 // [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:req:ldml.linux.target/test]
 #[test]
 fn model_targets_build_v4_layouts() {
     let dir = tempfile::tempdir().unwrap();
@@ -259,10 +260,18 @@ fn model_targets_build_v4_layouts() {
         stderr.contains("vro: compiled as the Linux layout divvun-vro"),
         "{stderr}"
     );
-    assert!(
-        stderr.contains("Prepared 1 layout(s) for Linux"),
-        "{stderr}"
-    );
+    assert!(stderr.contains("Wrote 1 Linux layout(s) to"), "{stderr}");
+    for file in [
+        "xkb/symbols/divvun-vro",
+        "xkb/rules/evdev.xml",
+        "ibus/divvun-vro.xml",
+        "ibus/divvun-vro.dvkb",
+        "gnome-shell/osk@no.divvun/osk-layouts.gresource",
+        "plasma-keyboard/no.divvun.vro/contents/layouts/desktop.qml",
+        "stevia/layouts/divvun-vro.json",
+    ] {
+        assert!(linux.join(file).is_file(), "{file}: {stderr}");
+    }
 }
 
 const LINUX: &str = "packageId: no.divvun\nlayoutPrefix: divvun\nversion: 1.0.0\n";
@@ -276,6 +285,7 @@ fn fixture(relative: &str) -> String {
 // [spec:kbdgen:sem:pipeline.steps+3/test]
 // [spec:kbdgen:def:linux.ids/test]
 // [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:linux.output/test]
 #[test]
 fn linux_target_compiles_the_fixture_layouts() {
     let linux = |text: String, variant: &str| {
@@ -359,11 +369,25 @@ fn linux_target_compiles_the_fixture_layouts() {
     ] {
         assert!(stderr.contains(skipped), "{skipped}: {stderr}");
     }
-    assert!(
-        stderr.contains("Prepared 7 layout(s) for Linux"),
+    assert!(stderr.contains("Wrote 7 Linux layout(s) to"), "{stderr}");
+    let mut written: Vec<String> = std::fs::read_dir(out.join("xkb/symbols"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    written.sort();
+    assert_eq!(
+        written,
+        [
+            "divvun-se-no",
+            "divvun-sme",
+            "divvun-sme-fi",
+            "divvun-und-x-mods",
+            "divvun-vro",
+            "divvun-vro-x-cros",
+            "divvun-vro-x-win",
+        ],
         "{stderr}"
     );
-    assert_eq!(std::fs::read_dir(&out).unwrap().count(), 0, "{stderr}");
 }
 
 // [spec:kbdgen:req:ldml.yaml.strict+1/test]

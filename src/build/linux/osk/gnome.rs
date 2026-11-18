@@ -17,7 +17,7 @@ use crate::build::linux::xkb::{self, keysym::Keysym};
 use crate::bundle::project::LocaleProjectDescription;
 
 #[cfg(test)]
-mod tests;
+pub(in crate::build::linux) mod tests;
 
 /// The extension's files, relative to its directory.
 pub const METADATA_FILE: &str = "metadata.json";

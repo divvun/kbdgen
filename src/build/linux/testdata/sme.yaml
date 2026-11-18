@@ -1,0 +1,45 @@
+# The golden bundle's v4 layout (linux.test.golden): the `abnt2` form, whose
+# 49th key is B11, long-press candidates, gaps (`\u{0}`), a dead key that
+# chains to a second, and dead keys on AltGr, with an SGCAPS key (D01 types
+# Č with Caps Lock), a decimal separator and multi-scalar outputs.
+format: 4
+displayNames: {sme: Davvisámegiella, en: Northern Sami}
+decimal: ','
+deadKeys:
+  ´:
+    standalone: ´
+    compose:
+      a: á
+      A: Á
+      ¨: {standalone: ¨, compose: {u: ǘ, U: Ǘ}}
+  ˇ:
+    standalone: ˇ
+    compose: {c: č, C: Č, s: š, S: Š, z: ž, Z: Ž}
+  ˝:
+    standalone: ˝
+    compose: {o: ő, O: Ő, u: ű, U: Ű}
+longPress: {a: á â, e: é ë, n: ŋ ñ, z: ž ʒ}
+hardware:
+  linux:
+    form: abnt2
+    layers:
+      none: |
+        \d{´} 1 2 3 4 5 6 7 8 9 0 - =
+        q w e r t y u i o p å ¨
+        a s d f g h j k l ö æ \d{ˇ}
+        < z x c v b n m , . - /
+      shift: |
+        § ! " # $ % & / ( ) = _ +
+        Q W E R T Y U I O P Å ^
+        A S D F G H J K L Ö Æ *
+        > Z X C V B N M ; : _ ?
+      caps: |
+        \d{´} 1 2 3 4 5 6 7 8 9 0 - =
+        Č W E R T Y U I O P Å ¨
+        A S D F G H J K L Ö Æ \d{ˇ}
+        < Z X C V B N M , . - /
+      altR: |
+        \u{0} ¡ @ £ $ € \u{0} { [ ] } \ \d{˝}
+        \u{0} š é ŕ t́ ŧ \u{0} i̇́ \u{0} \u{0} \u{0} \u{0}
+        á \u{0} đ \u{0} ǧ ǥ \u{0} ǩ \u{0} \u{0} \u{0} \d{ˇ}
+        | ž \u{0} č \u{0} \u{0} ŋ \u{0} \u{0} \u{0} \u{0} \u{0}

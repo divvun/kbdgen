@@ -11,16 +11,19 @@ use super::source::{self, LinuxLayout};
 use super::xkb;
 use crate::build::BuildStep;
 use crate::build::diag::{Diagnostics, Platform};
+use crate::build::output::{fresh_dir, write};
 use crate::bundle::KbdgenBundle;
 use crate::bundle::project::LocaleProjectDescription;
 
-/// The step of `target linux`, which names and compiles every layout with
-/// Linux output.
+/// The step of `target linux`, which compiles every layout with Linux
+/// output and writes the bundle's output tree.
 pub struct GenerateLinux;
 
 #[async_trait(?Send)]
 impl BuildStep for GenerateLinux {
-    async fn build(&self, bundle: &KbdgenBundle, _output_path: &Path) -> Result<()> {
+    // [spec:kbdgen:def:linux.output]
+    // [spec:kbdgen:req:ldml.linux.target]
+    async fn build(&self, bundle: &KbdgenBundle, output_path: &Path) -> Result<()> {
         let target = bundle
             .targets
             .linux
@@ -54,9 +57,78 @@ impl BuildStep for GenerateLinux {
             osk.plasma.len(),
             osk.stevia.len()
         );
-        tracing::info!("Prepared {} layout(s) for Linux", layouts.len());
+        for (dir, files) in output_dirs(&xkb, &engine, &osk) {
+            let root = output_path.join(dir);
+            fresh_dir(&root)?;
+            for (relative, contents) in files {
+                write(&root.join(relative), contents)?;
+            }
+        }
+        tracing::info!(
+            "Wrote {} Linux layout(s) to {}",
+            layouts.len(),
+            output_path.display()
+        );
         Ok(())
     }
+}
+
+/// One directory of the output: its name, and its files as paths relative
+/// to it with their contents.
+type OutputDir<'a> = (&'static str, Vec<(String, &'a [u8])>);
+
+/// The output's directories in the order they are written, each laid out
+/// as it is installed (`linux.install`).
+// [spec:kbdgen:def:linux.output]
+fn output_dirs<'a>(
+    xkb: &'a xkb::Tree,
+    engine: &'a ibus::Tree,
+    osk: &'a OnScreenKeyboards,
+) -> [OutputDir<'a>; 5] {
+    let gnome = &osk.gnome;
+    [
+        (
+            "xkb",
+            xkb.files
+                .iter()
+                .map(|(path, text)| (path.clone(), text.as_bytes()))
+                .collect(),
+        ),
+        (
+            "ibus",
+            engine
+                .files
+                .iter()
+                .map(|(name, bytes)| (name.clone(), bytes.as_slice()))
+                .collect(),
+        ),
+        (
+            "gnome-shell",
+            gnome
+                .files()
+                .into_iter()
+                .map(|(name, bytes)| (format!("{}/{name}", gnome.uuid), bytes))
+                .collect(),
+        ),
+        (
+            "plasma-keyboard",
+            osk.plasma
+                .iter()
+                .flat_map(|package| {
+                    package
+                        .files()
+                        .map(|(name, text)| (format!("{}/{name}", package.id), text.as_bytes()))
+                })
+                .collect(),
+        ),
+        (
+            "stevia",
+            osk.stevia
+                .iter()
+                .map(|layout| (layout.path(), layout.json.as_bytes()))
+                .collect(),
+        ),
+    ]
 }
 
 /// The bundle's on-screen keyboards in memory (`linux.osk.*`).

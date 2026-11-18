@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<engine>
+  <name>divvun-sme</name>
+  <longname>Davvisámegiella</longname>
+  <description>Davvisámegiella</description>
+  <language>sme</language>
+  <author>Test</author>
+  <layout>divvun-sme</layout>
+  <symbol>sme</symbol>
+  <version>1.0</version>
+</engine>

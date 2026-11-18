@@ -1,0 +1,14 @@
+{
+  "uuid": "osk@no.divvun",
+  "name": "Test",
+  "description": "Test",
+  "shell-version": [
+    "50",
+    "51"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ],
+  "version-name": "1.0"
+}

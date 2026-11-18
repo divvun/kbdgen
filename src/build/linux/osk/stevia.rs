@@ -12,7 +12,7 @@ use super::presented::{Item, Level, LevelKind, Presented};
 use crate::build::linux::source::LinuxLayout;
 
 #[cfg(test)]
-mod tests;
+pub(in crate::build::linux) mod tests;
 
 /// The range of Stevia's key `width` property (`src/pos-osk-key.c`), in
 /// thousandths of a key. GLib warns about a width outside it and keeps 1.

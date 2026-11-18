@@ -1,6 +1,7 @@
 //! The bundle's Linux names, the layouts selected and compiled for Linux,
 //! and the errors the step raises before it writes anything.
 
+use std::borrow::Cow;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -12,6 +13,8 @@ use language_tags::LanguageTag;
 
 use super::GenerateLinux;
 use super::ids::Ids;
+use super::osk::gnome::tests as gnome_tests;
+use super::osk::stevia::tests as stevia_tests;
 use super::source::{self, LinuxLayout};
 use crate::build::BuildStep;
 use crate::bundle::fixture::{write_bundle, write_file};
@@ -107,19 +110,29 @@ impl Write for Captured {
     }
 }
 
-/// What `run` logs at debug level and above, without time and colour.
+impl Captured {
+    /// A subscriber that writes events at `level` and above here, without
+    /// time and colour.
+    fn subscriber(&self, level: tracing::Level) -> impl tracing::Subscriber + use<> {
+        let writer = self.clone();
+        tracing_subscriber::fmt()
+            .with_writer(move || writer.clone())
+            .with_max_level(level)
+            .with_ansi(false)
+            .without_time()
+            .finish()
+    }
+
+    fn text(&self) -> String {
+        String::from_utf8(self.0.lock().unwrap().clone()).unwrap()
+    }
+}
+
+/// What `run` logs at debug level and above.
 fn logged<T>(run: impl FnOnce() -> T) -> (T, String) {
     let captured = Captured::default();
-    let writer = captured.clone();
-    let subscriber = tracing_subscriber::fmt()
-        .with_writer(move || writer.clone())
-        .with_max_level(tracing::Level::DEBUG)
-        .with_ansi(false)
-        .without_time()
-        .finish();
-    let value = tracing::subscriber::with_default(subscriber, run);
-    let bytes = captured.0.lock().unwrap().clone();
-    (value, String::from_utf8(bytes).unwrap())
+    let value = tracing::subscriber::with_default(captured.subscriber(tracing::Level::DEBUG), run);
+    (value, captured.text())
 }
 
 /// The keyboard `host` has in the in-memory migration of the v3 layout
@@ -350,12 +363,184 @@ fn blocked_migrations_and_layerless_keyboards_are_fatal() {
     );
 }
 
+const GOLDEN: &str = "src/build/linux/testdata/golden";
+
+/// The golden bundle: a v3 layout with a `windows` section, one with only
+/// a `chromeOS` section, a v4 layout, and a v3 layout with neither, which
+/// has no output.
+fn golden_layouts() -> Vec<(&'static str, String)> {
+    vec![
+        ("fi", FI.to_owned()),
+        (
+            "se-NO",
+            fixture_text("crates/kbd-engine/tests/golden/v3/se-NO.yaml"),
+        ),
+        ("sme", fixture_text("src/build/linux/testdata/sme.yaml")),
+        (
+            "vro",
+            fixture_text("src/build/chromeos/testdata/vro-v3.yaml"),
+        ),
+    ]
+}
+
+/// Every file under `dir`, relative to it with `/` separators, sorted.
+fn files(dir: &Path) -> Vec<String> {
+    let mut files = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(next) = stack.pop() {
+        for entry in fs::read_dir(&next).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                stack.push(path);
+            } else {
+                let relative = path.strip_prefix(dir).unwrap();
+                files.push(relative.to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    files.sort();
+    files
+}
+
+// [spec:kbdgen:req:linux.test.golden]
+/// Compares `actual` with the golden file `relative`, first rewriting it
+/// when `KBDGEN_BLESS` is set.
+fn golden(relative: &str, actual: &str) {
+    let path = Path::new(WORKSPACE).join(GOLDEN).join(relative);
+    if std::env::var_os("KBDGEN_BLESS").is_some() {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, actual).unwrap();
+    }
+    let expected = fs::read_to_string(&path).unwrap_or_else(|e| {
+        panic!(
+            "{}: {e}; run with KBDGEN_BLESS=1 to create it",
+            path.display()
+        )
+    });
+    assert_eq!(
+        expected,
+        actual,
+        "{} differs; rerun with KBDGEN_BLESS=1 to update it",
+        path.display()
+    );
+}
+
+/// A GResource bundle read back: each path in order, and after each file
+/// its size, its flags and its contents without the terminating zero.
+fn read_back(bundle: &[u8]) -> String {
+    let file = gvdb::read::File::from_bytes(Cow::Borrowed(bundle)).unwrap();
+    let table = file.hash_table().unwrap();
+    let mut names: Vec<String> = table.keys().map(|key| key.unwrap().to_string()).collect();
+    names.sort();
+    let mut text = String::new();
+    for name in names {
+        text += &format!("{name}\n");
+        if name.ends_with('/') {
+            continue;
+        }
+        let (size, flags, content): (u32, u32, Vec<u8>) = table.get(&name).unwrap();
+        let (zero, content) = content.split_last().unwrap();
+        assert_eq!(*zero, 0, "{name} is zero-terminated");
+        assert_eq!(size as usize, content.len(), "{name}");
+        text += &format!(
+            "  {size} bytes, flags {flags}\n  {}\n",
+            std::str::from_utf8(content).unwrap()
+        );
+    }
+    text
+}
+
+/// The models and the GResource bundle are compared otherwise.
+fn is_binary(name: &str) -> bool {
+    name.ends_with(".dvkb") || name.ends_with(".gresource")
+}
+
+// [spec:kbdgen:def:linux.output/test]
+// [spec:kbdgen:req:linux.test.golden/test]
+// [spec:kbdgen:req:ldml.linux.target/test]
 // [spec:kbdgen:def:ldml.linux.input/test]
 #[tokio::test]
-async fn the_step_compiles_every_layout_and_writes_nothing() {
-    let layouts = selection_layouts();
+async fn writes_the_golden_output_tree() {
+    let layouts = golden_layouts();
     let layouts: Vec<(&str, &str)> = layouts.iter().map(|(t, y)| (*t, y.as_str())).collect();
     let fixture = fixture(&layouts, &[("linux", TARGET)]);
+    for stale in [
+        "xkb/symbols/divvun-sma",
+        "ibus/divvun-sma.dvkb",
+        "gnome-shell/osk@no.uit/metadata.json",
+        "plasma-keyboard/no.divvun.sma/metadata.json",
+        "stevia/layouts/divvun-sma.json",
+    ] {
+        write_file(&fixture.out, stale, "stale");
+    }
+    write_file(&fixture.out, "notes.txt", "kept");
+
+    let captured = Captured::default();
+    let guard = tracing::subscriber::set_default(captured.subscriber(tracing::Level::INFO));
     generate(&fixture).await.unwrap();
-    assert_eq!(fs::read_dir(&fixture.out).unwrap().count(), 0);
+    drop(guard);
+    let out = &fixture.out;
+
+    let written = files(out);
+    let golden_output = Path::new(WORKSPACE).join(GOLDEN).join("output");
+    if std::env::var_os("KBDGEN_BLESS").is_some() && golden_output.exists() {
+        fs::remove_dir_all(&golden_output).unwrap();
+    }
+    for name in written
+        .iter()
+        .filter(|name| !is_binary(name) && *name != "notes.txt")
+    {
+        golden(
+            &format!("output/{name}"),
+            &fs::read_to_string(out.join(name)).unwrap(),
+        );
+    }
+    let mut expected = files(&golden_output);
+    expected.extend(
+        [
+            "gnome-shell/osk@no.divvun/osk-layouts.gresource",
+            "ibus/divvun-se-no.dvkb",
+            "ibus/divvun-sme.dvkb",
+            "ibus/divvun-vro.dvkb",
+            "notes.txt",
+        ]
+        .map(str::to_owned),
+    );
+    expected.sort();
+    assert_eq!(
+        written, expected,
+        "no stale file is left, and no golden file is missing"
+    );
+    let gresource = fs::read(out.join("gnome-shell/osk@no.divvun/osk-layouts.gresource")).unwrap();
+    golden("osk-layouts.gresource.txt", &read_back(&gresource));
+    let messages: String = captured
+        .text()
+        .lines()
+        .filter(|line| line.contains(" kbdgen::build::linux"))
+        .map(|line| line.replace(&out.display().to_string(), "<out>") + "\n")
+        .collect();
+    golden("messages.txt", &messages);
+    assert_eq!(fs::read_to_string(out.join("notes.txt")).unwrap(), "kept");
+
+    let bundle = read_kbdgen_bundle(&fixture.bundle).unwrap();
+    let ids = Ids::new(bundle.targets.linux.as_ref().unwrap()).unwrap();
+    for layout in source::layouts(&bundle).unwrap() {
+        let id = ids.layout_id(&layout.tag);
+        let model = fs::read(out.join(format!("ibus/{id}.dvkb"))).unwrap();
+        assert_eq!(
+            Model::from_bytes(&model).unwrap().keyboard(),
+            &layout.keyboard,
+            "{id}: the model is K"
+        );
+        let resource = format!("/org/gnome/shell/osk-layouts/{id}.json");
+        let gnome = read_back(&gresource);
+        let json = gnome
+            .split_once(&format!("{resource}\n"))
+            .and_then(|(_, rest)| rest.lines().nth(1))
+            .unwrap_or_else(|| panic!("no {resource}"));
+        let document = serde_json::from_str(json.trim()).unwrap();
+        gnome_tests::assert_format(&id, &layout, &document);
+        let stevia = fs::read_to_string(out.join(format!("stevia/layouts/{id}.json"))).unwrap();
+        stevia_tests::assert_format(&id, &layout, &serde_json::from_str(&stevia).unwrap());
+    }
 }

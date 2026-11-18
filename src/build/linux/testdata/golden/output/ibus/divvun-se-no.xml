@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<engine>
+  <name>divvun-se-no</name>
+  <longname>Davvisámegiella (Norga)</longname>
+  <description>Davvisámegiella (Norga)</description>
+  <language>se_NO</language>
+  <author>Test</author>
+  <layout>divvun-se-no</layout>
+  <symbol>se</symbol>
+  <version>1.0</version>
+</engine>
