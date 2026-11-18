@@ -9,9 +9,9 @@ These scripts are for VMs, not for `cargo test`. With Lima on the host:
 
 ```sh
 limactl create -y --name=kbdgen-gnome50 --cpus=4 --memory=8 --disk=30 \
-  --mount-only "$PWD/tests/linux-vm/gnome-spike:w" template:fedora-44
+  --mount-only "$PWD/tests/linux-vm:w" template:fedora-44
 limactl create -y --name=kbdgen-gnome51 --cpus=4 --memory=8 --disk=30 \
-  --mount-only "$PWD/tests/linux-vm/gnome-spike:w" template:experimental/ubuntu-26.10
+  --mount-only "$PWD/tests/linux-vm:w" template:experimental/ubuntu-26.10
 limactl start kbdgen-gnome50
 limactl shell kbdgen-gnome50 -- "$PWD/tests/linux-vm/gnome-spike/install-fedora.sh"
 limactl shell kbdgen-gnome50 -- "$PWD/tests/linux-vm/gnome-spike/setup-vm.sh"
