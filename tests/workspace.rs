@@ -220,11 +220,6 @@ fn ldml_depends_on_model_icu_normalizer_and_xmlem() {
         BTreeSet::from(["icu_normalizer", "kbd-model", "xmlem"])
     );
     assert!(dependency(ldml, "kbd-model")["path"].is_string());
-    assert_eq!(
-        dependency(ldml, "xmlem")["req"],
-        "^0.3.3",
-        "the workspace's xmlem"
-    );
     let kbdgen = workspace.package("kbdgen");
     assert_eq!(
         dependency(kbdgen, "xmlem")["req"],

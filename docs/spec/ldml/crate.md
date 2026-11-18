@@ -74,7 +74,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 
 > [spec:kbdgen:req:ldml.crate.ldml]
 > `kbd-ldml` MUST read and write XML only through the `xmlem` crate, at the
-> version the workspace already uses (0.3.3 at the time of writing). It MUST
+> version the rest of the workspace uses. It MUST
 > NOT depend on, or call directly, any other XML parser or serializer;
 > `xmlem` brings `quick-xml` with it. It depends on:
 >
