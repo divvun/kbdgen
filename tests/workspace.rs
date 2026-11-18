@@ -383,7 +383,7 @@ fn ibus_is_binary_on_engine_and_zbus() {
         zbus["req"].as_str().expect("req").starts_with("^5"),
         "zbus is 5.x"
     );
-    assert_no_default_features(dependency(ibus, "tokio"), &["rt"]);
+    assert_no_default_features(dependency(ibus, "tokio"), &["rt", "sync"]);
     for name in ["zbus", "tokio"] {
         assert_eq!(
             dependency(ibus, name)["target"],

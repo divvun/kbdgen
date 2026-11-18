@@ -369,17 +369,21 @@ Sources:
 >   `RequireSurroundingText`. The last two are missing from libibus's
 >   introspection data, but libibus emits them and ibus-daemon handles them
 >   by name (Source: `src/ibusengine.c`, `bus/engineproxy.c`)
-> - properties `ContentType` `(uu)`, written by ibus-daemon; `FocusId`
->   `(b)`, false; and `ActiveSurroundingText` `(b)`, true, so ibus-daemon
->   asks clients for surrounding text on focus
+> - properties `ContentType` `(uu)`, written by ibus-daemon; `FocusId`,
+>   false, so ibus-daemon calls `FocusIn` and `FocusOut`; and
+>   `ActiveSurroundingText`, true, so ibus-daemon asks clients for
+>   surrounding text on focus and on `Enable`. libibus declares these two
+>   `(b)` but answers a plain `b`, which is what ibus-daemon reads
+>   (`bus/engineproxy.c`), so they are `b`
 >
 > and `org.freedesktop.IBus.Service.Destroy`, which unexports it. The
 > program exits when its bus connection closes.
 
 > [spec:kbdgen:req:linux.ibus.inert]
 > `CreateEngine` MUST fail with `org.freedesktop.DBus.Error.Failed`, the
-> message being the reason, and log the reason with the file's name, when
-> it finds: `no-description` (no usable description has the name),
+> message being the reason, and log the reason with the file's name, the
+> model's or, for `no-description`, `<name>.xml`, when it finds:
+> `no-description` (no usable description has the name),
 > `model-unreadable`, `model-version` (`Model::from_bytes` refused the
 > major version, `tsf.data.version`), `model-malformed` or `model-invalid`.
 > ibus-daemon then leaves the input context without an engine, and the
@@ -592,7 +596,9 @@ Sources:
 > [spec:kbdgen:req:linux.ibus.logging]
 > The engine MUST NOT record typed text, surrounding text, preedit text,
 > keyvals, key codes or engine states anywhere. It writes diagnostics only
-> to standard error, which ibus-daemon's session journal receives, and only
+> to standard error, which ibus-daemon passes to its own, and so to the
+> session journal, only when it runs with `--verbose`, and discards
+> otherwise (Source: `bus/component.c` `bus_component_start`), and only
 > messages compiled into the program, the reasons of `linux.ibus.inert`
 > with a file's name, and panic locations: file, line and column, never the
 > message (`tsf.component.logging`). `--xml` writes nothing to standard
@@ -605,11 +611,12 @@ Sources:
 > it would end them all (`tsf.component.panic`). The crate MUST build with
 > `panic = "unwind"` and handle every D-Bus method call and property
 > access inside `catch_unwind`. On a panic it logs the location, replies
-> false to `ProcessKeyEvent` and success to anything else, and marks the
+> false to `ProcessKeyEvent`, `org.freedesktop.DBus.Error.Failed`
+> `poisoned` to `CreateEngine` and success to anything else, and marks the
 > process *poisoned*: a poisoned process passes every key, emits nothing,
-> and exits once ibus-daemon has destroyed its last engine object, so the
-> next activation starts a fresh one. Meanwhile the engine's base keymap,
-> the XKB layout, types.
+> creates no engine, and exits once ibus-daemon has destroyed its last
+> engine object, at once when it has none, so the next activation starts
+> a fresh one. Meanwhile the engine's base keymap, the XKB layout, types.
 
 ## On-screen keyboards
 

@@ -1,6 +1,15 @@
 //! The component file template (`linux.ibus.component`) and the `--xml`
 //! lister run as ibus-daemon runs it (`linux.ibus.lister`).
 
+// Clippy counts only `#[test]` functions of a test binary as tests, not
+// the helpers beside them.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing
+)]
+
 use std::error::Error;
 use std::fs;
 use std::path::Path;

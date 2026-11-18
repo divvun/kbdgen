@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use kbd_model::{Info, Keyboard, MAGIC};
+use kbd_model::{Form, Hardware, Info, Keyboard, MAGIC};
 
-use crate::data::{Description, engines_xml, found, usable};
+use crate::data::{Description, Reason, Refusal, engines_xml, found, lookup, usable};
 
 pub fn model_bytes() -> Vec<u8> {
     Keyboard::new("und", 45, Info::default())
@@ -209,4 +209,148 @@ fn bad_model_or_stem_leaves_engine_out() {
         engines_xml(&[user.path().join("absent")]),
         "<engines>\n</engines>\n"
     );
+}
+
+/// A keyboard whose form names one scan code twice, which decoding
+/// refuses.
+fn invalid_model_bytes() -> Vec<u8> {
+    let mut keyboard = Keyboard::new("und", 45, Info::default());
+    keyboard.hardware = Some(Hardware {
+        form: Form {
+            id: "iso".to_owned(),
+            rows: vec![vec![0x10, 0x10]],
+        },
+        min_device_width: None,
+        layers: Vec::new(),
+    });
+    keyboard.to_bytes().unwrap()
+}
+
+// [spec:kbdgen:req:linux.ibus.inert/test]
+#[test]
+fn lookup_names_each_inert_reason() {
+    let root = tempfile::tempdir().unwrap();
+    let model = model_bytes();
+    let mut future = model.clone();
+    future[4] = 9;
+    let invalid = invalid_model_bytes();
+    install(
+        root.path(),
+        "p",
+        "good",
+        &description("good", "G"),
+        Some(&model),
+    );
+    install(
+        root.path(),
+        "p",
+        "missing",
+        &description("missing", "M"),
+        None,
+    );
+    install(
+        root.path(),
+        "p",
+        "future",
+        &description("future", "F"),
+        Some(&future),
+    );
+    install(
+        root.path(),
+        "p",
+        "junk",
+        &description("junk", "J"),
+        Some(b"DVKB"),
+    );
+    install(
+        root.path(),
+        "p",
+        "invalid",
+        &description("invalid", "I"),
+        Some(&invalid),
+    );
+    let roots = [root.path().to_path_buf()];
+    assert!(lookup(&roots, "good").is_ok());
+    let refusal = |name: &str| lookup(&roots, name).err().unwrap();
+    let model = |name: &str| root.path().join(format!("p/{name}.dvkb"));
+    assert_eq!(
+        refusal("missing"),
+        Refusal {
+            reason: Reason::ModelUnreadable,
+            file: model("missing")
+        }
+    );
+    assert_eq!(refusal("future").reason, Reason::ModelVersion);
+    assert_eq!(refusal("junk").reason, Reason::ModelMalformed);
+    assert_eq!(refusal("invalid").reason, Reason::ModelInvalid);
+    assert_eq!(refusal("invalid").file, model("invalid"));
+    assert_eq!(
+        refusal("absent"),
+        Refusal {
+            reason: Reason::NoDescription,
+            file: PathBuf::from("absent.xml")
+        }
+    );
+    let codes = [
+        Reason::NoDescription,
+        Reason::ModelUnreadable,
+        Reason::ModelVersion,
+        Reason::ModelMalformed,
+        Reason::ModelInvalid,
+    ]
+    .map(Reason::code);
+    assert_eq!(
+        codes,
+        [
+            "no-description",
+            "model-unreadable",
+            "model-version",
+            "model-malformed",
+            "model-invalid"
+        ]
+    );
+}
+
+// [spec:kbdgen:req:linux.ibus.lister/test]
+// [spec:kbdgen:req:linux.ibus.inert/test]
+#[test]
+fn lookup_serves_what_the_lister_lists() {
+    let user = tempfile::tempdir().unwrap();
+    let system = tempfile::tempdir().unwrap();
+    let model = model_bytes();
+    install(
+        user.path(),
+        "p",
+        "shared",
+        &description("shared", "U"),
+        Some(b"junk"),
+    );
+    install(
+        system.path(),
+        "p",
+        "shared",
+        &description("shared", "S"),
+        Some(&model),
+    );
+    install(
+        user.path(),
+        "p",
+        "only",
+        &description("only", "O"),
+        Some(b"junk"),
+    );
+    let roots = [user.path().to_path_buf(), system.path().to_path_buf()];
+    assert!(lookup(&roots, "shared").is_ok());
+    assert_eq!(
+        lookup(&roots, "only").err().unwrap(),
+        Refusal {
+            reason: Reason::ModelMalformed,
+            file: user.path().join("p/only.dvkb")
+        }
+    );
+    let listed: Vec<String> = usable(&roots)
+        .into_iter()
+        .map(|found| found.description.name().to_owned())
+        .collect();
+    assert_eq!(listed, ["shared"]);
 }

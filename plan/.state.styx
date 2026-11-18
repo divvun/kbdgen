@@ -1704,6 +1704,17 @@ impl_evidence (
         {impl_name main, rule ldml.linux.touch.stevia}
         {impl_name main, rule linux.osk.stevia}
     )}
+    {id targets.linux.ibus.factory, covered_rules (
+        linux.ibus.factory
+        linux.ibus.inert
+        linux.ibus.logging
+        linux.ibus.panic
+    ), covered_claims (
+        {impl_name main, rule linux.ibus.factory}
+        {impl_name main, rule linux.ibus.inert}
+        {impl_name main, rule linux.ibus.logging}
+        {impl_name main, rule linux.ibus.panic}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

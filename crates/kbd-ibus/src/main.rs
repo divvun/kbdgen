@@ -6,12 +6,20 @@
 //! file `data/divvun.xml.in` that packaging completes.
 //!
 //! `--xml` prints the engines of the installed keyboards for ibus-daemon,
-//! which runs it again whenever an observed data directory changes.
+//! which runs it again whenever an observed data directory changes, and
+//! `--ibus` serves them to ibus-daemon (`crate::dbus`). The host logic,
+//! free of D-Bus, is `planner`.
 
 // [spec:kbdgen:def:linux.ibus.component]
 // [spec:kbdgen:req:linux.ibus.crate]
 
+mod address;
 mod data;
+#[cfg(unix)]
+mod dbus;
+mod diag;
+mod guard;
+mod planner;
 #[cfg(test)]
 mod tests;
 
@@ -20,13 +28,15 @@ use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: ibus-engine-divvun --xml [--data-dir DIR]...\n";
+const USAGE: &str = "usage: ibus-engine-divvun (--xml | --ibus) [--data-dir DIR]...\n";
 
 /// What the program was asked to do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Mode {
     /// Print the `<engines>` list (`linux.ibus.lister`).
     Xml,
+    /// Serve ibus-daemon (`linux.ibus.factory`).
+    Ibus,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +52,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Option<Args> {
     while let Some(arg) = args.next() {
         match arg.to_str() {
             Some("--xml") if mode.is_none() => mode = Some(Mode::Xml),
+            Some("--ibus") if mode.is_none() => mode = Some(Mode::Ibus),
             Some("--data-dir") => data_dirs.push(PathBuf::from(args.next()?)),
             _ => return None,
         }
@@ -70,6 +81,13 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
             ExitCode::SUCCESS
+        }
+        #[cfg(unix)]
+        Mode::Ibus => dbus::serve(data::roots(&args.data_dirs)),
+        #[cfg(not(unix))]
+        Mode::Ibus => {
+            diag::record(diag::Event::Failed("IBus needs a Unix system"));
+            ExitCode::FAILURE
         }
     }
 }

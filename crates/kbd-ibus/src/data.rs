@@ -15,7 +15,8 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use kbd_engine::Model;
+use kbd_engine::{Error, Model};
+use kbd_model::DecodeError;
 
 /// The children of an `<engine>` that `linux.ibus.data` writes, in order.
 pub const ELEMENTS: [&str; 8] = [
@@ -288,9 +289,82 @@ pub fn found(roots: &[PathBuf]) -> Vec<Found> {
     found
 }
 
-/// Whether the model at `path` loads.
-fn loads(path: &Path) -> bool {
-    fs::read(path).is_ok_and(|bytes| Model::from_bytes(&bytes).is_ok())
+/// Why `CreateEngine` cannot serve an engine (`linux.ibus.inert`).
+// [spec:kbdgen:req:linux.ibus.inert]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reason {
+    /// No usable description has the name.
+    NoDescription,
+    ModelUnreadable,
+    /// `Model::from_bytes` refused the model's major version.
+    ModelVersion,
+    /// The file is not an encoded model.
+    ModelMalformed,
+    /// The model violates an invariant or needs an engine feature this
+    /// build lacks.
+    ModelInvalid,
+}
+
+impl Reason {
+    /// The reason as `CreateEngine`'s error message and the diagnostic
+    /// give it.
+    // [spec:kbdgen:req:linux.ibus.inert]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Reason::NoDescription => "no-description",
+            Reason::ModelUnreadable => "model-unreadable",
+            Reason::ModelVersion => "model-version",
+            Reason::ModelMalformed => "model-malformed",
+            Reason::ModelInvalid => "model-invalid",
+        }
+    }
+}
+
+/// Loads the model at `path`.
+// [spec:kbdgen:req:linux.ibus.inert]
+pub fn load(path: &Path) -> Result<Model, Reason> {
+    let bytes = fs::read(path).map_err(|_| Reason::ModelUnreadable)?;
+    Model::from_bytes(&bytes).map_err(|error| match error {
+        Error::Decode(DecodeError::UnsupportedVersion(_)) => Reason::ModelVersion,
+        Error::Decode(_) => Reason::ModelMalformed,
+        Error::Invalid(_) | Error::NormalizationUnsupported => Reason::ModelInvalid,
+    })
+}
+
+/// Why the engine `name` cannot be served, and the file that says so.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Refusal {
+    pub reason: Reason,
+    pub file: PathBuf,
+}
+
+/// The model of the engine `--xml` lists as `name`: that of the first
+/// description of the name whose model loads. Without one, the refusal is
+/// that of the first such description's model, or `no-description` for
+/// `<name>.xml` when no description has the name, so `--ibus` serves
+/// exactly the engines `--xml` lists.
+// [spec:kbdgen:req:linux.ibus.lister]
+// [spec:kbdgen:req:linux.ibus.inert]
+pub fn lookup(roots: &[PathBuf], name: &str) -> Result<Model, Refusal> {
+    let mut refusal = None;
+    for found in found(roots) {
+        if found.description.name() != name {
+            continue;
+        }
+        match load(&found.model) {
+            Ok(model) => return Ok(model),
+            Err(reason) => {
+                refusal.get_or_insert(Refusal {
+                    reason,
+                    file: found.model,
+                });
+            }
+        }
+    }
+    Err(refusal.unwrap_or_else(|| Refusal {
+        reason: Reason::NoDescription,
+        file: PathBuf::from(format!("{name}.xml")),
+    }))
 }
 
 /// The usable descriptions under `roots`, the first of each name.
@@ -299,7 +373,7 @@ pub fn usable(roots: &[PathBuf]) -> Vec<Found> {
     let mut names = BTreeSet::new();
     let mut usable = Vec::new();
     for found in found(roots) {
-        if !names.contains(found.description.name()) && loads(&found.model) {
+        if !names.contains(found.description.name()) && load(&found.model).is_ok() {
             names.insert(found.description.name().to_owned());
             usable.push(found);
         }
