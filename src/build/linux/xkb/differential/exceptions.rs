@@ -9,7 +9,7 @@ use super::compare::{Case, Press, engine_run};
 use super::{OPTIONS, Subject};
 use crate::build::linux::xkb::Value;
 use crate::build::linux::xkb::dead_keys::{DECIMAL_SHOWN, show};
-use crate::build::windows::kbdl::adapter::starts_with_marker;
+use kbd_model::starts_with_marker;
 
 /// A reported feature that explains a difference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

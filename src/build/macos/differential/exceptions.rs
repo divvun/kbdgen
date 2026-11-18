@@ -6,7 +6,7 @@ use kbd_model::{Keyboard, Normalization, Text, TransformGroup};
 
 use super::compare::{Outcome, Press, engine_run};
 use super::{Subject, macos_model};
-use crate::build::windows::kbdl::adapter::starts_with_marker;
+use kbd_model::starts_with_marker;
 
 /// A documented difference between the `.keylayout` and the engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

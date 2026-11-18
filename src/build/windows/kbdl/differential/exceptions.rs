@@ -6,13 +6,13 @@ use indexmap::IndexMap;
 use kbd_engine::{Action, Context, Model, State};
 use kbd_model::{Normalization, TextElem, TransformGroup};
 
-use super::super::adapter::{is_generated_backspace, starts_with_marker};
 use super::super::input::{DeadKeyNode, KeyValue, Layer, POSITION_NAMES, STANDALONE};
 use super::super::tables::{CAPLOK, SGCAPS, VK_DEAD_ROW};
 use super::Subject;
 use super::compare::{Outcome, Press, dll_outcome, engine_run};
 use super::simulate::{Dll, Translated, Typed};
 use crate::ldml::migrate::oracle::CapsState;
+use kbd_model::{is_generated_backspace, starts_with_marker};
 
 /// A documented difference between the DLL and the engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

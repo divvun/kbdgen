@@ -1,10 +1,8 @@
 //! What a layout's XKB layout does not reproduce, reported once per layout
-//! and feature (`ldml.linux.classify`), and whether its model rewrites
-//! committed text (`ldml.linux.rewrites`).
+//! and feature (`ldml.linux.classify`), among them the features by which
+//! its model rewrites committed text (`ldml.linux.rewrites`).
 
-use kbd_model::{
-    Component, Hardware, HardwareLayer, Keyboard, ModifierSet, Normalization, TransformGroup,
-};
+use kbd_model::{Component, Hardware, HardwareLayer, Keyboard, ModifierSet, Rewrite};
 
 use super::Adapted;
 use super::keycodes::KEYS;
@@ -12,7 +10,6 @@ use super::levels::Value;
 use super::types::XkbState;
 use crate::build::diag::Diagnostics;
 use crate::build::macos::adapter::Category;
-use crate::build::windows::kbdl::adapter::{is_generated_backspace, starts_with_marker};
 
 /// The features of `ldml.linux.rewrites`, each with up to ten examples.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -34,46 +31,24 @@ impl Rewrites {
     }
 }
 
-/// The features by which a model rewrites committed text: a `simple`
-/// transform that does not start with a marker, a `reorder` group, a
-/// `backspace` rule other than the generated one, and an enabled
-/// normalization.
-// [spec:kbdgen:def:ldml.linux.rewrites]
+/// The features of `keyboard.rewrites()`, with examples numbered from 1.
 pub fn rewrites(keyboard: &Keyboard) -> Rewrites {
-    let mut result = Rewrites {
-        normalization: keyboard.normalization == Normalization::Enabled,
-        ..Rewrites::default()
-    };
-    for (g, group) in keyboard.simple.iter().enumerate() {
-        match group {
-            TransformGroup::Rules(rules) => {
-                for (r, rule) in rules.iter().enumerate() {
-                    if !starts_with_marker(&rule.from) {
-                        result
-                            .text_transforms
-                            .add(|| format!("group {} rule {}", g + 1, r + 1));
-                    }
-                }
-            }
-            TransformGroup::Reorder(rules) => result
+    let mut result = Rewrites::default();
+    for rewrite in keyboard.rewrites() {
+        match rewrite {
+            Rewrite::TextTransform { group, rule } => result
+                .text_transforms
+                .add(|| format!("group {} rule {}", group + 1, rule + 1)),
+            Rewrite::Reorder { group, rules } => result
                 .reorder_groups
-                .add(|| format!("group {} ({} rules)", g + 1, rules.len())),
-        }
-    }
-    for (g, group) in keyboard.backspace.iter().enumerate() {
-        match group {
-            TransformGroup::Rules(rules) => {
-                for (r, rule) in rules.iter().enumerate() {
-                    if !is_generated_backspace(rule) {
-                        result
-                            .backspace_rules
-                            .add(|| format!("group {} rule {}", g + 1, r + 1));
-                    }
-                }
-            }
-            TransformGroup::Reorder(_) => result
+                .add(|| format!("group {} ({rules} rules)", group + 1)),
+            Rewrite::BackspaceRule { group, rule } => result
                 .backspace_rules
-                .add(|| format!("group {} (reorder)", g + 1)),
+                .add(|| format!("group {} rule {}", group + 1, rule + 1)),
+            Rewrite::BackspaceReorder { group } => result
+                .backspace_rules
+                .add(|| format!("group {} (reorder)", group + 1)),
+            Rewrite::Normalization => result.normalization = true,
         }
     }
     result

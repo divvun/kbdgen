@@ -1,6 +1,6 @@
 use kbd_engine::{Key, ModifierState};
 
-use super::field::Field;
+use super::field::{Field, GTK};
 use super::fixture::{features, model, mods, vro};
 use crate::keys::{
     CONTROL_MASK, Facts, Keys, LOCK_MASK, MOD1_MASK, MOD4_MASK, MOD5_MASK, RELEASE_MASK, Role,
@@ -143,6 +143,12 @@ fn every_character_keysym_maps_back() {
         };
         assert_eq!(keysym::to_char(keyval), Some(c), "{c}");
     }
+}
+
+fn gtk(model: kbd_engine::Model) -> Session {
+    let mut session = Session::new(model);
+    session.set_capabilities(GTK);
+    session
 }
 
 fn shift_r(keys: &mut Keys) {
@@ -304,25 +310,25 @@ fn tap(session: &mut Session, field: &mut Field, keyval: u32, code: u32, state: 
 // [spec:kbdgen:req:linux.ibus.keys/test]
 #[test]
 fn dead_key_composes_with_next_key() {
-    let mut session = Session::new(model("vro", &vro()));
+    let mut session = gtk(model("vro", &vro()));
     let mut field = Field::default();
     assert!(tap(&mut session, &mut field, keysym("plus"), 13, 0), "´");
     assert_eq!(field.preedit, "´");
     assert!(tap(&mut session, &mut field, keysym("a"), 30, 0));
-    assert_eq!(field.shown(), "á");
+    assert_eq!(field.text(), "á");
     assert!(tap(&mut session, &mut field, keysym("plus"), 13, 0));
     assert!(
         tap(&mut session, &mut field, keysym("x"), 45, 0),
         "unmatched"
     );
-    assert_eq!(field.shown(), "á´x");
+    assert_eq!(field.text(), "á´x");
 }
 
 // [spec:kbdgen:req:linux.ibus.planner/test]
 // [spec:kbdgen:sem:linux.ibus.modifiers/test]
 #[test]
 fn left_alt_chord_passes_and_commits() {
-    let mut session = Session::new(model("vro", &vro()));
+    let mut session = gtk(model("vro", &vro()));
     let mut field = Field::default();
     assert!(tap(&mut session, &mut field, keysym("plus"), 13, 0));
     assert!(
@@ -339,24 +345,24 @@ fn left_alt_chord_passes_and_commits() {
 // [spec:kbdgen:req:linux.ibus.keys/test]
 #[test]
 fn frame_key_commits_pending_and_passes() {
-    let mut session = Session::new(model("vro", &vro()));
+    let mut session = gtk(model("vro", &vro()));
     let mut field = Field::default();
     tap(&mut session, &mut field, keysym("plus"), 13, 0);
     assert!(!tap(&mut session, &mut field, keysym("Left"), 105, 0));
-    assert_eq!(field.shown(), "´");
+    assert_eq!(field.text(), "´");
     assert_eq!(field.preedit, "");
     assert!(
         !tap(&mut session, &mut field, keysym("Return"), 28, 0),
         "not in the form"
     );
     assert!(tap(&mut session, &mut field, keysym("a"), 30, 0));
-    assert_eq!(field.shown(), "´a");
+    assert_eq!(field.text(), "´a");
 }
 
 // [spec:kbdgen:req:linux.ibus.keys/test]
 #[test]
 fn unseen_release_and_forwarded_events_pass() {
-    let mut session = Session::new(model("vro", &vro()));
+    let mut session = gtk(model("vro", &vro()));
     assert!(
         !session
             .process_key_event(keysym("a"), 30, RELEASE_MASK)
@@ -377,7 +383,7 @@ fn unseen_release_and_forwarded_events_pass() {
 // [spec:kbdgen:sem:linux.ibus.virtual-keys/test]
 #[test]
 fn onscreen_text_composes_with_hardware_dead_key() {
-    let mut session = Session::new(model("vro", &vro()));
+    let mut session = gtk(model("vro", &vro()));
     let mut field = Field::default();
     tap(&mut session, &mut field, keysym("plus"), 13, 0);
     let reply = session.process_key_event(keysym("a"), 0, 0);
@@ -389,17 +395,17 @@ fn onscreen_text_composes_with_hardware_dead_key() {
     field.apply(&reply.signals);
     let reply = session.process_key_event(keysym("Return"), 0, 0);
     assert!(!reply.handled, "GNOME Shell presses it itself");
-    assert_eq!(field.shown(), "á");
+    assert_eq!(field.text(), "á");
 }
 
 // [spec:kbdgen:sem:linux.ibus.modifiers/test]
 #[test]
 fn altgr_reaches_ctrl_alt_layer() {
-    let mut session = Session::new(model("und-x-mods", &mods()));
+    let mut session = gtk(model("und-x-mods", &mods()));
     let mut field = Field::default();
     session.process_key_event(keysym("ISO_Level3_Shift"), 100, 0);
     assert!(tap(&mut session, &mut field, keysym("a"), 30, MOD5_MASK));
-    assert_eq!(field.shown(), "ç");
+    assert_eq!(field.text(), "ç");
     session.process_key_event(keysym("ISO_Level3_Shift"), 100, MOD5_MASK | RELEASE_MASK);
     session.process_key_event(keysym("Alt_L"), 56, 0);
     assert!(
@@ -412,5 +418,5 @@ fn altgr_reaches_ctrl_alt_layer() {
         tap(&mut session, &mut field, keysym("a"), 30, 0),
         "B00 held"
     );
-    assert_eq!(field.shown(), "ç3");
+    assert_eq!(field.text(), "ç3");
 }

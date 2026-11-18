@@ -1361,6 +1361,55 @@ fn malformed_layouts_are_rejected() {
     );
 }
 
+// [spec:kbdgen:def:ldml.linux.rewrites/test]
+#[test]
+fn rewrites_skip_dead_key_rules_and_generated_backspace() {
+    let mut k = Keyboard::new("und", 45, Info::default());
+    let dead_key = Rule {
+        from: Pattern::from_tree(
+            false,
+            vec![vec![TreeItem::one(TreeAtom::Marker(0)), ch('a')]],
+        )
+        .unwrap(),
+        to: vec![ReplacementItem::Text(text("á"))],
+    };
+    let text_transform = Rule {
+        from: pattern(vec![ch('q'), ch('q')]),
+        to: vec![ReplacementItem::Text(text("ʠ"))],
+    };
+    let generated = Rule {
+        from: Pattern::from_tree(false, vec![vec![TreeItem::one(TreeAtom::AnyMarker)]]).unwrap(),
+        to: Vec::new(),
+    };
+    assert!(starts_with_marker(&dead_key.from));
+    assert!(!starts_with_marker(&text_transform.from));
+    assert!(is_generated_backspace(&generated));
+    assert!(!is_generated_backspace(&dead_key));
+    k.normalization = Normalization::Disabled;
+    k.simple = vec![TransformGroup::Rules(vec![dead_key.clone()])];
+    k.backspace = vec![TransformGroup::Rules(vec![generated.clone()])];
+    assert_eq!(k.rewrites(), []);
+    k.simple = vec![
+        TransformGroup::Rules(vec![dead_key, text_transform.clone()]),
+        TransformGroup::Reorder(Vec::new()),
+    ];
+    k.backspace = vec![
+        TransformGroup::Rules(vec![generated, text_transform]),
+        TransformGroup::Reorder(Vec::new()),
+    ];
+    k.normalization = Normalization::Enabled;
+    assert_eq!(
+        k.rewrites(),
+        [
+            Rewrite::TextTransform { group: 0, rule: 1 },
+            Rewrite::Reorder { group: 1, rules: 0 },
+            Rewrite::BackspaceRule { group: 0, rule: 1 },
+            Rewrite::BackspaceReorder { group: 1 },
+            Rewrite::Normalization,
+        ]
+    );
+}
+
 #[test]
 fn names_round_trip_for_enumerations() {
     for h in Host::ALL {

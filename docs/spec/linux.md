@@ -536,10 +536,14 @@ Sources:
 > `ldml.chromeos.context` does: one that agrees with the state its latest
 > edit led to completes the context, one that agrees with an earlier state
 > lags and is dropped, and any other replaces the context while the engine
-> state is kept. A reading with `cursor` ≠ `anchor` makes the next key
-> reset the state and start from an empty context (`tsf.edit.session`).
-> `at_start` is false: a reading is a window of the text, a GTK paragraph
-> for instance, not known to start where the text starts. GTK's IBus
+> state is kept. Two texts agree when one ends with the other, as there,
+> but an empty text agrees only with an empty one: every text ends with
+> the empty one, and a reading of the start of a paragraph is empty
+> whatever came before it. A reading with `cursor` ≠ `anchor` makes the
+> next key reset the state and start from an empty context
+> (`tsf.edit.session`). `at_start` is false: a reading is a window of the
+> text, a GTK paragraph for instance, not known to start where the text
+> starts. GTK's IBus
 > module asks for surrounding text before each key (Source:
 > `client/gtk2/ibusimcontext.c`); text-input-v3 clients reach IBus through
 > GNOME Shell (`js/misc/inputMethod.js` `vfunc_set_surrounding`), whose

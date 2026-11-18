@@ -14,6 +14,7 @@
 // [spec:kbdgen:req:linux.ibus.crate]
 
 mod address;
+mod context;
 mod data;
 #[cfg(unix)]
 mod dbus;

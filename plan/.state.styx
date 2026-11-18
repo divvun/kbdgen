@@ -1737,6 +1737,21 @@ impl_evidence (
         {impl_name main, rule linux.test.ci}
         {impl_name main, rule linux.test.golden}
     )}
+    {id targets.linux.ibus.edits, covered_rules (
+        linux.ibus.context
+        linux.ibus.context.fallback
+        linux.ibus.edit
+        linux.ibus.osk-backspace
+        linux.ibus.security
+        linux.ibus.semantics
+    ), covered_claims (
+        {impl_name main, rule linux.ibus.context}
+        {impl_name main, rule linux.ibus.context.fallback}
+        {impl_name main, rule linux.ibus.edit}
+        {impl_name main, rule linux.ibus.osk-backspace}
+        {impl_name main, rule linux.ibus.security}
+        {impl_name main, rule linux.ibus.semantics}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

@@ -12,7 +12,7 @@ use language_tags::LanguageTag;
 use super::presented::{Face, Item, Level, LevelKind, Presented, face, positions};
 use crate::build::diag::Diagnostics;
 use crate::build::macos::adapter::Category;
-use crate::build::windows::kbdl::adapter::is_generated_backspace;
+use kbd_model::is_generated_backspace;
 
 /// An on-screen keyboard, for the messages that concern only it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

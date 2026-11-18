@@ -34,6 +34,14 @@ pub fn features() -> String {
         .replace("hardware:\n  windows:", "hardware:\n  linux:")
 }
 
+/// A layout whose edits delete committed text: transforms over it, one
+/// through an astral character, and normalization that recomposes with
+/// the text before the caret. `AE12` is U+0301, `BKSL` U+0308, `AD12`
+/// U+1D56B.
+pub fn context() -> String {
+    "format: 4\ndisplayNames: {und: Context}\nnormalization: enabled\ntransforms: [[{from: qq, to: ʠ}, {from: '\\u{1D56B}z', to: ż}]]\nhardware:\n  linux:\n    layers:\n      none: |\n        § 1 2 3 4 5 6 7 8 9 0 + \\u{301}\n        q w e r t y u i o p å \\u{1D56B}\n        a s d f g h j k l ö æ \\u{308}\n        < z x c v b n m , . -\n".to_owned()
+}
+
 pub fn model(tag: &str, text: &str) -> Model {
     let dir = tempfile::tempdir().unwrap();
     let bundle = dir.path().join("test.kbdgen");

@@ -5,7 +5,8 @@ use std::fmt::Write as _;
 
 use indexmap::IndexMap;
 use kbd_model::{
-    Atom, Fixed, Item, Keyboard, Normalization, Pattern, ReplacementItem, Rule, TransformGroup,
+    Atom, Fixed, Item, Keyboard, Normalization, Pattern, Rule, TransformGroup,
+    is_generated_backspace, starts_with_marker,
 };
 
 use super::super::input::{DeadKeyNode, STANDALONE};
@@ -39,18 +40,6 @@ pub struct Classification {
     pub long_leaves: Category,
     pub mixed_outputs: Category,
     pub normalization: bool,
-}
-
-/// Whether every alternative of `pattern` must start with a marker, as a
-/// dead-key transform does.
-pub fn starts_with_marker(pattern: &Pattern) -> bool {
-    pattern.nodes.first().is_some_and(|top| {
-        top.alternatives.iter().all(|sequence| {
-            sequence.first().is_some_and(|item| {
-                item.min >= 1 && matches!(item.atom, Atom::Marker(_) | Atom::AnyMarker)
-            })
-        })
-    })
 }
 
 /// A pattern in LDML's syntax, close enough to recognise in a message.
@@ -125,20 +114,6 @@ fn show_rule(keyboard: &Keyboard, group: usize, index: usize, rule: &Rule) -> St
     }
     show_items(keyboard, &rule.from, 0, &mut out);
     out
-}
-
-/// The backspace rule `ldml.yaml.dead-keys.backspace` generates: `\m{.}`
-/// with no replacement.
-pub fn is_generated_backspace(rule: &Rule) -> bool {
-    let only_any_marker = rule.from.nodes.len() == 1
-        && rule.from.nodes[0].alternatives.len() == 1
-        && rule.from.nodes[0].alternatives[0] == [Item::one(Atom::AnyMarker)];
-    !rule.from.anchored
-        && only_any_marker
-        && rule
-            .to
-            .iter()
-            .all(|item| matches!(item, ReplacementItem::Text(text) if text.is_empty()))
 }
 
 /// Collects leaves of more than one UTF-16 unit, which `kbdl` omits, with

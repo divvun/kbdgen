@@ -32,7 +32,7 @@ use super::{
     tables::{KEY_NAMES, KEY_NAMES_EXT},
 };
 
-pub use classify::{Category, Classification, is_generated_backspace, starts_with_marker};
+pub use classify::{Category, Classification};
 pub(crate) use layers::{Selection as LayerSelection, select as select_layer};
 
 /// A v4 layout compiled for Windows: the compiled layout, which has a

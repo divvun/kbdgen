@@ -6,7 +6,7 @@ use kbd_model::{DisplayTarget, Hardware, Keyboard, Normalization, Text, TextElem
 use super::dead_keys::DeadKeys;
 use super::layers::Derived;
 use crate::build::diag::Diagnostics;
-use crate::build::windows::kbdl::adapter::{is_generated_backspace, starts_with_marker};
+use kbd_model::{is_generated_backspace, starts_with_marker};
 
 /// The most examples a category lists.
 const MAX_EXAMPLES: usize = 10;

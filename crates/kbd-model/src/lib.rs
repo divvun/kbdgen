@@ -32,6 +32,7 @@ mod keyboard;
 mod layers;
 mod layout;
 mod modifiers;
+mod rewrites;
 mod text;
 mod transforms;
 mod validate;
@@ -52,6 +53,7 @@ pub use keyboard::{
 pub use layers::{BottomRow, Form, Hardware, HardwareLayer, ScanCode, TouchLayer, TouchSet};
 pub use layout::{Layout, LayoutError};
 pub use modifiers::{Component, ModifierSet, Modifiers};
+pub use rewrites::{Rewrite, is_generated_backspace, starts_with_marker};
 pub use text::{MarkerIndex, Text, TextElem, is_nmtoken};
 pub use transforms::{
     Alternation, Atom, Class, ClassIndex, ClassRange, Fixed, Item, MAX_CAPTURES, MAX_REPEAT,
