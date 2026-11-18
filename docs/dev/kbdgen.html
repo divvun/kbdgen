@@ -1071,8 +1071,19 @@ represented and are omitted</p></td>
 <p>Messages name what they are about (the layout, the file, the variant) and
 print paths with <code>display()</code>, not <code>{:?}</code>. The Windows, macOS and ChromeOS
 generators collect each layout&#8217;s warnings and notes in a <code>Diagnostics</code>
-value (<code>src/build/windows/kbdl/diag.rs</code>), which logs each one with the
-layout&#8217;s name and also keeps it, so the golden tests can pin them.</p>
+value (<code>src/build/diag.rs</code>), which logs each one with the layout&#8217;s name and
+also keeps it, so the golden tests can pin them. A <code>Diagnostics</code> is made
+for one <code>Platform</code>, and logs under that target&#8217;s module
+(<code>kbdgen::build::macos</code>), which the formatter prints before the message,
+so a warning says which target raised it.</p>
+</div>
+<div class="paragraph">
+<p>Loading a format 4 layout file (<code>ldml::yaml::load</code>) logs the layout&#8217;s own
+warnings, such as a dead key no <code>\d{}</code> token uses, under
+<code>kbdgen::ldml::yaml</code>. A command may load one layout several times, as the
+Windows target&#8217;s two steps do, so <code>load</code> logs each warning once per
+process. <code>ldml migrate</code> loads what it writes with <code>load_value</code>, which
+logs nothing: it turns the warnings into defects.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1509,8 +1520,10 @@ but keeping cargo&#8217;s <code>target</code> and <code>target-wow64</code>.</p>
 </li>
 <li>
 <p><code>BuildKbdl</code> lists the crates again with <code>layout_names</code>, which for v4
-layouts only lowers and resolves, so no diagnostic is reported twice. It
-checks the toolchain once, then builds every crate for every variant.</p>
+layouts only loads, lowers and resolves. No diagnostic is reported twice:
+the adapter does not run, and <code>ldml::yaml::load</code> logs a layout&#8217;s load
+warnings once per process. It checks the toolchain once, then builds
+every crate for every variant.</p>
 </li>
 </ol>
 </div>
@@ -1537,9 +1550,10 @@ checks the toolchain once, then builds every crate for every variant.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Warnings and information go through <code>diag::Diagnostics</code>, which logs each
-message with the keyboard name as it is raised and keeps it, so tests and
-golden files can see what was reported. Fatal conditions are returned as
+<p>Warnings and information go through <code>crate::build::diag::Diagnostics</code>,
+made for <code>Platform::Windows</code>, which logs each message under
+<code>kbdgen::build::windows</code> with the keyboard name as it is raised and keeps
+it, so tests and golden files can see what was reported. Fatal conditions are returned as
 errors.</p>
 </div>
 </div>
@@ -2540,10 +2554,10 @@ an action, numbered in emission order.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>Warnings go to <code>Diagnostics</code>, the type the Windows KBDL adapter uses
-(<code>crate::build::windows::kbdl::diag</code>). It logs each message through
-<code>tracing</code> as it is recorded, which is why the log names that module, and
-keeps them for the tests. <code>generate_bundle</code> only keeps <code>Adapted::input</code>.
+<p>Warnings go to a <code>Diagnostics</code> for <code>Platform::MacOs</code>
+(<code>crate::build::diag</code>), the type the Windows KBDL adapter and ChromeOS also
+use. It logs each message through <code>tracing</code> as it is recorded, under
+<code>kbdgen::build::macos</code>, and keeps them for the tests. <code>generate_bundle</code> only keeps <code>Adapted::input</code>.
 The adapter also reuses <code>starts_with_marker</code> and <code>is_generated_backspace</code>
 from the Windows adapter.</p>
 </div>
@@ -2944,7 +2958,8 @@ with the workspace <code>GiellaKeyboard.xcworkspace</code>, scheme <code>Hosting
 configuration <code>Release</code>, destination <code>generic/platform=iOS</code>, one job per
 CPU, and <code>CODE_SIGN_IDENTITY</code>/<code>DEVELOPMENT_TEAM</code> overrides; its stdout is
 piped into <code>xcbeautify</code>. Then <code>xcodebuild -exportArchive</code> into <code>&lt;out&gt;/ipa</code>
-with <code>repo/opts.plist</code>.</p>
+with <code>repo/opts.plist</code>. <code>pod</code>, <code>xcbeautify</code> and the export write to
+kbdgen&#8217;s stderr, so its stdout holds only results.</p>
 </li>
 </ol>
 </div>
@@ -3154,9 +3169,10 @@ For <code>divvun/divvunspell</code> the filter is <code>android-jnilibs</code>; 
 </li>
 <li>
 <p><strong>ImageMagick</strong> - only when the bundle has <code>resources/android/icon.png</code>:
-<code>convert -resize {d}x{d} &lt;icon&gt; res/drawable-{density}/ic_launcher_keyboard.png</code>
+<code>convert -resize {d}x{d} -define png:exclude-chunks=date,time &lt;icon&gt; res/drawable-{density}/ic_launcher_keyboard.png</code>
 for mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144 and xxxhdpi 192. <code>-resize</code>
-keeps the aspect ratio.</p>
+keeps the aspect ratio. Without the define, ImageMagick writes the time
+into each PNG, and every run would change the five icons.</p>
 </li>
 <li>
 <p><strong>Gradle</strong> - only when <code>targets/android.yaml</code> exists:
@@ -3186,8 +3202,14 @@ app&#8217;s <code>res/values-*</code> directories, which decide the languages it
 names for.</p>
 </li>
 <li>
-<p>Reads <code>res/xml/method.xml</code> and <code>res/xml/spellchecker.xml</code> and removes the
-first <code>&lt;subtype&gt;</code> of each (<code>read_without_first_subtype</code>).</p>
+<p>Reads <code>res/xml/method.xml</code> and <code>res/xml/spellchecker.xml</code> and strips
+each back to the template&#8217;s subtypes (<code>strip_subtypes</code>). A subtype is
+kbdgen&#8217;s when its attributes are exactly what <code>method_subtype</code> or
+<code>spellchecker_subtype</code> writes for the tag (and keyboard name) it carries
+(<code>generated_method_subtype</code>, <code>generated_spellchecker_subtype</code>); all of
+those go, and their tags and keyboard names are what the last run
+generated. Only if there were none, and some layout has an <code>android</code>
+section, is the template&#8217;s first <code>&lt;subtype&gt;</code>, its placeholder, removed.</p>
 </li>
 <li>
 <p>For each layout, in bundle layout order:</p>
@@ -3212,24 +3234,38 @@ the speller with <code>android.config</code>, else <code>{"transforms": {}, "spe
 <li>
 <p>Writes the rows and row keys of <code>primary</code> to <code>res/xml</code> and of
 <code>tablet-600</code> to <code>res/xml-sw600dp</code> (<code>create_and_write_rows_keys_for_layer</code>),
-then <code>res/xml/kbd_{name}.xml</code> and <code>res/xml/keyboard_layout_set_{name}.xml</code>.</p>
+deleting row key files numbered past the last row, then
+<code>res/xml/kbd_{name}.xml</code> and <code>res/xml/keyboard_layout_set_{name}.xml</code>.</p>
 </li>
 <li>
-<p>Sets <code>english_ime_name</code> in <code>res/values/strings-appname.xml</code> and appends
-the <code>subtype_{sub}</code> string to <code>res/values/strings.xml</code>
-(<code>create_and_write_values_strings</code>), <code>{sub}</code> being the tag lowercased
-with <code>-</code> as <code>_</code>. Then adds the localised <code>subtype_{sub}</code> strings where
-<code>res/values-{lang}</code> exists, unless one is already there.</p>
+<p>Sets <code>english_ime_name</code> in <code>res/values/strings-appname.xml</code>
+(<code>set_ime_name</code>), and collects the <code>subtype_{sub}</code> strings it wants in
+<code>res/values/strings.xml</code> and, where <code>res/values-{lang}</code> exists, in
+<code>res/values-{lang}/strings.xml</code>; <code>{sub}</code> is the tag lowercased with
+<code>-</code> as <code>_</code> (<code>subtype_name</code>).</p>
 </li>
 <li>
-<p>Appends a <code>&lt;subtype&gt;</code> to <code>method.xml</code> (<code>append_method_subtype</code>) and to
-<code>spellchecker.xml</code>.</p>
+<p>Appends its <code>&lt;subtype&gt;</code> to <code>method.xml</code> and to <code>spellchecker.xml</code>.</p>
 </li>
 </ol>
 </div>
 </li>
 <li>
-<p>Appends <code>english_ime_name</code> from each <code>project.yaml</code> locale to
+<p>Deletes <code>assets/layouts/{tag}.json</code> for each tag the last run generated
+and this one did not, and the layout XML of each keyboard name likewise
+(<code>remove_keyboard_files</code>).</p>
+</li>
+<li>
+<p>Writes the <code>subtype_{sub}</code> strings (<code>write_subtype_strings</code>). The
+<code>subtype_{sub}</code> names of this run&#8217;s and the last run&#8217;s tags are kbdgen&#8217;s:
+<code>values/strings.xml</code> and every <code>values-*/strings.xml</code> end up with exactly
+the kbdgen strings this run wants in them. Paths are keyed by the file
+they resolve to, because <code>values-en/strings.xml</code> is a symlink to
+<code>values/strings.xml</code>. A file with nothing to set or remove is not read
+as XML or written.</p>
+</li>
+<li>
+<p>Sets <code>english_ime_name</code> from each <code>project.yaml</code> locale in
 <code>res/values-{locale}/strings-appname.xml</code>, where <code>res/values-{locale}</code>
 exists.</p>
 </li>
@@ -3246,10 +3282,22 @@ exists.</p>
 </ol>
 </div>
 <div class="paragraph">
+<p>Every string is set with <code>set_string</code>, which replaces the text of an
+existing <code>&lt;string&gt;</code> of that name and removes its duplicates rather than
+appending another. Together with the subtype stripping, that makes
+generation idempotent: <code>android build</code> reuses an existing <code>{out}/repo</code>,
+and giellakbd-android&#8217;s README tells developers to re-run
+<code>android generate</code>, so running it N times with one bundle must leave the
+files one run leaves. A checkout that older kbdgen versions appended to
+several times is repaired the same way.</p>
+</div>
+<div class="paragraph">
 <p>XML is read, queried and written with <code>xmlem</code>. Every file kbdgen touches is
 written back pretty-printed, so <code>git diff</code> in the checkout shows whole
 files reformatted, and text such as a <code>&lt;string&gt;</code> value gains surrounding
-whitespace, which the Android resource compiler trims.</p>
+whitespace, which the Android resource compiler trims. Reading xmlem&#8217;s
+output and printing it again gives the same bytes (it trims text before
+indenting it), which idempotence relies on.</p>
 </div>
 <div class="sect3">
 <h4 id="_rows_and_keys">Rows and keys</h4>
@@ -3318,9 +3366,17 @@ other <code>\s{...}</code> tokens become <code>keySpec</code> values.</p>
 </div>
 <div class="paragraph">
 <p>They cover the keyboard name, the number-row hints, the key attributes,
-the empty long-press error, the <code>assets/layouts</code> JSON, the removal of the
-first subtype, a failing <code>gradlew</code> (Unix only, with a stub script) and a
-clone over an existing checkout.</p>
+the empty long-press error, the <code>assets/layouts</code> JSON, which subtypes count
+as kbdgen&#8217;s and when the placeholder goes, <code>set_string</code>, a failing
+<code>gradlew</code> (Unix only, with a stub script) and a clone over an existing
+checkout. Two tests run <code>GenerateAndroid</code> on a checkout made from
+<code>src/build/android/fixtures/res</code>, trimmed copies of giellakbd-android&#8217;s
+<code>method.xml</code>, <code>spellchecker.xml</code> and strings files, with
+<code>values-en/strings.xml</code> linked to <code>values/strings.xml</code> on Unix as in the
+app. One generates three times and requires the same bytes after each run;
+the other generates one bundle, then a changed one (a layout removed, a
+keyboard renamed, a row and a display name dropped), and requires the same
+XML content as generating the changed bundle once.</p>
 </div>
 <div class="paragraph">
 <p>An end-to-end run needs network access, the Android SDK and a JDK. Copy a
@@ -3329,17 +3385,12 @@ and run <code>android build</code>; the release APK lands in
 <code>{out}/repo/app/build/outputs/apk/release/</code>. Without a <code>targets/android.yaml</code>
 <code>android generate</code> writes the resources and skips Gradle, which is the
 quicker loop for generator changes; <code>git -C {out}/repo status</code> and <code>diff</code>
-show what changed.</p>
-</div>
-<div class="paragraph">
-<p>Reset the checkout between runs with
-<code>git -C {out}/repo checkout -- . &amp;&amp; git -C {out}/repo clean -fd</code>. Without
-that, a second <code>generate</code> appends <code>english_ime_name</code> again to each
-<code>values-{locale}/strings-appname.xml</code>, and Gradle&#8217;s resource merger fails
-with <code>Found item String/english_ime_name more than one time</code>. With more
-than one layout the subtypes duplicate too, since each run removes one and
-adds one per layout. <code>android.metadata</code> and <code>android.metadata.strings</code>
-specify this behaviour.</p>
+show what changed. Generate again on the same checkout after every change;
+there is nothing to reset. To check idempotence, save
+<code>git -C {out}/repo diff --binary</code> and <code>git status --porcelain
+--untracked-files=all</code> after one run and compare them with the same after a
+second: they must be equal. <code>android.metadata</code> and <code>android.metadata.strings</code>
+specify what is replaced and removed.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3353,7 +3404,19 @@ bundle, after some files of earlier layouts are written
 (<code>layout.transforms.dead-key-entries</code>).</p>
 </li>
 <li>
-<p>A second <code>generate</code> on one checkout breaks the Gradle build, as above.</p>
+<p>A run without any Android layout after one with them leaves the
+template&#8217;s placeholder subtype removed, so the next run with layouts
+removes the template&#8217;s next subtype, if it has one; the stock template
+has only the one.</p>
+</li>
+<li>
+<p>The app&#8217;s name in a language that has left <code>project.yaml</code> <code>locales</code>
+stays in <code>values-{locale}/strings-appname.xml</code>.</p>
+</li>
+<li>
+<p>Subtypes are recognised by kbdgen&#8217;s current attribute set, so changing
+what <code>method_subtype</code> or <code>spellchecker_subtype</code> writes stops a later
+version recognising subtypes an earlier one wrote.</p>
 </li>
 <li>
 <p>Layouts whose English names give the same keyboard name overwrite each

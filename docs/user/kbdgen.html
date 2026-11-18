@@ -689,8 +689,8 @@ before them)</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The one exception is <code>target … ios build</code>: <code>pod install</code> and <code>xcodebuild</code>
-print their own progress to stdout while they run.</p>
+<p>Tools that kbdgen runs and whose progress you see, such as <code>pod install</code> and
+<code>xcodebuild</code> during <code>target … ios build</code>, print to stderr too.</p>
 </div>
 <div class="paragraph">
 <p>kbdgen exits with status 0 on success. On failure it prints <code>Error:</code> and the
@@ -1300,9 +1300,9 @@ naming the file. Files copied before the error stay.</p>
 <div class="paragraph">
 <p>Each file in <code>targets/</code> configures one target platform, and its name says
 which: <code>windows.yaml</code>, <code>macos.yaml</code>, <code>ios.yaml</code>, <code>android.yaml</code> and
-<code>chromeos.yaml</code>. kbdgen warns about any other name and ignores the file. That
-includes <code>chrome.yaml</code>, the name older bundles use: rename it to
-<code>chromeos.yaml</code>. Without its file a target is unconfigured; the chapter on
+<code>chromeos.yaml</code>. Older bundles name the ChromeOS file <code>chrome.yaml</code>, which
+works too; having both is an error. kbdgen warns about any other name and
+ignores the file. Without its file a target is unconfigured; the chapter on
 each target says what it needs.</p>
 </div>
 <div class="paragraph">
@@ -1771,6 +1771,16 @@ it, and for rows the row and token, counted from 1:</p>
 <pre class="highlight"><code class="language-text" data-lang="text">Error: ./layouts/se-FI.yaml: hardwar: unknown field hardwar
 Error: ./layouts/se-FI.yaml: hardware.default.layers.none, row 2: layer none row 2 has 11 tokens; form iso row 2 has 12 scan codes
 Error: ./layouts/se-FI.yaml: hardware.default.layers.none, row 1, token 13: no dead key has the identity "´"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>What loads but is likely a mistake is a warning, named the same way. Every
+command that loads the layout logs each warning once: <code>ldml compile</code>,
+<code>ldml export</code>, <code>ldml test</code>, and the targets that build format 4 layouts.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-text" data-lang="text">WARN kbdgen::ldml::yaml: ./layouts/se-FI.yaml: deadKeys.¨: no \d{¨} token uses this dead key, so no host gets it</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2314,7 +2324,8 @@ hardware:
 <p>The key of each <code>deadKeys</code> entry is the dead key&#8217;s <strong>identity</strong>: the character
 it stands for, which <code>\d{…}</code> names. <code>compose</code> maps what the next key types
 to the result. A dead key can appear on any number of keys and layers. One
-that no <code>\d{…}</code> uses has no effect: no platform gets it.</p>
+that no <code>\d{…}</code> uses has no effect: no platform gets it, and kbdgen
+warns (<a href="#layouts-checking">Checking a layout</a>).</p>
 </div>
 <div class="sect3">
 <h4 id="layouts-dead-keys-typing">What the user gets</h4>
@@ -5896,9 +5907,8 @@ output.</p></td>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>macOS layout for se-NO</code><br>
-<code>macOS layer Default does not have enough keys, expected 48 keys but got 37</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A layer has fewer than 48 tokens. The layer is named as kbdgen spells it
-internally (<code>Default</code> for <code>default</code>).</p></td>
+<code>macOS layer default does not have enough keys, expected 48 keys but got 37</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A layer has fewer than 48 tokens.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>seNO: the layout has transforms but no macOS.deadKeys, so it has no dead keys on macOS</code></p></td>
@@ -5909,7 +5919,7 @@ internally (<code>Default</code> for <code>default</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Add <code>transforms</code>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dead key `´` of layer Default is in macOS.deadKeys but not in the transforms</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dead key `´` of layer default is in macOS.deadKeys but not in the transforms</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Every listed dead key needs a top-level transform.</p></td>
 </tr>
 <tr>
@@ -5932,18 +5942,18 @@ for <code>vro.yaml</code> and <code>features.yaml</code>, two of kbdgen&#8217;s 
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>WARN kbdgen::build::windows::kbdl::diag: sme: layer altL, altL caps: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart
-WARN kbdgen::build::windows::kbdl::diag: sme: the .keylayout cannot express 1 key(s) with long-press, multi-tap or flick gestures (e.g. u-0061)
-WARN kbdgen::build::windows::kbdl::diag: sme: the .keylayout cannot express 2 key display(s) and label(s) (e.g. Å; ¨)
-WARN kbdgen::build::windows::kbdl::diag: vro: the .keylayout cannot express 2 key(s) with long-press, multi-tap or flick gestures (e.g. u-006F; u-0061)
-WARN kbdgen::build::windows::kbdl::diag: vro: the .keylayout cannot express 2 key display(s) and label(s) (e.g. vaih; sisse)</pre>
+<pre>WARN kbdgen::build::macos: sme: layer altL, altL caps: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart
+WARN kbdgen::build::macos: sme: the .keylayout cannot express 1 key(s) with long-press, multi-tap or flick gestures (e.g. u-0061)
+WARN kbdgen::build::macos: sme: the .keylayout cannot express 2 key display(s) and label(s) (e.g. Å; ¨)
+WARN kbdgen::build::macos: vro: the .keylayout cannot express 2 key(s) with long-press, multi-tap or flick gestures (e.g. u-006F; u-0061)
+WARN kbdgen::build::macos: vro: the .keylayout cannot express 2 key display(s) and label(s) (e.g. vaih; sisse)</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The log names <code>kbdgen::build::windows::kbdl::diag</code> because the macOS
-adapter reports through the same diagnostics as the Windows one; these
-lines are about the macOS layout. Each <code>cannot express</code> warning gives a
-count and up to ten examples. The other v4 messages:</p>
+<p>Each line names the target, <code>kbdgen::build::macos</code>, and the keyboard.
+Each <code>cannot express</code> warning gives a count and up to ten examples.
+Loading the layout file logs its own warnings first, as every command that
+loads it does (<a href="#layouts-checking">Checking a layout</a>). The other v4 messages:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -6793,7 +6803,8 @@ at &lt;output&gt;/repo</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Writes the layouts, names, input method subtypes and icons into
 <code>&lt;output&gt;/repo</code> and, when there is a <code>targets/android.yaml</code>, writes
 <code>app/local.gradle</code> and runs Gradle. It needs a
-checkout from an earlier <code>build</code> or <code>clone</code>; it does not download the
+checkout from an earlier <code>build</code> or <code>clone</code>, and can run on it again as
+often as needed (see <a href="#android-building-again">Building again</a>); it does not download the
 native libraries.</p></td>
 </tr>
 </tbody>
@@ -7194,25 +7205,50 @@ Studio to build, run and change the app there.</p>
 <div class="sect3">
 <h4 id="android-building-again">Building again</h4>
 <div class="paragraph">
-<p>Generating twice into the same checkout breaks it: kbdgen appends the app&#8217;s
-names again, and Gradle then stops with</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>Error: `gradlew assembleRelease` failed with exit status: 1: ERROR: &lt;output&gt;/repo/app/src/main/res/values-en/strings-appname.xml: Resource and asset merger: Found item String/english_ime_name more than one time</pre>
-</div>
+<p>After changing the bundle, run <code>android build</code> or <code>android generate</code> again
+with the same output directory. There is no need to reset the checkout
+first: kbdgen replaces what it wrote the last time instead of adding to it.
+Generating any number of times with one bundle leaves the checkout exactly
+as generating once does, so <code>git status</code> lists the files above and
+<code>git diff</code> shows the same changes. <code>android build</code> keeps the existing
+checkout and downloads the native libraries again; <code>android generate</code> is
+quicker when only the bundle changed.</p>
 </div>
 <div class="paragraph">
-<p>With more than one layout, the input method subtypes are duplicated as well.
-Reset the checkout before generating again; the native libraries and
-<code>local.gradle</code> stay:</p>
+<p>The checkout follows the bundle:</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight"><code class="language-sh" data-lang="sh">git -C android-out/repo checkout -- .
-git -C android-out/repo clean -fd
-kbdgen target -b sme.kbdgen -o android-out android generate</code></pre>
+<div class="ulist">
+<ul>
+<li>
+<p>A layout that has left the bundle, or lost its <code>android</code> section, loses
+its input method subtype, its names in every language, its
+<code>assets/layouts/&lt;tag&gt;.json</code> and its keyboard files. kbdgen logs
+<code>Removing &lt;tag&gt;: an earlier run generated it, and the bundle has no
+Android layout for it</code>.</p>
+</li>
+<li>
+<p>A changed English name gives the keyboard&#8217;s files the new name and
+removes those with the old one.</p>
+</li>
+<li>
+<p>A display name removed from a layout is removed from that language&#8217;s
+strings, and a changed one is replaced.</p>
+</li>
+<li>
+<p>Rows removed from a layer lose their row files.</p>
+</li>
+</ul>
 </div>
+<div class="paragraph">
+<p>Two things stay from earlier runs: the app&#8217;s name in a language that has
+left <code>project.yaml</code> <code>locales</code>, and the launcher icons of an earlier run
+whose bundle had <code>resources/android/icon.png</code>.</p>
+</div>
+<div class="paragraph">
+<p>A checkout that an older kbdgen generated into more than once, which Gradle
+rejects with <code>Found item String/english_ime_name more than one time</code>, is
+repaired by generating into it again: kbdgen keeps one of each name and
+subtype.</p>
 </div>
 </div>
 </div>
@@ -7329,12 +7365,8 @@ Gradle&#8217;s output is logged at the trace level: run with
 <li>
 <p>Transforms deeper than one level crash kbdgen, even in a layout without
 an <code>android</code> section, with <code>not yet implemented: Recursion required
-ahead</code>. The checkout is left half written; reset it as in
-<a href="#android-building-again">Building again</a>.</p>
-</li>
-<li>
-<p>Generating twice into one checkout breaks the Gradle build; see
-<a href="#android-building-again">Building again</a>.</p>
+ahead</code>. The checkout is left half written; generate again once the
+transform is fixed (see <a href="#android-building-again">Building again</a>).</p>
 </li>
 <li>
 <p>A keyboard has only a <code>default</code> and a <code>shift</code> layer.</p>
@@ -7380,7 +7412,8 @@ kbdgen&#8217;s build compiles the engine for it:</p>
 <div class="sect2">
 <h3 id="_target_configuration_5">Target configuration</h3>
 <div class="paragraph">
-<p><code>targets/chromeos.yaml</code> is required; without it the build stops with
+<p><code>targets/chromeos.yaml</code> is required (older bundles name it
+<code>targets/chrome.yaml</code>, which works too); without it the build stops with
 <code>targets/chromeos.yaml is missing</code>. Any scalar is read as a string.</p>
 </div>
 <div class="listingblock">
