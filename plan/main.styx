@@ -1203,6 +1203,268 @@ children (
                     targets.macos.test-golden
                 )
             }
+
+            {
+                id targets.linux
+                title "Linux: XKB layouts, an IBus engine running kbd-engine, and on-screen keyboard layouts"
+                kind @feat
+                children (
+                    {
+                        id targets.linux.target-file
+                        title "Load targets/linux.yaml; linux platform with a one-step pipeline"
+                        implements {
+                            main ([spec:kbdgen:def:linux.ids])
+                        }
+                    }
+
+                    {
+                        id targets.linux.input
+                        title "Select and compile Linux layouts (v4; v3 inheriting Windows, else ChromeOS)"
+                        implements {
+                            main ([spec:kbdgen:def:ldml.linux.input] [spec:kbdgen:def:ldml.linux.adapter])
+                        }
+                        deps (targets.linux.target-file)
+                    }
+
+                    {
+                        id targets.linux.xkb
+                        title "XKB tier: symbols, dead keys, registry, reports, tests"
+                        children (
+                            {
+                                id targets.linux.xkb.symbols
+                                title "XKB symbols: keycodes, eight states, keysyms, key types, decimal"
+                                implements {
+                                    main (
+                                        [spec:kbdgen:def:ldml.linux.keycodes]
+                                        [spec:kbdgen:sem:ldml.linux.levels]
+                                        [spec:kbdgen:sem:ldml.linux.values]
+                                        [spec:kbdgen:sem:ldml.linux.semantics]
+                                        [spec:kbdgen:sem:ldml.linux.types]
+                                        [spec:kbdgen:sem:ldml.linux.decimal]
+                                        [spec:kbdgen:syn:linux.xkb.symbols]
+                                        [spec:kbdgen:sem:linux.xkb.naming]
+                                    )
+                                }
+                                deps (targets.linux.input)
+                            }
+
+                            {
+                                id targets.linux.xkb.dead-keys
+                                title "XKB dead keys: dead_* keysyms checked against the vendored Compose table and the engine"
+                                implements {
+                                    main ([spec:kbdgen:def:ldml.linux.compose] [spec:kbdgen:sem:ldml.linux.dead-keys])
+                                }
+                                deps (targets.linux.xkb.symbols)
+                            }
+
+                            {
+                                id targets.linux.xkb.registry
+                                title "XKB registry entry: rules/evdev.xml"
+                                implements {
+                                    main ([spec:kbdgen:syn:linux.xkb.registry])
+                                }
+                                deps (targets.linux.input)
+                            }
+
+                            {
+                                id targets.linux.xkb.classify
+                                title "Report per layout what the XKB layout cannot express"
+                                implements {
+                                    main ([spec:kbdgen:req:ldml.linux.classify] [spec:kbdgen:def:ldml.linux.rewrites])
+                                }
+                                deps (targets.linux.xkb.dead-keys)
+                            }
+
+                            {
+                                id targets.linux.xkb.test
+                                title "XKB tests: differential typing against the engine, libxkbcommon compile and registry"
+                                kind @test
+                                implements {
+                                    main ([spec:kbdgen:req:ldml.linux.test.typing] [spec:kbdgen:req:linux.test.xkbcommon])
+                                }
+                                deps (targets.linux.xkb.classify targets.linux.xkb.registry)
+                            }
+                        )
+                    }
+
+                    {
+                        id targets.linux.ibus
+                        title "IBus engine (crates/kbd-ibus) running kbd-engine"
+                        children (
+                            {
+                                id targets.linux.ibus.data
+                                title "IBus engine descriptions and models in the output"
+                                implements {
+                                    main ([spec:kbdgen:syn:linux.ibus.data])
+                                }
+                                deps (targets.linux.xkb.registry)
+                            }
+
+                            {
+                                id targets.linux.ibus.component
+                                title "crates/kbd-ibus, the component template and the --xml engine lister"
+                                implements {
+                                    main ([spec:kbdgen:def:linux.ibus.component] [spec:kbdgen:req:linux.ibus.crate] [spec:kbdgen:req:linux.ibus.lister])
+                                }
+                                deps (targets.linux.ibus.data)
+                            }
+
+                            {
+                                id targets.linux.ibus.factory
+                                title "zbus factory and engines, inert reasons, logging, panic containment"
+                                implements {
+                                    main (
+                                        [spec:kbdgen:req:linux.ibus.factory]
+                                        [spec:kbdgen:req:linux.ibus.inert]
+                                        [spec:kbdgen:req:linux.ibus.logging]
+                                        [spec:kbdgen:req:linux.ibus.panic]
+                                    )
+                                }
+                                deps (targets.linux.ibus.component)
+                            }
+
+                            {
+                                id targets.linux.ibus.keys
+                                title "Planner: hardware keys, modifiers (engine passes Left Alt on linux), on-screen keyval input"
+                                implements {
+                                    main (
+                                        [spec:kbdgen:req:linux.ibus.planner]
+                                        [spec:kbdgen:req:linux.ibus.keys]
+                                        [spec:kbdgen:sem:linux.ibus.modifiers]
+                                        [spec:kbdgen:sem:linux.ibus.virtual-keys]
+                                    )
+                                }
+                                deps (targets.linux.ibus.component)
+                            }
+
+                            {
+                                id targets.linux.ibus.edits
+                                title "Planner: edits, surrounding-text context and fallback, on-screen Backspace, password fields"
+                                implements {
+                                    main (
+                                        [spec:kbdgen:sem:linux.ibus.semantics]
+                                        [spec:kbdgen:req:linux.ibus.edit]
+                                        [spec:kbdgen:sem:linux.ibus.context]
+                                        [spec:kbdgen:sem:linux.ibus.context.fallback]
+                                        [spec:kbdgen:sem:linux.ibus.osk-backspace]
+                                        [spec:kbdgen:req:linux.ibus.security]
+                                    )
+                                }
+                                deps (targets.linux.ibus.keys)
+                            }
+
+                            {
+                                id targets.linux.ibus.test
+                                title "IBus tests: fake-client planner tests and a private ibus-daemon harness"
+                                kind @test
+                                implements {
+                                    main ([spec:kbdgen:req:linux.test.planner] [spec:kbdgen:req:linux.test.ibus])
+                                }
+                                deps (targets.linux.ibus.edits targets.linux.ibus.factory)
+                            }
+                        )
+                    }
+
+                    {
+                        id targets.linux.osk
+                        title "On-screen keyboard layouts from the desktop layout: GNOME Shell, plasma-keyboard, Stevia"
+                        children (
+                            {
+                                id targets.linux.osk.source
+                                title "The desktop layout presented as touch: levels, fixed symbol levels, added keys, key mapping, touch reports"
+                                implements {
+                                    main ([spec:kbdgen:def:ldml.linux.touch] [spec:kbdgen:sem:ldml.linux.touch.keys] [spec:kbdgen:req:ldml.linux.classify.touch])
+                                }
+                                deps (targets.linux.input)
+                            }
+
+                            {
+                                id targets.linux.osk.gnome-spike
+                                title "Spike: GNOME Shell 50/51 loads OSK layouts from an extension's GResource; keyval dead keys reach IBus"
+                                kind @chore
+                                implements {
+                                    main ([spec:kbdgen:req:linux.osk.gnome.spike])
+                                }
+                            }
+
+                            {
+                                id targets.linux.osk.gnome
+                                title "GNOME Shell OSK: layout JSON, GVDB GResource bundle and generated extension"
+                                implements {
+                                    main ([spec:kbdgen:def:linux.osk.gnome] [spec:kbdgen:sem:linux.osk.gnome.selection] [spec:kbdgen:sem:ldml.linux.touch.gnome])
+                                }
+                                deps (targets.linux.osk.source targets.linux.osk.gnome-spike targets.linux.xkb.dead-keys)
+                            }
+
+                            {
+                                id targets.linux.osk.plasma
+                                title "plasma-keyboard KPackage (desktop.qml) for Plasma 6.9+"
+                                implements {
+                                    main ([spec:kbdgen:def:linux.osk.plasma] [spec:kbdgen:sem:ldml.linux.touch.plasma])
+                                }
+                                deps (targets.linux.osk.source)
+                            }
+
+                            {
+                                id targets.linux.osk.stevia
+                                title "Stevia (Phosh) layout JSON for upstream"
+                                implements {
+                                    main ([spec:kbdgen:def:linux.osk.stevia] [spec:kbdgen:sem:ldml.linux.touch.stevia])
+                                }
+                                deps (targets.linux.osk.source targets.linux.xkb.dead-keys)
+                            }
+                        )
+                    }
+
+                    {
+                        id targets.linux.output
+                        title "Assemble the Linux output tree; a failure writes nothing; golden test; CI split"
+                        implements {
+                            main (
+                                [spec:kbdgen:def:linux.output]
+                                [spec:kbdgen:req:ldml.linux.target]
+                                [spec:kbdgen:req:linux.test.golden]
+                                [spec:kbdgen:sem:linux.test.ci]
+                            )
+                        }
+                        deps (
+                            targets.linux.xkb.classify
+                            targets.linux.xkb.registry
+                            targets.linux.ibus.data
+                            targets.linux.osk.gnome
+                            targets.linux.osk.plasma
+                            targets.linux.osk.stevia
+                        )
+                    }
+
+                    {
+                        id targets.linux.install
+                        title "divvun-actions: system packages and the per-user installer (registry merge)"
+                        implements {
+                            main ([spec:kbdgen:req:linux.install] [spec:kbdgen:req:linux.xkb.install])
+                        }
+                        deps (targets.linux.output targets.linux.ibus.factory)
+                    }
+
+                    {
+                        id targets.linux.acceptance
+                        title "Acceptance on GNOME, Plasma and Phosh VMs"
+                        kind @test
+                        implements {
+                            main ([spec:kbdgen:req:linux.test.acceptance] [spec:kbdgen:sem:linux.xkb.desktops])
+                        }
+                        deps (targets.linux.install targets.linux.ibus.test)
+                    }
+                )
+                log (
+                    {
+                        at 2026-11-18T12:33:57.032047Z
+                        author "brendan@necessary.nu"
+                        kind @decision
+                        text "Operator 2026-11-18: the first Linux deliverable is XKB layouts plus an IBus engine running kbd-engine, together, Wayland only (GNOME 50+, Plasma 6.8+). On-screen layouts are generated for plasma-keyboard (KPackage, Plasma 6.9+), GNOME Shell (in a generated extension, pending targets.linux.osk.gnome-spike) and Stevia (files for upstream). The Linux on-screen keyboards show the layout's desktop layout only for now: no touch.linux variant and no android touch sets; authored Linux touch layouts are later work. Left Alt passes through the engine as a shortcut on linux, as on Windows. v3 layouts reach Linux by in-memory migration from their Windows section, else ChromeOS. The engine and its data paths carry Divvun branding (ibus-engine-divvun, ~/.local/share/divvun/keyboards). Fcitx5 addon and a Stevia completer come after IBus ships. Spec: docs/spec/linux.md, docs/spec/ldml/linux.md."
+                    }
+                )
+            }
         )
     }
 
