@@ -63,7 +63,7 @@ fn outputs_dead_keys_and_rewrites_are_reported_once() {
             "info: the XKB layout cannot type 1 output(s) of more than one scalar value (e.g. <AE03>: \"ŋ\\u{308}\"); the IBus engine types them",
             "info: the XKB layout cannot type 1 output(s) mixing text and markers (e.g. <AE02>: key mx); the IBus engine types them",
             "info: the XKB layout cannot type 1 dead key(s) without a dead keysym, which it types as their standalone (e.g. \\m{dk_0078}, typed as \"x\"); the IBus engine types them",
-            "info: the XKB layout composes 95 dead-key result(s) (e.g. \\m{dk_00B4} then \\m{dk_00B4}: the engine types \"´\" and leaves \\m{dk_00B4} pending, the XKB layout types \"´\";",
+            "info: the XKB layout composes 96 dead-key result(s) (e.g. \\m{dk_00B4} then \\m{dk_00B4}: the engine types \"´\" and leaves \\m{dk_00B4} pending, the XKB layout types \"´\";",
             "info: the XKB layout cannot type 2 transform rule(s) that do not start with a marker (e.g. group 3 rule 1; group 3 rule 2); the IBus engine types them",
             "info: the XKB layout cannot type 1 reorder group(s) (e.g. group 4 (1 rules)); the IBus engine types them",
             "info: the XKB layout cannot type 1 backspace rule(s) besides the generated one (e.g. group 1 rule 1); the IBus engine types them",

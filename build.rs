@@ -49,7 +49,26 @@ fn env(name: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| panic!("cargo sets {name} for build scripts"))
 }
 
+/// Sets `kbdgen_xkbcommon` when pkg-config finds libxkbcommon and
+/// libxkbregistry for a Linux target: `linux.test.xkbcommon` links them
+/// only then, and otherwise says it is skipped.
+fn probe_xkbcommon() {
+    println!("cargo::rustc-check-cfg=cfg(kbdgen_xkbcommon)");
+    println!("cargo::rerun-if-env-changed=PKG_CONFIG_PATH");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("linux") {
+        return;
+    }
+    let found = Command::new("pkg-config")
+        .args(["--exists", "xkbcommon", "xkbregistry"])
+        .status()
+        .is_ok_and(|status| status.success());
+    if found {
+        println!("cargo::rustc-cfg=kbdgen_xkbcommon");
+    }
+}
+
 fn main() {
+    probe_xkbcommon();
     let root = PathBuf::from(env("CARGO_MANIFEST_DIR"));
     for source in SOURCES {
         println!("cargo::rerun-if-changed={}", root.join(source).display());

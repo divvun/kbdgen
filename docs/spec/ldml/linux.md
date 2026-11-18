@@ -130,9 +130,9 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > key's type maps the active modifiers among its own to a level, Level1
 > when no entry matches, and consumes its own modifiers except those the
 > entry preserves; the level's keysym is taken, and `VoidSymbol` and
-> `NoSymbol` type nothing. When Lock is active and the type does not consume it, the
-> keysym becomes its uppercase, `xkb_keysym_to_upper`: the simple
-> uppercase mapping of Unicode, with ẞ for ß since libxkbcommon 1.8
+> `NoSymbol` type nothing. When Lock is active and the type does not
+> consume it, the keysym becomes its uppercase, `xkb_keysym_to_upper`: the
+> simple uppercase mapping of Unicode, with ẞ for ß since libxkbcommon 1.8
 > (`NEWS.md`). Dead keysyms then compose per `ldml.linux.compose`. The
 > adapter's choice of types, `ldml.linux.test.typing` and
 > `linux.test.xkbcommon` all rest on these semantics.
@@ -144,10 +144,11 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > `FOUR_LEVEL_ALPHABETIC` when the model uses Level3, then
 > `FOUR_LEVEL_PLUS_LOCK`, that gives all eight of its values under
 > `ldml.linux.semantics`; when the model does not use Level3, no state
-> with Level3 can occur, and only the other four count. A type's levels hold the values of the states
-> that name them in its map: Level1 (0, 0, 0), Level2 (1, 0, 0), Level3
-> (0, 0, 1), Level4 (1, 0, 1), and in `FOUR_LEVEL_PLUS_LOCK`, which gives
-> Lock alone a level, Level5 (0, 1, 0). A key that no type serves takes
+> with Level3 can occur, and only the other four count. A type's levels
+> hold the values of the states that name them in its map: Level1
+> (0, 0, 0), Level2 (1, 0, 0), Level3 (0, 0, 1), Level4 (1, 0, 1), and in
+> `FOUR_LEVEL_PLUS_LOCK`, which gives Lock alone a level, Level5
+> (0, 1, 0). A key that no type serves takes
 > the type that gives the most states, the earliest on a tie, and the
 > states it gets wrong are reported (`ldml.linux.classify`). A symbols
 > file can name only the types its keymap compiles, which come from the
@@ -198,21 +199,22 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > plasma-keyboard's and other locales' composition differ in details;
 > reports and tests use this one.
 
-> [spec:kbdgen:sem:ldml.linux.dead-keys+1]
+> [spec:kbdgen:sem:ldml.linux.dead-keys+2]
 > A dead key, marker m, gets the first dead keysym D, in the order of
 > `ibus_keysym_to_unicode`'s table (`src/ibuscomposetable.c`), whose
 > isolated or combining character is `flush[m]`, or, when none is (as for
 > `standalone: ""`), the display of `\m{m}` (`ldml.model.displays`), and
-> that no marker earlier in the marker table got: `´` or U+0301 gives `dead_acute`, `ˇ` `dead_caron`, `~`
-> `dead_tilde`, `¨` `dead_diaeresis`. A dead key without one is typed as
-> its standalone (`ldml.linux.values`).
+> that no marker earlier in the marker table got: `´` or U+0301 gives
+> `dead_acute`, `ˇ` `dead_caron`, `~` `dead_tilde`, `¨` `dead_diaeresis`. A
+> dead key without one is typed as its standalone (`ldml.linux.values`).
 >
 > Whether D composes as the engine does is found by running the engine
 > (`ldml.engine.api`; `CancelOrPass`, `Nfc`, host `linux`), as
 > `ldml.macos.dead-keys` does: from m pending, each distinct value of the
 > written states, the space bar's included, is pressed by key id, and the
-> result is compared with what the reference table gives for D followed by
-> the value's keysym, through chains of dead keys up to three keys. The
+> decimal key, when K has one, as `Decimal`; the result is compared with
+> what the reference table gives for D followed by the value's keysym,
+> through chains of dead keys up to three keys. The
 > XKB layout keeps D, and results that differ are reported
 > (`ldml.linux.classify`).
 
@@ -428,14 +430,18 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 
 ## Tests
 
-> [spec:kbdgen:req:ldml.linux.test.typing]
+> [spec:kbdgen:req:ldml.linux.test.typing+1]
 > For the golden v4 layouts, the golden v3 layouts migrated in memory, and
 > the Windows and macOS feature fixtures as `linux` variants, the XKB
 > layout, read back from the written symbols file and simulated per
-> `ldml.linux.semantics`, MUST type what the engine types (host `linux`,
-> keys sent as `linux.ibus.keys` sends them) at every written key in all
-> eight states, then on dead-key paths of up to three keys, each also
-> ended by the space bar. Cases the engine passes are not compared.
+> `ldml.linux.semantics` and, for dead keys, `ldml.linux.compose`, MUST
+> type what the engine types (host `linux`, keys sent as `linux.ibus.keys`
+> sends them) at every written key in all eight states, or the four
+> without Level3 when the model does not use it (`ldml.linux.types`), and
+> at `<KPDL>` with Num Lock on in those without Shift, which
+> xkeyboard-config's `KEYPAD` maps to Level1 up to at least 2.42 and to
+> Level2 in 2.48; then on dead-key paths of up to three keys, each
+> also ended by the space bar. Cases the engine passes are not compared.
 > Committed text must agree, unless a reported feature
 > (`ldml.linux.classify`) explains the difference; each explanation is
 > exercised by a synthetic layout.

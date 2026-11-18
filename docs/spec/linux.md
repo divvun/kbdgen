@@ -766,20 +766,28 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
 > GNOME Shell and Stevia layout MUST hold only the fields of its format,
 > and every `levelSwitch` MUST name a level of its layout.
 
-> [spec:kbdgen:req:linux.test.xkbcommon]
+> [spec:kbdgen:req:linux.test.xkbcommon+1]
 > Where libxkbcommon is installed, a test MUST, for each golden layout:
 >
 > - compile the keymap of layout L with the output's `xkb/` before the
 >   default include paths, as `xkbcli compile-keymap --include <xkb>
 >   --include-defaults --layout L` does, with no error or warning logged
+>   beyond those compiling `us` with the same paths logs: an
+>   xkeyboard-config newer than libxkbcommon warns of keysyms the library
+>   lacks (Fedora 45's 2.48 and 1.13.1 do, in `inet`)
 > - find L in libxkbregistry with the same paths, with its description,
 >   short description, languages and countries
-> - press every key of `ldml.linux.levels` in all eight states through
->   `xkb_state_key_get_one_sym` and `xkb_state_key_get_utf8`, which MUST
->   give what `ldml.linux.semantics` predicts
+> - press every key of `ldml.linux.levels` in all eight states, and
+>   `<KPDL>` with Num Lock on and Shift up (`ldml.linux.test.typing`),
+>   through `xkb_state_key_get_one_sym` and `xkb_state_key_get_utf8`, which
+>   MUST give what `ldml.linux.semantics` predicts, its keysym of a
+>   character being the one `xkb_utf32_to_keysym` gives
 >
-> It uses the `xkbcommon` crate, a dev-dependency on Linux only. Without
-> libxkbcommon it says so and passes.
+> It uses the `xkbcommon` crate, a dev-dependency on Linux only, and
+> declares the few libxkbregistry functions and the log callback the crate
+> does not bind. The build script asks pkg-config for `xkbcommon` and
+> `xkbregistry` and the test links them only when both are found, so
+> without them it says so and passes.
 
 > [spec:kbdgen:req:linux.test.planner]
 > The planner (`linux.ibus.planner`) MUST be tested on every host against

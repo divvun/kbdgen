@@ -1681,6 +1681,13 @@ impl_evidence (
         {impl_name main, rule linux.ibus.crate}
         {impl_name main, rule linux.ibus.lister}
     )}
+    {id targets.linux.xkb.test, covered_rules (
+        ldml.linux.test.typing
+        linux.test.xkbcommon
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.test.typing}
+        {impl_name main, rule linux.test.xkbcommon}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

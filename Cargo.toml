@@ -49,3 +49,6 @@ qname = "0.2.0"
 
 [dev-dependencies]
 proptest = { version = "1", default-features = false, features = ["std"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+xkbcommon = { version = "0.9", default-features = false }

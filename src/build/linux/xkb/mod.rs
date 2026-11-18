@@ -6,6 +6,8 @@
 mod classify;
 pub mod compose;
 mod dead_keys;
+#[cfg(test)]
+mod differential;
 pub mod keycodes;
 pub mod keysym;
 mod levels;

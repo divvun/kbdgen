@@ -87,7 +87,7 @@ fn composer_types_what_ibus_1_5_35_typed() {
     assert!(composer.pending.is_empty());
 }
 
-// [spec:kbdgen:sem:ldml.linux.dead-keys+1/test]
+// [spec:kbdgen:sem:ldml.linux.dead-keys+2/test]
 #[test]
 fn dead_keys_take_the_first_free_dead_keysym() {
     let body = "deadKeys:\n  ´: {standalone: ´, compose: {a: á}}\n  '\\u{301}': {standalone: '\\u{301}', compose: {e: é}}\n  ',': {standalone: ',', compose: {s: ș}}\n  x: {standalone: x, compose: {o: ö}}\n  ¨: {standalone: '', compose: {o: ö}}\n";
@@ -126,7 +126,7 @@ fn dead_keys_take_the_first_free_dead_keysym() {
     assert!(line(&layout, "AE04").contains("[ dead_diaeresis"));
 }
 
-// [spec:kbdgen:sem:ldml.linux.dead-keys+1/test]
+// [spec:kbdgen:sem:ldml.linux.dead-keys+2/test]
 #[test]
 fn compose_results_unlike_the_engine_are_listed() {
     let body = "deadKeys:\n  ´: {standalone: ´, compose: {a: á, b: b́}}\n";

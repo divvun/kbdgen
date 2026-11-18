@@ -8,7 +8,7 @@ use anyhow::{Result, anyhow, bail};
 use kbd_engine::{
     Action, BackspacePolicy, Context, Gesture, Key, KeyEvent, Model, Options, OutputForm, State,
 };
-use kbd_model::{Host, KeyIndex, Keyboard, MarkerIndex, Text, TextElem};
+use kbd_model::{Host, Keyboard, MarkerIndex, Text, TextElem};
 
 use super::compose::{ComposeTable, Composed, Composer, DEAD_CHARACTERS};
 use super::keysym::Keysym;
@@ -69,7 +69,7 @@ fn identities(keyboard: &Keyboard, marker: MarkerIndex) -> Vec<String> {
 /// order: the first of `ibus_keysym_to_unicode`'s table whose isolated or
 /// combining character is the marker's flush output, else its display,
 /// and that no earlier marker got.
-// [spec:kbdgen:sem:ldml.linux.dead-keys+1]
+// [spec:kbdgen:sem:ldml.linux.dead-keys+2]
 pub fn assign(
     keyboard: &Keyboard,
     levels: &Levels,
@@ -110,14 +110,20 @@ pub fn assign(
     (keysyms, without)
 }
 
-/// A distinct value of the written states and the first key giving it.
+/// How a [`Difference`] path shows the numpad decimal key.
+pub(crate) const DECIMAL_SHOWN: &str = "the decimal key";
+
+/// A distinct value of the written states with the first key giving it,
+/// or the decimal key, and how a path shows it.
 struct Pressable {
     value: Value,
-    key: KeyIndex,
+    key: Key,
     keysym: Keysym,
+    shown: String,
 }
 
-fn show(keyboard: &Keyboard, value: &Value) -> String {
+/// A value as a [`Difference`] path shows it.
+pub(crate) fn show(keyboard: &Keyboard, value: &Value) -> String {
     match value {
         Value::Dead(marker) => format!("\\m{{{}}}", keyboard.marker_name(*marker).unwrap_or("?")),
         Value::Char(c) => format!("{:?}", c.to_string()),
@@ -142,12 +148,8 @@ struct EngineStep {
 }
 
 impl Prober<'_> {
-    fn engine(&self, state: &State, key: KeyIndex) -> Option<EngineStep> {
-        let id = self.keyboard.key(key)?.id.clone();
-        let event = KeyEvent::new(Key::Id {
-            id,
-            gesture: Gesture::Tap,
-        });
+    fn engine(&self, state: &State, key: &Key) -> Option<EngineStep> {
+        let event = KeyEvent::new(key.clone());
         let (action, next) = self.model.key(state, &Context::default(), &event);
         let committed = match action {
             Action::Edit { insert, .. } => insert,
@@ -192,7 +194,7 @@ impl Prober<'_> {
 /// through the reference table, from each dead key with a dead keysym.
 /// Pressing a dead key from the reset state MUST commit nothing and leave
 /// exactly its marker pending.
-// [spec:kbdgen:sem:ldml.linux.dead-keys+1]
+// [spec:kbdgen:sem:ldml.linux.dead-keys+2]
 pub fn derive(keyboard: &Keyboard, levels: &Levels, layout: &str) -> Result<DeadKeys> {
     let (keysyms, without) = assign(keyboard, levels);
     let options = Options {
@@ -210,12 +212,27 @@ pub fn derive(keyboard: &Keyboard, levels: &Levels, layout: &str) -> Result<Dead
             if *value == Value::Empty || pressables.iter().any(|p| p.value == *value) {
                 continue;
             }
+            let Some(key) = keyboard.key(index) else {
+                continue;
+            };
             pressables.push(Pressable {
                 value: value.clone(),
-                key: index,
+                key: Key::Id {
+                    id: key.id.clone(),
+                    gesture: Gesture::Tap,
+                },
                 keysym: levels::keysym(keyboard, &keysyms, value),
+                shown: show(keyboard, value),
             });
         }
+    }
+    if let Some(decimal) = levels::decimal(keyboard) {
+        pressables.push(Pressable {
+            value: Value::Empty,
+            key: Key::Decimal,
+            keysym: decimal.keysym,
+            shown: DECIMAL_SHOWN.to_owned(),
+        });
     }
     let prober = Prober {
         keyboard,
@@ -233,23 +250,23 @@ pub fn derive(keyboard: &Keyboard, levels: &Levels, layout: &str) -> Result<Dead
         let Some(keysym) = keysyms.get(&marker) else {
             continue;
         };
-        let step = prober.engine(&State::default(), pressable.key);
+        let step = prober.engine(&State::default(), &pressable.key);
         let Some(step) = step.filter(|s| s.committed.is_empty() && s.pending == [marker]) else {
             bail!(
                 "{layout}: dead key {}: pressing it does not leave exactly its marker pending",
-                show(keyboard, &pressable.value)
+                pressable.shown
             );
         };
         let composer = Composer {
             pending: vec![*keysym],
         };
         if explored.insert(composer.pending.clone()) {
-            open.push((vec![show(keyboard, &pressable.value)], step.state, composer));
+            open.push((vec![pressable.shown.clone()], step.state, composer));
         }
     }
     while let Some((path, state, composer)) = open.pop() {
         for pressable in &pressables {
-            let Some(step) = prober.engine(&state, pressable.key) else {
+            let Some(step) = prober.engine(&state, &pressable.key) else {
                 continue;
             };
             let mut next = composer.clone();
@@ -268,7 +285,7 @@ pub fn derive(keyboard: &Keyboard, levels: &Levels, layout: &str) -> Result<Dead
                 .map(|marker| prober.dead.get(marker).copied())
                 .collect();
             let mut path = path.clone();
-            path.push(show(keyboard, &pressable.value));
+            path.push(pressable.shown.clone());
             let same = step.committed == xkb_text && engine_pending.as_ref() == Some(&next.pending);
             if !same {
                 let engine = if step.pending.is_empty() {
