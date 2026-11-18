@@ -21,7 +21,7 @@ use language_tags::LanguageTag;
 use super::input::{Binding, Key, KeyMap, KeylayoutInput, NONE_STATE, When};
 use super::keymap::MACOS_HARDCODED;
 use super::util::keyboard_name;
-use crate::build::windows::kbdl::diag::Diagnostics;
+use crate::build::diag::{Diagnostics, Platform};
 use crate::ldml::layouts::{LayoutFile, compiled_layouts, host_documents};
 use crate::ldml::yaml::LayoutFormat;
 use crate::util::decode_unicode_escapes;
@@ -172,7 +172,7 @@ pub fn adapt(layout: &ModelLayout) -> Result<Adapted> {
         .keyboard_for(Host::MacOs)
         .ok_or_else(|| anyhow!("layout {} has no macOS keyboard", layout.tag))?;
     let name = keyboard_name(layout.tag.as_str());
-    let mut diag = Diagnostics::new(name.clone());
+    let mut diag = Diagnostics::new(Platform::MacOs, name.clone());
     let hardware = keyboard.hardware.as_ref().ok_or_else(|| {
         anyhow!(
             "{name}: the macOS keyboard of layout {} has no hardware layers",

@@ -17,6 +17,7 @@ use kbd_model::{Host, Keyboard, Layout};
 use language_tags::LanguageTag;
 
 use crate::{
+    build::diag::{Diagnostics, Platform},
     bundle::KbdgenBundle,
     ldml::{
         compile::{Selection, encode},
@@ -27,7 +28,6 @@ use crate::{
 
 use super::{
     bundle::{keyboard_name, metadata},
-    diag::Diagnostics,
     input::{ExtraModifierKey, KeyNameEntry, KeyNameTable, LayoutInput, Metadata},
     tables::{KEY_NAMES, KEY_NAMES_EXT},
 };
@@ -122,7 +122,7 @@ pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
         .keyboard_for(Host::Windows)
         .ok_or_else(|| anyhow!("layout {} has no windows keyboard", layout.tag))?;
     let metadata = layout_metadata(bundle, layout)?;
-    let mut diag = Diagnostics::new(metadata.name.clone());
+    let mut diag = Diagnostics::new(Platform::Windows, metadata.name.clone());
     let Some(hardware) = &keyboard.hardware else {
         bail!(
             "{}: the windows keyboard of layout {} has no hardware layers",

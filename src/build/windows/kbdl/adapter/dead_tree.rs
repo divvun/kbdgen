@@ -9,11 +9,9 @@ use kbd_engine::{
 };
 use kbd_model::{Host, KeyIndex, Keyboard, MarkerIndex};
 
-use super::super::{
-    diag::Diagnostics,
-    input::{DeadKeyNode, STANDALONE},
-};
+use super::super::input::{DeadKeyNode, STANDALONE};
 use super::layers::DerivedLayers;
+use crate::build::diag::Diagnostics;
 
 /// What the engine did with one key in a dead-key state.
 struct Outcome {

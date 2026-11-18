@@ -176,10 +176,10 @@ variant. Otherwise it compiles the layout (`compiled_layouts`).
   the decimal key and the space bar. A value with `when` elements, or a dead key, is
   an action, numbered in emission order.
 
-Warnings go to `Diagnostics`, the type the Windows KBDL adapter uses
-(`crate::build::windows::kbdl::diag`). It logs each message through
-`tracing` as it is recorded, which is why the log names that module, and
-keeps them for the tests. `generate_bundle` only keeps `Adapted::input`.
+Warnings go to a `Diagnostics` for `Platform::MacOs`
+(`crate::build::diag`), the type the Windows KBDL adapter and ChromeOS also
+use. It logs each message through `tracing` as it is recorded, under
+`kbdgen::build::macos`, and keeps them for the tests. `generate_bundle` only keeps `Adapted::input`.
 The adapter also reuses `starts_with_marker` and `is_generated_backspace`
 from the Windows adapter.
 

@@ -54,7 +54,7 @@ fn autonym_and_display_names_are_required() {
     assert_eq!(layout.tag, "se-FI");
 }
 
-// [spec:kbdgen:req:ldml.yaml.strict/test]
+// [spec:kbdgen:req:ldml.yaml.strict+1/test]
 // [spec:kbdgen:def:ldml.yaml.schema+3/test]
 #[test]
 fn unknown_fields_fail_with_their_path() {
@@ -89,7 +89,7 @@ fn unknown_fields_fail_with_their_path() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.strict/test]
+// [spec:kbdgen:req:ldml.yaml.strict+1/test]
 #[test]
 fn row_errors_name_row_and_token() {
     let rows = QWERTY.replace("[ ]", "[ \\d{´");
@@ -110,7 +110,7 @@ fn row_errors_name_row_and_token() {
     );
 }
 
-// [spec:kbdgen:req:ldml.yaml.strict/test]
+// [spec:kbdgen:req:ldml.yaml.strict+1/test]
 #[test]
 fn odd_yaml_is_an_error_not_a_panic() {
     for body in [
@@ -597,7 +597,7 @@ fn long_press_candidates_are_tokens() {
     );
 }
 
-// [spec:kbdgen:req:ldml.yaml.strict/test]
+// [spec:kbdgen:req:ldml.yaml.strict+1/test]
 #[test]
 fn unused_dead_keys_warn_with_their_path() {
     let layout = load_as("sme", &sme("deadKeys: {´: {}}\n")).unwrap();

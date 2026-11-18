@@ -7,13 +7,11 @@ use std::collections::{BTreeSet, HashMap};
 use anyhow::{Context, Result, bail};
 use indexmap::IndexMap;
 
-use super::{
-    diag::Diagnostics,
-    input::{
-        B00, B11, DeadKeyNode, ExtraModifierKey, KeyNameEntry, KeyNameTable, KeyValue, Layer,
-        LayoutInput, MAX_EXTRA_MODIFIERS, POSITION_COUNT, POSITION_NAMES, STANDALONE,
-    },
+use super::input::{
+    B00, B11, DeadKeyNode, ExtraModifierKey, KeyNameEntry, KeyNameTable, KeyValue, Layer,
+    LayoutInput, MAX_EXTRA_MODIFIERS, POSITION_COUNT, POSITION_NAMES, STANDALONE,
 };
+use crate::build::diag::Diagnostics;
 
 pub const WCH_NONE: u16 = 0xF000;
 pub const WCH_DEAD: u16 = 0xF001;
@@ -1394,6 +1392,7 @@ pub fn check_invariants(tables: &Tables) -> Result<()> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::build::diag::Platform;
     use crate::build::windows::kbdl::input::Metadata;
 
     pub(crate) fn base() -> LayoutInput {
@@ -1434,7 +1433,7 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn run(input: &LayoutInput) -> (Result<Tables>, Diagnostics) {
-        let mut diag = Diagnostics::new(input.metadata.name.clone());
+        let mut diag = Diagnostics::new(Platform::Windows, input.metadata.name.clone());
         let tables = build(input, &mut diag);
         (tables, diag)
     }
@@ -1691,7 +1690,7 @@ pub(crate) mod tests {
     // [spec:kbdgen:req:kbdl.vk-chars.decimal/test]
     #[test]
     fn decimal_separator_rules() {
-        let mut diag = Diagnostics::new("kbdtest");
+        let mut diag = Diagnostics::new(Platform::Windows, "kbdtest");
         assert_eq!(decimal_char(None, "kbdtest", &mut diag).unwrap(), 0x2e);
         assert_eq!(decimal_char(Some(","), "kbdtest", &mut diag).unwrap(), 0x2c);
         assert!(diag.warnings().is_empty());

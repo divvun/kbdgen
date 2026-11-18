@@ -7,8 +7,8 @@ use kbd_model::{
 };
 
 use super::modifiers::{Policy, terms};
+use crate::build::diag::Diagnostics;
 use crate::build::macos::keymap::MACOS_KEYS;
-use crate::build::windows::kbdl::diag::Diagnostics;
 use crate::build::windows::kbdl::input::POSITION_NAMES;
 use crate::build::windows::kbdl::tables::POSITION_KEYS;
 

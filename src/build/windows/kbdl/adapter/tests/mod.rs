@@ -69,7 +69,7 @@ fn adapt_error(tag: &str, yaml: &str) -> String {
 
 /// The tables of an input, with the warnings they raise.
 fn tables_of(input: &LayoutInput) -> (Tables, Diagnostics) {
-    let mut diag = Diagnostics::new(input.metadata.name.clone());
+    let mut diag = Diagnostics::new(Platform::Windows, input.metadata.name.clone());
     let tables = tables::build(input, &mut diag).unwrap_or_else(|e| panic!("{e:#}"));
     (tables, diag)
 }

@@ -10,7 +10,7 @@ use kbd_model::Host;
 use super::classify::{self, REACHABLE_SCAN_CODES};
 use super::generate_chromeos::{ENGINE_WASM, SERVICE_WORKER_JS};
 use super::*;
-use crate::build::windows::kbdl::diag::Diagnostics;
+use crate::build::diag::{Diagnostics, Platform};
 use crate::bundle::fixture::{write_bundle, write_file};
 use crate::bundle::read_kbdgen_bundle;
 
@@ -131,7 +131,7 @@ fn diagnostics(out: &Path) -> String {
     for name in files(&out.join("models")) {
         let bytes = fs::read(out.join("models").join(&name)).unwrap();
         let model = Model::from_bytes(&bytes).unwrap();
-        let mut diag = Diagnostics::new(name.trim_end_matches(".dvkb"));
+        let mut diag = Diagnostics::new(Platform::ChromeOs, name.trim_end_matches(".dvkb"));
         classify::report(&classify::classify(model.keyboard()), &mut diag);
         for warning in diag.warnings() {
             text.push_str(&format!("{}: {warning}\n", diag.layout()));

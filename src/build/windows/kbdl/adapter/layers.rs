@@ -11,10 +11,10 @@ use kbd_model::{
 };
 
 use super::super::{
-    diag::Diagnostics,
     input::{KeyValue, Layer, MAX_EXTRA_MODIFIERS, POSITION_COUNT, POSITION_NAMES},
     tables::POSITION_KEYS,
 };
+use crate::build::diag::Diagnostics;
 
 /// The scan code of the space bar, whose row `kbdl.vk-chars` fixes.
 const SPACE_SCAN_CODE: u8 = 0x39;

@@ -12,7 +12,7 @@ use kbd_model::Host;
 use language_tags::LanguageTag;
 
 use super::classify;
-use crate::build::windows::kbdl::diag::Diagnostics;
+use crate::build::diag::{Diagnostics, Platform};
 use crate::bundle::KbdgenBundle;
 use crate::ldml::compile::{Selection, encode};
 use crate::ldml::layouts::{HostDocument, LayoutFile, compiled_layouts, host_documents};
@@ -148,7 +148,7 @@ fn compile(tag: &LanguageTag, documents: Vec<HostDocument>) -> Result<Option<Chr
                 .map_err(|e| anyhow!("{tag}: display name tag {language:?}: {e}"))
         })
         .collect::<Result<_>>()?;
-    let mut diag = Diagnostics::new(tag.to_string());
+    let mut diag = Diagnostics::new(Platform::ChromeOs, tag.to_string());
     classify::report(&classify::classify(&keyboard), &mut diag);
     Ok(Some(ChromeOsLayout {
         tag: tag.clone(),

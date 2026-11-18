@@ -424,9 +424,8 @@ v3 layouts:
 |Message |Meaning
 
 |`macOS layout for se-NO` +
-`macOS layer Default does not have enough keys, expected 48 keys but got 37`
-|A layer has fewer than 48 tokens. The layer is named as kbdgen spells it
-internally (`Default` for `default`).
+`macOS layer default does not have enough keys, expected 48 keys but got 37`
+|A layer has fewer than 48 tokens.
 
 |`seNO: the layout has transforms but no macOS.deadKeys, so it has no dead keys on macOS`
 |Add `macOS.deadKeys`, or ignore if the transforms are for other targets.
@@ -434,7 +433,7 @@ internally (`Default` for `default`).
 |`seNO: macOS.deadKeys is set but the layout has no transforms, so its dead keys type themselves`
 |Add `transforms`.
 
-|`+dead key `´` of layer Default is in macOS.deadKeys but not in the transforms+`
+|`+dead key `´` of layer default is in macOS.deadKeys but not in the transforms+`
 |Every listed dead key needs a top-level transform.
 
 |`+the escape transform ` ` not found for dead key `´`+`
@@ -451,17 +450,17 @@ v4 layouts are reported by the keyboard name. These are the real warnings
 for `vro.yaml` and `features.yaml`, two of kbdgen's test layouts:
 
 ....
-WARN kbdgen::build::windows::kbdl::diag: sme: layer altL, altL caps: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart
-WARN kbdgen::build::windows::kbdl::diag: sme: the .keylayout cannot express 1 key(s) with long-press, multi-tap or flick gestures (e.g. u-0061)
-WARN kbdgen::build::windows::kbdl::diag: sme: the .keylayout cannot express 2 key display(s) and label(s) (e.g. Å; ¨)
-WARN kbdgen::build::windows::kbdl::diag: vro: the .keylayout cannot express 2 key(s) with long-press, multi-tap or flick gestures (e.g. u-006F; u-0061)
-WARN kbdgen::build::windows::kbdl::diag: vro: the .keylayout cannot express 2 key display(s) and label(s) (e.g. vaih; sisse)
+WARN kbdgen::build::macos: sme: layer altL, altL caps: it names a left or right Option or Control key; the .keylayout keeps the side, which macOS may not tell apart
+WARN kbdgen::build::macos: sme: the .keylayout cannot express 1 key(s) with long-press, multi-tap or flick gestures (e.g. u-0061)
+WARN kbdgen::build::macos: sme: the .keylayout cannot express 2 key display(s) and label(s) (e.g. Å; ¨)
+WARN kbdgen::build::macos: vro: the .keylayout cannot express 2 key(s) with long-press, multi-tap or flick gestures (e.g. u-006F; u-0061)
+WARN kbdgen::build::macos: vro: the .keylayout cannot express 2 key display(s) and label(s) (e.g. vaih; sisse)
 ....
 
-The log names `kbdgen::build::windows::kbdl::diag` because the macOS
-adapter reports through the same diagnostics as the Windows one; these
-lines are about the macOS layout. Each `cannot express` warning gives a
-count and up to ten examples. The other v4 messages:
+Each line names the target, `kbdgen::build::macos`, and the keyboard.
+Each `cannot express` warning gives a count and up to ten examples.
+Loading the layout file logs its own warnings first, as every command that
+loads it does (<<layouts-checking>>). The other v4 messages:
 
 [cols="2,3"]
 |===

@@ -575,8 +575,8 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::build::diag::{Diagnostics, Platform};
     use crate::build::windows::kbdl::{
-        diag::Diagnostics,
         input::{ExtraModifierKey, KeyValue, Layer},
         tables::{
             self,
@@ -596,7 +596,7 @@ mod tests {
             .dead_key_tree
             .insert("´".into(), branch(&[("a", leaf("á")), (" ", leaf("´"))]));
         input.dead_key_names.insert("´".into(), "AKUT".into());
-        let mut diag = Diagnostics::new("kbdtest");
+        let mut diag = Diagnostics::new(Platform::Windows, "kbdtest");
         tables::build(&input, &mut diag).unwrap()
     }
 
@@ -726,7 +726,7 @@ mod tests {
         assert!(source.contains("    r(0x00, 0, [0x0000; 7]),\n];"));
         assert!(source.contains("    d(0x00000000, 0x0000, 0),\n];"));
 
-        let mut diag = Diagnostics::new("kbdtest");
+        let mut diag = Diagnostics::new(Platform::Windows, "kbdtest");
         let empty = tables::build(&base(), &mut diag).unwrap();
         let source = lib_rs(&empty);
         assert!(source.contains("    pDeadKey: P::NULL,\n"));
@@ -759,7 +759,7 @@ mod tests {
     // [spec:kbdgen:def:kbdl.scancodes/test]
     #[test]
     fn scan_code_tables() {
-        let mut diag = Diagnostics::new("kbdtest");
+        let mut diag = Diagnostics::new(Platform::Windows, "kbdtest");
         let source = lib_rs(&tables::build(&base(), &mut diag).unwrap());
         assert!(source.contains("static ausVK: [u16; 127] = [\n    0x0ff, 0x01b, 0x031,"));
         assert!(source.contains("    0x0ff, 0x0e9, 0x0ff, 0x0c1, 0x0ff, 0x0ff, 0x087, 0x0ff, 0x0ff, 0x0ff, 0x0ff, 0x0eb, 0x009, 0x0ff, 0x0c2,\n];"));

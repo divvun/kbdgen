@@ -145,8 +145,18 @@ represented and are omitted
 Messages name what they are about (the layout, the file, the variant) and
 print paths with `display()`, not `{:?}`. The Windows, macOS and ChromeOS
 generators collect each layout's warnings and notes in a `Diagnostics`
-value (`src/build/windows/kbdl/diag.rs`), which logs each one with the
-layout's name and also keeps it, so the golden tests can pin them.
+value (`src/build/diag.rs`), which logs each one with the layout's name and
+also keeps it, so the golden tests can pin them. A `Diagnostics` is made
+for one `Platform`, and logs under that target's module
+(`kbdgen::build::macos`), which the formatter prints before the message,
+so a warning says which target raised it.
+
+Loading a format 4 layout file (`ldml::yaml::load`) logs the layout's own
+warnings, such as a dead key no `\d{}` token uses, under
+`kbdgen::ldml::yaml`. A command may load one layout several times, as the
+Windows target's two steps do, so `load` logs each warning once per
+process. `ldml migrate` loads what it writes with `load_value`, which
+logs nothing: it turns the warnings into defects.
 
 === Errors
 

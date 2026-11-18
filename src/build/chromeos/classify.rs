@@ -6,8 +6,8 @@
 
 use kbd_model::{Component, Keyboard, ModifierSet};
 
+use crate::build::diag::Diagnostics;
 use crate::build::macos::adapter::{Category, automatic};
-use crate::build::windows::kbdl::diag::Diagnostics;
 
 /// The scan codes the service worker sends as `Key::Scan`: the values of
 /// its `SCAN_CODES` table (`ldml.chromeos.keys`).

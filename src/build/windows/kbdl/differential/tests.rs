@@ -150,7 +150,7 @@ fn simulated_dead_keys_compose_chain_and_fall_back() {
     input
         .dead_key_tree
         .insert("´".into(), branch(&[(" ", leaf("´"))]));
-    let mut diag = Diagnostics::new("kbdtest");
+    let mut diag = Diagnostics::new(Platform::Windows, "kbdtest");
     let tables = super::super::tables::build(&input, &mut diag).unwrap();
     let mut dll = Dll::new(&tables);
     let keys = WinKeys::default();

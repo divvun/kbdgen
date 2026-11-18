@@ -28,9 +28,9 @@ use std::path::{Path, PathBuf};
 use kbd_engine::Model;
 
 use super::{
-    GenerateKbdl, diag::Diagnostics, generate, input::LayoutInput, resources, source_layouts,
-    tables::Tables,
+    GenerateKbdl, generate, input::LayoutInput, resources, source_layouts, tables::Tables,
 };
+use crate::build::diag::{Diagnostics, Platform};
 use crate::bundle::{KbdgenBundle, fixture::write_bundle, read_kbdgen_bundle};
 use crate::ldml::migrate::{Migration, migrate_bundle_layout};
 
@@ -143,7 +143,7 @@ pub(super) fn subjects(fixture: &FixtureBundle) -> Vec<Subject> {
             let name = layout.input.metadata.name.clone();
             let generated = generate(&layout.input, layout.model.as_deref(), &mut layout.diag)
                 .unwrap_or_else(|e| panic!("{label}: {e:#}"));
-            let mut diag = Diagnostics::new(name.clone());
+            let mut diag = Diagnostics::new(Platform::Windows, name.clone());
             let tables = super::tables::build(&layout.input, &mut diag).unwrap();
             let model = embedded_model(&generated.res)
                 .unwrap_or_else(|| panic!("{label}: {name} embeds no model"));

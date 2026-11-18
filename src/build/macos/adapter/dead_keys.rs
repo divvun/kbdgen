@@ -10,8 +10,8 @@ use kbd_engine::{
 use kbd_model::{Atom, Host, Keyboard, MarkerIndex, TransformGroup};
 
 use super::layers::{Derived, Press, Value};
+use crate::build::diag::Diagnostics;
 use crate::build::macos::input::{NONE_STATE, When};
-use crate::build::windows::kbdl::diag::Diagnostics;
 
 /// A dead-key state: its marker, id and terminator.
 #[derive(Debug, Clone, PartialEq, Eq)]

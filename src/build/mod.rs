@@ -7,6 +7,7 @@ use anyhow::Result;
 
 pub mod android;
 pub mod chromeos;
+pub mod diag;
 pub mod ios;
 pub mod macos;
 pub mod windows;

@@ -25,7 +25,9 @@ mod text;
 mod tokens;
 mod variants;
 
+use std::collections::BTreeSet;
 use std::path::Path;
+use std::sync::{Mutex, PoisonError};
 
 use serde_yaml::Value;
 
@@ -74,14 +76,34 @@ pub fn read_yaml(path: &Path) -> Result<Value, LdmlError> {
 
 /// Loads the v4 layout file `path`, tagged `tag`: the schema with unknown
 /// fields refused at any depth, escapes decoded, rows parsed into tokens,
-/// and inheritance resolved.
+/// and inheritance resolved. Its warnings are logged ([`report`]) and kept
+/// in [`Layout4::warnings`].
 pub fn load(path: &Path, tag: &str) -> Result<Layout4, LdmlError> {
     let value = read_yaml(path)?;
-    load_value(path, tag, &value)
+    let layout = load_value(path, tag, &value)?;
+    report(&layout.warnings);
+    Ok(layout)
 }
 
-/// Loads a layout already parsed as a YAML tree, as if read from `path`:
-/// how `kbdgen ldml migrate` checks a layout before writing it.
+// [spec:kbdgen:req:ldml.yaml.strict+1]
+/// Logs each warning as a `tracing` warning, once per process: a command
+/// may load a layout more than once, as `kbdgen target windows` does to
+/// generate the crates and again to name the DLLs it builds.
+fn report(warnings: &[YamlProblem]) {
+    static REPORTED: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+    let mut reported = REPORTED.lock().unwrap_or_else(PoisonError::into_inner);
+    for warning in warnings {
+        let line = warning.to_string();
+        if !reported.contains(&line) {
+            tracing::warn!("{line}");
+            reported.insert(line);
+        }
+    }
+}
+
+/// Loads a layout already parsed as a YAML tree, as if read from `path`,
+/// returning its warnings without logging them: how `kbdgen ldml migrate`
+/// checks a layout before writing it, reporting them as defects instead.
 pub fn load_value(path: &Path, tag: &str, value: &Value) -> Result<Layout4, LdmlError> {
     let file = path.display().to_string();
     match detect(value) {

@@ -243,6 +243,101 @@ fn windows_macos_and_chromeos_targets_build_v4_layouts() {
     assert!(manifest.contains("\"id\": \"vro\""), "{manifest}");
 }
 
+// [spec:kbdgen:req:ldml.yaml.strict+1/test]
+#[test]
+fn every_command_logs_format_4_load_warnings_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let bundle = dir.path().join("vro.kbdgen");
+    for sub in ["layouts", "targets", "resources/macos", "tests"] {
+        std::fs::create_dir_all(bundle.join(sub)).unwrap();
+    }
+    let write = |path: &str, text: &str| std::fs::write(bundle.join(path), text).unwrap();
+    write(
+        "project.yaml",
+        "locales:\n  en:\n    name: Test\n    description: Test\nauthor: Test\ncopyright: Test\nemail: test@example.com\norganisation: Test\n",
+    );
+    write(
+        "layouts/vro.yaml",
+        &VRO.replacen("deadKeys:\n", "deadKeys:\n  ¨: {compose: {a: ä}}\n", 1),
+    );
+    write(
+        "targets/macos.yaml",
+        "codeSignId: X\npackageId: com.example\nbundleName: Võro\nversion: 1.0.0\nbuild: \"1\"\n",
+    );
+    write(
+        "targets/chromeos.yaml",
+        "appId: abc\nbuild: \"1\"\nversion: 1.0.0\n",
+    );
+    let vectors = "layout: layouts/vro.yaml\nhost: macOS\ntests:\n  - name: acute\n    steps:\n      - press: {key: E12}\n      - press: {key: C01}\n      - expect: {text: á}\n";
+    write("tests/first.yaml", vectors);
+    write("tests/second.yaml", vectors);
+
+    let out = |name: &str| dir.path().join(name).into_os_string();
+    let ldml = |command: &str, output: Option<std::ffi::OsString>| {
+        let mut args = vec![
+            "ldml".into(),
+            command.into(),
+            "-b".into(),
+            bundle.clone().into(),
+        ];
+        if let Some(output) = output {
+            args.extend(["-o".into(), output]);
+        }
+        args
+    };
+    let target = |target: &str, sub: Option<&str>| {
+        let mut args: Vec<std::ffi::OsString> = vec![
+            "target".into(),
+            "-b".into(),
+            bundle.clone().into(),
+            "-o".into(),
+            out(target),
+            target.into(),
+        ];
+        args.extend(sub.map(Into::into));
+        args
+    };
+    let warning =
+        "layouts/vro.yaml: deadKeys.¨: no \\d{¨} token uses this dead key, so no host gets it";
+    // The Windows target loads the layout in both of its steps and `ldml
+    // test` once per vector file, so each would log the warning twice
+    // without deduplication.
+    for (args, own) in [
+        (ldml("compile", Some(out("compile"))), None),
+        (ldml("export", Some(out("export"))), None),
+        (ldml("test", None), None),
+        (
+            target("windows", None),
+            Some(" WARN kbdgen::build::windows: kbdvro: "),
+        ),
+        (
+            target("macos", Some("generate")),
+            Some(" WARN kbdgen::build::macos: vro: the .keylayout cannot express "),
+        ),
+        (
+            target("chromeos", None),
+            Some(" WARN kbdgen::build::chromeos: vro: ChromeOS cannot use "),
+        ),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_kbdgen"))
+            .args(&args)
+            .env("NO_COLOR", "1")
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let lines: Vec<&str> = stderr.lines().filter(|l| l.contains(warning)).collect();
+        assert_eq!(lines.len(), 1, "{args:?}: {stderr}");
+        assert!(
+            lines[0].contains(" WARN kbdgen::ldml::yaml: "),
+            "{args:?}: {stderr}"
+        );
+        if let Some(own) = own {
+            assert!(stderr.contains(own), "{args:?}: {stderr}");
+        }
+        assert!(!stderr.contains("kbdl::diag"), "{args:?}: {stderr}");
+    }
+}
+
 /// Standard output without the log lines `tracing` writes there.
 fn report(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stdout)

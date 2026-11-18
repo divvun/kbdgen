@@ -8,10 +8,8 @@ use kbd_model::{
     Atom, Fixed, Item, Keyboard, Normalization, Pattern, ReplacementItem, Rule, TransformGroup,
 };
 
-use super::super::{
-    diag::Diagnostics,
-    input::{DeadKeyNode, STANDALONE},
-};
+use super::super::input::{DeadKeyNode, STANDALONE};
+use crate::build::diag::Diagnostics;
 
 /// The most examples a category lists.
 const MAX_EXAMPLES: usize = 10;

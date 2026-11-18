@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use language_tags::LanguageTag;
 
 use crate::{
-    build::BuildStep,
+    build::{BuildStep, diag::Diagnostics},
     bundle::{
         KbdgenBundle,
         layout::{Layout, WindowsTarget},
@@ -20,7 +20,6 @@ use crate::{
 pub mod adapter;
 pub mod build;
 pub mod bundle;
-pub mod diag;
 #[cfg(test)]
 mod differential;
 #[cfg(test)]
@@ -32,7 +31,6 @@ pub mod resources;
 pub mod source;
 pub mod tables;
 
-use diag::Diagnostics;
 use input::{LayoutInput, Metadata};
 
 /// Directory under the output directory that holds one crate per layout.

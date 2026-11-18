@@ -3,7 +3,8 @@
 
 use std::collections::BTreeMap;
 
-use super::{diag::Diagnostics, input::Metadata};
+use super::input::Metadata;
+use crate::build::diag::Diagnostics;
 
 const RT_STRING: u16 = 6;
 const RT_RCDATA: u16 = 10;
@@ -253,6 +254,7 @@ pub fn res_file(metadata: &Metadata, version: [u16; 4], model: Option<&[u8]>) ->
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::build::diag::Platform;
 
     fn vro() -> Metadata {
         Metadata {
@@ -299,7 +301,7 @@ pub(crate) mod tests {
     // [spec:kbdgen:req:kbdl.resources/test]
     #[test]
     fn res_file_matches_rc_exe_byte_for_byte() {
-        let mut diag = Diagnostics::new("kbdvro");
+        let mut diag = Diagnostics::new(Platform::Windows, "kbdvro");
         let version = file_version(&vro(), &mut diag);
         assert_eq!(version, [1, 0, 3, 40]);
         let bytes = res_file(&vro(), version, None);
@@ -379,7 +381,7 @@ pub(crate) mod tests {
             let mut metadata = vro();
             metadata.version = version.map(Into::into);
             metadata.build = build.map(Into::into);
-            let mut diag = Diagnostics::new("kbdvro");
+            let mut diag = Diagnostics::new(Platform::Windows, "kbdvro");
             let version = file_version(&metadata, &mut diag);
             (version, diag.warnings().len())
         };

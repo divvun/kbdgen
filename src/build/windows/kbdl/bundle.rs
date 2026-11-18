@@ -14,10 +14,8 @@ use crate::{
     util::{UNICODE_ESCAPES, split_keys},
 };
 
-use super::{
-    diag::Diagnostics,
-    input::{B11, DeadKeyNode, KeyValue, Layer, LayoutInput, Metadata, POSITION_NAMES},
-};
+use super::input::{B11, DeadKeyNode, KeyValue, Layer, LayoutInput, Metadata, POSITION_NAMES};
+use crate::build::diag::{Diagnostics, Platform};
 
 /// Number of tokens a desktop layer string assigns, `E00`..`B10`.
 const DESKTOP_KEY_COUNT: usize = 48;
@@ -37,7 +35,7 @@ pub fn layout_input(
     target: &WindowsTarget,
 ) -> Result<(LayoutInput, Diagnostics)> {
     let metadata = v3_metadata(bundle, language_tag, layout, target)?;
-    let mut diag = Diagnostics::new(metadata.name.clone());
+    let mut diag = Diagnostics::new(Platform::Windows, metadata.name.clone());
 
     let mut layers = IndexMap::new();
     for (windows_layer, tokens) in &target.primary.layers {

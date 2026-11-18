@@ -779,7 +779,7 @@ fn unused_dead_keys(layout: &Layout4) -> Vec<YamlProblem> {
 }
 
 // [spec:kbdgen:def:ldml.yaml.schema+3]
-// [spec:kbdgen:req:ldml.yaml.strict]
+// [spec:kbdgen:req:ldml.yaml.strict+1]
 // [spec:kbdgen:req:ldml.yaml.ldml-ref+3]
 /// Parses the top-level mapping of a v4 file, `format: 4` already
 /// detected. Unknown fields fail at any depth; a layout with `ldml:` may

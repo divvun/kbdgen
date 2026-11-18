@@ -28,8 +28,10 @@ searching for a rule id finds both.
   `write` then puts each crate in `<out>/build/<name>/`, removing stale files
   but keeping cargo's `target` and `target-wow64`.
 . `BuildKbdl` lists the crates again with `layout_names`, which for v4
-  layouts only lowers and resolves, so no diagnostic is reported twice. It
-  checks the toolchain once, then builds every crate for every variant.
+  layouts only loads, lowers and resolves. No diagnostic is reported twice:
+  the adapter does not run, and `ldml::yaml::load` logs a layout's load
+  warnings once per process. It checks the toolchain once, then builds
+  every crate for every variant.
 
 `generate` is the core, and does no I/O:
 
@@ -52,9 +54,10 @@ pub fn generate(
 }
 ----
 
-Warnings and information go through `diag::Diagnostics`, which logs each
-message with the keyboard name as it is raised and keeps it, so tests and
-golden files can see what was reported. Fatal conditions are returned as
+Warnings and information go through `crate::build::diag::Diagnostics`,
+made for `Platform::Windows`, which logs each message under
+`kbdgen::build::windows` with the keyboard name as it is raised and keeps
+it, so tests and golden files can see what was reported. Fatal conditions are returned as
 errors.
 
 ==== Input

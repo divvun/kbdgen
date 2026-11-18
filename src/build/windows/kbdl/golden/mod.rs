@@ -9,10 +9,8 @@ mod kbdtables;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use super::{
-    GeneratedLayout, diag::Diagnostics, differential::fixture_bundle, generate, resources,
-    source_layouts,
-};
+use super::{GeneratedLayout, differential::fixture_bundle, generate, resources, source_layouts};
+use crate::build::diag::Diagnostics;
 
 /// The repository root, where fixture paths start.
 const WORKSPACE: &str = env!("CARGO_MANIFEST_DIR");

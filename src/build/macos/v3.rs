@@ -86,7 +86,7 @@ fn initialize_key_transition_map(
         // [spec:kbdgen:req:keys.iso-order.desktop-layers+2]
         if keys.len() < MACOS_KEYS.len() {
             bail!(
-                "macOS layer {layer:?} does not have enough keys, expected {} keys but got {}",
+                "macOS layer {layer} does not have enough keys, expected {} keys but got {}",
                 MACOS_KEYS.len(),
                 keys.len()
             );
@@ -254,7 +254,7 @@ fn create_dead_key_actions(
             }
             let Some(dead_key) = dead_keys.get(token) else {
                 bail!(
-                    "dead key `{token}` of layer {layer:?} is in macOS.deadKeys but not in the transforms"
+                    "dead key `{token}` of layer {layer} is in macOS.deadKeys but not in the transforms"
                 );
             };
             let action = DeadKeyNextAction {
@@ -676,7 +676,9 @@ mod tests {
 
         let short = layout("q w e", None);
         assert!(
-            error(&short).contains("expected 48 keys but got 3"),
+            error(&short).contains(
+                "macOS layer default does not have enough keys, expected 48 keys but got 3"
+            ),
             "{}",
             error(&short)
         );
@@ -699,7 +701,7 @@ mod tests {
             vec!["q".to_owned()],
         )]));
         assert!(
-            error(&unlisted).contains("dead key `q` of layer Default is in macOS.deadKeys"),
+            error(&unlisted).contains("dead key `q` of layer default is in macOS.deadKeys"),
             "{}",
             error(&unlisted)
         );

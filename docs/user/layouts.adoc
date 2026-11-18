@@ -43,6 +43,15 @@ Error: ./layouts/se-FI.yaml: hardware.default.layers.none, row 2: layer none row
 Error: ./layouts/se-FI.yaml: hardware.default.layers.none, row 1, token 13: no dead key has the identity "´"
 ----
 
+What loads but is likely a mistake is a warning, named the same way. Every
+command that loads the layout logs each warning once: `ldml compile`,
+`ldml export`, `ldml test`, and the targets that build format 4 layouts.
+
+[source,text]
+----
+WARN kbdgen::ldml::yaml: ./layouts/se-FI.yaml: deadKeys.¨: no \d{¨} token uses this dead key, so no host gets it
+----
+
 To check what the layout types, write tests (<<testing>>).
 
 [[layouts-first]]
@@ -416,7 +425,8 @@ In the `alt` and `alt shift` layers, D11 and D12 become `+\d{¨} \d{~}+` and
 The key of each `deadKeys` entry is the dead key's *identity*: the character
 it stands for, which `+\d{…}+` names. `compose` maps what the next key types
 to the result. A dead key can appear on any number of keys and layers. One
-that no `+\d{…}+` uses has no effect: no platform gets it.
+that no `+\d{…}+` uses has no effect: no platform gets it, and kbdgen
+warns (<<layouts-checking>>).
 
 [[layouts-dead-keys-typing]]
 ==== What the user gets

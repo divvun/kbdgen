@@ -62,12 +62,20 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > | `touch` | variant name → `ldml.yaml.touch` | `{}` | touch sets |
 > | `targets` | `ldml.yaml.targets` | `{}` | per-host configuration |
 
-> [spec:kbdgen:req:ldml.yaml.strict]
+> [spec:kbdgen:req:ldml.yaml.strict+1]
 > Unlike v3, a v4 file with an unknown field, at any depth, MUST fail to
 > load, with an error naming the file and the field path. Every error names
 > the file, the YAML path (`hardware.macOS.layers.shift`) and, for row
 > errors, the row and token index. Warnings use the same addressing.
 > Loading v4 never panics.
+>
+> Loading warns about each top-level `deadKeys` entry that no `\d{}` token
+> uses, since no host gets it. A command that loads a v4 layout file, such
+> as `kbdgen ldml compile`, `export` and `test` and the targets that build
+> v4 layouts, MUST log its warnings as `tracing` warnings, each once per
+> run however often the command loads the layout. `kbdgen ldml migrate`
+> instead checks the layout it writes for warnings that its defects do not
+> account for (`ldml.migrate.output`).
 
 > [spec:kbdgen:sem:ldml.yaml.normalization]
 > `normalization: disabled`, the default, lowers to LDML
