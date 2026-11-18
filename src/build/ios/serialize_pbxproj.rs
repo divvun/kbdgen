@@ -135,7 +135,9 @@ fn write_attributes(
     attributes: &serde_json::Map<String, Value>,
     depth: usize,
 ) -> fmt::Result {
-    for (key, value) in attributes {
+    let mut entries: Vec<(&String, &Value)> = attributes.iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(b.0));
+    for (key, value) in entries {
         indent(out, depth);
         write!(out, "{key} = ")?;
         match value {
@@ -669,9 +671,11 @@ mod tests {
                 "P0": {
                     "isa": "PBXProject",
                     "attributes": {
-                        "LastUpgradeCheck": "1130",
-                        "TargetAttributes": { "T0": { "CreatedOnToolsVersion": "6.0" } },
-                        "knownAssetTags": ["New", "Old"]
+                        "knownAssetTags": ["New", "Old"],
+                        "TargetAttributes": {
+                            "T0": { "ProvisioningStyle": "Automatic", "CreatedOnToolsVersion": "6.0" }
+                        },
+                        "LastUpgradeCheck": "1130"
                     },
                     "buildConfigurationList": "CL",
                     "compatibilityVersion": "Xcode 3.2",

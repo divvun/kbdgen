@@ -3,7 +3,7 @@
 
 use kbd_ldml::escape::Piece;
 use kbd_model::{BottomRow, Role};
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::*;
 use crate::ldml::yaml::schema::{ComposeTo, FormSpec};
@@ -12,7 +12,7 @@ use crate::ldml::yaml::tokens::{Token, rows, token};
 use crate::ldml::yaml::{At, LayoutFormat, detect};
 
 fn parse(text: &str) -> Value {
-    serde_yaml::from_str(text).unwrap()
+    crate::yaml::tree(text).unwrap()
 }
 
 fn tok(raw: &str) -> Result<Token, String> {
@@ -172,6 +172,49 @@ fn escapes_are_decoded_once_for_comparison() {
     assert_eq!(layout.decimal, Some(chars(",")));
     assert_eq!(layout.space_label.as_deref(), Some("\u{A0}x"));
     assert_eq!(layout.display_names["sme"], "Davvisámegiella");
+}
+
+// [spec:kbdgen:def:ldml.yaml.schema+3/test]
+#[test]
+fn yaml_1_1_booleans_are_yaml_strings() {
+    let layout = load_as(
+        "no",
+        "format: 4\ndisplayNames: {no: norsk, yes: y, n: off}\nkeyNames: {space: on, return: No}\n",
+    )
+    .unwrap();
+    let names: Vec<(&str, &str)> = layout
+        .display_names
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    assert_eq!(names, [("n", "off"), ("no", "norsk"), ("yes", "y")]);
+    assert_eq!(layout.space_label.as_deref(), Some("on"));
+    assert_eq!(layout.return_label.as_deref(), Some("No"));
+    let err = error(&sme("keyNames: {space: true}\n"));
+    assert!(
+        err.contains("keyNames.space: expected a string, found true; quote it"),
+        "{err}"
+    );
+}
+
+// [spec:kbdgen:req:ldml.yaml.strict+1/test]
+#[test]
+fn parse_errors_name_the_yaml_path() {
+    let err = error(&sme("deadKeys: {´: {compose: {1: ¹}}}\n"));
+    assert!(
+        err.contains("sme.yaml: deadKeys.´.compose: the key 1 is not a string; quote it at line 3"),
+        "{err}"
+    );
+    let err = error(&sme("hardware: {default: {layers: [!tag a]}}\n"));
+    assert!(
+        err.contains("sme.yaml: hardware.default.layers[1]: unsupported tag `!tag` at line 3"),
+        "{err}"
+    );
+    let err = error(&sme("info: {name: a, name: b}\n"));
+    assert!(
+        err.contains("sme.yaml: info: duplicate mapping key `name` is not allowed here at line 3"),
+        "{err}"
+    );
 }
 
 // [spec:kbdgen:syn:ldml.yaml.rows/test]

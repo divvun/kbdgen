@@ -262,7 +262,7 @@ mod tests {
     const KEYS_48: &str = "a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 A B C D E F G H I J K L";
 
     fn layout(yaml: &str) -> Layout {
-        serde_yaml::from_str(yaml).unwrap()
+        crate::yaml::from_str(yaml).unwrap()
     }
 
     fn bundle_with(tag: &str, layout: Layout) -> KbdgenBundle {

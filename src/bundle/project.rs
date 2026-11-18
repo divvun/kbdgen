@@ -1,21 +1,25 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
+use crate::yaml::empty_as_default;
+
 // [spec:kbdgen:def:bundle.project]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Project {
+    #[serde(deserialize_with = "empty_as_default")]
     pub locales: IndexMap<String, LocaleProjectDescription>,
     pub author: String,
     pub copyright: String,
     pub email: String,
     pub organisation: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "empty_as_default")]
     pub dependencies: IndexMap<String, Dependency>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Dependency {
     pub url: String,
+    #[serde(deserialize_with = "empty_as_default")]
     pub layouts: Vec<String>,
     #[serde(default)]
     pub branch: Option<String>,
@@ -51,7 +55,7 @@ organisation: Organisation
 
     fn yaml_error_message(result: Result<KbdgenBundle, Error>) -> String {
         match result {
-            Err(Error::Yaml(_, e)) => e.inner().to_string(),
+            Err(Error::Yaml(_, e)) => e.message(),
             other => panic!("expected a YAML error, got {other:?}"),
         }
     }
@@ -107,6 +111,30 @@ organisation: Organisation
         assert!(bundle.project.dependencies.is_empty());
         assert_eq!(bundle.project.author, "Author");
         assert_eq!(bundle.project.organisation, "Organisation");
+    }
+
+    // [spec:kbdgen:def:bundle.project/test]
+    #[test]
+    fn empty_dependencies_and_layouts_are_empty() {
+        let project = format!("{COMPLETE}dependencies:\n#  sme:\n#    url: giellalt/x\n");
+        assert!(
+            load_with_project(&project)
+                .unwrap()
+                .project
+                .dependencies
+                .is_empty()
+        );
+
+        let project =
+            format!("{COMPLETE}dependencies:\n  sme:\n    url: giellalt/x\n    layouts:\n");
+        let bundle = load_with_project(&project).unwrap();
+        assert!(bundle.project.dependencies["sme"].layouts.is_empty());
+
+        let message = yaml_error_message(load_with_project(&format!("{COMPLETE}author: twice\n")));
+        assert!(
+            message.contains("duplicate mapping key `author`"),
+            "{message}"
+        );
     }
 
     // [spec:kbdgen:def:bundle.project/test]

@@ -3,7 +3,7 @@
 //! host order, rows as literal blocks of tokens joined by single spaces,
 //! and scalars quoted only where YAML needs it.
 
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::text::printable;
 
@@ -71,14 +71,14 @@ const YAML11_WORDS: [&str; 11] = [
 const INDICATORS: &str = "-?:,[]{}#&*!|>'\"%@`";
 
 fn reads_back(document: &str, key: &str, value: &str) -> bool {
-    let Ok(Value::Mapping(map)) = serde_yaml::from_str::<Value>(document) else {
+    let Ok(Value::Object(map)) = crate::yaml::tree(document) else {
         return false;
     };
     map.len() == 1
         && map
             .iter()
             .next()
-            .is_some_and(|(k, v)| k.as_str() == Some(key) && v.as_str() == Some(value))
+            .is_some_and(|(k, v)| k == key && v.as_str() == Some(value))
 }
 
 /// Whether `s` may be written as a plain scalar, as a key and as a value.

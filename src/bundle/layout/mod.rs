@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use language_tags::LanguageTag;
 use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
-use serde_yaml::Value;
+use serde_json::Value;
 
 use android::AndroidKbdLayer;
 use chrome::ChromeOsKbdLayer;
@@ -179,12 +179,9 @@ where
 fn process_transform(value: Value) -> Result<Transform, &'static str> {
     match value {
         Value::String(output) => Ok(Transform::End(output)),
-        Value::Mapping(mapping) => mapping
+        Value::Object(mapping) => mapping
             .into_iter()
-            .map(|(key, value)| match key {
-                Value::String(key) => Ok((key, process_transform(value)?)),
-                _ => Err("transform inputs must be strings; quote digits"),
-            })
+            .map(|(key, value)| Ok((key, process_transform(value)?)))
             .collect::<Result<_, _>>()
             .map(Transform::More),
         _ => Err("transform outputs must be strings or maps of further transforms; quote digits"),
@@ -324,6 +321,60 @@ mod tests {
         assert_yaml_error("decimal: 1\n");
         assert_yaml_error("keyNames:\n  space: 1\n  return: Enter\n");
         assert_yaml_error("longpress:\n  a: 1\n");
+    }
+
+    // [spec:kbdgen:def:layout.schema+1/test]
+    // [spec:kbdgen:def:layout.transforms+1/test]
+    #[test]
+    fn yaml_1_1_booleans_are_yaml_strings() {
+        let root = tempfile::tempdir().unwrap();
+        let path = fixture::write_bundle(
+            root.path(),
+            "sme",
+            &[(
+                "se",
+                "displayNames:\n  se: Davvisámegiella\n  no: Nordsamisk\nkeyNames:\n  space: on\n  return: off\ntransforms:\n  '`':\n    n: ǹ\n    y: ỳ\n",
+            )],
+            &[],
+            &[],
+        );
+        let layout = read_kbdgen_bundle(&path)
+            .unwrap()
+            .layouts
+            .0
+            .into_values()
+            .next()
+            .unwrap();
+
+        let names: Vec<String> = layout.display_names.keys().map(|t| t.to_string()).collect();
+        assert_eq!(names, ["se", "no"]);
+        let key_names = layout.key_names.unwrap();
+        assert_eq!(
+            (key_names.space.as_str(), key_names.r#return.as_str()),
+            ("on", "off")
+        );
+        let transforms = layout.transforms.unwrap();
+        let inputs: Vec<&str> = branch(&transforms["`"])
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(inputs, ["n", "y"]);
+        assert_yaml_error("keyNames:\n  space: true\n  return: Enter\n");
+    }
+
+    // [spec:kbdgen:req:layout.schema.targets/test]
+    #[test]
+    fn empty_blocks_read_as_empty() {
+        let layout = layout(
+            "iOS:\n  config:\n  deadKeys:\n    default:\nmacOS:\n  primary:\n    layers:\n  space: ~\n",
+        );
+
+        let i_os = layout.i_os.unwrap();
+        assert!(i_os.config.speller_path.is_none());
+        assert!(i_os.dead_keys.unwrap()[&ios::IOsKbdLayer::Default].is_empty());
+        let mac_os = layout.mac_os.unwrap();
+        assert!(mac_os.primary.layers.is_empty() && mac_os.space.is_empty());
+        assert_yaml_error("macOS:\n  primary: [default]\n");
     }
 
     // [spec:kbdgen:def:layout.schema+1/test]

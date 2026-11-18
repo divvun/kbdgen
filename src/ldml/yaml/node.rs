@@ -3,38 +3,32 @@
 //! error naming its path. A null value counts as an empty mapping or list,
 //! so a field whose entries are all commented out is still valid.
 
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::error::{At, Result};
+use crate::yaml::number;
 
 fn describe(value: &Value) -> String {
     match value {
         Value::Null => "null".to_string(),
         Value::Bool(b) => b.to_string(),
-        Value::Number(n) => n.to_string(),
+        Value::Number(n) => number(n),
         Value::String(s) => format!("{s:?}"),
-        Value::Sequence(_) => "a list".to_string(),
-        Value::Mapping(_) => "a mapping".to_string(),
-        Value::Tagged(t) => format!("a value tagged {}", t.tag),
+        Value::Array(_) => "a list".to_string(),
+        Value::Object(_) => "a mapping".to_string(),
     }
 }
 
-/// The entries of a mapping, in file order, with string keys.
+/// The entries of a mapping, in file order.
 pub fn entries<'a>(value: &'a Value, at: &At) -> Result<Vec<(&'a str, &'a Value, At)>> {
-    let map = match value {
-        Value::Null => return Ok(Vec::new()),
-        Value::Mapping(map) => map,
-        other => return Err(at.error(format!("expected a mapping, found {}", describe(other)))),
-    };
-    map.iter()
-        .map(|(k, v)| match k {
-            Value::String(k) => Ok((k.as_str(), v, at.key(k))),
-            other => Err(at.error(format!(
-                "the key {} is not a string; quote it",
-                describe(other)
-            ))),
-        })
-        .collect()
+    match value {
+        Value::Null => Ok(Vec::new()),
+        Value::Object(map) => Ok(map
+            .iter()
+            .map(|(k, v)| (k.as_str(), v, at.key(k)))
+            .collect()),
+        other => Err(at.error(format!("expected a mapping, found {}", describe(other)))),
+    }
 }
 
 /// A mapping with a fixed set of fields.
@@ -116,7 +110,7 @@ pub fn integer(value: &Value, at: &At) -> Result<u64> {
 pub fn number_text(value: &Value, at: &At) -> Result<String> {
     match value {
         Value::String(s) => Ok(s.clone()),
-        Value::Number(n) => Ok(n.to_string()),
+        Value::Number(n) => Ok(number(n)),
         other => Err(at.error(format!(
             "expected a number or a string, found {}",
             describe(other)
@@ -140,7 +134,7 @@ pub fn flag_text(value: &Value, at: &At) -> Result<String> {
 pub fn list<'a>(value: &'a Value, at: &At) -> Result<Vec<(&'a Value, At)>> {
     match value {
         Value::Null => Ok(Vec::new()),
-        Value::Sequence(items) => Ok(items
+        Value::Array(items) => Ok(items
             .iter()
             .enumerate()
             .map(|(i, v)| (v, at.index(i)))

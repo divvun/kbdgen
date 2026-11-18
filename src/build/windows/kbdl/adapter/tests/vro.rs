@@ -13,7 +13,7 @@ use crate::bundle::layout::Layout as V3Layout;
 use super::*;
 
 fn vro3() -> LayoutInput {
-    let layout: V3Layout = serde_yaml::from_str(VRO3).unwrap();
+    let layout: V3Layout = crate::yaml::from_str(VRO3).unwrap();
     let tag = layout.language_tag.clone();
     let mut layouts = IndexMap::new();
     layouts.insert(tag.clone(), layout);

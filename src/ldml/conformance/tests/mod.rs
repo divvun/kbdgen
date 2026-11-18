@@ -26,7 +26,7 @@ fn golden() -> PathBuf {
 }
 
 fn vector_file(yaml: &str) -> Result<VectorFile, String> {
-    let value: serde_yaml::Value = serde_yaml::from_str(yaml).map_err(|e| e.to_string())?;
+    let value = crate::yaml::tree(yaml).map_err(|e| e.to_string())?;
     parse("t.yaml", &value).map_err(|e| e.to_string())
 }
 

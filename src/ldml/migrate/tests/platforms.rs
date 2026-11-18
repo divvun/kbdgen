@@ -5,7 +5,7 @@ use super::*;
 
 fn layer_rows(m: &Migration, variant: &str, key: &str) -> Vec<Vec<String>> {
     let text = yaml(m);
-    let value: serde_yaml::Value = serde_yaml::from_str(text).unwrap();
+    let value = crate::yaml::tree(text).unwrap();
     let rows = value["hardware"][variant]["layers"][key]
         .as_str()
         .unwrap_or_else(|| panic!("no layer {key} in {variant}:\n{text}"));
@@ -14,8 +14,8 @@ fn layer_rows(m: &Migration, variant: &str, key: &str) -> Vec<Vec<String>> {
         .collect()
 }
 
-fn value(m: &Migration) -> serde_yaml::Value {
-    serde_yaml::from_str(yaml(m)).unwrap()
+fn value(m: &Migration) -> serde_json::Value {
+    crate::yaml::tree(yaml(m)).unwrap()
 }
 
 // [spec:kbdgen:sem:ldml.migrate.platforms/test]
@@ -36,10 +36,10 @@ fn windows_layers_become_modifier_sets_in_iso_rows() {
     ));
     assert!(!m.blocked(), "{:?}", m.defects);
     let keys: Vec<String> = value(&m)["hardware"]["windows"]["layers"]
-        .as_mapping()
+        .as_object()
         .unwrap()
         .keys()
-        .map(|k| k.as_str().unwrap().to_string())
+        .map(|k| k.as_str().to_string())
         .collect();
     assert_eq!(
         keys,
@@ -81,10 +81,10 @@ fn macos_alt_stays_alt_and_cmd_is_native() {
         "",
     ));
     let keys: Vec<String> = value(&m)["hardware"]["macOS"]["layers"]
-        .as_mapping()
+        .as_object()
         .unwrap()
         .keys()
-        .map(|k| k.as_str().unwrap().to_string())
+        .map(|k| k.as_str().to_string())
         .collect();
     assert_eq!(
         keys,
@@ -153,10 +153,10 @@ fn ios_platforms_become_sizes_with_south_flicks() {
     let v = value(&m);
     let sizes = &v["touch"]["iOS"]["sizes"];
     let names: Vec<&str> = sizes
-        .as_mapping()
+        .as_object()
         .unwrap()
         .keys()
-        .map(|k| k.as_str().unwrap())
+        .map(|k| k.as_str())
         .collect();
     assert_eq!(names, ["phone", "tablet"]);
     assert_eq!(
@@ -198,10 +198,10 @@ fn variants_follow_host_order_not_file_order() {
     let v = value(&m);
     let names = |section: &str| -> Vec<String> {
         v[section]
-            .as_mapping()
+            .as_object()
             .unwrap()
             .keys()
-            .map(|k| k.as_str().unwrap().to_string())
+            .map(|k| k.as_str().to_string())
             .collect()
     };
     assert_eq!(names("hardware"), ["windows", "chromeOS"]);
@@ -230,10 +230,10 @@ fn transforms_become_dead_keys_with_compose() {
         "equal to the identity"
     );
     let compose: Vec<(&str, &str)> = dead["´"]["compose"]
-        .as_mapping()
+        .as_object()
         .unwrap()
         .iter()
-        .map(|(k, v)| (k.as_str().unwrap(), v.as_str().unwrap()))
+        .map(|(k, v)| (k.as_str(), v.as_str().unwrap()))
         .collect();
     assert_eq!(compose, [("a", "á"), ("e", "é")]);
     assert_eq!(dead["ˆ"]["standalone"].as_str(), Some("^"));
@@ -316,7 +316,7 @@ fn windows_keyboard_options_v3_never_read_are_dropped() {
     ));
     assert!(!m.blocked(), "{:?}", m.defects);
     let v = value(&m);
-    let windows = v["targets"]["windows"].as_mapping().unwrap();
+    let windows = v["targets"]["windows"].as_object().unwrap();
     assert_eq!(windows.len(), 1, "{windows:?}");
     assert_eq!(v["targets"]["windows"]["id"].as_str(), Some("SE01"));
     let paths: Vec<&str> = with_code(&m, Code::M10)

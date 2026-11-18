@@ -4,7 +4,7 @@
 use kbd_ldml::escape::{encode_plain, encode_text};
 use kbd_ldml::{ComposeValue, DeadKey, encode_width};
 use kbd_model::{DEFAULT_WIDTH, DisplayTarget, Flick, Key, Keyboard, TextElem};
-use serde_yaml::{Mapping, Value};
+use serde_json::{Map, Value};
 use xmlem::{Document, Element};
 
 use super::keys::pieces;
@@ -20,10 +20,10 @@ fn children(doc: &Document, el: Element, name: &str) -> Vec<Element> {
 /// `variables` as the canonical export writes them.
 pub fn variables(canon: &Document) -> Value {
     let root = canon.root();
-    let mut map = Mapping::new();
+    let mut map = Map::new();
     for vars in children(canon, root, "variables") {
         for (element, field) in [("string", "strings"), ("set", "sets"), ("uset", "usets")] {
-            let mut entries = Mapping::new();
+            let mut entries = Map::new();
             for v in children(canon, vars, element) {
                 insert(
                     &mut entries,
@@ -32,14 +32,14 @@ pub fn variables(canon: &Document) -> Value {
                 );
             }
             if !entries.is_empty() {
-                insert(&mut map, field, Value::Mapping(entries));
+                insert(&mut map, field, Value::Object(entries));
             }
         }
     }
     if map.is_empty() {
         Value::Null
     } else {
-        Value::Mapping(map)
+        Value::Object(map)
     }
 }
 
@@ -68,7 +68,7 @@ pub fn groups(canon: &Document, list: &str, drop_generated: bool) -> Value {
                 let items: Vec<Value> = reorders
                     .into_iter()
                     .map(|r| {
-                        let mut m = Mapping::new();
+                        let mut m = Map::new();
                         for (attr, field) in [
                             ("from", "from"),
                             ("before", "before"),
@@ -81,18 +81,18 @@ pub fn groups(canon: &Document, list: &str, drop_generated: bool) -> Value {
                                 insert(&mut m, field, Value::String(v.into()));
                             }
                         }
-                        Value::Mapping(m)
+                        Value::Object(m)
                     })
                     .collect();
-                let mut m = Mapping::new();
-                insert(&mut m, "reorder", Value::Sequence(items));
-                out.push(Value::Mapping(m));
+                let mut m = Map::new();
+                insert(&mut m, "reorder", Value::Array(items));
+                out.push(Value::Object(m));
                 continue;
             }
             let rules: Vec<Value> = children(canon, group, "transform")
                 .into_iter()
                 .map(|t| {
-                    let mut m = Mapping::new();
+                    let mut m = Map::new();
                     insert(
                         &mut m,
                         "from",
@@ -101,16 +101,16 @@ pub fn groups(canon: &Document, list: &str, drop_generated: bool) -> Value {
                     if let Some(to) = t.attribute(canon, "to") {
                         insert(&mut m, "to", Value::String(to.into()));
                     }
-                    Value::Mapping(m)
+                    Value::Object(m)
                 })
                 .collect();
-            out.push(Value::Sequence(rules));
+            out.push(Value::Array(rules));
         }
     }
     if out.is_empty() {
         Value::Null
     } else {
-        Value::Sequence(out)
+        Value::Array(out)
     }
 }
 
@@ -123,7 +123,7 @@ fn ids(kb: &Keyboard, keys: &[u16]) -> String {
 
 /// A `keys` entry with every attribute of the model key.
 pub fn explicit_key(kb: &Keyboard, key: &Key) -> Value {
-    let mut m = Mapping::new();
+    let mut m = Map::new();
     if !key.output.is_empty() {
         insert(
             &mut m,
@@ -158,20 +158,20 @@ pub fn explicit_key(kb: &Keyboard, key: &Key) -> Value {
     if let Some(role) = key.role {
         insert(&mut m, "role", Value::String(role.name().into()));
     }
-    Value::Mapping(m)
+    Value::Object(m)
 }
 
 pub fn explicit_flick(kb: &Keyboard, flick: &Flick) -> Value {
-    Value::Sequence(
+    Value::Array(
         flick
             .segments
             .iter()
             .map(|s| {
-                let mut m = Mapping::new();
+                let mut m = Map::new();
                 let names: Vec<&str> = s.directions.iter().map(|d| d.name()).collect();
                 insert(&mut m, "directions", Value::String(names.join(" ")));
                 insert(&mut m, "key", Value::String(ids(kb, &[s.key])));
-                Value::Mapping(m)
+                Value::Object(m)
             })
             .collect(),
     )
@@ -186,7 +186,7 @@ pub fn displays(kb: &Keyboard, auto: &dyn Fn(&kbd_model::Display) -> bool) -> Va
         .iter()
         .take(keep)
         .map(|d| {
-            let mut m = Mapping::new();
+            let mut m = Map::new();
             match &d.target {
                 DisplayTarget::Output(text) => {
                     insert(
@@ -198,18 +198,18 @@ pub fn displays(kb: &Keyboard, auto: &dyn Fn(&kbd_model::Display) -> bool) -> Va
                 DisplayTarget::Key(k) => insert(&mut m, "keyId", Value::String(ids(kb, &[*k]))),
             }
             insert(&mut m, "display", Value::String(encode_plain(&d.display)));
-            Value::Mapping(m)
+            Value::Object(m)
         })
         .collect();
     if let Some(base) = &kb.displays.display_base {
-        let mut m = Mapping::new();
+        let mut m = Map::new();
         insert(&mut m, "displayBase", Value::String(encode_plain(base)));
-        out.push(Value::Mapping(m));
+        out.push(Value::Object(m));
     }
     if out.is_empty() {
         Value::Null
     } else {
-        Value::Sequence(out)
+        Value::Array(out)
     }
 }
 
@@ -232,8 +232,8 @@ fn dead_node(
     display: Option<String>,
     standalone: &str,
     compose: &[kbd_ldml::Compose],
-) -> Mapping {
-    let mut m = Mapping::new();
+) -> Map<String, Value> {
+    let mut m = Map::new();
     if marker != default_marker {
         insert(&mut m, "marker", Value::String(marker.into()));
     }
@@ -247,7 +247,7 @@ fn dead_node(
             Value::String(encode_plain(standalone)),
         );
     }
-    let mut entries = Mapping::new();
+    let mut entries = Map::new();
     for c in compose {
         let value = match &c.value {
             ComposeValue::Output(output) => Value::String(encode_plain(output)),
@@ -261,7 +261,7 @@ fn dead_node(
                     "{marker}-{}",
                     crate::ldml::yaml::text::hex_name(c.input.chars(), "_")
                 );
-                Value::Mapping(dead_node(
+                Value::Object(dead_node(
                     kb,
                     &child_identity,
                     child,
@@ -275,7 +275,7 @@ fn dead_node(
         insert(&mut entries, &encode_plain(&c.input), value);
     }
     if !entries.is_empty() {
-        insert(&mut m, "compose", Value::Mapping(entries));
+        insert(&mut m, "compose", Value::Object(entries));
     }
     m
 }
@@ -283,7 +283,7 @@ fn dead_node(
 /// `deadKeys` from the `kbdgen:deadKey` metadata, leaving out every field
 /// that has its default.
 pub fn dead_keys(kb: &Keyboard, metadata: &[DeadKey]) -> Value {
-    let mut out = Mapping::new();
+    let mut out = Map::new();
     for dk in metadata {
         let default = format!(
             "dk_{}",
@@ -301,9 +301,9 @@ pub fn dead_keys(kb: &Keyboard, metadata: &[DeadKey]) -> Value {
         if let Some(name) = &dk.name {
             insert(&mut node, "name", Value::String(encode_plain(name)));
         }
-        insert(&mut out, &encode_plain(&dk.identity), Value::Mapping(node));
+        insert(&mut out, &encode_plain(&dk.identity), Value::Object(node));
     }
-    Value::Mapping(out)
+    Value::Object(out)
 }
 
 /// `targets`, from `kbdgen:target` and the model's Windows options. A
@@ -315,12 +315,12 @@ pub fn targets(kb: &Keyboard, entries: &[kbd_ldml::Target], warnings: &mut Vec<S
         ("iOS", ["spellerPackageKey", "spellerPath"]),
         ("android", ["spellerPackageKey", "spellerPath"]),
     ];
-    let mut hosts: Vec<(&str, Mapping)> = Vec::new();
-    let slot = |host: &'static str, hosts: &mut Vec<(&str, Mapping)>| -> usize {
+    let mut hosts: Vec<(&str, Map<String, Value>)> = Vec::new();
+    let slot = |host: &'static str, hosts: &mut Vec<(&str, Map<String, Value>)>| -> usize {
         match hosts.iter().position(|(h, _)| *h == host) {
             Some(i) => i,
             None => {
-                hosts.push((host, Mapping::new()));
+                hosts.push((host, Map::new()));
                 hosts.len() - 1
             }
         }
@@ -352,20 +352,20 @@ pub fn targets(kb: &Keyboard, entries: &[kbd_ldml::Target], warnings: &mut Vec<S
                 insert(m, "lrmRlm", Value::Bool(true));
             }
             if !w.key_names.is_empty() {
-                let mut names = Mapping::new();
+                let mut names = Map::new();
                 for (k, v) in &w.key_names {
                     insert(&mut names, k, Value::String(v.clone()));
                 }
-                insert(m, "keyNames", Value::Mapping(names));
+                insert(m, "keyNames", Value::Object(names));
             }
         }
     }
     if hosts.is_empty() {
         return Value::Null;
     }
-    let mut out = Mapping::new();
+    let mut out = Map::new();
     for (host, m) in hosts {
-        insert(&mut out, host, Value::Mapping(m));
+        insert(&mut out, host, Value::Object(m));
     }
-    Value::Mapping(out)
+    Value::Object(out)
 }

@@ -7,7 +7,7 @@ use std::fmt;
 use kbd_engine::{Gesture, ModifierState};
 use kbd_ldml::escape::decode_plain;
 use kbd_model::Direction;
-use serde_yaml::Value;
+use serde_json::Value;
 
 use crate::ldml::yaml::node::{Fields, boolean, integer, list, string};
 use crate::ldml::yaml::{At, YamlError, position_scan_code};

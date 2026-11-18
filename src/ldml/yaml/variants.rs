@@ -3,7 +3,7 @@
 
 use kbd_ldml::parse_modifiers;
 use kbd_model::{BottomRow, Direction, ExtraModifierKey, Form, ModifierSet};
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::error::{At, Result};
 use super::node::{Fields, entries, integer, list, string};

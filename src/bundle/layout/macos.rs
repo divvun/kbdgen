@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn names_are_spelled_as_in_layout_files() {
-        let parsed: MacOsKbdLayer = serde_yaml::from_str("caps+shift").unwrap();
+        let parsed: MacOsKbdLayer = crate::yaml::from_str("caps+shift").unwrap();
         assert_eq!(parsed, MacOsKbdLayer::CapsAndShift);
         assert_eq!(parsed.to_string(), "caps+shift");
     }

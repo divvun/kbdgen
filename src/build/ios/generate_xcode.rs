@@ -199,7 +199,7 @@ fn layout_contact_email(bundle: &KbdgenBundle, tag: &LanguageTag) -> Option<Stri
             return None;
         }
     };
-    match serde_yaml::from_str::<Project>(&content) {
+    match crate::yaml::from_str::<Project>(&content) {
         Ok(project) => Some(project.email),
         Err(err) => {
             tracing::warn!(
@@ -402,7 +402,7 @@ mod tests {
     }
 
     fn target() -> iOS {
-        serde_yaml::from_str(
+        crate::yaml::from_str(
             "packageId: com.example.keyboards\nbundleName: Keyboards\nversion: '2.1'\nbuild: 7\n",
         )
         .unwrap()

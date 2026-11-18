@@ -139,6 +139,7 @@
 				TargetAttributes = {
 					T0 = {
 						CreatedOnToolsVersion = 6.0;
+						ProvisioningStyle = Automatic;
 					};
 				};
 				knownAssetTags = (
@@ -245,8 +246,8 @@
 			isa = XCBuildConfiguration;
 
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				INFOPLIST_FILE = "Keyboard/Info.plist";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 			LD_RUNPATH_SEARCH_PATHS = (
 				"$(inherited)",
 				"@executable_path/Frameworks",

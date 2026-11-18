@@ -2,7 +2,7 @@
 //! kept with its raw strings and in file order, the fields v3 never read
 //! reported (M10), comments counted (M11), and v2 files recognised (M07).
 
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::defect::{Code, Defects};
 
@@ -201,9 +201,8 @@ fn describe(value: &Value) -> &'static str {
         Value::Bool(_) => "a boolean",
         Value::Number(_) => "a number",
         Value::String(_) => "a string",
-        Value::Sequence(_) => "a list",
-        Value::Mapping(_) => "a mapping",
-        Value::Tagged(_) => "a tagged value",
+        Value::Array(_) => "a list",
+        Value::Object(_) => "a mapping",
     }
 }
 
@@ -220,16 +219,7 @@ fn join(path: &str, key: &str) -> String {
 fn mapping<'a>(value: &'a Value, path: &str) -> Result<Vec<(&'a str, &'a Value)>, ReadError> {
     match value {
         Value::Null => Ok(Vec::new()),
-        Value::Mapping(map) => map
-            .iter()
-            .map(|(k, v)| match k {
-                Value::String(k) => Ok((k.as_str(), v)),
-                other => Err(format!(
-                    "{path}: a key is {}, not a string; v3 requires string keys",
-                    describe(other)
-                )),
-            })
-            .collect(),
+        Value::Object(map) => Ok(map.iter().map(|(k, v)| (k.as_str(), v)).collect()),
         other => Err(format!(
             "{path}: expected a mapping, found {}",
             describe(other)
@@ -312,7 +302,7 @@ fn dead_lists(value: &Value, path: &str) -> Result<Vec<DeadList>, ReadError> {
         let at = join(path, layer);
         let entries = match v {
             Value::Null => Vec::new(),
-            Value::Sequence(items) => items
+            Value::Array(items) => items
                 .iter()
                 .enumerate()
                 .map(|(i, item)| text(item, &format!("{at}[{}]", i + 1)))
@@ -436,7 +426,7 @@ fn touch(platform: Touch, value: &Value, defects: &mut Defects) -> Result<TouchS
 fn node(value: &Value, path: &str) -> Result<Node3, ReadError> {
     match value {
         Value::String(s) => Ok(Node3::Leaf(s.clone())),
-        Value::Mapping(_) => Ok(Node3::Branch(
+        Value::Object(_) => Ok(Node3::Branch(
             mapping(value, path)?
                 .into_iter()
                 .map(|(k, v)| Ok((k.to_string(), node(v, &join(path, k))?)))

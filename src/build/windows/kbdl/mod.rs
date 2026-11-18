@@ -390,7 +390,7 @@ mod tests {
             shift = KEYS.to_uppercase(),
             alt = KEYS.replace("t ", "t\u{301} ")
         );
-        serde_yaml::from_str(&yaml).unwrap()
+        crate::yaml::from_str(&yaml).unwrap()
     }
 
     fn bundle(layouts: Vec<Layout>) -> KbdgenBundle {

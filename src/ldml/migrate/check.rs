@@ -7,13 +7,12 @@ use std::path::Path;
 use kbd_engine::harness::Harness;
 use kbd_engine::{Gesture, Key, KeyEvent, Model, ModifierState, Options};
 use kbd_model::{Direction, Host};
-use serde_yaml::Value;
 
 use super::convert::{Cell, DeadDef, DesktopTrace, Out, POSITIONS, TouchTrace, Trace};
 use super::defect::{Code, Defects};
 use super::oracle::{CapsState, caps_output};
 use super::source::{Desktop, Touch};
-use crate::ldml::yaml::{Layout4, YamlProblem, load_value, lower, position_scan_code};
+use crate::ldml::yaml::{Layout4, YamlProblem, load_value, lower, parse_yaml, position_scan_code};
 
 const SPACE_SCAN_CODE: u8 = 0x39;
 
@@ -27,7 +26,7 @@ pub struct Loaded {
 /// lowered for every host, resolved and given to the engine. The warnings
 /// of loading and resolution come back with it.
 pub fn load(text: &str, path: &Path, tag: &str) -> Result<(Loaded, Vec<String>), String> {
-    let value: Value = serde_yaml::from_str(text).map_err(|e| e.to_string())?;
+    let value = parse_yaml(path, text).map_err(|e| e.to_string())?;
     let layout = load_value(path, tag, &value).map_err(|e| e.to_string())?;
     let mut warnings: Vec<String> = layout.warnings.iter().map(YamlProblem::to_string).collect();
     let mut models = Vec::new();

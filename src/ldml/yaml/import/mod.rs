@@ -19,7 +19,7 @@ use std::path::Path;
 use kbd_ldml::escape::{Piece, encode_text};
 use kbd_ldml::{Extensions, is_mark};
 use kbd_model::{DisplayTarget, Host, Keyboard, Normalization};
-use serde_yaml::{Mapping, Value};
+use serde_json::{Map, Value};
 use xmlem::Document;
 
 use self::keys::{KeyTok, classify, pieces, token_of, usage};
@@ -81,7 +81,7 @@ fn shared(docs: &[Doc], field: &str, value: &Field) -> Result<Value, String> {
 }
 
 fn info(kb: &Keyboard, autonym: &str) -> Value {
-    let mut m = Mapping::new();
+    let mut m = Map::new();
     if kb.info.name != autonym {
         insert(&mut m, "name", Value::String(kb.info.name.clone()));
     }
@@ -98,7 +98,7 @@ fn info(kb: &Keyboard, autonym: &str) -> Value {
     if m.is_empty() {
         Value::Null
     } else {
-        Value::Mapping(m)
+        Value::Object(m)
     }
 }
 
@@ -115,7 +115,7 @@ fn dead_sugar<'a>(docs: &[Doc<'a>]) -> Option<&'a [kbd_ldml::DeadKey]> {
 struct Plan {
     classes: Vec<Vec<KeyTok>>,
     long_press: Vec<(Vec<Piece>, Vec<String>, usize, u16)>,
-    touch_long_press: Vec<Mapping>,
+    touch_long_press: Vec<Map<String, Value>>,
 }
 
 fn candidate_ids(kb: &Keyboard, index: u16) -> Vec<String> {
@@ -206,7 +206,7 @@ fn plan(docs: &[Doc], level: Level, dead: &dyn Fn(&str) -> Option<String>) -> Pl
                 None => variant.push((output, desired, k)),
             }
         }
-        let mut map = Mapping::new();
+        let mut map = Map::new();
         for (output, _, k) in variant {
             let tokens: Vec<String> = doc
                 .kb
@@ -289,7 +289,7 @@ fn build(
     docs: &[Doc],
     level: Level,
     warnings: &mut Vec<String>,
-) -> Result<Mapping, String> {
+) -> Result<Map<String, Value>, String> {
     let metadata = match level {
         Level::Sugar => dead_sugar(docs),
         Level::Verbatim => None,
@@ -302,7 +302,7 @@ fn build(
         })
     };
     let plan = plan(docs, level, &dead);
-    let mut out = Mapping::new();
+    let mut out = Map::new();
     insert(&mut out, "format", Value::Number(4.into()));
     let mut names = std::collections::BTreeMap::new();
     for doc in docs {
@@ -328,11 +328,11 @@ fn build(
         .find(|(k, _)| k.eq_ignore_ascii_case(&primary))
         .map(|(_, v)| v.clone())
         .unwrap_or_default();
-    let mut dn = Mapping::new();
+    let mut dn = Map::new();
     for (k, v) in &names {
         insert(&mut dn, k, Value::String(v.clone()));
     }
-    insert(&mut out, "displayNames", Value::Mapping(dn));
+    insert(&mut out, "displayNames", Value::Object(dn));
     let fields: [(&str, &Field); 6] = [
         ("info", &|d| info(d.kb, &autonym)),
         ("version", &|d| {
@@ -342,7 +342,7 @@ fn build(
             if d.kb.locales.is_empty() {
                 Value::Null
             } else {
-                Value::Sequence(d.kb.locales.iter().cloned().map(Value::String).collect())
+                Value::Array(d.kb.locales.iter().cloned().map(Value::String).collect())
             }
         }),
         ("normalization", &|d| match d.kb.normalization {
@@ -355,7 +355,7 @@ fn build(
             })
         }),
         ("keyNames", &|d| {
-            let mut m = Mapping::new();
+            let mut m = Map::new();
             let labels = &d.kb.displays.labels;
             for (k, v) in [("space", &labels.space), ("return", &labels.r#return)] {
                 if let Some(v) = v {
@@ -365,7 +365,7 @@ fn build(
             if m.is_empty() {
                 Value::Null
             } else {
-                Value::Mapping(m)
+                Value::Object(m)
             }
         }),
     ];
@@ -400,8 +400,8 @@ fn build(
             insert(&mut out, name, v);
         }
     }
-    let mut keys_map = Mapping::new();
-    let mut flicks_map = Mapping::new();
+    let mut keys_map = Map::new();
+    let mut flicks_map = Map::new();
     for (di, doc) in docs.iter().enumerate() {
         let classes = &plan.classes[di];
         for (key, class) in doc.kb.keys.iter().zip(classes) {
@@ -436,10 +436,10 @@ fn build(
         }
     }
     if !keys_map.is_empty() {
-        insert(&mut out, "keys", Value::Mapping(keys_map));
+        insert(&mut out, "keys", Value::Object(keys_map));
     }
     if !flicks_map.is_empty() {
-        insert(&mut out, "flicks", Value::Mapping(flicks_map));
+        insert(&mut out, "flicks", Value::Object(flicks_map));
     }
     let markers = metadata
         .map(|md| dead_markers(md, first.kb))
@@ -452,7 +452,7 @@ fn build(
     if !displays.is_null() {
         insert(&mut out, "displays", displays);
     }
-    let mut lp = Mapping::new();
+    let mut lp = Map::new();
     for (output, _, di, k) in &plan.long_press {
         let doc = &docs[*di];
         let tokens: Vec<String> = doc
@@ -472,14 +472,14 @@ fn build(
         );
     }
     if !lp.is_empty() {
-        insert(&mut out, "longPress", Value::Mapping(lp));
+        insert(&mut out, "longPress", Value::Object(lp));
     }
     let (hardware, touch) = variants(docs, &plan, level, warnings)?;
     if !hardware.is_empty() {
-        insert(&mut out, "hardware", Value::Mapping(hardware));
+        insert(&mut out, "hardware", Value::Object(hardware));
     }
     if !touch.is_empty() {
-        insert(&mut out, "touch", Value::Mapping(touch));
+        insert(&mut out, "touch", Value::Object(touch));
     }
     let targets = shared(docs, "targets", &|d| {
         fields::targets(d.kb, &d.ext.targets, &mut Vec::new())
@@ -491,6 +491,9 @@ fn build(
     Ok(out)
 }
 
+/// The `hardware` and the `touch` variants by name.
+type Variants = (Map<String, Value>, Map<String, Value>);
+
 /// The hardware and touch variants, one per document and host, with
 /// host variants equal to `default` left out, since hosts fall back to
 /// it.
@@ -499,9 +502,9 @@ fn variants(
     plan: &Plan,
     level: Level,
     warnings: &mut Vec<String>,
-) -> Result<(Mapping, Mapping), String> {
-    let mut hardware = Mapping::new();
-    let mut touch = Mapping::new();
+) -> Result<Variants, String> {
+    let mut hardware = Map::new();
+    let mut touch = Map::new();
     for (di, doc) in docs.iter().enumerate() {
         let (hw_name, touch_name) = variant_names(doc.host);
         let classes = &plan.classes[di];
@@ -537,7 +540,7 @@ fn variants(
     }
     for map in [&mut hardware, &mut touch] {
         if let Some(default) = map.get("default").cloned() {
-            map.retain(|k, v| k.as_str() == Some("default") || *v != default);
+            map.retain(|k, v| k == "default" || *v != default);
         }
     }
     Ok((hardware, touch))
@@ -580,8 +583,13 @@ fn differences(a: &Keyboard, b: &Keyboard) -> Vec<&'static str> {
 
 /// What lowering `layout` gives for each document, as differences from
 /// its model; an error when the layout does not load, lower or resolve.
-fn check(tag: &str, dest: &Path, layout: &Mapping, docs: &[Doc]) -> Result<Vec<String>, String> {
-    let value = Value::Mapping(layout.clone());
+fn check(
+    tag: &str,
+    dest: &Path,
+    layout: &Map<String, Value>,
+    docs: &[Doc],
+) -> Result<Vec<String>, String> {
+    let value = Value::Object(layout.clone());
     let file = dest.display().to_string();
     let loaded = parse(&file, dest, tag, &value).map_err(|e| e.to_string())?;
     let lowered = lower(&loaded).map_err(|e| e.to_string())?;
@@ -669,7 +677,7 @@ pub fn import(tag: &str, dest: &Path, files: &[ImportedFile]) -> Result<Imported
             .into_iter()
             .map(|d| format!("{d}; v4 cannot write it")),
     );
-    let yaml = serde_yaml::to_string(&Value::Mapping(layout)).map_err(|e| LdmlError::Layout {
+    let yaml = crate::yaml::to_string(&Value::Object(layout)).map_err(|e| LdmlError::Layout {
         tag: tag.to_string(),
         message: e.to_string(),
     })?;

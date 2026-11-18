@@ -435,7 +435,7 @@ mod tests {
     }
 
     fn target(package_id: &str) -> iOS {
-        serde_yaml::from_str(&format!(
+        crate::yaml::from_str(&format!(
             "packageId: {package_id}\nbundleName: Keyboards\nversion: '1.0'\nbuild: 1\n"
         ))
         .unwrap()

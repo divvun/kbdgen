@@ -11,7 +11,7 @@ use kbd_model::{
     BottomRow, Direction, ExtraModifierKey, Form, ModifierSet, Normalization, Role,
     WINDOWS_KEY_NAMES,
 };
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::error::{At, Result, YamlProblem};
 use super::node::{Fields, boolean, entries, flag_text, list, number_text, string};
@@ -480,7 +480,7 @@ fn reorder(value: &Value, at: &At) -> Result<Reorder4> {
 fn groups(value: &Value, at: &At) -> Result<Vec<Group>> {
     let mut out = Vec::new();
     for (group, ga) in list(value, at)? {
-        if let Value::Mapping(_) = group {
+        if let Value::Object(_) = group {
             let mut f = Fields::new(group, &ga)?;
             let (items, ia) = f.require("reorder")?;
             let rules = list(items, &ia)?

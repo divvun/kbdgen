@@ -686,8 +686,7 @@ fn migrate_writes_unblocked_layouts_and_reports() {
     assert!(written.starts_with("format: 4\n"), "{written}");
     let blocked = std::fs::read_to_string(bundle.join("layouts/fi.yaml")).unwrap();
     assert!(blocked.contains("modes"));
-    let yaml: serde_yaml::Value =
-        serde_yaml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let yaml = kbdgen::yaml::tree(&std::fs::read_to_string(&path).unwrap()).unwrap();
     assert_eq!(yaml["summary"]["counts"]["M07"].as_u64(), Some(1));
     assert!(report(&output).starts_with("summary: 2 layout(s)"));
 }

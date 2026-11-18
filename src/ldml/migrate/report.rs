@@ -166,6 +166,9 @@ impl Report {
                     .collect(),
             },
         };
-        serde_yaml::to_string(&document).unwrap_or_default()
+        serde_json::to_value(&document)
+            .ok()
+            .and_then(|document| crate::yaml::to_string(&document).ok())
+            .unwrap_or_default()
     }
 }

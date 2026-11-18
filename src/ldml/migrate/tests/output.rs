@@ -89,7 +89,7 @@ fn scalars_are_quoted_only_where_needed() {
         ("\u{1}", "\"\\u0001\""),
     ] {
         assert_eq!(scalar(s), written, "{s:?}");
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&format!("k: {written}")).unwrap();
+        let parsed = crate::yaml::tree(&format!("k: {written}")).unwrap();
         assert_eq!(parsed["k"].as_str(), Some(s), "{written}");
     }
 }
@@ -178,14 +178,14 @@ fn report_lists_defects_then_summary() {
         "{text}"
     );
 
-    let yaml: serde_yaml::Value = serde_yaml::from_str(&report.yaml()).unwrap();
+    let yaml = crate::yaml::tree(&report.yaml()).unwrap();
     let first = &yaml["defects"][0];
     for field in ["code", "file", "path", "message", "action"] {
         assert!(first.get(field).is_some(), "{field}");
     }
     assert_eq!(first["action"].as_str(), Some("blocked"));
     assert_eq!(yaml["summary"]["counts"]["M07"].as_u64(), Some(1));
-    assert_eq!(yaml["summary"]["blocked"].as_sequence().unwrap().len(), 1);
+    assert_eq!(yaml["summary"]["blocked"].as_array().unwrap().len(), 1);
 }
 
 fn trace(platform: Desktop, layers: &[(&str, Vec<Out>)]) -> DesktopTrace {
@@ -278,7 +278,7 @@ fn macos_and_chromeos_caps_select_layers() {
 /// Converts and loads `yaml`, then runs the equivalence check after
 /// `tamper` changes the trace of what v3 typed.
 fn check_tampered(yaml: &str, tamper: impl Fn(&mut Trace)) -> Vec<Defect> {
-    let value: serde_yaml::Value = serde_yaml::from_str(yaml).unwrap();
+    let value = crate::yaml::tree(yaml).unwrap();
     let mut defects = defect::Defects::new("se.yaml");
     let src = source::read(&value, &mut defects).unwrap().unwrap();
     let mut converted = convert(&src, &mut defects);

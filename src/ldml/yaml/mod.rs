@@ -29,7 +29,8 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::{Mutex, PoisonError};
 
-use serde_yaml::Value;
+use serde_json::Value;
+use serde_path_to_error::Segment;
 
 pub use error::{At, YamlError, YamlProblem};
 pub use lower::{HOSTS, lower};
@@ -55,7 +56,7 @@ pub fn detect(value: &Value) -> Result<LayoutFormat, String> {
     match value.get("format") {
         None => Ok(LayoutFormat::V3),
         Some(Value::Number(n)) if n.as_u64() == Some(4) => Ok(LayoutFormat::V4),
-        Some(other) => Err(serde_yaml::to_string(other)
+        Some(other) => Err(crate::yaml::to_string(other)
             .unwrap_or_default()
             .trim()
             .to_string()),
@@ -68,9 +69,30 @@ pub fn read_yaml(path: &Path) -> Result<Value, LdmlError> {
         path: path.to_path_buf(),
         source,
     })?;
-    serde_yaml::from_str(&text).map_err(|e| LdmlError::Yaml {
-        path: path.to_path_buf(),
-        message: e.to_string(),
+    parse_yaml(path, &text)
+}
+
+// [spec:kbdgen:req:ldml.yaml.strict+1]
+/// Parses `text`, read from `path`, as a YAML tree. An error names the YAML
+/// path as every v4 error does, then the line and column.
+pub(crate) fn parse_yaml(path: &Path, text: &str) -> Result<Value, LdmlError> {
+    crate::yaml::tree(text).map_err(|e| {
+        let at = e
+            .segments()
+            .iter()
+            .fold(At::file(""), |at, segment| match segment {
+                Segment::Map { key } => at.key(key),
+                Segment::Seq { index } => at.index(*index),
+                Segment::Enum { .. } | Segment::Unknown => at,
+            });
+        let message = match at.path() {
+            "" => e.message(),
+            yaml_path => format!("{yaml_path}: {}", e.message()),
+        };
+        LdmlError::Yaml {
+            path: path.to_path_buf(),
+            message,
+        }
     })
 }
 

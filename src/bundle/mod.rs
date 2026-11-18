@@ -7,11 +7,13 @@ use language_tags::LanguageTag;
 
 use layout::Layout;
 use project::Project;
-use serde_yaml::Value;
+use serde::de::IgnoredAny;
+use serde_json::Value;
 use target::Targets;
 
 use self::resources::Resources;
 use crate::ldml::yaml::LayoutFormat;
+use crate::yaml;
 
 pub(crate) mod fetch;
 pub mod layout;
@@ -168,9 +170,8 @@ pub fn read_kbdgen_bundle(path: &Path) -> Result<KbdgenBundle, Error> {
 
     let project_text = fs::read_to_string(canonical_bundle_path.join(PROJECT_FILENAME))
         .map_err(|e| Error::Io(path.to_path_buf(), e))?;
-    let deserializer = serde_yaml::Deserializer::from_str(&project_text);
-    let project: Project = serde_path_to_error::deserialize(deserializer)
-        .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+    let project: Project =
+        yaml::from_str(&project_text).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
     let layouts_path = canonical_bundle_path.join(LAYOUTS_FOLDER);
     let targets_path = canonical_bundle_path.join(TARGETS_FOLDER);
@@ -251,10 +252,8 @@ fn load_layout(path: &Path) -> Result<Loaded, Error> {
     })?;
 
     let yaml_text = fs::read_to_string(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
-    let deserializer = serde_yaml::Deserializer::from_str(&yaml_text);
-    let mut yaml: Value = serde_path_to_error::deserialize(deserializer)
-        .map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
-    match crate::ldml::yaml::detect(&yaml) {
+    let mut tree = yaml::tree(&yaml_text).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+    match crate::ldml::yaml::detect(&tree) {
         Ok(LayoutFormat::V3) => {}
         Ok(LayoutFormat::V4) => return Ok(Loaded::V4(tag)),
         Err(value) => {
@@ -264,17 +263,14 @@ fn load_layout(path: &Path) -> Result<Loaded, Error> {
             });
         }
     }
-    yaml.as_mapping_mut()
+    tree.as_object_mut()
         .ok_or_else(|| Error::NotAMapping {
             path: path.to_path_buf(),
         })?
-        .insert(
-            Value::String("languageTag".to_owned()),
-            Value::String(tag.to_string()),
-        );
+        .insert("languageTag".to_owned(), Value::String(tag.to_string()));
 
     let mut layout: Layout =
-        serde_path_to_error::deserialize(yaml).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+        yaml::from_tree(tree).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
 
     // [spec:kbdgen:req:bundle.layouts.autonym]
     let _autonym = match layout.display_names.get(
@@ -309,8 +305,7 @@ where
     T: for<'de> serde::Deserialize<'de>,
 {
     let s = fs::read_to_string(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
-    let deserializer = serde_yaml::Deserializer::from_str(&s);
-    serde_path_to_error::deserialize(deserializer).map_err(|e| Error::Yaml(path.to_path_buf(), e))
+    yaml::from_str(&s).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
 /// Loads a target file, then sets each field whose variable in `env_vars`
@@ -320,16 +315,17 @@ fn load_yaml_with_env<T>(path: &Path, env_vars: &[(&str, &str)]) -> Result<T, Er
 where
     T: for<'de> serde::Deserialize<'de>,
 {
-    let mut raw: Value = load_yaml(path)?;
-    let root = raw.as_mapping_mut().ok_or_else(|| Error::NotAMapping {
+    let s = fs::read_to_string(path).map_err(|e| Error::Io(path.to_path_buf(), e))?;
+    let mut raw = yaml::tree(&s).map_err(|e| Error::Yaml(path.to_path_buf(), e))?;
+    let root = raw.as_object_mut().ok_or_else(|| Error::NotAMapping {
         path: path.to_path_buf(),
     })?;
     for &(env_var, field_name) in env_vars {
         if let Ok(value) = std::env::var(env_var) {
-            root.insert(Value::String(field_name.to_owned()), Value::String(value));
+            root.insert(field_name.to_owned(), Value::String(value));
         }
     }
-    serde_path_to_error::deserialize(raw).map_err(|e| Error::Yaml(path.to_path_buf(), e))
+    yaml::from_tree(raw).map_err(|e| Error::Yaml(path.to_path_buf(), e))
 }
 
 // [spec:kbdgen:def:bundle.resources+3]
@@ -377,13 +373,10 @@ const WINDOWS_LAYOUT_OPTIONS: [&str; 3] = ["shiftLock", "lrmRlm", "keyNames"];
 /// Fails when `targets/windows.yaml` sets a keyboard option, which would
 /// otherwise be ignored like an unknown field.
 fn reject_windows_options(path: &Path) -> Result<(), Error> {
-    let value: serde_yaml::Value = load_yaml(path)?;
-    let Some(mapping) = value.as_mapping() else {
-        return Ok(());
-    };
+    let fields: Option<IndexMap<String, IgnoredAny>> = load_yaml(path)?;
     match WINDOWS_LAYOUT_OPTIONS
         .into_iter()
-        .find(|field| mapping.contains_key(*field))
+        .find(|field| fields.as_ref().is_some_and(|f| f.contains_key(*field)))
     {
         Some(field) => Err(Error::WindowsTargetOption {
             path: path.to_path_buf(),
@@ -479,10 +472,7 @@ pub enum Error {
     Io(PathBuf, #[source] std::io::Error),
 
     #[error("Error parsing YAML for path: {0} at {}", .1.path())]
-    Yaml(
-        PathBuf,
-        #[source] serde_path_to_error::Error<serde_yaml::Error>,
-    ),
+    Yaml(PathBuf, #[source] yaml::Error),
 
     #[error(".yaml files must have a stem, failed to parse: `{}`", path.display())]
     NoFileStem { path: PathBuf },
@@ -641,7 +631,7 @@ mod tests {
                 .map(|&i| {
                     let tag: LanguageTag = entries[i].parse().unwrap();
                     let layout: Layout =
-                        serde_yaml::from_str(&layout_yaml(entries[i], "Autonym")).unwrap();
+                        yaml::from_str(&layout_yaml(entries[i], "Autonym")).unwrap();
                     (tag, layout)
                 })
                 .collect()

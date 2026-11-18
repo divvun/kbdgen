@@ -8,7 +8,7 @@ use kbd_ldml::{encode_modifiers, implied_form, is_kbdgen_layer};
 use kbd_model::{
     BottomRow, Component, Hardware, HardwareLayer, Keyboard, ModifierSet, Modifiers, TouchSet,
 };
-use serde_yaml::{Mapping, Value};
+use serde_json::{Map, Value};
 
 use super::keys::{KeyTok, pieces, token_of};
 use super::{Doc, Level};
@@ -16,8 +16,8 @@ use crate::ldml::yaml::layers::{Grid, character_rows, imply, is_uppercase_of};
 use crate::ldml::yaml::text::plain_text;
 use crate::ldml::yaml::variants::default_width;
 
-pub fn insert(map: &mut Mapping, key: &str, value: Value) {
-    map.insert(Value::String(key.to_string()), value);
+pub fn insert(map: &mut Map<String, Value>, key: &str, value: Value) {
+    map.insert(key.to_string(), value);
 }
 
 fn rows_value(rows: Vec<Vec<String>>) -> Value {
@@ -162,9 +162,9 @@ pub fn hardware(doc: &Doc, classes: &[KeyTok], level: Level) -> Value {
     let Some(hw) = &kb.hardware else {
         return Value::Null;
     };
-    let mut map = Mapping::new();
+    let mut map = Map::new();
     if implied_form(kb.conforms_to, &hw.form.id).as_ref() != Some(&hw.form) {
-        let mut form = Mapping::new();
+        let mut form = Map::new();
         insert(&mut form, "id", Value::String(hw.form.id.clone()));
         let rows: Vec<Value> = hw
             .form
@@ -179,8 +179,8 @@ pub fn hardware(doc: &Doc, classes: &[KeyTok], level: Level) -> Value {
                 )
             })
             .collect();
-        insert(&mut form, "rows", Value::Sequence(rows));
-        insert(&mut map, "form", Value::Mapping(form));
+        insert(&mut form, "rows", Value::Array(rows));
+        insert(&mut map, "form", Value::Object(form));
     } else if hw.form.id != "iso" {
         insert(&mut map, "form", Value::String(hw.form.id.clone()));
     }
@@ -202,7 +202,7 @@ pub fn hardware(doc: &Doc, classes: &[KeyTok], level: Level) -> Value {
     if !implied {
         insert(&mut map, "impliedLayers", Value::String("none".to_string()));
     }
-    let mut layers = Mapping::new();
+    let mut layers = Map::new();
     for grid in &grids {
         insert(
             &mut layers,
@@ -210,13 +210,13 @@ pub fn hardware(doc: &Doc, classes: &[KeyTok], level: Level) -> Value {
             rows_value(hardware_rows(kb, classes, hw, grid)),
         );
     }
-    insert(&mut map, "layers", Value::Mapping(layers));
+    insert(&mut map, "layers", Value::Object(layers));
     let extra = &kb.windows.extra_modifiers;
     if !extra.is_empty() {
         insert(
             &mut map,
             "extraModifiers",
-            Value::Sequence(
+            Value::Array(
                 extra
                     .iter()
                     .map(|k| Value::String(k.name().to_string()))
@@ -224,7 +224,7 @@ pub fn hardware(doc: &Doc, classes: &[KeyTok], level: Level) -> Value {
             ),
         );
     }
-    Value::Mapping(map)
+    Value::Object(map)
 }
 
 /// The name a touch set gets as a size: its own, else `phone` without a
@@ -273,7 +273,7 @@ fn touch_layer(kb: &Keyboard, classes: &[KeyTok], rows: &[Vec<u16>]) -> Value {
     if directions.is_empty() {
         return rows_value(tokens);
     }
-    let mut flicks = Mapping::new();
+    let mut flicks = Map::new();
     for d in &directions {
         let flick_rows: Vec<Vec<String>> = rows
             .iter()
@@ -294,22 +294,22 @@ fn touch_layer(kb: &Keyboard, classes: &[KeyTok], rows: &[Vec<u16>]) -> Value {
         let names: Vec<&str> = d.iter().map(|x| x.name()).collect();
         insert(&mut flicks, &names.join(" "), rows_value(flick_rows));
     }
-    let mut map = Mapping::new();
+    let mut map = Map::new();
     insert(&mut map, "rows", rows_value(tokens));
-    insert(&mut map, "flicks", Value::Mapping(flicks));
-    Value::Mapping(map)
+    insert(&mut map, "flicks", Value::Object(flicks));
+    Value::Object(map)
 }
 
 /// A touch variant of `doc`: one size per touch set, and its own
 /// `longPress` entries.
-pub fn touch(doc: &Doc, classes: &[KeyTok], long_press: Mapping) -> Value {
+pub fn touch(doc: &Doc, classes: &[KeyTok], long_press: Map<String, Value>) -> Value {
     let kb = doc.kb;
-    let mut sizes = Mapping::new();
+    let mut sizes = Map::new();
     let mut taken: Vec<String> = Vec::new();
     for set in &kb.touch {
         let name = size_name(set, &taken);
         taken.push(name.clone());
-        let mut size = Mapping::new();
+        let mut size = Map::new();
         if default_width(&name) != Some(set.min_device_width)
             && let Some(w) = set.min_device_width
         {
@@ -322,7 +322,7 @@ pub fn touch(doc: &Doc, classes: &[KeyTok], long_press: Mapping) -> Value {
                 Value::String("authored".to_string()),
             );
         }
-        let mut layers = Mapping::new();
+        let mut layers = Map::new();
         for layer in &set.layers {
             insert(
                 &mut layers,
@@ -330,13 +330,13 @@ pub fn touch(doc: &Doc, classes: &[KeyTok], long_press: Mapping) -> Value {
                 touch_layer(kb, classes, &layer.rows),
             );
         }
-        insert(&mut size, "layers", Value::Mapping(layers));
-        insert(&mut sizes, &name, Value::Mapping(size));
+        insert(&mut size, "layers", Value::Object(layers));
+        insert(&mut sizes, &name, Value::Object(size));
     }
-    let mut map = Mapping::new();
+    let mut map = Map::new();
     if !long_press.is_empty() {
-        insert(&mut map, "longPress", Value::Mapping(long_press));
+        insert(&mut map, "longPress", Value::Object(long_press));
     }
-    insert(&mut map, "sizes", Value::Mapping(sizes));
-    Value::Mapping(map)
+    insert(&mut map, "sizes", Value::Object(sizes));
+    Value::Object(map)
 }

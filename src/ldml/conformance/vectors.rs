@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use kbd_engine::{BackspacePolicy, Options, OutputForm};
 use kbd_model::Host;
-use serde_yaml::Value;
+use serde_json::Value;
 
 use super::steps::{Step, steps};
 use crate::ldml::yaml::node::{Fields, boolean, list, string};

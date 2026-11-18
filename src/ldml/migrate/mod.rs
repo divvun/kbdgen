@@ -23,7 +23,6 @@ mod text;
 use std::path::{Path, PathBuf};
 
 use kbd_model::{Host, Layout};
-use serde_yaml::Value;
 
 pub use self::check::CapsDiff;
 pub use self::convert::Out;
@@ -31,7 +30,7 @@ use self::defect::{Code, Defect, Defects};
 use self::report::{LayoutReport, Outcome, Report};
 use super::LdmlError;
 use super::layouts::{HostDocument, LayoutFile, compiled_layouts, layout_files};
-use super::yaml::{Layout4, LayoutFormat, lower};
+use super::yaml::{Layout4, LayoutFormat, lower, parse_yaml};
 
 /// One v3 layout migrated in memory.
 #[derive(Debug, Clone)]
@@ -110,7 +109,7 @@ pub fn migrate_text(path: &Path, tag: &str, text: &str) -> Result<Migration, Ldm
         path: path.to_path_buf(),
         message,
     };
-    let value: Value = serde_yaml::from_str(text).map_err(|e| yaml_error(e.to_string()))?;
+    let value = parse_yaml(path, text)?;
     let file = path.display().to_string();
     let mut defects = Defects::new(&file);
     let comments = source::comment_lines(text);
