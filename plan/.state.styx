@@ -1660,6 +1660,11 @@ impl_evidence (
         {impl_name main, rule ldml.linux.compose}
         {impl_name main, rule ldml.linux.dead-keys}
     )}
+    {id targets.linux.ibus.data, covered_rules (
+        linux.ibus.data
+    ), covered_claims (
+        {impl_name main, rule linux.ibus.data}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

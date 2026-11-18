@@ -1,7 +1,8 @@
 //! The Linux target (`docs/spec/linux.md`, `docs/spec/ldml/linux.md`): the
 //! names of the bundle's Linux output (`ids`), the `linux` keyboard of
-//! each layout that has one (`source`), its XKB layout (`xkb`), and the
-//! on-screen keyboards that show it (`osk`).
+//! each layout that has one (`source`), its XKB layout (`xkb`), its IBus
+//! engine's data (`ibus`), and the on-screen keyboards that show it
+//! (`osk`).
 
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,7 @@ pub use self::generate_linux::GenerateLinux;
 use super::{BuildStep, BuildSteps};
 
 mod generate_linux;
+pub mod ibus;
 pub mod ids;
 pub mod osk;
 pub mod source;

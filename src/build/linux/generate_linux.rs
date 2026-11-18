@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 
+use super::ibus;
 use super::ids::Ids;
 use super::osk::{self, Osk, plasma};
 use super::source::{self, LinuxLayout};
@@ -36,6 +37,8 @@ impl BuildStep for GenerateLinux {
         }
         let xkb = xkb::Tree::new(&ids, &layouts)?;
         tracing::debug!("The XKB tier has {} file(s)", xkb.files.len());
+        let engine = ibus::Tree::new(&ids, &bundle.project.author, &target.version, &layouts)?;
+        tracing::debug!("The IBus engine's data has {} file(s)", engine.files.len());
         let packages = on_screen_keyboards(&ids, &target.version, &layouts)?;
         tracing::debug!("Built {} plasma-keyboard package(s)", packages.len());
         tracing::info!("Prepared {} layout(s) for Linux", layouts.len());
