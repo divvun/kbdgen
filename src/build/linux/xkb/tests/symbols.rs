@@ -4,9 +4,13 @@ use crate::build::linux::xkb::keysym::Keysym;
 use crate::build::linux::xkb::types::{KeyType, LEVEL3, LOCK, NUM_LOCK, SHIFT, choose};
 use crate::build::linux::xkb::{Adapted, Tree, Value, XkbState, adapt};
 
-/// Rows of `\u{0}` but for `keys`, each (row, column, output).
+/// ISO rows of `\u{0}` but for `keys`, each (row, column, output).
 pub fn sparse(keys: &[(usize, usize, &str)]) -> String {
-    let lengths = [13, 12, 12, 11];
+    sparse_rows(&[13, 12, 12, 11], keys)
+}
+
+/// Rows of `lengths` keys, `\u{0}` but for `keys`.
+pub fn sparse_rows(lengths: &[usize], keys: &[(usize, usize, &str)]) -> String {
     let mut rows: Vec<Vec<String>> = lengths
         .iter()
         .map(|n| vec!["\\u{0}".to_owned(); *n])
@@ -194,7 +198,7 @@ fn keys_without_any_value_hide_pc_keysyms() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.linux.values+1/test]
+// [spec:kbdgen:sem:ldml.linux.values+2/test]
 #[test]
 fn values_become_legacy_unicode_or_void_keysyms() {
     let body = "deadKeys:\n  x: {standalone: x, compose: {a: ä}}\n  y: {standalone: '', compose: {a: ÿ}}\n  z: {standalone: ab, compose: {a: ž}}\n";
@@ -237,7 +241,7 @@ fn values_become_legacy_unicode_or_void_keysyms() {
     assert_eq!(values(&layout, "AD03")[0], Value::Long("ŋ̈".to_owned()));
 }
 
-// [spec:kbdgen:sem:ldml.linux.values+1/test]
+// [spec:kbdgen:sem:ldml.linux.values+2/test]
 #[test]
 fn keysyms_follow_libxkbcommon_names_and_case() {
     assert_eq!(Keysym::from_char('a'), Keysym(0x61));
@@ -459,4 +463,16 @@ fn symbols_file_has_one_default_section() {
     for line in &lines[4..lines.len() - 1] {
         assert!(line.starts_with("    key <"), "{line}");
     }
+}
+
+// [spec:kbdgen:sem:ldml.linux.values+2/test]
+#[test]
+fn normalized_outputs_are_written_in_nfc() {
+    let layout = adapted(
+        "sme",
+        &v4_linux("sme", "Sámi", "normalization: enabled\n", ROWS),
+    );
+    assert!(line(&layout, "AD11").contains("[ aring"), "{}", layout.text);
+    assert!(line(&layout, "AC10").contains("[ odiaeresis"));
+    assert_eq!(values(&layout, "AD11")[0], Value::Char('å'));
 }

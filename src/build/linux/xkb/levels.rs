@@ -3,8 +3,9 @@
 
 use std::collections::BTreeMap;
 
+use icu_normalizer::ComposingNormalizerBorrowed;
 use kbd_engine::ModifierState;
-use kbd_model::{Hardware, KeyIndex, Keyboard, MarkerIndex, TextElem};
+use kbd_model::{Hardware, KeyIndex, Keyboard, MarkerIndex, Normalization, TextElem};
 
 use super::keycodes::{KEYS, XkbKey};
 use super::keysym::Keysym;
@@ -53,8 +54,29 @@ pub fn modifiers(state: XkbState) -> ModifierState {
     }
 }
 
-/// The value of a key's output.
-// [spec:kbdgen:sem:ldml.linux.values+1]
+/// Plain text as the engine commits it: in NFC when the keyboard's
+/// normalization is enabled, which stores outputs in NFD.
+fn committed(keyboard: &Keyboard, text: &str) -> String {
+    if keyboard.normalization == Normalization::Enabled {
+        ComposingNormalizerBorrowed::new_nfc()
+            .normalize(text)
+            .into_owned()
+    } else {
+        text.to_owned()
+    }
+}
+
+/// The one character of `text`, if it has exactly one.
+fn single(text: &str) -> Option<char> {
+    let mut chars = text.chars();
+    match (chars.next(), chars.next()) {
+        (Some(c), None) => Some(c),
+        _ => None,
+    }
+}
+
+/// The value of a key's output, its text taken as the engine commits it.
+// [spec:kbdgen:sem:ldml.linux.values+2]
 pub fn value(keyboard: &Keyboard, key: Option<KeyIndex>) -> Value {
     let Some(key) = key.and_then(|index| keyboard.key(index)) else {
         return Value::Empty;
@@ -64,29 +86,29 @@ pub fn value(keyboard: &Keyboard, key: Option<KeyIndex>) -> Value {
     }
     match key.output.elements() {
         [TextElem::Marker(marker)] => Value::Dead(*marker),
-        [TextElem::Char(c)] => Value::Char(*c),
-        _ if key.output.is_plain() => Value::Long(key.output.plain()),
+        _ if key.output.is_plain() => {
+            let text = committed(keyboard, &key.output.plain());
+            match single(&text) {
+                Some(c) => Value::Char(c),
+                None => Value::Long(text),
+            }
+        }
         _ => Value::Mixed,
     }
 }
 
 /// The keysym of a value, given the dead keysyms of the dead keys that
 /// have one.
-// [spec:kbdgen:sem:ldml.linux.values+1]
+// [spec:kbdgen:sem:ldml.linux.values+2]
 pub fn keysym(keyboard: &Keyboard, dead: &BTreeMap<MarkerIndex, Keysym>, value: &Value) -> Keysym {
     match value {
         Value::Char(c) => Keysym::from_char(*c),
         Value::Dead(marker) => dead.get(marker).copied().unwrap_or_else(|| {
-            let mut flush = keyboard
+            keyboard
                 .flush
                 .get(marker)
-                .map(|flush| flush.chars())
-                .into_iter()
-                .flatten();
-            match (flush.next(), flush.next()) {
-                (Some(c), None) => Keysym::from_char(c),
-                _ => Keysym::VOID_SYMBOL,
-            }
+                .and_then(|flush| single(&committed(keyboard, flush)))
+                .map_or(Keysym::VOID_SYMBOL, Keysym::from_char)
         }),
         Value::Empty | Value::Long(_) | Value::Mixed => Keysym::VOID_SYMBOL,
     }

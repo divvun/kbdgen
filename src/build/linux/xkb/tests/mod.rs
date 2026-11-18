@@ -1,5 +1,6 @@
 //! The XKB tier on fixture layouts.
 
+mod classify;
 mod dead_keys;
 mod registry;
 mod symbols;

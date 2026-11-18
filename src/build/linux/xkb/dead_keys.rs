@@ -69,7 +69,7 @@ fn identities(keyboard: &Keyboard, marker: MarkerIndex) -> Vec<String> {
 /// order: the first of `ibus_keysym_to_unicode`'s table whose isolated or
 /// combining character is the marker's flush output, else its display,
 /// and that no earlier marker got.
-// [spec:kbdgen:sem:ldml.linux.dead-keys]
+// [spec:kbdgen:sem:ldml.linux.dead-keys+1]
 pub fn assign(
     keyboard: &Keyboard,
     levels: &Levels,
@@ -192,7 +192,7 @@ impl Prober<'_> {
 /// through the reference table, from each dead key with a dead keysym.
 /// Pressing a dead key from the reset state MUST commit nothing and leave
 /// exactly its marker pending.
-// [spec:kbdgen:sem:ldml.linux.dead-keys]
+// [spec:kbdgen:sem:ldml.linux.dead-keys+1]
 pub fn derive(keyboard: &Keyboard, levels: &Levels, layout: &str) -> Result<DeadKeys> {
     let (keysyms, without) = assign(keyboard, levels);
     let options = Options {

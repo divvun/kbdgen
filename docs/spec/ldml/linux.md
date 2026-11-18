@@ -102,8 +102,11 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > keysym of every level the layout leaves `NoSymbol` (`<LSGT>`, `<BKSL>`
 > and `<SPCE>` in `pc`; checked with libxkbcommon 1.7.0 and 1.13.1).
 
-> [spec:kbdgen:sem:ldml.linux.values+1]
-> A state's *value* is a keysym:
+> [spec:kbdgen:sem:ldml.linux.values+2]
+> A state's *value* is a keysym of its output's text as the engine commits
+> it (`ldml.engine.output.form`): in NFC when the keyboard's
+> normalization is enabled, since the model then holds outputs in NFD and
+> a precomposed letter would otherwise be several scalar values:
 >
 > - no key, a gap or an empty output: `VoidSymbol`, which types nothing
 >   and, unlike `NoSymbol`, replaces `pc`'s keysym (`ldml.linux.levels`)
@@ -195,12 +198,12 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > plasma-keyboard's and other locales' composition differ in details;
 > reports and tests use this one.
 
-> [spec:kbdgen:sem:ldml.linux.dead-keys]
+> [spec:kbdgen:sem:ldml.linux.dead-keys+1]
 > A dead key, marker m, gets the first dead keysym D, in the order of
 > `ibus_keysym_to_unicode`'s table (`src/ibuscomposetable.c`), whose
-> isolated or combining character is `flush[m]`, else the display of
-> `\m{m}` (`ldml.model.displays`), and that no marker earlier in the marker
-> table got: `´` or U+0301 gives `dead_acute`, `ˇ` `dead_caron`, `~`
+> isolated or combining character is `flush[m]`, or, when none is (as for
+> `standalone: ""`), the display of `\m{m}` (`ldml.model.displays`), and
+> that no marker earlier in the marker table got: `´` or U+0301 gives `dead_acute`, `ˇ` `dead_caron`, `~`
 > `dead_tilde`, `¨` `dead_diaeresis`. A dead key without one is typed as
 > its standalone (`ldml.linux.values`).
 >
@@ -360,7 +363,7 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 
 ## Reporting
 
-> [spec:kbdgen:req:ldml.linux.classify]
+> [spec:kbdgen:req:ldml.linux.classify+1]
 > For the XKB layout, the adapter MUST report, once per layout and
 > feature, with a count and up to ten examples, what it does not
 > reproduce:
@@ -368,8 +371,10 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > - outputs of more than one scalar value, and outputs mixing text and
 >   markers (`ldml.linux.values`)
 > - dead keys without a dead keysym, and dead-key results the reference
->   Compose table gives otherwise, the space bar's and those of keys a dead
->   key does not compose with included (`ldml.linux.dead-keys`)
+>   Compose table gives otherwise (`ldml.linux.dead-keys`): the space
+>   bar's, and those of every key a dead key does not compose with, which
+>   IBus drops while the dead key stays pending, where the engine types the
+>   standalone and the key (`ldml.linux.compose`); the message says so
 > - transforms that do not start with a marker, `reorder` groups,
 >   `backspace` rules other than the generated one, and an enabled
 >   `normalization` (`ldml.linux.rewrites`)

@@ -1665,6 +1665,13 @@ impl_evidence (
     ), covered_claims (
         {impl_name main, rule linux.ibus.data}
     )}
+    {id targets.linux.xkb.classify, covered_rules (
+        ldml.linux.classify
+        ldml.linux.rewrites
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.classify}
+        {impl_name main, rule ldml.linux.rewrites}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

@@ -3,6 +3,7 @@
 //! entry, derived from its `linux` keyboard, and the bundle's
 //! `rules/evdev.xml`, built in memory for the output step to write.
 
+mod classify;
 pub mod compose;
 mod dead_keys;
 pub mod keycodes;
@@ -16,6 +17,7 @@ pub mod types;
 
 use anyhow::{Result, anyhow};
 
+pub use classify::{Classification, Rewrites, rewrites};
 pub use dead_keys::{DeadKeys, Difference};
 pub use levels::{Decimal, KeyValues, Levels, Value};
 pub use registry::{RegistryEntry, evdev_xml};
@@ -38,6 +40,7 @@ pub struct Adapted {
     pub symbols: Symbols,
     /// The text of `symbols/<L>`.
     pub text: String,
+    pub classification: Classification,
     pub diag: Diagnostics,
 }
 
@@ -85,7 +88,7 @@ pub fn adapt(ids: &Ids, layout: &LinuxLayout) -> Result<Adapted> {
         uses_level3: levels.uses_level3,
     };
     let text = symbols::write(&symbols);
-    Ok(Adapted {
+    let mut adapted = Adapted {
         entry,
         levels,
         typed,
@@ -93,8 +96,12 @@ pub fn adapt(ids: &Ids, layout: &LinuxLayout) -> Result<Adapted> {
         dead,
         symbols,
         text,
+        classification: Classification::default(),
         diag,
-    })
+    };
+    adapted.classification = classify::classify(&adapted, keyboard, hardware);
+    classify::report(&adapted.classification, &mut adapted.diag);
+    Ok(adapted)
 }
 
 /// The bundle's `xkb/` tree: file paths relative to it, and contents.

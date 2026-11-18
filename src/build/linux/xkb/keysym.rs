@@ -94,7 +94,7 @@ impl Keysym {
 
     /// The keysym of `c`, as `xkb_utf32_to_keysym` gives it: the legacy
     /// keysym where there is one, else the Unicode keysym.
-    // [spec:kbdgen:sem:ldml.linux.values+1]
+    // [spec:kbdgen:sem:ldml.linux.values+2]
     pub fn from_char(c: char) -> Keysym {
         let code = u32::from(c);
         match code {
@@ -126,7 +126,7 @@ impl Keysym {
     /// The keysym's name as a symbols file writes it: a Unicode keysym as
     /// `U` and at least four uppercase hexadecimal digits, else its name in
     /// `xkbcommon-keysyms.h`.
-    // [spec:kbdgen:sem:ldml.linux.values+1]
+    // [spec:kbdgen:sem:ldml.linux.values+2]
     pub fn name(self) -> String {
         if let Some(code) = self.0.checked_sub(UNICODE_OFFSET) {
             return format!("U{code:04X}");
