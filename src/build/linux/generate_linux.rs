@@ -5,6 +5,7 @@ use async_trait::async_trait;
 
 use super::ids::Ids;
 use super::source;
+use super::xkb;
 use crate::build::BuildStep;
 use crate::build::diag::{Diagnostics, Platform};
 use crate::bundle::KbdgenBundle;
@@ -32,6 +33,10 @@ impl BuildStep for GenerateLinux {
                 ids.layout_id(&layout.tag)
             ));
         }
+
+        let xkb = xkb::Tree::new(&ids, &layouts)?;
+        tracing::debug!("The XKB tier has {} file(s)", xkb.files.len());
+
         tracing::info!("Prepared {} layout(s) for Linux", layouts.len());
         Ok(())
     }

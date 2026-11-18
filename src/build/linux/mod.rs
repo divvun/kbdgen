@@ -17,6 +17,7 @@ pub mod ids;
 pub mod source;
 #[cfg(test)]
 mod tests;
+pub mod xkb;
 
 pub struct LinuxBuild {
     pub bundle: KbdgenBundle,
