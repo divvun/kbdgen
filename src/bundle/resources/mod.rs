@@ -11,7 +11,7 @@ pub struct Resources {
     pub(crate) macos: Option<MacOS>,
     pub(crate) chromeos: Option<ChromeOS>,
     pub(crate) android: Option<Android>,
-    pub(crate) ios: Option<IOS>,
+    pub(crate) ios: Option<Ios>,
 }
 
 /// The icons in one target's resource folder: `icon.<ext>` is the default
@@ -88,11 +88,11 @@ impl MacOS {
 
 /// iOS has one app icon for all its keyboards: the default icon.
 #[derive(Debug, Default)]
-pub(crate) struct IOS {
+pub(crate) struct Ios {
     pub(crate) icon: Option<PathBuf>,
 }
 
-impl IOS {
+impl Ios {
     pub fn load(path: &Path) -> Result<Self, Error> {
         Ok(Self {
             icon: read_icons(path)?.default,

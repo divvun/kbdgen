@@ -354,7 +354,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
 
         match target_name.as_ref() {
             "macos" => resources.macos = Some(resources::MacOS::load(&dir)?),
-            "ios" => resources.ios = Some(resources::IOS::load(&dir)?),
+            "ios" => resources.ios = Some(resources::Ios::load(&dir)?),
             "android" => resources.android = Some(resources::Android::load(&dir)),
             // Bundles written for kbdgen 2 keep ChromeOS resources in `chrome`.
             "chromeos" | "chrome" => {
