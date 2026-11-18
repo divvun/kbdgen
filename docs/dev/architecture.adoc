@@ -3,7 +3,7 @@
 
 kbdgen is one Cargo workspace. The root package is the `kbdgen` command
 line tool; `crates/` holds the keyboard model, the engine, LDML support and
-the two host bindings. The specification in `docs/spec/` says what all of
+the three host bindings. The specification in `docs/spec/` says what all of
 it must do, and `plan/` tracks which parts are done.
 
 === The workspace
@@ -23,8 +23,8 @@ encoding (`Keyboard::to_bytes`, `from_bytes`).
 |The engine. `Model::key` takes a model, the host's `State`, the text before
 the caret and a key event, and returns the edit to make and the next state.
 It is deterministic and does no I/O. Every host runs it: the Windows text
-service, the ChromeOS extension through WebAssembly, and kbdgen itself
-when it derives dead-key tables or runs tests.
+service, the ChromeOS extension through WebAssembly, the Linux IBus engine,
+and kbdgen itself when it derives dead-key tables or runs tests.
 
 |`kbd-ldml`
 |library
@@ -44,6 +44,12 @@ files (`crates/kbd-ldml/data/`).
 buffers. kbdgen's `build.rs` compiles it for `wasm32-unknown-unknown` and
 the ChromeOS target embeds the module as `engine.wasm`.
 
+|`kbd-ibus`
+|binary and library
+|The Linux IBus engine, `ibus-engine-divvun`, which runs `kbd-engine` on
+the model of each installed keyboard and speaks IBus's D-Bus protocol
+itself, through `zbus`. Unix only; released separately from keyboards.
+
 |`kbdgen`
 |binary and library
 |The command line, bundle loading, the format 4 layout format and its
@@ -60,8 +66,9 @@ indexing outside tests (see their `[lints]` and `clippy.toml`), and
 `tests/workspace.rs` checks each crate's dependencies against
 `docs/spec/ldml/crate.md`.
 
-`default-members` leaves out `kbd-tsf` and `kbd-wasm`, so a plain
-`cargo build` or `cargo test` skips them; use `--workspace` to include them.
+`default-members` leaves out `kbd-tsf`, `kbd-wasm` and `kbd-ibus`, so a
+plain `cargo build` or `cargo test` skips them; use `--workspace` to include
+them.
 
 === The kbdgen crate
 
@@ -85,12 +92,28 @@ format 3 to format 4, `conformance/` runs test vectors, and `cli.rs`,
 `src/build/`::
 The target generators, one module per target, and the `BuildStep` and
 `BuildSteps` traits in `mod.rs`. `windows/kbdl/` generates and builds the
-layout DLLs; `windows/tsf/` is `kbdgen tsf`.
+layout DLLs; `windows/tsf/` is `kbdgen tsf`. `linux/` writes the XKB
+layouts (`linux/xkb/`), the IBus engine's data (`linux/ibus/`) and the
+on-screen keyboard layouts (`linux/osk/`). `migration.rs` migrates format
+3 layouts in memory for the ChromeOS and Linux targets, and `output.rs`
+and `diag.rs` are shared by several targets.
+
+`src/yaml.rs`::
+Every YAML text kbdgen reads or writes goes through it, so all follow one
+set of rules: YAML 1.2 scalars (`no`, `y` and `0755` are strings), no
+duplicate keys, no tags YAML does not define, `<<` an ordinary key, and one
+document per text. It is built on serde-saphyr. `tree` reads a text as a
+`serde_json::Value` with string keys, which format 4 loading checks itself
+and `from_tree` reads as a type; `from_str` reads straight into a type, any
+scalar into a string field; `to_string` writes. An `Error` gives the path
+to the problem and its line and column on one line.
 
 `build.rs`::
 Builds `kbd-wasm` for WebAssembly in a nested cargo with its own target
 directory, and leaves `kbd_wasm.wasm` in `OUT_DIR` for the ChromeOS target
-to `include_bytes!`.
+to `include_bytes!`. For a Linux target it also asks pkg-config for
+`xkbcommon` and `xkbregistry`, and sets the cfg `kbdgen_xkbcommon` when it
+finds both, so the libxkbcommon test links them (<<linux-tests>>).
 
 `examples/`::
 Developer tools: `migrate-survey` migrates every layout of the given
@@ -113,10 +136,10 @@ LDML XML from `kbdgen ldml import` enters at the second stage.
 Format 3 layouts reach the model through `src/ldml/migrate`.
 `migrate_bundle_layout` converts a layout file to format 4 text in memory,
 writing nothing, and the text then takes the format 4 path. This is how
-the Windows DLLs and the ChromeOS extension get an engine model for a
-format 3 layout. When the migration is blocked by a defect, Windows builds
-the DLL without a model and warns; the text service then stays inactive for
-that layout.
+the Windows DLLs, the ChromeOS extension and the Linux target get an engine
+model for a format 3 layout. When the migration is blocked by a defect,
+Windows builds the DLL without a model and warns; the text service then
+stays inactive for that layout. ChromeOS and Linux stop with an error.
 
 Each target reads layouts as follows:
 
@@ -136,6 +159,12 @@ engine model from the in-memory migration
 |ChromeOS
 |the model
 |the model of the in-memory migration
+
+|Linux
+|XKB layout, engine model and on-screen layouts from the model
+(`linux/xkb/`, `linux/osk/`)
+|the same, from the in-memory migration, its `linux` keyboard inheriting
+the `windows` variant, else `chromeOS`
 
 |iOS, Android
 |refused
@@ -160,8 +189,8 @@ step follows.
 
 * `docs/spec/*.md` covers the bundle, the format 3 layout, the command line
   and pipeline, and each target: `kbdl.md` (Windows layout DLLs), `tsf.md`
-  (the text service), `macos.md`, `ios.md` with `pbxproj.md`, `android.md`
-  and `chromeos.md`.
+  (the text service), `macos.md`, `ios.md` with `pbxproj.md`, `android.md`,
+  `chromeos.md` and `linux.md` (with the IBus engine).
 * `docs/spec/ldml/*.md` covers the model, the engine, LDML XML, format 4,
   the migration, the adapters from the model to each target, the
   `kbdgen ldml` commands and the tests. `ldml/overview.md` explains how

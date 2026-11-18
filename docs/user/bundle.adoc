@@ -48,6 +48,17 @@ anything else.
 * `tests/` holds the typing tests that `kbdgen ldml test` runs
   (<<testing>>).
 
+Every file is read as YAML 1.2: `no`, `yes`, `on`, `off`, `y` and `n` are
+text, not true or false, so `no` can name Norwegian, and `0755` and `1_000`
+are text, not numbers. A file with a duplicate key, or with a tag YAML does
+not define, such as `!foo`, is an error. An error gives the file, the path to
+the problem in it, and the line and column, on one line:
+
+----
+Error: ./layouts/se-FI.yaml: duplicate mapping key `decimal` is not allowed here at line 4, column 1
+Error: ./layouts/se-FI.yaml: decimal: unsupported tag `!foo` at line 3, column 15
+----
+
 The bundle's name is its directory name without the extension: `sme.kbdgen`
 is the bundle `sme`. Some targets use it in identifiers, so pick it once and
 keep it.
@@ -88,8 +99,8 @@ dependencies:
 |yes
 |The name and description of the keyboard package, in each language of the
 user interface, keyed by language code. Each entry needs both `name` and
-`description`. The iOS, Android and ChromeOS targets use these for the app or
-extension; ChromeOS needs an `en` entry.
+`description`. The iOS, Android, ChromeOS and Linux targets use these for the
+app or extension; ChromeOS and Linux need an `en` entry.
 
 |`author`
 |yes
@@ -150,11 +161,11 @@ naming the file. Files copied before the error stay.
 === Target files
 
 Each file in `targets/` configures one target platform, and its name says
-which: `windows.yaml`, `macos.yaml`, `ios.yaml`, `android.yaml` and
-`chromeos.yaml`. Older bundles name the ChromeOS file `chrome.yaml`, which
-works too; having both is an error. kbdgen warns about any other name and
-ignores the file. Without its file a target is unconfigured; the chapter on
-each target says what it needs.
+which: `windows.yaml`, `macos.yaml`, `ios.yaml`, `android.yaml`,
+`chromeos.yaml` and `linux.yaml`. Older bundles name the ChromeOS file
+`chrome.yaml`, which works too; having both is an error. kbdgen warns about
+any other name and ignores the file. Without its file a target is
+unconfigured; the chapter on each target says what it needs.
 
 These are the fields. The target chapters explain what each one does.
 
@@ -183,6 +194,10 @@ These are the fields. The target chapters explain what each one does.
 
 |`chromeos.yaml`
 |`appId`, `version`, `build`
+|—
+
+|`linux.yaml`
+|`packageId`, `layoutPrefix`, `version`
 |—
 |===
 
@@ -215,8 +230,8 @@ Some rules hold for every target file:
 
 * Fields kbdgen does not know are ignored, so a misspelt optional field is
   silently missing. Check the spelling against the table.
-* `windows.yaml`, `macos.yaml` and `chromeos.yaml` read any plain value as
-  text: `version: 1.0` is the version `1.0`.
+* `windows.yaml`, `macos.yaml`, `chromeos.yaml` and `linux.yaml` read any
+  plain value as text: `version: 1.0` is the version `1.0`.
 * `ios.yaml` and `android.yaml` are stricter. Their text fields must be YAML
   strings, so quote anything YAML would read as a number:
   `version: '1.0'`. `version: 0.1.0` needs no quotes, as it is not a number.
@@ -377,6 +392,10 @@ How kbdgen reads `layouts/`:
 |yes
 
 |`kbdgen target chromeos`
+|yes
+|yes, converted to format 4 in memory
+
+|`kbdgen target linux`
 |yes
 |yes, converted to format 4 in memory
 

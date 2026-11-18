@@ -557,6 +557,21 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_limits">Limits</a></li>
 </ul>
 </li>
+<li><a href="#_linux">Linux</a>
+<ul class="sectlevel2">
+<li><a href="#_prerequisites_6">Prerequisites</a></li>
+<li><a href="#_target_configuration_6">Target configuration</a></li>
+<li><a href="#linux-layouts">Keyboard layouts</a></li>
+<li><a href="#linux-output">Output</a></li>
+<li><a href="#linux-install">Installing</a></li>
+<li><a href="#linux-sources">The XKB source and the IBus source</a></li>
+<li><a href="#linux-osk">On-screen keyboards</a></li>
+<li><a href="#linux-diagnostics">Diagnostics</a></li>
+<li><a href="#_errors">Errors</a></li>
+<li><a href="#_how_the_ibus_engine_types">How the IBus engine types</a></li>
+<li><a href="#_limits_2">Limits</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -566,8 +581,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, iOS and Android
-from one source: a <code>.kbdgen</code> bundle, which is a directory of YAML files
+<p>kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, Linux, iOS and
+Android from one source: a <code>.kbdgen</code> bundle, which is a directory of YAML files
 describing the layouts, plus per-target metadata and resources such as icons.
 It also converts layouts to and from CLDR LDML Keyboard 3.0 XML, and runs
 typing tests against kbdgen&#8217;s keyboard engine.</p>
@@ -618,8 +633,8 @@ chapter lists them.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbdgen target</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Builds a bundle&#8217;s keyboards for one platform: Windows, macOS, ChromeOS, iOS
-or Android.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Builds a bundle&#8217;s keyboards for one platform: Windows, macOS, ChromeOS,
+Linux, iOS or Android.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbdgen ldml</code></p></td>
@@ -735,8 +750,8 @@ that has any format 4 layout:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Windows, macOS and ChromeOS build format 3 and format 4 layouts side by
-side.</p>
+<p>Windows, macOS, ChromeOS and Linux build format 3 and format 4 layouts side
+by side.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -760,6 +775,12 @@ layout DLLs in <code>OUT/x86/</code>, <code>OUT/x64/</code>, <code>OUT/arm64/</c
 <td class="tableblock halign-left valign-top"><p class="tableblock">Writes an input method extension into <code>OUT</code>: <code>manifest.json</code>,
 <code>background.js</code>, <code>engine.wasm</code>, one model per layout in <code>models/</code>, and
 <code>_locales/</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>linux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writes the XKB layouts into <code>OUT/xkb/</code>, the IBus engine&#8217;s data into
+<code>OUT/ibus/</code>, and the on-screen keyboard layouts into <code>OUT/gnome-shell/</code>,
+<code>OUT/plasma-keyboard/</code> and <code>OUT/stevia/</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>macos build</code></p></td>
@@ -839,6 +860,14 @@ describe each platform&#8217;s configuration and output in detail.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-sh" data-lang="sh">kbdgen target -b sme.kbdgen -o out/chromeos chromeos</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Build the Linux keyboards:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">kbdgen target -b sme.kbdgen -o out/linux linux</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -946,7 +975,7 @@ sme.kbdgen/layouts/se-FI.yaml: written</pre>
 <div class="paragraph">
 <p>Writes <code>OUT/&lt;tag&gt;.&lt;host&gt;.dvkb</code>, the binary engine model of each layout for
 each host. These are the models that the Windows DLLs and the ChromeOS
-extension embed; compiling them on their own is the quick way to check a
+extension embed, and that the Linux IBus engine runs; compiling them on their own is the quick way to check a
 layout while writing it (<a href="#layouts-checking">Checking a layout</a>).</p>
 </div>
 <div class="listingblock">
@@ -1156,6 +1185,19 @@ dependency (<a href="#bundle-fetch">Dependencies and kbdgen fetch</a>); the iOS 
 </ul>
 </div>
 <div class="paragraph">
+<p>Every file is read as YAML 1.2: <code>no</code>, <code>yes</code>, <code>on</code>, <code>off</code>, <code>y</code> and <code>n</code> are
+text, not true or false, so <code>no</code> can name Norwegian, and <code>0755</code> and <code>1_000</code>
+are text, not numbers. A file with a duplicate key, or with a tag YAML does
+not define, such as <code>!foo</code>, is an error. An error gives the file, the path to
+the problem in it, and the line and column, on one line:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Error: ./layouts/se-FI.yaml: duplicate mapping key `decimal` is not allowed here at line 4, column 1
+Error: ./layouts/se-FI.yaml: decimal: unsupported tag `!foo` at line 3, column 15</pre>
+</div>
+</div>
+<div class="paragraph">
 <p>The bundle&#8217;s name is its directory name without the extension: <code>sme.kbdgen</code>
 is the bundle <code>sme</code>. Some targets use it in identifiers, so pick it once and
 keep it.</p>
@@ -1208,8 +1250,8 @@ dependencies:
 <td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The name and description of the keyboard package, in each language of the
 user interface, keyed by language code. Each entry needs both <code>name</code> and
-<code>description</code>. The iOS, Android and ChromeOS targets use these for the app or
-extension; ChromeOS needs an <code>en</code> entry.</p></td>
+<code>description</code>. The iOS, Android, ChromeOS and Linux targets use these for the
+app or extension; ChromeOS and Linux need an <code>en</code> entry.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>author</code></p></td>
@@ -1299,11 +1341,11 @@ naming the file. Files copied before the error stay.</p>
 <h3 id="bundle-targets">Target files</h3>
 <div class="paragraph">
 <p>Each file in <code>targets/</code> configures one target platform, and its name says
-which: <code>windows.yaml</code>, <code>macos.yaml</code>, <code>ios.yaml</code>, <code>android.yaml</code> and
-<code>chromeos.yaml</code>. Older bundles name the ChromeOS file <code>chrome.yaml</code>, which
-works too; having both is an error. kbdgen warns about any other name and
-ignores the file. Without its file a target is unconfigured; the chapter on
-each target says what it needs.</p>
+which: <code>windows.yaml</code>, <code>macos.yaml</code>, <code>ios.yaml</code>, <code>android.yaml</code>,
+<code>chromeos.yaml</code> and <code>linux.yaml</code>. Older bundles name the ChromeOS file
+<code>chrome.yaml</code>, which works too; having both is an error. kbdgen warns about
+any other name and ignores the file. Without its file a target is
+unconfigured; the chapter on each target says what it needs.</p>
 </div>
 <div class="paragraph">
 <p>These are the fields. The target chapters explain what each one does.</p>
@@ -1350,6 +1392,11 @@ each target says what it needs.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>appId</code>, <code>version</code>, <code>build</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>linux.yaml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>packageId</code>, <code>layoutPrefix</code>, <code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -1388,8 +1435,8 @@ codeSignId: 'iPhone Distribution: Example Organisation (ABCDE12345)'</code></pre
 silently missing. Check the spelling against the table.</p>
 </li>
 <li>
-<p><code>windows.yaml</code>, <code>macos.yaml</code> and <code>chromeos.yaml</code> read any plain value as
-text: <code>version: 1.0</code> is the version <code>1.0</code>.</p>
+<p><code>windows.yaml</code>, <code>macos.yaml</code>, <code>chromeos.yaml</code> and <code>linux.yaml</code> read any
+plain value as text: <code>version: 1.0</code> is the version <code>1.0</code>.</p>
 </li>
 <li>
 <p><code>ios.yaml</code> and <code>android.yaml</code> are stricter. Their text fields must be YAML
@@ -1687,6 +1734,11 @@ them; run <code>kbdgen ldml compile</code> to check them without building a targ
 <td class="tableblock halign-left valign-top"><p class="tableblock">yes, converted to format 4 in memory</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbdgen target linux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes, converted to format 4 in memory</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbdgen target ios</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">no</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
@@ -1812,7 +1864,7 @@ hardware:
 </div>
 </div>
 <div class="paragraph">
-<p>This is already a working keyboard for Windows, macOS and ChromeOS.</p>
+<p>This is already a working keyboard for Windows, macOS, ChromeOS and Linux.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1976,9 +2028,9 @@ space is written <code>\u{20}</code>.</p>
 characters a meaning of their own, so quote them with single quotes when they
 are the whole value or a key: <code>'~'</code> (unquoted it means "nothing"),
 <code>'`'</code>, <code>'#'</code>, <code>'@'</code>, <code>'%'</code>, <code>'&amp;'</code>, <code>'*'</code>, <code>'!'</code>, <code>'|'</code>, <code>'&gt;'</code>, <code>'?'</code>,
-<code>'-'</code>, <code>':'</code>, <code>','</code>, <code>'['</code>, <code>'{'</code>, <code>"'"</code>. Quote digits and numbers too,
-and the words YAML might read as true or false, such as <code>'y'</code>, <code>'n'</code>, <code>'no'</code>,
-<code>'on'</code> and <code>'off'</code>.</p>
+<code>'-'</code>, <code>':'</code>, <code>','</code>, <code>'['</code>, <code>'{'</code>, <code>"'"</code>. Quote digits and numbers too, and
+<code>true</code> and <code>false</code>. Words such as <code>y</code>, <code>n</code>, <code>no</code>, <code>on</code> and <code>off</code> are text, so
+they need no quotes.</p>
 </div>
 <div class="paragraph">
 <p>Format 4 never turns a number or a true/false into text behind your back:
@@ -2150,8 +2202,8 @@ the layers <code>alt</code> and <code>alt shift</code>. Add them to the first la
 <div class="ulist">
 <ul>
 <li>
-<p>On Windows and ChromeOS, the right Alt key (AltGr) reaches it. The left
-Alt key never types there: it is for menus and shortcuts.</p>
+<p>On Windows, ChromeOS and Linux, the right Alt key (AltGr) reaches it. The
+left Alt key never types there: it is for menus and shortcuts.</p>
 </li>
 <li>
 <p>On macOS, either Option key reaches it.</p>
@@ -2330,10 +2382,12 @@ warns (<a href="#layouts-checking">Checking a layout</a>).</p>
 <div class="sect3">
 <h4 id="layouts-dead-keys-typing">What the user gets</h4>
 <div class="paragraph">
-<p>kbdgen&#8217;s keyboard engine, which ChromeOS and the Divvun text service on
-Windows run, gives dead keys the behaviour they have on macOS. The macOS
-<code>.keylayout</code> and the Windows layout DLL that kbdgen generates follow it as
-far as those formats allow. With <code>´</code> on the key left of Backspace:</p>
+<p>kbdgen&#8217;s keyboard engine, which ChromeOS, the Divvun text service on Windows
+and the Divvun IBus engine on Linux run, gives dead keys the behaviour they
+have on macOS. The macOS <code>.keylayout</code> and the Windows layout DLL that kbdgen
+generates follow it as far as those formats allow; the Linux XKB layout
+composes by the desktop&#8217;s Compose table instead (<a href="#linux-sources">The XKB source and the IBus source</a>). With <code>´</code>
+on the key left of Backspace:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -2481,10 +2535,11 @@ LDML specification, under
 <a href="https://www.unicode.org/reports/tr35/tr35-keyboards.html#element-transforms">transforms</a>.</p>
 </div>
 <div class="paragraph">
-<p>Transforms run in kbdgen&#8217;s keyboard engine: on ChromeOS, and on Windows
-through the Divvun text service. A macOS <code>.keylayout</code> or a Windows layout
-DLL can only express transforms that continue a dead key; when kbdgen builds
-them, it reports the transforms they cannot express.</p>
+<p>Transforms run in kbdgen&#8217;s keyboard engine: on ChromeOS, on Windows through
+the Divvun text service, and on Linux through the Divvun IBus engine. A
+macOS <code>.keylayout</code> or a Windows layout DLL can only express transforms that
+continue a dead key, and a Linux XKB layout none; when kbdgen builds them,
+it reports the transforms they cannot express.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2792,8 +2847,8 @@ On Android, this keeps the global <code>longPress</code> except for these two:</
 </div>
 <div class="paragraph">
 <p>The layout-level fields, such as <code>displayNames</code>, <code>deadKeys</code> and <code>transforms</code>,
-are shared by all hosts. No target builds the <code>linux</code> and <code>web</code> hosts; only
-the <code>kbdgen ldml</code> commands use them.</p>
+are shared by all hosts. The Linux target builds the <code>linux</code> host. No target
+builds the <code>web</code> host; only the <code>kbdgen ldml</code> commands use it.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3562,16 +3617,16 @@ naming the dead key, such as
 </div>
 </div>
 <div class="paragraph">
-<p>Here <code>´</code> then <code>¨</code> then <code>u</code> types <code>ǘ</code>. Only the Windows and ChromeOS targets
-support chains. The macOS and iOS targets stop with an internal error on a
-layout with a chain and a section for them; the Android target stops on a
+<p>Here <code>´</code> then <code>¨</code> then <code>u</code> types <code>ǘ</code>. Only the Windows, ChromeOS and Linux
+targets support chains. The macOS and iOS targets stop with an internal error
+on a layout with a chain and a section for them; the Android target stops on a
 chain in any layout of the bundle.</p>
 </div>
 <div class="paragraph">
 <p>Write dead-key characters themselves, not <code>\u{…}</code> escapes, in layers,
 <code>deadKeys</code> and <code>transforms</code>: an escaped entry does not match the key on
 Windows. Quote keys that YAML would read otherwise, as in format 4
-(<a href="#layouts-quoting">Quoting in YAML</a>): <code>'0': °</code>, <code>'~'</code>, <code>'n': ŋ</code>.</p>
+(<a href="#layouts-quoting">Quoting in YAML</a>): <code>'0': °</code>, <code>'~'</code>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3655,6 +3710,12 @@ only the summary.</p>
 under <code>hardware</code>, <code>iOS</code> and <code>android</code> under <code>touch</code>. Each variant is
 written in full; you may then merge equal parts into a <code>default</code> variant
 with <code>inherits</code> (<a href="#layouts-hosts">Platforms and variants</a>).</p>
+</li>
+<li>
+<p>No <code>linux</code> variant is written. The Linux target builds a format 3 layout
+from its <code>windows</code> section, or its <code>chromeOS</code> section when it has no
+<code>windows</code> one, so add <code>linux: {inherits: windows}</code> (or <code>chromeOS</code>) under
+<code>hardware</code> to keep building it for Linux (<a href="#linux-layouts">Keyboard layouts</a>).</p>
 </li>
 <li>
 <p>Layer names become modifier sets: <code>default</code> → <code>none</code>, <code>caps+shift</code> →
@@ -3846,8 +3907,8 @@ types capitals.</p>
 <div class="paragraph">
 <p>A bundle can carry typing tests: files in <code>tests/</code> that press keys on a
 layout and say what should come out. kbdgen runs them on its keyboard engine,
-the same engine that types on ChromeOS and in the Divvun text service on
-Windows, so you can check a layout on any computer before building it.</p>
+the same engine that types on ChromeOS, in the Divvun text service on
+Windows and in the Divvun IBus engine on Linux, so you can check a layout on any computer before building it.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3974,8 +4035,8 @@ blocked, the error names the defect codes (<a href="#layouts-v3-migrate-report">
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>host</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The platform to test: <code>windows</code>, <code>macOS</code>, <code>chromeOS</code>, <code>linux</code>, <code>iOS</code>,
 <code>android</code> or <code>web</code> (<a href="#layouts-hosts">Platforms and variants</a>). Required with <code>layout</code>. It also
-decides platform behaviour, such as Left Alt being for shortcuts on Windows
-and ChromeOS.</p></td>
+decides platform behaviour, such as Left Alt being for shortcuts on
+Windows, ChromeOS and Linux.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>options</code></p></td>
@@ -4266,6 +4327,12 @@ describe each target&#8217;s configuration and output.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>chromeos</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 and 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Any host</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>linux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 and 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Any host; the IBus engine is built on Linux</p></td>
 </tr>
 </tbody>
 </table>
@@ -7877,6 +7944,1004 @@ position no ChromeOS key event carries.</p>
 <li>
 <p>The input method draws no on-screen keyboard: long-press keys, key
 labels and <code>keyNames</code> are not used.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_linux">Linux</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>kbdgen target linux</code> writes, for each layout, the pieces a Linux keyboard
+package installs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>an XKB layout, which every Wayland desktop can use as its keyboard layout
+without anything else running;</p>
+</li>
+<li>
+<p>the data of the Divvun IBus engine, which runs the same keyboard engine as
+the Windows text service and the ChromeOS extension, so dead keys,
+transforms and everything else the layout says type as they do in the
+engine;</p>
+</li>
+<li>
+<p>on-screen keyboard layouts for GNOME Shell, for plasma-keyboard on KDE
+Plasma, and for Stevia on Phosh.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">kbdgen target -b sme.kbdgen -o linux-out linux</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The target has no subcommands.</p>
+</div>
+<div class="sect2">
+<h3 id="_prerequisites_6">Prerequisites</h3>
+<div class="paragraph">
+<p>Generating needs only kbdgen. It writes every file itself, the GNOME Shell
+resource bundle included, so no Linux tool is needed and the build runs on
+any host.</p>
+</div>
+<div class="paragraph">
+<p>The IBus engine is a program of its own, <code>ibus-engine-divvun</code>, shared by
+every keyboard and released separately from them, as the Windows text
+service is. It is the crate <code>crates/kbd-ibus</code> in the kbdgen repository, and
+builds on Linux:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo build -p kbd-ibus --release</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>which writes <code>target/release/ibus-engine-divvun</code>. A plain <code>cargo build</code>
+leaves it out.</p>
+</div>
+<div class="paragraph">
+<p>The keyboards run on Wayland desktops: GNOME 50 or later, and KDE Plasma
+6.8 or later, whose on-screen keyboard packages need Plasma 6.9. They need
+libxkbcommon 1.13 or later and xkeyboard-config 2.45 or later, which Fedora
+44 and Ubuntu 26.04 have (<a href="#linux-install">Installing</a>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_target_configuration_6">Target configuration</h3>
+<div class="paragraph">
+<p><code>targets/linux.yaml</code> is required; without it the build stops with
+<code>targets/linux.yaml is missing</code>. Any scalar is read as a string, so
+<code>version: 1.0</code> is the version <code>1.0</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">packageId: no.divvun
+layoutPrefix: divvun
+version: 1.0.0</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 66.6668%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Required</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>packageId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The bundle&#8217;s name on Linux, in reverse DNS: two or more labels separated
+by dots, each of lowercase ASCII letters, digits and <code>-</code>. It names the
+directories the package installs (<a href="#linux-install">Installing</a>), the GNOME Shell
+extension, <code>osk@&lt;packageId&gt;</code>, and each layout&#8217;s plasma-keyboard package,
+<code>&lt;packageId&gt;.&lt;tag&gt;</code> with the <code>-</code> of the tag replaced by <code>_</code>
+(<code>no.divvun.se_NO</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>layoutPrefix</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A lowercase ASCII letter followed by at most 15 lowercase ASCII letters
+and digits. Each layout&#8217;s <strong>layout id</strong> is the prefix, <code>-</code>, and its tag in
+lowercase: <code>divvun-se-no</code> for <code>se-NO</code>. The layout id names the layout&#8217;s
+XKB layout, its IBus engine and its GNOME Shell and Stevia layouts, so it
+must not be used by another keyboard installed on the same system.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The version written to each engine description, to the GNOME Shell
+extension&#8217;s <code>version-name</code> and to each plasma-keyboard package. Any text.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Another shape of <code>packageId</code> or <code>layoutPrefix</code> stops the build:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Error: targets/linux.yaml: packageId "divvun" is not a reverse-DNS name: two or more dot-separated labels of lowercase ASCII letters, digits and '-'
+Error: targets/linux.yaml: layoutPrefix "Divvun" is not a lowercase ASCII letter followed by at most 15 lowercase ASCII letters and digits</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A missing field stops loading the bundle:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Error: Error parsing YAML for path: &lt;bundle&gt;/targets/linux.yaml at .
+
+Caused by:
+    missing field `layoutPrefix` at line 2, column 1</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The GNOME Shell extension&#8217;s name and description come from <code>locales</code> in
+<code>project.yaml</code>, which must have an <code>en</code> entry; without one the build stops
+with <code>project.yaml: locales has no en entry</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-layouts">Keyboard layouts</h3>
+<div class="paragraph">
+<p>Both layout formats work, side by side in one bundle:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A v4 layout (<code>format: 4</code>) is built from its <code>linux</code> hardware variant, or
+from <code>default</code> when it has none. A v4 layout with neither has no Linux
+output.</p>
+</li>
+<li>
+<p>A v3 layout is built from its <code>windows</code> section, or from its <code>chromeOS</code>
+section when it has no <code>windows</code> one. A v3 layout with neither has no
+Linux output. kbdgen converts the layout in memory, as
+<code>kbdgen ldml migrate</code> would, without changing the file.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each layout that builds is reported with its layout id:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>INFO se-NO: compiled as the Linux layout divvun-se-no</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and with <code>RUST_LOG=debug</code>, each one skipped is too:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>DEBUG Skipping fi: no windows or chromeOS section
+DEBUG Skipping se-NO: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If no layout has a Linux keyboard, the build stops with
+<code>no layout has a linux keyboard</code>.</p>
+</div>
+<div class="paragraph">
+<p>A layout that <code>kbdgen ldml migrate</code> has converted to format 4 has
+<code>windows</code>, <code>macOS</code> and <code>chromeOS</code> variants but no <code>linux</code> or <code>default</code> one,
+so it has no Linux output until you add one. To build it as it was built
+before the conversion, give it a <code>linux</code> variant that inherits the Windows
+one:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">hardware:
+  linux:
+    inherits: windows</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the in-memory conversion of a v3 layout finds a blocking problem, the
+build stops and names the layout and the defect codes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Error: smj: the v3 layout's migration is blocked by defects M05; `kbdgen ldml migrate --dry-run` reports them</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>target linux</code> prints only blocking problems. The conversion can also
+change what a key types; <code>kbdgen ldml migrate --dry-run -b &lt;bundle&gt;</code> lists
+every such change for each layout.</p>
+</div>
+<div class="sect3">
+<h4 id="_modifiers_on_linux">Modifiers on Linux</h4>
+<div class="ulist">
+<ul>
+<li>
+<p>Write AltGr layers as <code>altR</code> or <code>alt</code>. Right Alt becomes AltGr when the
+layout has a layer for it, and stays Alt otherwise.</p>
+</li>
+<li>
+<p>Left Alt stays Alt, for menus and shortcuts, so a layer that needs
+<code>altL</code>, or Left Ctrl, never types; kbdgen warns about it. An <code>alt</code> layer
+is typed with AltGr alone.</p>
+</li>
+<li>
+<p>Ctrl without AltGr, and Super, are for shortcuts: layers for them never
+type and are not written to the XKB layout, so shortcuts take the keys of
+the layer without modifiers.</p>
+</li>
+<li>
+<p>Caps Lock layers work in both the XKB layout and the IBus engine. Shift
+Lock (<code>targets.windows.shiftLock</code>), extra modifiers and the LRM and RLM
+of <code>targets.windows.lrmRlm</code> work in the IBus engine only.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-output">Output</h3>
+<div class="paragraph">
+<p>The output directory holds five directories, each laid out as a package
+installs it. For a bundle with the layouts <code>se-NO</code>, <code>sme</code> and <code>vro</code>,
+<code>packageId: no.divvun</code> and <code>layoutPrefix: divvun</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-text" data-lang="text">linux-out/
+├── xkb/
+│   ├── rules/
+│   │   └── evdev.xml
+│   └── symbols/
+│       ├── divvun-se-no
+│       ├── divvun-sme
+│       └── divvun-vro
+├── ibus/
+│   ├── divvun-se-no.dvkb
+│   ├── divvun-se-no.xml
+│   ├── divvun-sme.dvkb
+│   ├── divvun-sme.xml
+│   ├── divvun-vro.dvkb
+│   └── divvun-vro.xml
+├── gnome-shell/
+│   └── osk@no.divvun/
+│       ├── extension.js
+│       ├── metadata.json
+│       └── osk-layouts.gresource
+├── plasma-keyboard/
+│   ├── no.divvun.se_NO/
+│   │   ├── contents/layouts/desktop.qml
+│   │   └── metadata.json
+│   ├── no.divvun.sme/
+│   └── no.divvun.vro/
+└── stevia/
+    └── layouts/
+        ├── divvun-se-no.json
+        ├── divvun-sme.json
+        └── divvun-vro.json</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>xkb/symbols/&lt;L&gt;</code> is the XKB layout of the layout with id L, and
+<code>xkb/rules/evdev.xml</code> the registry that lists the bundle&#8217;s layouts, by
+which the desktops' settings offer them.</p>
+</li>
+<li>
+<p><code>ibus/&lt;L&gt;.dvkb</code> is the layout&#8217;s compiled keyboard, which the IBus engine
+runs, and <code>ibus/&lt;L&gt;.xml</code> its engine description.</p>
+</li>
+<li>
+<p><code>gnome-shell/osk@&lt;packageId&gt;/</code> is a GNOME Shell extension that adds the
+bundle&#8217;s on-screen layouts, held in <code>osk-layouts.gresource</code>.</p>
+</li>
+<li>
+<p><code>plasma-keyboard/&lt;packageId&gt;.&lt;tag&gt;/</code> is a plasma-keyboard package per
+layout.</p>
+</li>
+<li>
+<p><code>stevia/layouts/&lt;L&gt;.json</code> is a layout for Stevia, to contribute upstream.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>kbdgen checks everything before it writes anything, so a failed build
+leaves the directory as it was. A successful build empties those five
+directories first, so nothing of an earlier build remains, not even a
+layout since renamed. It does not touch anything else in the output
+directory.</p>
+</div>
+<div class="sect3">
+<h4 id="_the_xkb_layout">The XKB layout</h4>
+<div class="paragraph">
+<p>Each layout is an XKB layout of its own, named by its layout id. The
+symbols file has one line per key: a key type, which says how Shift, Caps
+Lock and AltGr select a level, and a keysym per level, starting with no
+modifier, Shift, AltGr, and Shift with AltGr:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>// divvun-se-no: generated by kbdgen from layouts/se-NO.yaml. Do not edit.
+default partial alphanumeric_keys
+xkb_symbols "basic" {
+    name[Group1] = "Davvisámegiella (Norga)";
+    key &lt;TLDE&gt; { type[Group1] = "FOUR_LEVEL", symbols[Group1] = [ bar, section, VoidSymbol, VoidSymbol ] };
+    key &lt;AE01&gt; { type[Group1] = "FOUR_LEVEL", symbols[Group1] = [ 1, exclam, VoidSymbol, VoidSymbol ] };
+    ...
+    key &lt;AD01&gt; { type[Group1] = "FOUR_LEVEL_SEMIALPHABETIC", symbols[Group1] = [ aacute, Aacute, q, Q ] };
+    ...
+    key &lt;SPCE&gt; { type[Group1] = "ONE_LEVEL", symbols[Group1] = [ space ] };
+    include "level3(ralt_switch)"
+};</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>VoidSymbol</code> types nothing. A dead key gets a dead keysym, such as
+<code>dead_acute</code>, when its standalone output or its display is an accent X has
+one for: <code>´</code>, <code>ˇ</code>, <code>~</code>, <code>¨</code> and so on. The registry lists each layout by
+its display name in its own language, with its language subtag as the short
+name, which GNOME shows as its indicator:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;layout&gt;
+  &lt;configItem&gt;
+    &lt;name&gt;divvun-se-no&lt;/name&gt;
+    &lt;shortDescription&gt;se&lt;/shortDescription&gt;
+    &lt;description&gt;Davvisámegiella (Norga)&lt;/description&gt;
+    &lt;countryList&gt;
+      &lt;iso3166Id&gt;NO&lt;/iso3166Id&gt;
+    &lt;/countryList&gt;
+    &lt;languageList&gt;
+      &lt;iso639Id&gt;sme&lt;/iso639Id&gt;
+    &lt;/languageList&gt;
+  &lt;/configItem&gt;
+&lt;/layout&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_engine_description">The engine description</h4>
+<div class="paragraph">
+<p>Each layout&#8217;s engine description names its XKB layout as <code>layout</code>, so the
+desktop uses that layout beneath the engine, and for the keys the engine
+lets through:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;engine&gt;
+  &lt;name&gt;divvun-se-no&lt;/name&gt;
+  &lt;longname&gt;Davvisámegiella (Norga)&lt;/longname&gt;
+  &lt;description&gt;Davvisámegiella (Norga)&lt;/description&gt;
+  &lt;language&gt;se_NO&lt;/language&gt;
+  &lt;author&gt;Divvun&lt;/author&gt;
+  &lt;layout&gt;divvun-se-no&lt;/layout&gt;
+  &lt;symbol&gt;se&lt;/symbol&gt;
+  &lt;version&gt;1.0.0&lt;/version&gt;
+&lt;/engine&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>author</code> comes from <code>project.yaml</code> and <code>version</code> from
+<code>targets/linux.yaml</code>. There are no icons yet: IBus shows the <code>symbol</code>, and
+kbdgen reads no <code>resources/linux</code> directory.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_gnome_shell_extension">The GNOME Shell extension</h4>
+<div class="paragraph">
+<p><code>metadata.json</code> takes its name and description from the <code>en</code> entry of
+<code>project.yaml</code> <code>locales</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "uuid": "osk@no.divvun",
+  "name": "Divvun keyboards",
+  "description": "Keyboards for the Sámi languages",
+  "shell-version": [
+    "50",
+    "51"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ],
+  "version-name": "1.0.0"
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>extension.js</code> is the same for every bundle: it adds the layouts in
+<code>osk-layouts.gresource</code> to GNOME Shell&#8217;s on-screen keyboard while the
+extension is enabled. <code>unlock-dialog</code> keeps it running on the lock screen,
+so the lock screen&#8217;s keyboard has the layouts too.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-install">Installing</h3>
+<div class="paragraph">
+<p>kbdgen installs nothing. Keyboards reach users as system packages, a
+<code>.deb</code> and an <code>.rpm</code> per bundle, which pahkat-3 builds; there is no
+per-user installer. A package copies each output directory unchanged:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Output</th>
+<th class="tableblock halign-left valign-top">Installed as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xkb/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/usr/share/xkeyboard-config.d/&lt;packageId&gt;/</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ibus/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/usr/share/divvun/keyboards/&lt;packageId&gt;/</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gnome-shell/osk@&lt;packageId&gt;/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/usr/share/gnome-shell/extensions/osk@&lt;packageId&gt;/</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>plasma-keyboard/&lt;packageId&gt;.&lt;tag&gt;/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/usr/share/plasma/keyboard/keyboardpackages/&lt;packageId&gt;.&lt;tag&gt;/</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stevia/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">not installed (<a href="#linux-osk">On-screen keyboards</a>)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>/usr/share/xkeyboard-config.d/</code> holds libxkbcommon&#8217;s extension
+directories: libxkbcommon 1.13 and later reads layouts from each package&#8217;s
+directory there, beside the system&#8217;s own, and xkeyboard-config 2.45 and
+later lists them in the desktops' settings. Each package owns its
+directory, so packages share no file. Older libxkbcommon is not supported.</p>
+</div>
+<div class="paragraph">
+<p>A keyboard package depends on:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>libxkbcommon 1.13 or later and xkeyboard-config 2.45 or later:
+<code>libxkbcommon0</code> and <code>xkb-data</code> on Debian and Ubuntu, <code>libxkbcommon</code> and
+<code>xkeyboard-config</code> on Fedora. Fedora 44 and Ubuntu 26.04, the first
+releases with GNOME 50, have them.</p>
+</li>
+<li>
+<p>the IBus engine package, in a release that reads the version of the
+model format kbdgen wrote.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Uninstalling removes exactly what installing added. Desktops read new
+layouts at their next session, so users log out and in after installing.</p>
+</div>
+<div class="sect3">
+<h4 id="_the_ibus_engine_package">The IBus engine package</h4>
+<div class="paragraph">
+<p>The engine is one system package that every keyboard package depends on.
+It installs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the program, as <code>/usr/libexec/ibus-engine-divvun</code>;</p>
+</li>
+<li>
+<p>its IBus component, as <code>/usr/share/ibus/component/divvun.xml</code>. That file
+is <code>crates/kbd-ibus/data/divvun.xml.in</code> with <code>@LIBEXECDIR@</code>,
+<code>@DATADIR@</code> and <code>@VERSION@</code> filled in, <code>@VERSION@</code> being the version of
+the <code>kbd-ibus</code> crate.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>IBus reads components only from <code>/usr/share/ibus/component</code>, so the engine
+cannot be installed for one user. The component tells IBus to ask the
+program for its engines, and to ask again when
+<code>/usr/share/divvun/keyboards/</code> or <code>~/.local/share/divvun/keyboards/</code>
+changes, so a keyboard installed after the engine needs nothing more.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="linux-extension">Enabling the GNOME Shell extension</h4>
+<div class="paragraph">
+<p>A system package cannot enable the GNOME Shell extension for its users:
+GNOME runs only the extensions each user has enabled, and cannot enable
+one that was installed while it was running. Each user enables it once,
+after their next login, in the Extensions application or with</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">gnome-extensions enable osk@no.divvun</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A distribution or an administrator may instead set a default of
+<code>org.gnome.shell enabled-extensions</code> in dconf. Until the extension is
+enabled, GNOME Shell&#8217;s on-screen keyboard shows <code>us</code> for the layout. Typing
+with hardware keys does not need the extension.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_trying_the_output_on_a_test_machine">Trying the output on a test machine</h4>
+<div class="paragraph">
+<p>A package does this for users. To try a build on a test machine, with
+<code>out</code> the output directory and <code>ibus-engine-divvun</code> the built engine, copy
+the files where a package would put them:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">P=no.divvun
+sudo mkdir -p /usr/share/xkeyboard-config.d /usr/share/divvun/keyboards /usr/share/gnome-shell/extensions
+sudo cp -r out/xkb /usr/share/xkeyboard-config.d/$P
+sudo cp -r out/ibus /usr/share/divvun/keyboards/$P
+sudo cp -r out/gnome-shell/osk@$P /usr/share/gnome-shell/extensions/
+sudo install -m 755 ibus-engine-divvun /usr/libexec/ibus-engine-divvun
+sed -e 's|@LIBEXECDIR@|/usr/libexec|g' -e 's|@DATADIR@|/usr/share|g' -e 's|@VERSION@|0.1.0|g' \
+  crates/kbd-ibus/data/divvun.xml.in | sudo tee /usr/share/ibus/component/divvun.xml &gt; /dev/null</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On Fedora, restore the SELinux labels of the copies:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">sudo restorecon -R /usr/share/xkeyboard-config.d /usr/share/divvun /usr/share/gnome-shell/extensions \
+  /usr/libexec/ibus-engine-divvun /usr/share/ibus/component</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On Plasma 6.9, copy each <code>out/plasma-keyboard/&lt;id&gt;/</code> to
+<code>/usr/share/plasma/keyboard/keyboardpackages/</code> the same way.</p>
+</div>
+<div class="paragraph">
+<p>Then check that libxkbcommon finds a layout and compiles it, and that the
+engine lists the keyboards. <code>xkbcli</code> is in <code>libxkbcommon-utils</code> on Fedora
+and <code>libxkbcommon-tools</code> on Ubuntu.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">xkbcli list | grep -A4 "layout: 'divvun-sme'"
+xkbcli compile-keymap --layout divvun-sme &gt; /dev/null
+/usr/libexec/ibus-engine-divvun --xml --data-dir /usr/share/divvun/keyboards</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Log out and in, enable the extension, and add the input sources. Remove
+the same files to undo it.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-sources">The XKB source and the IBus source</h3>
+<div class="paragraph">
+<p>Each layout can be typed in two ways:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <strong>XKB source</strong> is the XKB layout alone. It needs no engine and works
+on every Wayland desktop, but cannot do everything a layout can. The
+build reports, for each layout, what it cannot do
+(<a href="#linux-diagnostics">Diagnostics</a>).</p>
+</li>
+<li>
+<p>The <strong>IBus source</strong> runs the IBus engine on the layout&#8217;s compiled
+keyboard, so it types what the layout says.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A run on GNOME Shell 50.6 (Fedora 44, IBus 1.5.34, libxkbcommon 1.13.1) on
+2026-11-18 typed, among other cases:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 42.8571%;">
+<col style="width: 28.5714%;">
+<col style="width: 28.5715%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Input</th>
+<th class="tableblock halign-left valign-top">XKB source</th>
+<th class="tableblock halign-left valign-top">IBus source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>´</code> then <code>a</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>á</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>á</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>´</code> then <code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">nothing: IBus&#8217;s simple engine drops the <code>1</code> and keeps the dead key pending</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>´1</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AltGr+<code>t</code>, which types <code>t</code> followed by U+0301</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">nothing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>t́</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">on-screen <code>´</code>, then on-screen <code>a</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>a</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>á</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Caps Lock layers (<code>Č</code>), AltGr, dead keys on AltGr, and Left Alt passing a
+key on as a shortcut worked with both.</p>
+</div>
+<div class="sect3">
+<h4 id="_gnome">GNOME</h4>
+<div class="paragraph">
+<p>GNOME runs IBus, so both sources are available. In GNOME&#8217;s keyboard
+settings, add the layout&#8217;s XKB layout, listed by its display name, and its
+IBus engine, which GNOME Shell lists as <code>&lt;language&gt; (&lt;display name&gt;)</code>. With
+<code>gsettings</code>, for the layout id <code>divvun-sme</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'divvun-sme'), ('ibus', 'divvun-sme')]"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The IBus source types the whole layout. With the XKB source, GNOME still
+runs IBus, whose simple engine composes dead keys by the user&#8217;s Compose
+file, if there is one, or else by its built-in table, not by the layout&#8217;s
+<code>deadKeys</code>.</p>
+</div>
+<div class="paragraph">
+<p>In password fields, the lock screen&#8217;s among them, GNOME does not use IBus
+sources unless every source is one; it uses the most recent XKB source
+instead. Keep the layout&#8217;s XKB source in the list, so that passwords type
+with the layout.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_kde_plasma">KDE Plasma</h4>
+<div class="paragraph">
+<p>Plasma&#8217;s keyboard settings list the XKB layout. KWin runs one input
+method, plasma-keyboard or IBus:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>With plasma-keyboard, the XKB layout types hardware keys, and
+plasma-keyboard&#8217;s on-screen keyboard types its own layout, without the
+engine.</p>
+</li>
+<li>
+<p>With IBus as KWin&#8217;s input method, add the layout&#8217;s IBus engine, which
+then types.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_phosh">Phosh</h4>
+<div class="paragraph">
+<p>Phosh has no IBus, so the XKB layout types.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-osk">On-screen keyboards</h3>
+<div class="paragraph">
+<p>Every on-screen layout shows the layout&#8217;s desktop layout: its keys without
+modifiers and with Shift, and two levels of symbols that are the same for
+every layout. Long-press candidates are shown where the on-screen keyboard
+can show them. Layers for other modifiers, such as AltGr and Caps Lock,
+type only on hardware keys, and the layout&#8217;s <code>touch</code> layouts are not
+used.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">GNOME Shell</dt>
+<dd>
+<p>Once the extension is enabled (<a href="#linux-extension">Enabling the GNOME Shell extension</a>), the on-screen
+keyboard shows the layout for both of its sources, on the lock screen too.
+With the IBus source, every on-screen key goes through the engine, so an
+on-screen dead key composes with the next key, on screen or not. With the
+XKB source, an on-screen dead key composes only with a hardware key.
+Terminals show GNOME&#8217;s <code>us-extended</code> layout.</p>
+</dd>
+<dt class="hdlist1">plasma-keyboard</dt>
+<dd>
+<p>Each layout has a package of its own for plasma-keyboard 6.9 and later,
+which users enable in plasma-keyboard&#8217;s settings. plasma-keyboard types
+without the IBus engine: dead keys type their standalone output, and no
+transform applies. plasma-keyboard 6.9 is not released yet, and kbdgen
+does not target earlier releases.</p>
+</dd>
+<dt class="hdlist1">Stevia</dt>
+<dd>
+<p>Stevia, Phosh&#8217;s on-screen keyboard, builds its layouts in, so
+<code>stevia/layouts/&lt;L&gt;.json</code> is not installed. To contribute one upstream,
+copy it to Stevia&#8217;s <code>src/layouts/</code>, add the line
+<code>&lt;file preprocess="json-stripblanks"&gt;layouts/&lt;L&gt;.json&lt;/file&gt;</code> to
+<code>src/phosh-osk-stevia.gresources.xml</code>, and add the file to the <code>layouts</code>
+of <code>src/layouts/meson.build</code>, which validates it. To try a file without
+rebuilding Stevia, start Stevia with
+<code>G_RESOURCE_OVERLAYS=/mobi/phosh/stevia/layouts=&lt;dir&gt;</code> in its environment,
+<code>&lt;dir&gt;</code> holding the file. Stevia shows a layout only for the XKB source of
+the same name, and types it without the engine.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-diagnostics">Diagnostics</h3>
+<div class="paragraph">
+<p>kbdgen reports, once per layout and kind, with a count and up to ten
+examples, what the XKB layout and each on-screen keyboard cannot do. The
+layout still builds. Most are information: each says that the IBus engine
+types what the XKB layout cannot. From builds of kbdgen&#8217;s test layouts,
+the longest shortened:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>INFO sme: the XKB layout cannot type 2 output(s) of more than one scalar value (e.g. &lt;AD05&gt; with AltGr: "t\u{301}"; &lt;AD08&gt; with AltGr: "i\u{307}\u{301}"); the IBus engine types them
+INFO se-NO: the XKB layout composes 704 dead-key result(s) (e.g. \m{dk_02C7} then "|": the engine types "ˇ|", the XKB layout types "" and leaves dead_caron pending; \m{dk_02C7} then "1": the engine types "ˇ1", the XKB layout types "₁"; …) otherwise than the engine, because IBus's simple engine composes by the reference Compose table, drops a key that continues no sequence and keeps the dead key pending, where the engine types the dead key's standalone and the key; the IBus engine types them as the engine does
+INFO se-NO: the XKB layout cannot type 1 key state(s) that no key type gives (e.g. &lt;AB07&gt; with Caps Lock+AltGr should type 'µ' (FOUR_LEVEL_SEMIALPHABETIC)); the IBus engine types them
+INFO vro: the XKB layout cannot type 1 dead key(s) without a dead keysym, which it types as their standalone (e.g. \m{dk_0119}, typed as "ę"); the IBus engine types them
+INFO sme: the XKB layout cannot type 1 layer(s) selected by an extra modifier (e.g. layer extra1, caps extra1); the IBus engine types them
+INFO sme: the XKB layout has no Shift Lock; the IBus engine types it
+INFO sme: the XKB layout cannot type LRM/RLM on Shift+Backspace; the IBus engine types them
+INFO sme: the XKB layout ignores the long-press, multi-tap and flick gestures of 4 key(s) (e.g. u-0065; u-0061; u-007A; u-006E), which no hardware key makes
+WARN sme-SE: nothing on Linux types 1 layer(s) that only Left Alt or a Left Ctrl selects (e.g. layer altL, altL caps): the XKB layout leaves Left Alt and Left Ctrl to shortcuts, and the IBus engine passes their chords</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the XKB layout loses nothing, the layout gets one message instead:
+<code>the XKB layout types every feature of the keyboard</code>.</p>
+</div>
+<div class="paragraph">
+<p>For the on-screen keyboards, kbdgen warns once per on-screen keyboard about
+what it does not show or type, and informs once per layout about how they
+type:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>INFO se-NO: on GNOME Shell, a dead key pressed on screen composes only with the layout's IBus source; with its XKB source, only with a hardware key
+INFO vro: GNOME Shell sends 1 on-screen text(s) of several scalar values to the IBus engine one scalar value at a time (e.g. õ̭)
+INFO se-NO: plasma-keyboard and Stevia type their on-screen layouts without the IBus engine, so no transform applies there
+WARN se-NO: GNOME Shell does not show 5 layer(s) other than the default and shift levels, which only hardware keys type (e.g. caps; caps shift; altR; altR shift, altR caps shift; altR caps)
+WARN se-NO: plasma-keyboard types 1 dead key(s) as their standalone output, which composes nothing, or leaves them out where they have none (e.g. `)
+WARN sme-SE: Stevia types 2 dead key(s) as their standalone output, which composes nothing, or leaves them out where they have none (e.g. ´; ¨ (left out))</pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Message</th>
+<th class="tableblock halign-left valign-top">What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outputs of more than one scalar value, outputs mixing text and markers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing, for users of the IBus source. The XKB layout types one character
+per key; a precomposed character, where one exists, types with both
+sources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dead-key results composed otherwise than the engine</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing, for users of the IBus source. The XKB source composes by the
+desktop&#8217;s Compose table, and a key that composes nothing with the dead key
+types nothing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dead keys without a dead keysym</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Give the dead key a standalone output, or a display, that is an accent X
+has a dead keysym for, such as <code>´</code>, <code>ˇ</code>, <code>~</code> or <code>¨</code>. Without one, the XKB
+layout and GNOME Shell&#8217;s on-screen keyboard type the standalone.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">key states that no key type gives</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing, for users of the IBus source. XKB has a fixed set of ways in
+which Shift, Caps Lock and AltGr combine; these are usually Caps Lock with
+AltGr.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">transform rules that do not start with a marker, reorder groups, backspace
+rules, normalization</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing, for users of the IBus source: the XKB layout cannot run them.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">layers selected by an extra modifier, Shift Lock, LRM/RLM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing, for users of the IBus source.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">outputs at scan codes it does not write</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The form has a position that the XKB layout does not write. Move its
+output to a position on the ISO keyboard.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">long-press, multi-tap and flick gestures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing: a hardware key has no gestures.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">layers that only Left Alt or a Left Ctrl selects (a warning)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Move the layer to <code>altR</code> or <code>alt</code> if it should type on Linux.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>alt</code> layers typed with AltGr alone</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing. A layer written <code>altR</code> in a <code>linux</code> variant is the same layer,
+without the message.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">layers the on-screen keyboards do not show</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing: the on-screen layouts show the layers without modifiers and
+with Shift.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dead keys typed as their standalone output, or left out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing for plasma-keyboard and Stevia, which have no dead keys. For
+GNOME Shell, give the dead key a dead keysym, as above, on a level other
+than Shift with AltGr.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">keys mixing text and markers, long-press candidates holding markers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing: the on-screen keyboards cannot send them, so they leave them
+out.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">shift-level texts that plasma-keyboard uppercases</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing, unless the text matters there: plasma-keyboard uppercases what a
+key types while Shift is on, so a shift-level text that is not its own
+uppercase, such as a lowercase letter, types its uppercase.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_errors">Errors</h3>
+<div class="paragraph">
+<p>These stop the build, before anything is written:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>targets/linux.yaml is missing</code></p>
+</li>
+<li>
+<p><code>targets/linux.yaml: packageId "divvun" is not a reverse-DNS name: …</code></p>
+</li>
+<li>
+<p><code>targets/linux.yaml: layoutPrefix "Divvun" is not a lowercase ASCII letter followed by at most 15 lowercase ASCII letters and digits</code></p>
+</li>
+<li>
+<p><code>project.yaml: locales has no en entry</code></p>
+</li>
+<li>
+<p><code>&lt;tag&gt;: the v3 layout&#8217;s migration is blocked by defects …</code>, described
+under <a href="#linux-layouts">Keyboard layouts</a></p>
+</li>
+<li>
+<p><code>&lt;tag&gt;: the linux keyboard has no hardware layers</code>, for a v4 layout
+whose <code>linux</code> keyboard, from an LDML file it names, has only touch
+layouts</p>
+</li>
+<li>
+<p><code>&lt;tag&gt;: no hardware layer is selected with no modifier, so the on-screen keyboards have no default level</code></p>
+</li>
+<li>
+<p><code>no layout has a linux keyboard</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A missing field of <code>targets/linux.yaml</code>, or a duplicate one, stops loading
+the bundle, with the file, the line and the column.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_how_the_ibus_engine_types">How the IBus engine types</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>A dead key shows what it would type as underlined preedit, which the
+next key completes or replaces.</p>
+</li>
+<li>
+<p>Backspace runs the layout&#8217;s backspace rules, if it has any. Otherwise it
+cancels a pending dead key, and with none pending the application
+deletes as usual.</p>
+</li>
+<li>
+<p>Keys the layout does not handle, such as the arrows, Enter, Tab and
+shortcuts, go to the application. A pending dead key is typed first, as
+it is on macOS. Keys held with Left Alt pass as shortcuts.</p>
+</li>
+<li>
+<p>In applications that do not tell IBus the text around the caret, such
+as terminals, the engine works from what it typed itself. For a layout
+whose transforms rewrite text already typed (transforms that do not
+start with a dead key, reorder groups, backspace rules or
+normalization), it keeps the last characters it typed as preedit, since
+it cannot rely on deleting them, until a key that passes commits them.</p>
+</li>
+<li>
+<p>In a password or PIN field, keys type as elsewhere, but nothing is shown
+as preedit, the engine keeps no text from the field, and a dead key
+still pending when the field loses focus is dropped.</p>
+</li>
+<li>
+<p>The engine records no typed text and no keys. When it cannot load a
+keyboard, IBus runs no engine for it and the layout&#8217;s XKB layout types.
+The engine then writes the reason, such as
+<code>ibus-engine-divvun: divvun-sme.dvkb: model-version</code>, to its standard
+error, which IBus passes on to its own, and so to the session journal,
+only when <code>ibus-daemon</code> runs with <code>--verbose</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_limits_2">Limits</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>Only Wayland sessions are supported. X11 applications under XWayland get
+the XKB layout from the compositor; typing in them with the IBus source
+has not been tested yet.</p>
+</li>
+<li>
+<p>The GNOME Shell extension declares GNOME 50 and 51. Later GNOME releases
+are added once they have been tested.</p>
+</li>
+<li>
+<p>Each user enables the GNOME Shell extension once (<a href="#linux-install">Installing</a>).</p>
+</li>
+<li>
+<p>The on-screen layouts show only the layers without modifiers and with
+Shift, and GNOME Shell shows <code>us-extended</code> in terminals.</p>
+</li>
+<li>
+<p>There are no icons; IBus shows the layout&#8217;s language subtag.</p>
+</li>
+<li>
+<p>There is no Fcitx5 addon: Fcitx5 cannot run IBus engines, so with Fcitx5
+only the XKB layout types.</p>
+</li>
+<li>
+<p>Typing has been tested end to end on GNOME Shell 50 only. The plasma-keyboard
+packages have been loaded by plasma-keyboard under its own test
+compositor, not yet on a Plasma desktop, and the Stevia layouts have not
+yet run on Phosh.</p>
 </li>
 </ul>
 </div>

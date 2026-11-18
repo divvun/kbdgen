@@ -13,3 +13,5 @@ include::ios.adoc[]
 include::android.adoc[]
 
 include::chromeos.adoc[]
+
+include::linux.adoc[]

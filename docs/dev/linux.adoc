@@ -1,0 +1,478 @@
+== Linux
+The Linux target writes, for each layout, three things: an XKB layout,
+which is the table tier as the Windows layout DLL is; the data of an IBus
+engine that runs `kbd-engine` on the layout's compiled `linux` keyboard, as
+the Windows text service does; and on-screen layouts for GNOME Shell,
+plasma-keyboard and Stevia. The engine program is the workspace crate
+`crates/kbd-ibus`, shared by every keyboard and released separately. The
+rules are in two specs:
+
+* `docs/spec/linux.md` (`+linux.*+`): the names and the output, how
+  packages install it, the XKB layout's files, the IBus engine (its
+  component, crate, D-Bus protocol, keys, edits, context and robustness),
+  the on-screen keyboards, and the tests.
+* `docs/spec/ldml/linux.md` (`+ldml.linux.*+`): which layouts are built,
+  how the model becomes keysyms, key types and dead keysyms, the on-screen
+  layouts, what is reported, and the XKB typing test.
+
+The Windows text service is the reference host (`docs/spec/tsf.md`), and
+the IBus engine reconciles surrounding text as the ChromeOS extension does
+(`ldml.chromeos.context`); the Linux spec says where it differs from them.
+`docs/spec/linux.md` also records what was checked on GNOME Shell itself,
+under "GNOME spike results".
+
+=== Where things are
+[cols="1,3"]
+|===
+|Path |What it is
+
+|`src/build/linux/mod.rs`
+|`LinuxBuild`, with the one step `GenerateLinux`.
+
+|`src/build/linux/ids.rs`
+|`Ids`: the `packageId` and `layoutPrefix` of `targets/linux.yaml`,
+checked, and the names derived from them: the layout id, the extension's
+UUID, the KPackage ids and the package directory (`linux.ids`).
+
+|`src/build/linux/source.rs`
+|The layouts (`ldml.linux.input`): every v4 layout's `linux` keyboard, and
+every v3 layout with a `windows` or `chromeOS` section, migrated in memory
+by `build::migration`, its `linux` keyboard inheriting the `windows`
+variant, else `chromeOS`. Each is compiled and encoded as the engine reads
+it.
+
+|`src/build/linux/generate_linux.rs`
+|`GenerateLinux`: every check, then every write.
+
+|`src/build/linux/xkb/`
+|The XKB tier: `levels.rs` (each key's eight states), `types.rs` (key types
+and libxkbcommon's semantics), `keysym.rs` with `data/keysyms.tsv`,
+`dead_keys.rs` and `compose.rs` with `data/Compose`, `symbols.rs`,
+`registry.rs`, and `classify.rs`, the report.
+
+|`src/build/linux/ibus/`
+|Each layout's engine description and model.
+
+|`src/build/linux/osk/`
+|`presented.rs`, the presented set; `gnome.rs` with `gnome/extension.js`,
+`plasma.rs` and `stevia.rs`, which write it for each on-screen keyboard;
+and `classify.rs`, their reports.
+
+|`src/build/linux/tests.rs`, `testdata/`
+|The step's tests and golden output.
+
+|`src/build/linux/xkb/differential/`
+|The XKB typing test and the libxkbcommon test.
+
+|`crates/kbd-ibus`
+|The IBus engine, `ibus-engine-divvun`.
+
+|`crates/kbd-ibus/data/divvun.xml.in`
+|The engine's IBus component, which packaging completes.
+
+|`tests/linux-vm/`
+|Scripts for the GNOME spike, the GNOME acceptance run and the
+plasma-keyboard check, run by hand.
+
+|`build.rs`
+|Sets the cfg `kbdgen_xkbcommon` when pkg-config finds libxkbcommon.
+|===
+
+=== The step
+`GenerateLinux` fails before writing anything (`linux.output`), in this
+order: on a missing `targets/linux.yaml`, an `Ids` error, a `project.yaml`
+without an `en` locale, a layout that does not migrate or compile or whose
+keyboard has no hardware layers, and no layouts. It then builds the whole
+output in memory: the `xkb::Tree`, adapting and reporting each layout; the
+`ibus::Tree`; and the on-screen keyboards, reporting each layout's
+presented set once for each. These can fail too, naming the layout, for
+instance on a dead key that does not leave its marker pending, or on a
+keyboard without a layer for no modifier.
+
+Only then does it write `xkb/`, `ibus/`, `gnome-shell/`, `plasma-keyboard/`
+and `stevia/`, in that order, each emptied first with `fresh_dir`
+(`build::output`) and each laid out as a package installs it
+(`linux.install`). Nothing else in the output directory is touched.
+Reports go through a `Diagnostics` for `Platform::Linux`, so they log under
+`kbdgen::build::linux` and the golden test can pin them.
+
+=== The XKB tier
+`xkb::adapt` turns one layout's keyboard into its symbols file, its
+registry entry and its report:
+
+. *Keys* (`ldml.linux.keycodes`). The written keys are those of the
+  layout's form among the 49 ISO positions, the JIS yen key and the space
+  bar, by xkeyboard-config's `keycodes/evdev` names, and `<KPDL>` for the
+  decimal. A scan code's
+  evdev key code is `kbd_model::evdev_code`, which the IBus engine reads
+  keys by too.
+. *Levels* (`ldml.linux.levels`). Each key has eight states, the
+  combinations of Shift, Lock and Level3, and each state takes the layer
+  the engine selects for `shift_l`, `caps` and AltGr. When a Level3 state
+  has a layer, the model uses Level3 and the file includes
+  `level3(ralt_switch)`; otherwise Right Alt stays Alt. Native-only layers
+  and layers that only Left Alt, Left Ctrl or an extra modifier selects are
+  not written.
+. *Values* (`ldml.linux.values`). A state's keysym is that of its output as
+  the engine commits it, in NFC: for one scalar value, the keysym
+  `xkb_utf32_to_keysym` gives, looked up in `data/keysyms.tsv`, a table
+  read from libxkbcommon 1.13.1 itself; for a dead key, its dead keysym;
+  for anything longer, `VoidSymbol`.
+. *Types* (`ldml.linux.types`). `types::choose` takes the first of
+  xkeyboard-config's types that gives all of a key's values under
+  libxkbcommon's semantics, Lock's uppercasing included
+  (`ldml.linux.semantics`). A key no type serves takes the one that gives
+  the most states, and the states it gets wrong are reported.
+. *Dead keys* (`ldml.linux.dead-keys`). Each dead key gets the first dead
+  keysym, in the order of IBus's table, whose character is its standalone
+  or its display. `dead_keys.rs` then runs the engine from each pending
+  marker, through chains of up to three keys, and compares it with
+  `compose.rs`, which composes as IBus's simple engine does on the
+  reference Compose table: the `<dead_…>` sequences of libX11's
+  `en_US.UTF-8/Compose.pre`, vendored as `data/Compose` with their notices
+  (`ldml.linux.compose`). Results that differ are reported. No Compose file
+  is written.
+
+`classify.rs` reports what the layout loses (`ldml.linux.classify`), as
+information that the IBus engine types it, except layers only Left Alt or
+Left Ctrl selects, which are warnings. `registry.rs` writes each
+`<configItem>` and the bundle's `rules/evdev.xml`.
+
+=== The IBus engine
+`crates/kbd-ibus` is an edition 2024 crate whose binary,
+`ibus-engine-divvun` (`src/main.rs`), is a command line over the library
+`kbd_ibus`, which is the program but for that command line. The library
+keeps the host logic free of D-Bus, so the tests drive it directly and a
+later Fcitx5 addon or Stevia completer can reuse it (`linux.ibus.planner`).
+
+[source,sh]
+----
+cargo build -p kbd-ibus --release
+----
+
+It is not a default workspace member. Its only dependencies besides
+`kbd-engine` and `kbd-model` are, on Unix only, `zbus` 6 without default
+features, with `tokio` and `service`, and `tokio`'s current-thread
+runtime: it speaks IBus's D-Bus protocol itself, with no GLib, GObject or
+libibus, and does not use the `ibus-engine` crate (`linux.ibus.crate`
+says why). It forbids `unsafe` and denies `panic!`, `unwrap`, `expect`,
+indexing and `unreachable!`. Releases are built for
+`x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`.
+
+----
+usage: ibus-engine-divvun (--xml | --ibus) [--data-dir DIR]...
+----
+
+[cols="1,3"]
+|===
+|Module |What it is
+
+|`data`
+|The keyboards: the descriptions and models under
+`~/.local/share/divvun/keyboards/*/`, then under each `--data-dir`'s
+`*/`, read strictly in the shape kbdgen writes; and the `<engines>` list
+that `--xml` prints (`linux.ibus.lister`). Of two descriptions with one
+name the first wins; unusable ones are left out silently.
+
+|`address`
+|ibus-daemon's address, found as libibus's `ibus_get_address` finds it:
+`IBUS_ADDRESS`, else the address file ibus-daemon writes.
+
+|`dbus`
+|`serve`, the `--ibus` mode: `factory.rs` is
+`org.freedesktop.IBus.Factory`, `engine.rs` the engine objects and
+`text.rs` the `IBusText` serialization.
+
+|`planner`
+|`Session`, the host logic of one engine object, with no D-Bus calls.
+
+|`keys`, `keysym`, `context`
+|Key identity and modifiers, keysyms as characters, and the text before
+the caret.
+
+|`guard`
+|Panic containment.
+
+|`diag`
+|The only things the program writes to standard error.
+|===
+
+==== The D-Bus surface
+ibus-daemon reads the component file, runs its `engines` command
+(`--xml`), and runs it again when an observed data directory changes. To
+use an engine it starts `--ibus`, which connects to ibus-daemon's own bus,
+exports `org.freedesktop.IBus.Factory` at `/org/freedesktop/IBus/Factory`
+and owns `org.freedesktop.IBus.Divvun`. zbus spawns no task per call, so
+one thread handles every call in the order it arrives.
+
+* `CreateEngine(name)` loads the keyboard's model and exports an engine at
+  `/org/freedesktop/IBus/Engine/<n>`. A name it cannot serve fails with
+  `org.freedesktop.DBus.Error.Failed` and the reason: `no-description`,
+  `model-unreadable`, `model-version`, `model-malformed` or
+  `model-invalid` (`linux.ibus.inert`).
+* An engine object implements `org.freedesktop.IBus.Engine`:
+  `ProcessKeyEvent`, `FocusIn`, `FocusOut`, `FocusInId`, `FocusOutId`,
+  `Reset`, `Enable`, `Disable`, `SetCapabilities`, `SetSurroundingText`
+  and `SetCursorLocation` act, and the other methods succeed and do
+  nothing. It emits `CommitText`, `UpdatePreeditText`,
+  `DeleteSurroundingText` and `RequireSurroundingText`, the last two of
+  which libibus's introspection data lacks. Its properties are
+  `ContentType`, `FocusId` (false) and `ActiveSurroundingText` (true),
+  the last two a plain `b`, which is what ibus-daemon reads.
+  `org.freedesktop.IBus.Service.Destroy` unexports it.
+* A call's signals go out before its reply, in order, so ibus-daemon
+  handles them first. The program exits when its connection closes.
+
+==== The planner
+A `Session` is one engine object's state. `process_key_event(keyval,
+keycode, state)` returns a `Reply`: whether the key was handled, and the
+signals to emit before replying. `focus_in`, `focus_out`, `reset`, `enable`
+and `disable` return signals too, and `set_capabilities`,
+`set_content_type` and `set_surrounding_text` record what the client says.
+Every session runs the engine with `OutputForm::Nfc`,
+`BackspacePolicy::CancelOrPass` and host `linux`.
+
+* `keys::classify` identifies a press by its evdev key code, never by its
+  keyval, which comes from whatever keymap is active (`linux.ibus.keys`).
+  `Keys` tracks which modifier keys are held, for their sides, and turns
+  IBus's state bits into the engine's modifiers (`linux.ibus.modifiers`).
+  A press with key code 0 is a key of GNOME Shell's on-screen keyboard: its
+  keyval's character is sent as `Emit` (`linux.ibus.virtual-keys`).
+* Where the context comes from depends on the field (`Mode`). A client with
+  `IBUS_CAP_SURROUNDING_TEXT` reports its text, and `context::Surrounding`
+  reconciles each reading with the engine's own edits
+  (`linux.ibus.context`). Without it, the context is the engine's own
+  edits, and for a model that rewrites committed text
+  (`ldml.linux.rewrites`) the last `context_len` scalar values are held
+  back as preedit, since such a client cannot be relied on to delete
+  (`linux.ibus.context.fallback`). A password or PIN field gets no preedit
+  and no context (`linux.ibus.security`).
+* An engine edit becomes, in order, a preedit clear, a
+  `DeleteSurroundingText`, a `CommitText` and a preedit update
+  (`linux.ibus.edit`). When markers are pending and nothing else would be
+  shown, as after a dead key with `standalone: ''`, the trailing marker's
+  display is shown with `IBUS_ENGINE_PREEDIT_CLEAR`, so that a reset drops
+  it and GNOME Shell's on-screen Backspace, which deletes past the engine
+  unless a preedit is shown, reaches the engine
+  (`linux.ibus.osk-backspace`).
+
+==== Panics and logging
+One process serves every input context, so a panic that unwound out of a
+call would end them all (`linux.ibus.panic`). The crate must build with
+`panic = "unwind"`, the default, and `guard.rs` fails to compile
+otherwise. Every method call and property access runs its body in
+`Process::contain`, which catches a panic, logs its location, and gives the
+entry point's fallback reply:
+false to `ProcessKeyEvent`, `org.freedesktop.DBus.Error.Failed`
+`poisoned` to `CreateEngine`, success to the rest. The process is then
+poisoned: it passes every key, emits nothing, creates no engine, and exits
+once ibus-daemon has destroyed its last engine object, so the next
+activation starts a fresh one. Meanwhile the XKB layout types.
+`guard::faults::arm` makes the next call of an entry point panic, for the
+tests.
+
+The engine records no typed text, surrounding text, preedit, keyvals, key
+codes or engine states (`linux.ibus.logging`). `diag::record` writes one
+line to standard error, `ibus-engine-divvun: <event>`, and an `Event` can
+hold only a message compiled into the program, an inert reason with a file
+name, or a panic's file, line and column, never its message. ibus-daemon
+passes the line on to its own standard error only when it runs with
+`--verbose`. `tests/self_contained.rs` checks that nothing else in the
+program prints, writes files, starts processes or opens network
+connections.
+
+=== The on-screen keyboards
+`osk::present` builds one presented set from the keyboard's hardware
+layers (`ldml.linux.touch`): a default level from the layer for no
+modifier, a shift level from the Shift layer when there is one, and two
+symbol levels that are the same for every layout, with backspace and
+shift or symbol-switch keys added. Each on-screen keyboard's writer maps
+it to its own format:
+
+* `gnome.rs` writes GNOME Shell's JSON (`ldml.linux.touch.gnome`). A dead
+  key whose dead keysym the XKB layout has at Level1, 2 or 3 is written
+  as that `keyval`, so GNOME Shell presses it on its virtual keyboard and
+  it reaches the IBus engine as a hardware key. The layouts go into
+  `osk-layouts.gresource`, which kbdgen writes itself in GVDB format with
+  the `gvdb` crate, so no `glib-compile-resources` is needed.
+  `extension.js` is `osk/gnome/extension.js`, included unchanged.
+* `plasma.rs` writes each layout's KPackage: `metadata.json` and
+  `contents/layouts/desktop.qml` (`ldml.linux.touch.plasma`).
+* `stevia.rs` writes Stevia's JSON (`ldml.linux.touch.stevia`).
+
+`osk/classify.rs` reports, for each on-screen keyboard, what it does not
+show or type (`ldml.linux.classify.touch`).
+
+[[linux-tests]]
+=== Tests
+[cols="2,3,2",options="header"]
+|===
+|Test |Where |Needs
+
+|The step, its errors and its golden output (`linux.test.golden`)
+|`src/build/linux/tests.rs`, and each module's `tests`
+|Nothing
+
+|The XKB typing test (`ldml.linux.test.typing`)
+|`src/build/linux/xkb/differential/`
+|Nothing
+
+|The libxkbcommon test (`linux.test.xkbcommon`)
+|`src/build/linux/xkb/differential/xkbcommon.rs`
+|Linux, with libxkbcommon and libxkbregistry found by pkg-config at build
+time
+
+|The planner (`linux.test.planner`)
+|`crates/kbd-ibus/tests/planner.rs`, `keys.rs` and `edits.rs`
+|Nothing
+
+|The data, the D-Bus encoding, and fault injection at every D-Bus entry
+point
+|`crates/kbd-ibus/src/tests/`
+|Nothing
+
+|The component file and the lister
+|`crates/kbd-ibus/tests/component.rs`
+|Nothing
+
+|The real ibus-daemon (`linux.test.ibus`)
+|`crates/kbd-ibus/tests/ibus.rs`
+|Unix, with `ibus-daemon` and a session bus
+|===
+
+[source,sh]
+----
+cargo test -p kbdgen --lib build::linux
+cargo test -p kbd-ibus
+----
+
+`kbd-ibus` is not a default workspace member, so a plain `cargo test`
+skips it; `cargo nextest run --workspace` runs everything above.
+
+==== Golden files
+`writes_the_golden_output_tree` builds a bundle of a v3 layout with a
+`windows` section (`se-NO`), a v4 layout (`sme`, from `testdata/sme.yaml`),
+a v3 layout with only a `chromeOS` section (`vro`) and a v3 layout with
+neither, which has no output. It compares with `testdata/golden/`:
+
+* `output/`: every file the step writes but the models and the GResource
+  bundle, which must also leave no stale file behind;
+* `osk-layouts.gresource.txt`: the bundle's file list and contents, read
+  back;
+* `messages.txt`: every message the build logs.
+
+The on-screen layouts of five fixtures are also pinned in
+`osk/gnome/golden/`, `osk/plasma/golden/` and `osk/stevia/golden/`. After
+an intended change, rewrite them all with
+
+[source,sh]
+----
+KBDGEN_BLESS=1 cargo test -p kbdgen --lib build::linux
+----
+
+==== The XKB typing test
+`fixture_xkb_layouts_type_what_the_engine_types` reads each written symbols
+file back, simulates it as libxkbcommon and IBus's simple engine would
+(`ldml.linux.semantics`, `ldml.linux.compose`), and requires it to type
+what the engine types at every written key in every state, and on dead-key
+paths of up to three keys. Its fixtures are the golden v4 and v3 layouts
+and the Windows and macOS feature fixtures as `linux` variants. A
+difference must be explained by a reported feature, listed in
+`exceptions.rs`; each explanation is exercised by a synthetic layout, and
+any other difference fails the test.
+
+[source,sh]
+----
+cargo test -p kbdgen --lib fixture_xkb_layouts_type_what_the_engine_types -- --nocapture
+----
+
+prints, per fixture:
+
+----
+layouts/und-x-mods: 392 cases, 392 equal, 0 unexplained
+layouts/vro: 810 cases, 210 equal, 0 unexplained
+  7 × DeadKeyWithoutKeysym, e.g. layouts/vro: <AE12> with Caps Lock: engine "", XKB "ę"
+  593 × DeadKeyResult, e.g. layouts/vro: <TLDE> with Shift, then <TLDE>: engine "~", XKB ""
+v3/se-NO: 2132 cases, 555 equal, 0 unexplained
+  13 × WrongState, e.g. v3/se-NO: <AB07> with Caps Lock+AltGr: engine "µ", XKB "Μ"
+  1564 × DeadKeyResult, e.g. v3/se-NO: <AD12> with Shift+AltGr, then <TLDE>: engine "ˇ|", XKB ""
+...
+----
+
+==== Tests that need Linux tools
+`fixtures_compile_list_and_type_in_libxkbcommon` compiles each fixture's
+keymap with the output's `xkb/` ahead of the default include paths,
+requires no warning beyond those compiling `us` gives, finds the layout in
+libxkbregistry, and types every key in all eight states through
+`xkb_state_key_get_one_sym` and `xkb_state_key_get_utf8`. It uses the
+`xkbcommon` crate, a dev-dependency on Linux only, and links libxkbcommon
+only when `build.rs` has set `kbdgen_xkbcommon`, which it does for a Linux
+target when `pkg-config --exists xkbcommon xkbregistry` succeeds.
+Otherwise it prints
+
+----
+linux.test.xkbcommon skipped: pkg-config found no xkbcommon and xkbregistry for this target
+----
+
+and passes.
+
+`crates/kbd-ibus/tests/ibus.rs` runs the built `ibus-engine-divvun` under a
+private ibus-daemon: its own address, `HOME` and `XDG_*` directories in a
+temporary directory, and `IBUS_COMPONENT_PATH` naming a directory with only
+the engine's component. Acting as the client over D-Bus, it creates an
+input context, types the planner's cases and applies the signals to a fake
+field, and it checks the engine list against `--xml` and `CreateEngine` of
+a corrupt model. It runs the `ibus-daemon` that `IBUS_DAEMON` names, else
+the one on `PATH`, and needs a session bus, so run it under
+`dbus-run-session`. Without ibus-daemon, each of its tests prints
+
+----
+engine_registers: ibus-daemon is not installed; skipping (linux.test.ibus)
+----
+
+and passes. `fixtures_type_through_the_daemon` takes a few minutes.
+
+With `KBDGEN_REQUIRE_LINUX_TESTS` set, both fail instead of skipping
+(`linux.test.ci`). A Linux CI job that runs the tests must install
+libxkbcommon's development files, ibus and a D-Bus daemon, and set it, so
+that a job missing them fails rather than passing untested; CI on other
+hosts leaves it unset.
+
+On macOS, run both in Docker, in a `fedora:44` container, from the
+repository root:
+
+[source,sh]
+----
+docker run --rm -v "$PWD":/src:ro -v kbdgen-f44-target:/target fedora:44 sh -c 'dnf -y install ibus dbus-daemon dbus-tools gcc pkgconf-pkg-config libxkbcommon-devel; curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal; . ~/.cargo/env; rustup target add wasm32-unknown-unknown; cd /src; KBDGEN_REQUIRE_LINUX_TESTS=1 CARGO_TARGET_DIR=/target dbus-run-session -- cargo test -p kbd-ibus --test ibus'
+----
+
+The named volume keeps the build between runs. To run the libxkbcommon
+test too, end the `sh -c` script with
+`+; KBDGEN_REQUIRE_LINUX_TESTS=1 CARGO_TARGET_DIR=/target cargo test -p kbdgen --lib fixtures_compile_list_and_type_in_libxkbcommon -- --nocapture+`;
+it prints `0 problem(s)` for each fixture.
+
+==== On desktops
+No automated test runs GNOME Shell, KWin, plasma-keyboard, Phosh or a
+Wayland client. The scripts in `tests/linux-vm/` do, by hand; each
+directory's `README.md` says how to run it:
+
+`gnome-spike/`::
+The experiment behind "GNOME spike results" in `docs/spec/linux.md`: a
+headless GNOME Shell 50 or 51 in a Lima VM, a logging IBus engine and a
+GTK 4 field, checking that an extension can add on-screen layouts through a
+GResource bundle and how on-screen keys reach an engine.
+
+`gnome-acceptance/`::
+The GNOME part of `linux.test.acceptance`. `prepare.sh`, on the host,
+builds the `target linux` output of the golden layouts and
+`ibus-engine-divvun` in Docker; `install-system.sh`, in the VM, installs
+both at the paths of `linux.install`; `run.sh` enables the extension and
+types each case with the XKB source and the IBus source, by hardware and
+on-screen keys, into a GTK 4 field. A run on 2026-11-18, GNOME Shell 50.6,
+IBus 1.5.34, libxkbcommon 1.13.1 and xkeyboard-config 2.47 (Fedora 44):
+26 cases, 0 failures. Qt 6, Chromium, terminals, XWayland, the lock
+screen, Plasma and Phosh are not covered yet.
+
+`plasma-keyboard/`::
+Builds plasma-keyboard from source in a container and runs it, under its
+own mock compositor, on the golden packages in `osk/plasma/golden/`.

@@ -17,7 +17,8 @@ in a nested cargo build and embeds the module in the ChromeOS target, so the
 build fails without that target.
 
 `cargo build` builds the `default-members`: kbdgen, `kbd-model`, `kbd-engine`
-and `kbd-ldml`. Add `--workspace` to include `kbd-tsf` and `kbd-wasm`.
+and `kbd-ldml`. Add `--workspace` to include `kbd-tsf`, `kbd-wasm` and
+`kbd-ibus`.
 
 Run kbdgen from the checkout with `cargo run --`, for example on the test
 bundle in the repository:
@@ -42,11 +43,16 @@ cargo install cargo-nextest --locked
 cargo nextest run --workspace
 ```
 
-`--workspace` matters: without it `kbd-tsf` and `kbd-wasm` are not tested.
+`--workspace` matters: without it `kbd-tsf`, `kbd-wasm` and `kbd-ibus` are not
+tested.
 
 - `KBDGEN_BLESS=1 cargo nextest run --workspace` rewrites the golden files
-  of the Windows, macOS and ChromeOS generators. Review the diff before
-  committing it.
+  of the Windows, macOS, ChromeOS and Linux generators. Review the diff
+  before committing it.
+- The Linux tests against libxkbcommon and ibus-daemon run only where those
+  are installed, and otherwise print a notice and pass, unless
+  `KBDGEN_REQUIRE_LINUX_TESTS` is set. The developer guide's Linux chapter
+  shows how to run them in Docker.
 - The ChromeOS typing test drives the generated extension in Deno. Without
   `deno` on `PATH` (or `DENO` naming it) it prints a notice and passes.
 - `cargo nextest run --workspace --run-ignored all` adds the slow and

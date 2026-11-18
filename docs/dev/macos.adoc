@@ -177,8 +177,8 @@ variant. Otherwise it compiles the layout (`compiled_layouts`).
   an action, numbered in emission order.
 
 Warnings go to a `Diagnostics` for `Platform::MacOs`
-(`crate::build::diag`), the type the Windows KBDL adapter and ChromeOS also
-use. It logs each message through `tracing` as it is recorded, under
+(`crate::build::diag`), the type the Windows KBDL adapter, ChromeOS and
+Linux also use. It logs each message through `tracing` as it is recorded, under
 `kbdgen::build::macos`, and keeps them for the tests. `generate_bundle` only keeps `Adapted::input`.
 The adapter also reuses `starts_with_marker` and `is_generated_backspace`
 from the Windows adapter.

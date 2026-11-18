@@ -1,7 +1,7 @@
 # kbdgen
 
-kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, iOS and Android
-from one source: a `.kbdgen` bundle, which is a directory of YAML files
+kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, Linux, iOS and
+Android from one source: a `.kbdgen` bundle, which is a directory of YAML files
 describing the layouts, plus per-target metadata and resources such as icons.
 It also converts layouts to and from CLDR LDML Keyboard 3.0 XML, and runs
 typing tests against kbdgen's keyboard engine.
@@ -16,18 +16,20 @@ developer guide). The normative specification is in [`docs/spec/`](docs/spec/).
 | Windows | `kbdgen target … windows` | keyboard layout DLLs for x86, x64, arm64 and WOW64, carrying the engine model that the Divvun text service runs |
 | macOS | `kbdgen target … macos build` | a keyboard layout bundle of `.keylayout` files, and a `.pkg` installer |
 | ChromeOS | `kbdgen target … chromeos` | an input method extension that runs kbdgen's engine compiled to WebAssembly |
+| Linux | `kbdgen target … linux` | XKB layouts; data for the Divvun IBus engine, which runs kbdgen's engine; and on-screen keyboard layouts for GNOME Shell, plasma-keyboard and Stevia |
 | iOS and iPadOS | `kbdgen target … ios build` | a keyboard app built from [giellakbd-ios](https://github.com/divvun/giellakbd-ios) |
 | Android | `kbdgen target … android build` | a keyboard app built from [giellakbd-android](https://github.com/divvun/giellakbd-android) |
 | CLDR LDML | `kbdgen ldml export`, `kbdgen ldml import` | LDML Keyboard 3.0 XML, one file per layout and host |
 
 Layouts come in two formats. Format 4 (a layout file with `format: 4`) is
 LDML-shaped and compiles to kbdgen's keyboard model; format 3 is the older
-format. The Windows, macOS and ChromeOS targets build both. iOS and Android
-build format 3 only, and refuse a bundle that has a format 4 layout.
+format. The Windows, macOS, ChromeOS and Linux targets build both. iOS and
+Android build format 3 only, and refuse a bundle that has a format 4 layout.
 `kbdgen ldml migrate` converts format 3 layouts to format 4.
 
 `kbdgen tsf` builds the Windows text service, which is released separately
-from keyboards.
+from keyboards. The Linux IBus engine, `ibus-engine-divvun`, is released
+separately too; it is the crate `crates/kbd-ibus`.
 
 ## Install
 
@@ -56,6 +58,7 @@ Each target also needs some tools of its own:
 | Windows | The three Windows targets: `rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc aarch64-pc-windows-msvc`. kbdgen builds the layout DLLs with `cargo` and links them with the `rust-lld` that rustup ships, so this works on macOS and Linux too. |
 | macOS | ImageMagick for icons. Icons (`iconutil`) and the installer (`pkgbuild`, `productbuild`) need macOS; on other hosts `macos build` skips both with a warning. |
 | ChromeOS | Nothing more. |
+| Linux | Nothing more. The IBus engine the keyboards run on is built on Linux with `cargo build -p kbd-ibus --release`. |
 | iOS | macOS with Xcode, CocoaPods, fastlane, xcbeautify, git and ImageMagick. |
 | Android | git, tar, and ImageMagick for the icon. When the bundle has `targets/android.yaml`, kbdgen also runs `gradlew assembleRelease`, which needs a JDK and the Android SDK. |
 | `kbdgen tsf` | Windows, with the MSVC build tools, the Windows SDK and the three Windows targets above. |

@@ -8,8 +8,8 @@ kbdgen is one binary with four commands:
 |Command |What it does
 
 |`kbdgen target`
-|Builds a bundle's keyboards for one platform: Windows, macOS, ChromeOS, iOS
-or Android.
+|Builds a bundle's keyboards for one platform: Windows, macOS, ChromeOS,
+Linux, iOS or Android.
 
 |`kbdgen ldml`
 |Works on a bundle's layouts: exports them to CLDR LDML Keyboard 3.0 XML,
@@ -91,8 +91,8 @@ that has any format 4 layout:
 Error: layout vro is a v4 layout (`format: 4`); the ios target cannot build v4 layouts yet
 ----
 
-Windows, macOS and ChromeOS build format 3 and format 4 layouts side by
-side.
+Windows, macOS, ChromeOS and Linux build format 3 and format 4 layouts side
+by side.
 
 [cols="2,5",options="header"]
 |===
@@ -106,6 +106,11 @@ layout DLLs in `OUT/x86/`, `OUT/x64/`, `OUT/arm64/` and `OUT/wow64/`.
 |Writes an input method extension into `OUT`: `manifest.json`,
 `background.js`, `engine.wasm`, one model per layout in `models/`, and
 `_locales/`.
+
+|`linux`
+|Writes the XKB layouts into `OUT/xkb/`, the IBus engine's data into
+`OUT/ibus/`, and the on-screen keyboard layouts into `OUT/gnome-shell/`,
+`OUT/plasma-keyboard/` and `OUT/stevia/`.
 
 |`macos build`
 |Runs `generate`, then `installer`. `--no-installer` skips the installer. A
@@ -171,6 +176,13 @@ Build the ChromeOS extension:
 [source,sh]
 ----
 kbdgen target -b sme.kbdgen -o out/chromeos chromeos
+----
+
+Build the Linux keyboards:
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o out/linux linux
 ----
 
 List the iOS bundle identifiers, for example to set up signing:
@@ -247,7 +259,7 @@ kbdgen ldml compile -b <BUNDLE> -o <OUT> [--layout <TAG>]… [--host <HOST>]…
 
 Writes `OUT/<tag>.<host>.dvkb`, the binary engine model of each layout for
 each host. These are the models that the Windows DLLs and the ChromeOS
-extension embed; compiling them on their own is the quick way to check a
+extension embed, and that the Linux IBus engine runs; compiling them on their own is the quick way to check a
 layout while writing it (<<layouts-checking>>).
 
 [source,sh]

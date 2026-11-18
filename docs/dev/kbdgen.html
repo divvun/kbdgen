@@ -517,6 +517,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_tests_5">Tests</a></li>
 </ul>
 </li>
+<li><a href="#_linux">Linux</a>
+<ul class="sectlevel2">
+<li><a href="#_where_things_are_2">Where things are</a></li>
+<li><a href="#_the_step">The step</a></li>
+<li><a href="#_the_xkb_tier">The XKB tier</a></li>
+<li><a href="#_the_ibus_engine">The IBus engine</a></li>
+<li><a href="#_the_on_screen_keyboards">The on-screen keyboards</a></li>
+<li><a href="#linux-tests">Tests</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -544,7 +554,7 @@ describes the command line and the formats from the outside.</p>
 <div class="paragraph">
 <p>kbdgen is one Cargo workspace. The root package is the <code>kbdgen</code> command
 line tool; <code>crates/</code> holds the keyboard model, the engine, LDML support and
-the two host bindings. The specification in <code>docs/spec/</code> says what all of
+the three host bindings. The specification in <code>docs/spec/</code> says what all of
 it must do, and <code>plan/</code> tracks which parts are done.</p>
 </div>
 <div class="sect2">
@@ -576,8 +586,8 @@ encoding (<code>Keyboard::to_bytes</code>, <code>from_bytes</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The engine. <code>Model::key</code> takes a model, the host&#8217;s <code>State</code>, the text before
 the caret and a key event, and returns the edit to make and the next state.
 It is deterministic and does no I/O. Every host runs it: the Windows text
-service, the ChromeOS extension through WebAssembly, and kbdgen itself
-when it derives dead-key tables or runs tests.</p></td>
+service, the ChromeOS extension through WebAssembly, the Linux IBus engine,
+and kbdgen itself when it derives dead-key tables or runs tests.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-ldml</code></p></td>
@@ -601,6 +611,13 @@ buffers. kbdgen&#8217;s <code>build.rs</code> compiles it for <code>wasm32-unkno
 the ChromeOS target embeds the module as <code>engine.wasm</code>.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbd-ibus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">binary and library</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Linux IBus engine, <code>ibus-engine-divvun</code>, which runs <code>kbd-engine</code> on
+the model of each installed keyboard and speaks IBus&#8217;s D-Bus protocol
+itself, through <code>zbus</code>. Unix only; released separately from keyboards.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>kbdgen</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">binary and library</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The command line, bundle loading, the format 4 layout format and its
@@ -620,8 +637,9 @@ indexing outside tests (see their <code>[lints]</code> and <code>clippy.toml</co
 <code>docs/spec/ldml/crate.md</code>.</p>
 </div>
 <div class="paragraph">
-<p><code>default-members</code> leaves out <code>kbd-tsf</code> and <code>kbd-wasm</code>, so a plain
-<code>cargo build</code> or <code>cargo test</code> skips them; use <code>--workspace</code> to include them.</p>
+<p><code>default-members</code> leaves out <code>kbd-tsf</code>, <code>kbd-wasm</code> and <code>kbd-ibus</code>, so a
+plain <code>cargo build</code> or <code>cargo test</code> skips them; use <code>--workspace</code> to include
+them.</p>
 </div>
 </div>
 <div class="sect2">
@@ -652,13 +670,30 @@ format 3 to format 4, <code>conformance/</code> runs test vectors, and <code>cli
 <dd>
 <p>The target generators, one module per target, and the <code>BuildStep</code> and
 <code>BuildSteps</code> traits in <code>mod.rs</code>. <code>windows/kbdl/</code> generates and builds the
-layout DLLs; <code>windows/tsf/</code> is <code>kbdgen tsf</code>.</p>
+layout DLLs; <code>windows/tsf/</code> is <code>kbdgen tsf</code>. <code>linux/</code> writes the XKB
+layouts (<code>linux/xkb/</code>), the IBus engine&#8217;s data (<code>linux/ibus/</code>) and the
+on-screen keyboard layouts (<code>linux/osk/</code>). <code>migration.rs</code> migrates format
+3 layouts in memory for the ChromeOS and Linux targets, and <code>output.rs</code>
+and <code>diag.rs</code> are shared by several targets.</p>
+</dd>
+<dt class="hdlist1"><code>src/yaml.rs</code></dt>
+<dd>
+<p>Every YAML text kbdgen reads or writes goes through it, so all follow one
+set of rules: YAML 1.2 scalars (<code>no</code>, <code>y</code> and <code>0755</code> are strings), no
+duplicate keys, no tags YAML does not define, <code>&lt;&lt;</code> an ordinary key, and one
+document per text. It is built on serde-saphyr. <code>tree</code> reads a text as a
+<code>serde_json::Value</code> with string keys, which format 4 loading checks itself
+and <code>from_tree</code> reads as a type; <code>from_str</code> reads straight into a type, any
+scalar into a string field; <code>to_string</code> writes. An <code>Error</code> gives the path
+to the problem and its line and column on one line.</p>
 </dd>
 <dt class="hdlist1"><code>build.rs</code></dt>
 <dd>
 <p>Builds <code>kbd-wasm</code> for WebAssembly in a nested cargo with its own target
 directory, and leaves <code>kbd_wasm.wasm</code> in <code>OUT_DIR</code> for the ChromeOS target
-to <code>include_bytes!</code>.</p>
+to <code>include_bytes!</code>. For a Linux target it also asks pkg-config for
+<code>xkbcommon</code> and <code>xkbregistry</code>, and sets the cfg <code>kbdgen_xkbcommon</code> when it
+finds both, so the libxkbcommon test links them (<a href="#linux-tests">Tests</a>).</p>
 </dd>
 <dt class="hdlist1"><code>examples/</code></dt>
 <dd>
@@ -697,10 +732,10 @@ keyboard3 document per host (<code>windows</code>, <code>macOS</code>, <code>chr
 <p>Format 3 layouts reach the model through <code>src/ldml/migrate</code>.
 <code>migrate_bundle_layout</code> converts a layout file to format 4 text in memory,
 writing nothing, and the text then takes the format 4 path. This is how
-the Windows DLLs and the ChromeOS extension get an engine model for a
-format 3 layout. When the migration is blocked by a defect, Windows builds
-the DLL without a model and warns; the text service then stays inactive for
-that layout.</p>
+the Windows DLLs, the ChromeOS extension and the Linux target get an engine
+model for a format 3 layout. When the migration is blocked by a defect,
+Windows builds the DLL without a model and warns; the text service then
+stays inactive for that layout. ChromeOS and Linux stop with an error.</p>
 </div>
 <div class="paragraph">
 <p>Each target reads layouts as follows:</p>
@@ -736,6 +771,13 @@ engine model from the in-memory migration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">the model of the in-memory migration</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XKB layout, engine model and on-screen layouts from the model
+(<code>linux/xkb/</code>, <code>linux/osk/</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the same, from the in-memory migration, its <code>linux</code> keyboard inheriting
+the <code>windows</code> variant, else <code>chromeOS</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">iOS, Android</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">refused</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">the format 3 layout, read directly</p></td>
@@ -766,8 +808,8 @@ step follows.</p>
 <li>
 <p><code>docs/spec/*.md</code> covers the bundle, the format 3 layout, the command line
 and pipeline, and each target: <code>kbdl.md</code> (Windows layout DLLs), <code>tsf.md</code>
-(the text service), <code>macos.md</code>, <code>ios.md</code> with <code>pbxproj.md</code>, <code>android.md</code>
-and <code>chromeos.md</code>.</p>
+(the text service), <code>macos.md</code>, <code>ios.md</code> with <code>pbxproj.md</code>, <code>android.md</code>,
+<code>chromeos.md</code> and <code>linux.md</code> (with the IBus engine).</p>
 </li>
 <li>
 <p><code>docs/spec/ldml/*.md</code> covers the model, the engine, LDML XML, format 4,
@@ -882,8 +924,8 @@ before anything is written.</p>
 </li>
 <li>
 <p><code>KbdgenBundle::reject_v4_layouts</code> fails when the bundle has a format 4
-layout and the target cannot build one. Windows, macOS and ChromeOS can;
-iOS and Android cannot.</p>
+layout and the target cannot build one. Windows, macOS, ChromeOS and
+Linux can; iOS and Android cannot.</p>
 </li>
 <li>
 <p>The output directory is created with its parents and canonicalised.</p>
@@ -955,6 +997,10 @@ steps of each target:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateChromeOs</code> (<code>ChromeOsBuild</code>)</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>linux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateLinux</code> (<code>LinuxBuild</code>)</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>macos build</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateMacOs</code>, then <code>GenerateInstaller</code> unless <code>--no-installer</code> is given
 or kbdgen was built for another OS than macOS. <code>main.rs</code> runs these
@@ -983,9 +1029,9 @@ directly; macOS has no <code>BuildSteps</code>.</p></td>
 <ul>
 <li>
 <p>Compute everything, then write. <code>GenerateKbdl</code> generates every layout
-crate in memory before writing the first, and <code>GenerateChromeOs</code> builds
-the models, manifest and messages before it writes the extension. A
-bad layout then fails the step without leaving half an output.</p>
+crate in memory before writing the first, and <code>GenerateChromeOs</code> and
+<code>GenerateLinux</code> build every file before they write the first. A bad
+layout then fails the step without leaving half an output.</p>
 </li>
 <li>
 <p>Check external tools' exit status, and capture their output rather than
@@ -1069,8 +1115,8 @@ represented and are omitted</p></td>
 </table>
 <div class="paragraph">
 <p>Messages name what they are about (the layout, the file, the variant) and
-print paths with <code>display()</code>, not <code>{:?}</code>. The Windows, macOS and ChromeOS
-generators collect each layout&#8217;s warnings and notes in a <code>Diagnostics</code>
+print paths with <code>display()</code>, not <code>{:?}</code>. The Windows, macOS, ChromeOS and
+Linux generators collect each layout&#8217;s warnings and notes in a <code>Diagnostics</code>
 value (<code>src/build/diag.rs</code>), which logs each one with the layout&#8217;s name and
 also keeps it, so the golden tests can pin them. A <code>Diagnostics</code> is made
 for one <code>Platform</code>, and logs under that target&#8217;s module
@@ -1167,8 +1213,8 @@ cargo nextest run --workspace</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>--workspace</code> is needed: <code>kbd-tsf</code> and <code>kbd-wasm</code> are not default members,
-so without it their tests do not run. To run some tests only, pass a
+<p><code>--workspace</code> is needed: <code>kbd-tsf</code>, <code>kbd-wasm</code> and <code>kbd-ibus</code> are not
+default members, so without it their tests do not run. To run some tests only, pass a
 filter: <code>cargo nextest run --workspace keylayout</code>.</p>
 </div>
 <div class="paragraph">
@@ -1195,6 +1241,10 @@ for every device triple.</p>
 <li>
 <p><code>crates/kbd-tsf/tests/</code> holds the text service tests: <code>self_contained.rs</code>
 runs everywhere, <code>vm.rs</code> and <code>acceptance.rs</code> only on Windows.</p>
+</li>
+<li>
+<p><code>crates/kbd-ibus/tests/</code> holds the IBus engine tests: <code>ibus.rs</code> needs
+ibus-daemon, and the others run everywhere (<a href="#linux-tests">Tests</a>).</p>
 </li>
 </ul>
 </div>
@@ -1253,6 +1303,45 @@ runs everywhere, <code>vm.rs</code> and <code>acceptance.rs</code> only on Windo
 <code>--run-ignored all</code> is safe there. On Windows, select tests by name.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_tests_that_skip">Tests that skip</h4>
+<div class="paragraph">
+<p>These Linux tests are not ignored, but need tools that most hosts lack.
+Without them, each prints that it is skipping and passes, so check their
+output when you change the Linux target:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 42.8571%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Test</th>
+<th class="tableblock halign-left valign-top">Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fixtures_compile_list_and_type_in_libxkbcommon</code>
+(<code>src/build/linux/xkb/differential/xkbcommon.rs</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux, with the development files of libxkbcommon and libxkbregistry,
+found by pkg-config when kbdgen is built</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus/tests/ibus.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ibus-daemon</code> on <code>PATH</code>, or named by <code>IBUS_DAEMON</code>, and a session bus:
+run it under <code>dbus-run-session</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>With <code>KBDGEN_REQUIRE_LINUX_TESTS</code> set, they fail instead of skipping. A
+Linux CI job that runs them must install the tools and set it. The ChromeOS typing test
+skips the same way without Deno, but has no such switch. <a href="#linux-tests">Tests</a>
+shows how to run both Linux tests in Docker on macOS.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_golden_files">Golden files</h3>
@@ -1290,6 +1379,19 @@ built DLLs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ChromeOS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/chromeos/testdata/golden/</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>manifest.json</code>, <code>_locales/</code> and <code>diagnostics.txt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/testdata/golden/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>output/</code>, the output tree without the models and the GResource bundle;
+<code>osk-layouts.gresource.txt</code>, that bundle read back; and <code>messages.txt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux on-screen keyboards</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/osk/gnome/golden/</code>, <code>osk/plasma/golden/</code>,
+<code>osk/stevia/golden/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Each fixture&#8217;s GNOME Shell and Stevia layout, and its plasma-keyboard
+<code>metadata.json</code> and <code>desktop.qml</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -1346,12 +1448,13 @@ bytes and typing arbitrary keys never panic).</p>
 <div class="sect2">
 <h3 id="_differential_tests">Differential tests</h3>
 <div class="paragraph">
-<p>The Windows, macOS and ChromeOS generators each have a test that types on
-what the generator wrote and on <code>kbd-engine</code> with the same model, and
-requires the same text. Windows and macOS keep a list of the differences
-their native formats cannot avoid (<code>exceptions.rs</code> in each <code>differential/</code>
-directory); a difference must match an entry there, and any other fails
-the test. ChromeOS runs the engine itself, so it allows none.</p>
+<p>The Windows, macOS, ChromeOS and Linux generators each have a test that
+types on what the generator wrote and on <code>kbd-engine</code> with the same model,
+and requires the same text. Windows, macOS and Linux keep a list of the
+differences their native formats cannot avoid (<code>exceptions.rs</code> in each
+<code>differential/</code> directory); a difference must match an entry there, and
+any other fails the test. ChromeOS runs the engine itself, so it allows
+none.</p>
 </div>
 <div class="dlist">
 <dl>
@@ -1376,6 +1479,16 @@ against the one built from its migration.</p>
 <a href="https://deno.com">Deno</a>: <code>deno</code> on <code>PATH</code>, or its path in <code>DENO</code>. Without
 it, the test prints that it is skipping and passes, so check its output
 when you change the ChromeOS target.</p>
+</dd>
+<dt class="hdlist1">Linux (<code>src/build/linux/xkb/differential/</code>)</dt>
+<dd>
+<p>Reads each written XKB symbols file back and simulates it as libxkbcommon
+and IBus&#8217;s simple engine type it: every written key in all eight states of
+Shift, Caps Lock and AltGr, then every dead-key path of up to three keys.
+Runs on every host. On Linux with libxkbcommon, <code>xkbcommon.rs</code> also
+compiles and types the layouts through the real library (see above). The
+IBus engine runs the engine itself; its planner is tested against a fake
+client in <code>crates/kbd-ibus/tests/planner.rs</code>.</p>
 </dd>
 </dl>
 </div>
@@ -2555,8 +2668,8 @@ an action, numbered in emission order.</p>
 </div>
 <div class="paragraph">
 <p>Warnings go to a <code>Diagnostics</code> for <code>Platform::MacOs</code>
-(<code>crate::build::diag</code>), the type the Windows KBDL adapter and ChromeOS also
-use. It logs each message through <code>tracing</code> as it is recorded, under
+(<code>crate::build::diag</code>), the type the Windows KBDL adapter, ChromeOS and
+Linux also use. It logs each message through <code>tracing</code> as it is recorded, under
 <code>kbdgen::build::macos</code>, and keeps them for the tests. <code>generate_bundle</code> only keeps <code>Adapted::input</code>.
 The adapter also reuses <code>starts_with_marker</code> and <code>is_generated_backspace</code>
 from the Windows adapter.</p>
@@ -3949,6 +4062,664 @@ composition hidden, one key late, layouts/vro: 4688 of 4688 cases agree
 run through cargo. After editing <code>typing_test.ts</code>, type-check it with
 <code>deno check</code> in <code>differential/harness/</code>, whose <code>deno.json</code> turns on strict
 mode.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_linux">Linux</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Linux target writes, for each layout, three things: an XKB layout,
+which is the table tier as the Windows layout DLL is; the data of an IBus
+engine that runs <code>kbd-engine</code> on the layout&#8217;s compiled <code>linux</code> keyboard, as
+the Windows text service does; and on-screen layouts for GNOME Shell,
+plasma-keyboard and Stevia. The engine program is the workspace crate
+<code>crates/kbd-ibus</code>, shared by every keyboard and released separately. The
+rules are in two specs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>docs/spec/linux.md</code> (<code>linux.*</code>): the names and the output, how
+packages install it, the XKB layout&#8217;s files, the IBus engine (its
+component, crate, D-Bus protocol, keys, edits, context and robustness),
+the on-screen keyboards, and the tests.</p>
+</li>
+<li>
+<p><code>docs/spec/ldml/linux.md</code> (<code>ldml.linux.*</code>): which layouts are built,
+how the model becomes keysyms, key types and dead keysyms, the on-screen
+layouts, what is reported, and the XKB typing test.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The Windows text service is the reference host (<code>docs/spec/tsf.md</code>), and
+the IBus engine reconciles surrounding text as the ChromeOS extension does
+(<code>ldml.chromeos.context</code>); the Linux spec says where it differs from them.
+<code>docs/spec/linux.md</code> also records what was checked on GNOME Shell itself,
+under "GNOME spike results".</p>
+</div>
+<div class="sect2">
+<h3 id="_where_things_are_2">Where things are</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Path</th>
+<th class="tableblock halign-left valign-top">What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/mod.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LinuxBuild</code>, with the one step <code>GenerateLinux</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/ids.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Ids</code>: the <code>packageId</code> and <code>layoutPrefix</code> of <code>targets/linux.yaml</code>,
+checked, and the names derived from them: the layout id, the extension&#8217;s
+UUID, the KPackage ids and the package directory (<code>linux.ids</code>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/source.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The layouts (<code>ldml.linux.input</code>): every v4 layout&#8217;s <code>linux</code> keyboard, and
+every v3 layout with a <code>windows</code> or <code>chromeOS</code> section, migrated in memory
+by <code>build::migration</code>, its <code>linux</code> keyboard inheriting the <code>windows</code>
+variant, else <code>chromeOS</code>. Each is compiled and encoded as the engine reads
+it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/generate_linux.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GenerateLinux</code>: every check, then every write.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/xkb/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The XKB tier: <code>levels.rs</code> (each key&#8217;s eight states), <code>types.rs</code> (key types
+and libxkbcommon&#8217;s semantics), <code>keysym.rs</code> with <code>data/keysyms.tsv</code>,
+<code>dead_keys.rs</code> and <code>compose.rs</code> with <code>data/Compose</code>, <code>symbols.rs</code>,
+<code>registry.rs</code>, and <code>classify.rs</code>, the report.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/ibus/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Each layout&#8217;s engine description and model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/osk/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>presented.rs</code>, the presented set; <code>gnome.rs</code> with <code>gnome/extension.js</code>,
+<code>plasma.rs</code> and <code>stevia.rs</code>, which write it for each on-screen keyboard;
+and <code>classify.rs</code>, their reports.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/tests.rs</code>, <code>testdata/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The step&#8217;s tests and golden output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/xkb/differential/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The XKB typing test and the libxkbcommon test.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The IBus engine, <code>ibus-engine-divvun</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus/data/divvun.xml.in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The engine&#8217;s IBus component, which packaging completes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tests/linux-vm/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scripts for the GNOME spike, the GNOME acceptance run and the
+plasma-keyboard check, run by hand.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>build.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sets the cfg <code>kbdgen_xkbcommon</code> when pkg-config finds libxkbcommon.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_the_step">The step</h3>
+<div class="paragraph">
+<p><code>GenerateLinux</code> fails before writing anything (<code>linux.output</code>), in this
+order: on a missing <code>targets/linux.yaml</code>, an <code>Ids</code> error, a <code>project.yaml</code>
+without an <code>en</code> locale, a layout that does not migrate or compile or whose
+keyboard has no hardware layers, and no layouts. It then builds the whole
+output in memory: the <code>xkb::Tree</code>, adapting and reporting each layout; the
+<code>ibus::Tree</code>; and the on-screen keyboards, reporting each layout&#8217;s
+presented set once for each. These can fail too, naming the layout, for
+instance on a dead key that does not leave its marker pending, or on a
+keyboard without a layer for no modifier.</p>
+</div>
+<div class="paragraph">
+<p>Only then does it write <code>xkb/</code>, <code>ibus/</code>, <code>gnome-shell/</code>, <code>plasma-keyboard/</code>
+and <code>stevia/</code>, in that order, each emptied first with <code>fresh_dir</code>
+(<code>build::output</code>) and each laid out as a package installs it
+(<code>linux.install</code>). Nothing else in the output directory is touched.
+Reports go through a <code>Diagnostics</code> for <code>Platform::Linux</code>, so they log under
+<code>kbdgen::build::linux</code> and the golden test can pin them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_xkb_tier">The XKB tier</h3>
+<div class="paragraph">
+<p><code>xkb::adapt</code> turns one layout&#8217;s keyboard into its symbols file, its
+registry entry and its report:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Keys</strong> (<code>ldml.linux.keycodes</code>). The written keys are those of the
+layout&#8217;s form among the 49 ISO positions, the JIS yen key and the space
+bar, by xkeyboard-config&#8217;s <code>keycodes/evdev</code> names, and <code>&lt;KPDL&gt;</code> for the
+decimal. A scan code&#8217;s
+evdev key code is <code>kbd_model::evdev_code</code>, which the IBus engine reads
+keys by too.</p>
+</li>
+<li>
+<p><strong>Levels</strong> (<code>ldml.linux.levels</code>). Each key has eight states, the
+combinations of Shift, Lock and Level3, and each state takes the layer
+the engine selects for <code>shift_l</code>, <code>caps</code> and AltGr. When a Level3 state
+has a layer, the model uses Level3 and the file includes
+<code>level3(ralt_switch)</code>; otherwise Right Alt stays Alt. Native-only layers
+and layers that only Left Alt, Left Ctrl or an extra modifier selects are
+not written.</p>
+</li>
+<li>
+<p><strong>Values</strong> (<code>ldml.linux.values</code>). A state&#8217;s keysym is that of its output as
+the engine commits it, in NFC: for one scalar value, the keysym
+<code>xkb_utf32_to_keysym</code> gives, looked up in <code>data/keysyms.tsv</code>, a table
+read from libxkbcommon 1.13.1 itself; for a dead key, its dead keysym;
+for anything longer, <code>VoidSymbol</code>.</p>
+</li>
+<li>
+<p><strong>Types</strong> (<code>ldml.linux.types</code>). <code>types::choose</code> takes the first of
+xkeyboard-config&#8217;s types that gives all of a key&#8217;s values under
+libxkbcommon&#8217;s semantics, Lock&#8217;s uppercasing included
+(<code>ldml.linux.semantics</code>). A key no type serves takes the one that gives
+the most states, and the states it gets wrong are reported.</p>
+</li>
+<li>
+<p><strong>Dead keys</strong> (<code>ldml.linux.dead-keys</code>). Each dead key gets the first dead
+keysym, in the order of IBus&#8217;s table, whose character is its standalone
+or its display. <code>dead_keys.rs</code> then runs the engine from each pending
+marker, through chains of up to three keys, and compares it with
+<code>compose.rs</code>, which composes as IBus&#8217;s simple engine does on the
+reference Compose table: the <code>&lt;dead_…&gt;</code> sequences of libX11&#8217;s
+<code>en_US.UTF-8/Compose.pre</code>, vendored as <code>data/Compose</code> with their notices
+(<code>ldml.linux.compose</code>). Results that differ are reported. No Compose file
+is written.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>classify.rs</code> reports what the layout loses (<code>ldml.linux.classify</code>), as
+information that the IBus engine types it, except layers only Left Alt or
+Left Ctrl selects, which are warnings. <code>registry.rs</code> writes each
+<code>&lt;configItem&gt;</code> and the bundle&#8217;s <code>rules/evdev.xml</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_ibus_engine">The IBus engine</h3>
+<div class="paragraph">
+<p><code>crates/kbd-ibus</code> is an edition 2024 crate whose binary,
+<code>ibus-engine-divvun</code> (<code>src/main.rs</code>), is a command line over the library
+<code>kbd_ibus</code>, which is the program but for that command line. The library
+keeps the host logic free of D-Bus, so the tests drive it directly and a
+later Fcitx5 addon or Stevia completer can reuse it (<code>linux.ibus.planner</code>).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo build -p kbd-ibus --release</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It is not a default workspace member. Its only dependencies besides
+<code>kbd-engine</code> and <code>kbd-model</code> are, on Unix only, <code>zbus</code> 6 without default
+features, with <code>tokio</code> and <code>service</code>, and <code>tokio&#8217;s current-thread
+runtime: it speaks IBus&#8217;s D-Bus protocol itself, with no GLib, GObject or
+libibus, and does not use the `ibus-engine</code> crate (<code>linux.ibus.crate</code>
+says why). It forbids <code>unsafe</code> and denies <code>panic!</code>, <code>unwrap</code>, <code>expect</code>,
+indexing and <code>unreachable!</code>. Releases are built for
+<code>x86_64-unknown-linux-gnu</code> and <code>aarch64-unknown-linux-gnu</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>usage: ibus-engine-divvun (--xml | --ibus) [--data-dir DIR]...</pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Module</th>
+<th class="tableblock halign-left valign-top">What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The keyboards: the descriptions and models under
+<code>~/.local/share/divvun/keyboards/<strong>/</code>, then under each <code>--data-dir&#8217;s
+`</strong>/</code>, read strictly in the shape kbdgen writes; and the <code>&lt;engines&gt;</code> list
+that <code>--xml</code> prints (<code>linux.ibus.lister</code>). Of two descriptions with one
+name the first wins; unusable ones are left out silently.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>address</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ibus-daemon&#8217;s address, found as libibus&#8217;s <code>ibus_get_address</code> finds it:
+<code>IBUS_ADDRESS</code>, else the address file ibus-daemon writes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>serve</code>, the <code>--ibus</code> mode: <code>factory.rs</code> is
+<code>org.freedesktop.IBus.Factory</code>, <code>engine.rs</code> the engine objects and
+<code>text.rs</code> the <code>IBusText</code> serialization.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>planner</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Session</code>, the host logic of one engine object, with no D-Bus calls.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keys</code>, <code>keysym</code>, <code>context</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key identity and modifiers, keysyms as characters, and the text before
+the caret.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>guard</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Panic containment.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diag</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The only things the program writes to standard error.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="_the_d_bus_surface">The D-Bus surface</h4>
+<div class="paragraph">
+<p>ibus-daemon reads the component file, runs its <code>engines</code> command
+(<code>--xml</code>), and runs it again when an observed data directory changes. To
+use an engine it starts <code>--ibus</code>, which connects to ibus-daemon&#8217;s own bus,
+exports <code>org.freedesktop.IBus.Factory</code> at <code>/org/freedesktop/IBus/Factory</code>
+and owns <code>org.freedesktop.IBus.Divvun</code>. zbus spawns no task per call, so
+one thread handles every call in the order it arrives.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>CreateEngine(name)</code> loads the keyboard&#8217;s model and exports an engine at
+<code>/org/freedesktop/IBus/Engine/&lt;n&gt;</code>. A name it cannot serve fails with
+<code>org.freedesktop.DBus.Error.Failed</code> and the reason: <code>no-description</code>,
+<code>model-unreadable</code>, <code>model-version</code>, <code>model-malformed</code> or
+<code>model-invalid</code> (<code>linux.ibus.inert</code>).</p>
+</li>
+<li>
+<p>An engine object implements <code>org.freedesktop.IBus.Engine</code>:
+<code>ProcessKeyEvent</code>, <code>FocusIn</code>, <code>FocusOut</code>, <code>FocusInId</code>, <code>FocusOutId</code>,
+<code>Reset</code>, <code>Enable</code>, <code>Disable</code>, <code>SetCapabilities</code>, <code>SetSurroundingText</code>
+and <code>SetCursorLocation</code> act, and the other methods succeed and do
+nothing. It emits <code>CommitText</code>, <code>UpdatePreeditText</code>,
+<code>DeleteSurroundingText</code> and <code>RequireSurroundingText</code>, the last two of
+which libibus&#8217;s introspection data lacks. Its properties are
+<code>ContentType</code>, <code>FocusId</code> (false) and <code>ActiveSurroundingText</code> (true),
+the last two a plain <code>b</code>, which is what ibus-daemon reads.
+<code>org.freedesktop.IBus.Service.Destroy</code> unexports it.</p>
+</li>
+<li>
+<p>A call&#8217;s signals go out before its reply, in order, so ibus-daemon
+handles them first. The program exits when its connection closes.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_planner">The planner</h4>
+<div class="paragraph">
+<p>A <code>Session</code> is one engine object&#8217;s state. <code>process_key_event(keyval,
+keycode, state)</code> returns a <code>Reply</code>: whether the key was handled, and the
+signals to emit before replying. <code>focus_in</code>, <code>focus_out</code>, <code>reset</code>, <code>enable</code>
+and <code>disable</code> return signals too, and <code>set_capabilities</code>,
+<code>set_content_type</code> and <code>set_surrounding_text</code> record what the client says.
+Every session runs the engine with <code>OutputForm::Nfc</code>,
+<code>BackspacePolicy::CancelOrPass</code> and host <code>linux</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>keys::classify</code> identifies a press by its evdev key code, never by its
+keyval, which comes from whatever keymap is active (<code>linux.ibus.keys</code>).
+<code>Keys</code> tracks which modifier keys are held, for their sides, and turns
+IBus&#8217;s state bits into the engine&#8217;s modifiers (<code>linux.ibus.modifiers</code>).
+A press with key code 0 is a key of GNOME Shell&#8217;s on-screen keyboard: its
+keyval&#8217;s character is sent as <code>Emit</code> (<code>linux.ibus.virtual-keys</code>).</p>
+</li>
+<li>
+<p>Where the context comes from depends on the field (<code>Mode</code>). A client with
+<code>IBUS_CAP_SURROUNDING_TEXT</code> reports its text, and <code>context::Surrounding</code>
+reconciles each reading with the engine&#8217;s own edits
+(<code>linux.ibus.context</code>). Without it, the context is the engine&#8217;s own
+edits, and for a model that rewrites committed text
+(<code>ldml.linux.rewrites</code>) the last <code>context_len</code> scalar values are held
+back as preedit, since such a client cannot be relied on to delete
+(<code>linux.ibus.context.fallback</code>). A password or PIN field gets no preedit
+and no context (<code>linux.ibus.security</code>).</p>
+</li>
+<li>
+<p>An engine edit becomes, in order, a preedit clear, a
+<code>DeleteSurroundingText</code>, a <code>CommitText</code> and a preedit update
+(<code>linux.ibus.edit</code>). When markers are pending and nothing else would be
+shown, as after a dead key with <code>standalone: ''</code>, the trailing marker&#8217;s
+display is shown with <code>IBUS_ENGINE_PREEDIT_CLEAR</code>, so that a reset drops
+it and GNOME Shell&#8217;s on-screen Backspace, which deletes past the engine
+unless a preedit is shown, reaches the engine
+(<code>linux.ibus.osk-backspace</code>).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_panics_and_logging">Panics and logging</h4>
+<div class="paragraph">
+<p>One process serves every input context, so a panic that unwound out of a
+call would end them all (<code>linux.ibus.panic</code>). The crate must build with
+<code>panic = "unwind"</code>, the default, and <code>guard.rs</code> fails to compile
+otherwise. Every method call and property access runs its body in
+<code>Process::contain</code>, which catches a panic, logs its location, and gives the
+entry point&#8217;s fallback reply:
+false to <code>ProcessKeyEvent</code>, <code>org.freedesktop.DBus.Error.Failed</code>
+<code>poisoned</code> to <code>CreateEngine</code>, success to the rest. The process is then
+poisoned: it passes every key, emits nothing, creates no engine, and exits
+once ibus-daemon has destroyed its last engine object, so the next
+activation starts a fresh one. Meanwhile the XKB layout types.
+<code>guard::faults::arm</code> makes the next call of an entry point panic, for the
+tests.</p>
+</div>
+<div class="paragraph">
+<p>The engine records no typed text, surrounding text, preedit, keyvals, key
+codes or engine states (<code>linux.ibus.logging</code>). <code>diag::record</code> writes one
+line to standard error, <code>ibus-engine-divvun: &lt;event&gt;</code>, and an <code>Event</code> can
+hold only a message compiled into the program, an inert reason with a file
+name, or a panic&#8217;s file, line and column, never its message. ibus-daemon
+passes the line on to its own standard error only when it runs with
+<code>--verbose</code>. <code>tests/self_contained.rs</code> checks that nothing else in the
+program prints, writes files, starts processes or opens network
+connections.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_the_on_screen_keyboards">The on-screen keyboards</h3>
+<div class="paragraph">
+<p><code>osk::present</code> builds one presented set from the keyboard&#8217;s hardware
+layers (<code>ldml.linux.touch</code>): a default level from the layer for no
+modifier, a shift level from the Shift layer when there is one, and two
+symbol levels that are the same for every layout, with backspace and
+shift or symbol-switch keys added. Each on-screen keyboard&#8217;s writer maps
+it to its own format:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>gnome.rs</code> writes GNOME Shell&#8217;s JSON (<code>ldml.linux.touch.gnome</code>). A dead
+key whose dead keysym the XKB layout has at Level1, 2 or 3 is written
+as that <code>keyval</code>, so GNOME Shell presses it on its virtual keyboard and
+it reaches the IBus engine as a hardware key. The layouts go into
+<code>osk-layouts.gresource</code>, which kbdgen writes itself in GVDB format with
+the <code>gvdb</code> crate, so no <code>glib-compile-resources</code> is needed.
+<code>extension.js</code> is <code>osk/gnome/extension.js</code>, included unchanged.</p>
+</li>
+<li>
+<p><code>plasma.rs</code> writes each layout&#8217;s KPackage: <code>metadata.json</code> and
+<code>contents/layouts/desktop.qml</code> (<code>ldml.linux.touch.plasma</code>).</p>
+</li>
+<li>
+<p><code>stevia.rs</code> writes Stevia&#8217;s JSON (<code>ldml.linux.touch.stevia</code>).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>osk/classify.rs</code> reports, for each on-screen keyboard, what it does not
+show or type (<code>ldml.linux.classify.touch</code>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linux-tests">Tests</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 42.8571%;">
+<col style="width: 28.5715%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Test</th>
+<th class="tableblock halign-left valign-top">Where</th>
+<th class="tableblock halign-left valign-top">Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The step, its errors and its golden output (<code>linux.test.golden</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/tests.rs</code>, and each module&#8217;s <code>tests</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The XKB typing test (<code>ldml.linux.test.typing</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/xkb/differential/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The libxkbcommon test (<code>linux.test.xkbcommon</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>src/build/linux/xkb/differential/xkbcommon.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Linux, with libxkbcommon and libxkbregistry found by pkg-config at build
+time</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The planner (<code>linux.test.planner</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus/tests/planner.rs</code>, <code>keys.rs</code> and <code>edits.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The data, the D-Bus encoding, and fault injection at every D-Bus entry
+point</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus/src/tests/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The component file and the lister</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus/tests/component.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nothing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The real ibus-daemon (<code>linux.test.ibus</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>crates/kbd-ibus/tests/ibus.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unix, with <code>ibus-daemon</code> and a session bus</p></td>
+</tr>
+</tbody>
+</table>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test -p kbdgen --lib build::linux
+cargo test -p kbd-ibus</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>kbd-ibus</code> is not a default workspace member, so a plain <code>cargo test</code>
+skips it; <code>cargo nextest run --workspace</code> runs everything above.</p>
+</div>
+<div class="sect3">
+<h4 id="_golden_files_2">Golden files</h4>
+<div class="paragraph">
+<p><code>writes_the_golden_output_tree</code> builds a bundle of a v3 layout with a
+<code>windows</code> section (<code>se-NO</code>), a v4 layout (<code>sme</code>, from <code>testdata/sme.yaml</code>),
+a v3 layout with only a <code>chromeOS</code> section (<code>vro</code>) and a v3 layout with
+neither, which has no output. It compares with <code>testdata/golden/</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>output/</code>: every file the step writes but the models and the GResource
+bundle, which must also leave no stale file behind;</p>
+</li>
+<li>
+<p><code>osk-layouts.gresource.txt</code>: the bundle&#8217;s file list and contents, read
+back;</p>
+</li>
+<li>
+<p><code>messages.txt</code>: every message the build logs.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The on-screen layouts of five fixtures are also pinned in
+<code>osk/gnome/golden/</code>, <code>osk/plasma/golden/</code> and <code>osk/stevia/golden/</code>. After
+an intended change, rewrite them all with</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">KBDGEN_BLESS=1 cargo test -p kbdgen --lib build::linux</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_the_xkb_typing_test">The XKB typing test</h4>
+<div class="paragraph">
+<p><code>fixture_xkb_layouts_type_what_the_engine_types</code> reads each written symbols
+file back, simulates it as libxkbcommon and IBus&#8217;s simple engine would
+(<code>ldml.linux.semantics</code>, <code>ldml.linux.compose</code>), and requires it to type
+what the engine types at every written key in every state, and on dead-key
+paths of up to three keys. Its fixtures are the golden v4 and v3 layouts
+and the Windows and macOS feature fixtures as <code>linux</code> variants. A
+difference must be explained by a reported feature, listed in
+<code>exceptions.rs</code>; each explanation is exercised by a synthetic layout, and
+any other difference fails the test.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">cargo test -p kbdgen --lib fixture_xkb_layouts_type_what_the_engine_types -- --nocapture</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>prints, per fixture:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>layouts/und-x-mods: 392 cases, 392 equal, 0 unexplained
+layouts/vro: 810 cases, 210 equal, 0 unexplained
+  7 × DeadKeyWithoutKeysym, e.g. layouts/vro: &lt;AE12&gt; with Caps Lock: engine "", XKB "ę"
+  593 × DeadKeyResult, e.g. layouts/vro: &lt;TLDE&gt; with Shift, then &lt;TLDE&gt;: engine "~", XKB ""
+v3/se-NO: 2132 cases, 555 equal, 0 unexplained
+  13 × WrongState, e.g. v3/se-NO: &lt;AB07&gt; with Caps Lock+AltGr: engine "µ", XKB "Μ"
+  1564 × DeadKeyResult, e.g. v3/se-NO: &lt;AD12&gt; with Shift+AltGr, then &lt;TLDE&gt;: engine "ˇ|", XKB ""
+...</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_tests_that_need_linux_tools">Tests that need Linux tools</h4>
+<div class="paragraph">
+<p><code>fixtures_compile_list_and_type_in_libxkbcommon</code> compiles each fixture&#8217;s
+keymap with the output&#8217;s <code>xkb/</code> ahead of the default include paths,
+requires no warning beyond those compiling <code>us</code> gives, finds the layout in
+libxkbregistry, and types every key in all eight states through
+<code>xkb_state_key_get_one_sym</code> and <code>xkb_state_key_get_utf8</code>. It uses the
+<code>xkbcommon</code> crate, a dev-dependency on Linux only, and links libxkbcommon
+only when <code>build.rs</code> has set <code>kbdgen_xkbcommon</code>, which it does for a Linux
+target when <code>pkg-config --exists xkbcommon xkbregistry</code> succeeds.
+Otherwise it prints</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>linux.test.xkbcommon skipped: pkg-config found no xkbcommon and xkbregistry for this target</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and passes.</p>
+</div>
+<div class="paragraph">
+<p><code>crates/kbd-ibus/tests/ibus.rs</code> runs the built <code>ibus-engine-divvun</code> under a
+private ibus-daemon: its own address, <code>HOME</code> and <code>XDG_*</code> directories in a
+temporary directory, and <code>IBUS_COMPONENT_PATH</code> naming a directory with only
+the engine&#8217;s component. Acting as the client over D-Bus, it creates an
+input context, types the planner&#8217;s cases and applies the signals to a fake
+field, and it checks the engine list against <code>--xml</code> and <code>CreateEngine</code> of
+a corrupt model. It runs the <code>ibus-daemon</code> that <code>IBUS_DAEMON</code> names, else
+the one on <code>PATH</code>, and needs a session bus, so run it under
+<code>dbus-run-session</code>. Without ibus-daemon, each of its tests prints</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>engine_registers: ibus-daemon is not installed; skipping (linux.test.ibus)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and passes. <code>fixtures_type_through_the_daemon</code> takes a few minutes.</p>
+</div>
+<div class="paragraph">
+<p>With <code>KBDGEN_REQUIRE_LINUX_TESTS</code> set, both fail instead of skipping
+(<code>linux.test.ci</code>). A Linux CI job that runs the tests must install
+libxkbcommon&#8217;s development files, ibus and a D-Bus daemon, and set it, so
+that a job missing them fails rather than passing untested; CI on other
+hosts leaves it unset.</p>
+</div>
+<div class="paragraph">
+<p>On macOS, run both in Docker, in a <code>fedora:44</code> container, from the
+repository root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">docker run --rm -v "$PWD":/src:ro -v kbdgen-f44-target:/target fedora:44 sh -c 'dnf -y install ibus dbus-daemon dbus-tools gcc pkgconf-pkg-config libxkbcommon-devel; curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal; . ~/.cargo/env; rustup target add wasm32-unknown-unknown; cd /src; KBDGEN_REQUIRE_LINUX_TESTS=1 CARGO_TARGET_DIR=/target dbus-run-session -- cargo test -p kbd-ibus --test ibus'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The named volume keeps the build between runs. To run the libxkbcommon
+test too, end the <code>sh -c</code> script with
+<code>; KBDGEN_REQUIRE_LINUX_TESTS=1 CARGO_TARGET_DIR=/target cargo test -p kbdgen --lib fixtures_compile_list_and_type_in_libxkbcommon -- --nocapture</code>;
+it prints <code>0 problem(s)</code> for each fixture.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_on_desktops">On desktops</h4>
+<div class="paragraph">
+<p>No automated test runs GNOME Shell, KWin, plasma-keyboard, Phosh or a
+Wayland client. The scripts in <code>tests/linux-vm/</code> do, by hand; each
+directory&#8217;s <code>README.md</code> says how to run it:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>gnome-spike/</code></dt>
+<dd>
+<p>The experiment behind "GNOME spike results" in <code>docs/spec/linux.md</code>: a
+headless GNOME Shell 50 or 51 in a Lima VM, a logging IBus engine and a
+GTK 4 field, checking that an extension can add on-screen layouts through a
+GResource bundle and how on-screen keys reach an engine.</p>
+</dd>
+<dt class="hdlist1"><code>gnome-acceptance/</code></dt>
+<dd>
+<p>The GNOME part of <code>linux.test.acceptance</code>. <code>prepare.sh</code>, on the host,
+builds the <code>target linux</code> output of the golden layouts and
+<code>ibus-engine-divvun</code> in Docker; <code>install-system.sh</code>, in the VM, installs
+both at the paths of <code>linux.install</code>; <code>run.sh</code> enables the extension and
+types each case with the XKB source and the IBus source, by hardware and
+on-screen keys, into a GTK 4 field. A run on 2026-11-18, GNOME Shell 50.6,
+IBus 1.5.34, libxkbcommon 1.13.1 and xkeyboard-config 2.47 (Fedora 44):
+26 cases, 0 failures. Qt 6, Chromium, terminals, XWayland, the lock
+screen, Plasma and Phosh are not covered yet.</p>
+</dd>
+<dt class="hdlist1"><code>plasma-keyboard/</code></dt>
+<dd>
+<p>Builds plasma-keyboard from source in a container and runs it, under its
+own mock compositor, on the golden packages in <code>osk/plasma/golden/</code>.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>

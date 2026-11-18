@@ -1,7 +1,7 @@
 = kbdgen documentation
 
-kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, iOS and Android
-from one `.kbdgen` bundle, and converts layouts to and from CLDR LDML
+kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, Linux, iOS and
+Android from one `.kbdgen` bundle, and converts layouts to and from CLDR LDML
 Keyboard 3.0.
 
 * link:user/kbdgen.html[User guide]: the command line, the bundle and layout

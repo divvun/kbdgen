@@ -33,6 +33,11 @@ describe each target's configuration and output.
 |`chromeos`
 |4 and 3
 |Any host
+
+|Linux
+|`linux`
+|4 and 3
+|Any host; the IBus engine is built on Linux
 |===
 
 include::windows.adoc[]
@@ -44,3 +49,5 @@ include::ios.adoc[]
 include::android.adoc[]
 
 include::chromeos.adoc[]
+
+include::linux.adoc[]

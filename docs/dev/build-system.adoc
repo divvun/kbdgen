@@ -11,8 +11,8 @@ conventions every build step follows for logging and errors.
 . `read_kbdgen_bundle` loads the whole bundle. Any error ends the run here,
   before anything is written.
 . `KbdgenBundle::reject_v4_layouts` fails when the bundle has a format 4
-  layout and the target cannot build one. Windows, macOS and ChromeOS can;
-  iOS and Android cannot.
+  layout and the target cannot build one. Windows, macOS, ChromeOS and
+  Linux can; iOS and Android cannot.
 . The output directory is created with its parents and canonicalised.
 . The target's steps run.
 
@@ -64,6 +64,9 @@ steps of each target:
 |`chromeos`
 |`GenerateChromeOs` (`ChromeOsBuild`)
 
+|`linux`
+|`GenerateLinux` (`LinuxBuild`)
+
 |`macos build`
 |`GenerateMacOs`, then `GenerateInstaller` unless `--no-installer` is given
 or kbdgen was built for another OS than macOS. `main.rs` runs these
@@ -85,9 +88,9 @@ directly; macOS has no `BuildSteps`.
 ==== Writing a step
 
 * Compute everything, then write. `GenerateKbdl` generates every layout
-  crate in memory before writing the first, and `GenerateChromeOs` builds
-  the models, manifest and messages before it writes the extension. A
-  bad layout then fails the step without leaving half an output.
+  crate in memory before writing the first, and `GenerateChromeOs` and
+  `GenerateLinux` build every file before they write the first. A bad
+  layout then fails the step without leaving half an output.
 * Check external tools' exit status, and capture their output rather than
   letting it interleave with kbdgen's log: log it at `trace` on success and
   put stderr into the error on failure (`build_layout` in
@@ -143,8 +146,8 @@ represented and are omitted
 |===
 
 Messages name what they are about (the layout, the file, the variant) and
-print paths with `display()`, not `{:?}`. The Windows, macOS and ChromeOS
-generators collect each layout's warnings and notes in a `Diagnostics`
+print paths with `display()`, not `{:?}`. The Windows, macOS, ChromeOS and
+Linux generators collect each layout's warnings and notes in a `Diagnostics`
 value (`src/build/diag.rs`), which logs each one with the layout's name and
 also keeps it, so the golden tests can pin them. A `Diagnostics` is made
 for one `Platform`, and logs under that target's module

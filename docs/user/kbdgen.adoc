@@ -3,8 +3,8 @@
 :toc: left
 :toclevels: 2
 
-kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, iOS and Android
-from one source: a `.kbdgen` bundle, which is a directory of YAML files
+kbdgen builds keyboard layouts for Windows, macOS, ChromeOS, Linux, iOS and
+Android from one source: a `.kbdgen` bundle, which is a directory of YAML files
 describing the layouts, plus per-target metadata and resources such as icons.
 It also converts layouts to and from CLDR LDML Keyboard 3.0 XML, and runs
 typing tests against kbdgen's keyboard engine.

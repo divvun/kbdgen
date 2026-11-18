@@ -11,8 +11,8 @@ cargo install cargo-nextest --locked
 cargo nextest run --workspace
 ----
 
-`--workspace` is needed: `kbd-tsf` and `kbd-wasm` are not default members,
-so without it their tests do not run. To run some tests only, pass a
+`--workspace` is needed: `kbd-tsf`, `kbd-wasm` and `kbd-ibus` are not
+default members, so without it their tests do not run. To run some tests only, pass a
 filter: `cargo nextest run --workspace keylayout`.
 
 Most tests sit next to the code, in `#[cfg(test)]` modules. The others:
@@ -27,6 +27,8 @@ Most tests sit next to the code, in `#[cfg(test)]` modules. The others:
   for every device triple.
 * `crates/kbd-tsf/tests/` holds the text service tests: `self_contained.rs`
   runs everywhere, `vm.rs` and `acceptance.rs` only on Windows.
+* `crates/kbd-ibus/tests/` holds the IBus engine tests: `ibus.rs` needs
+  ibus-daemon, and the others run everywhere (<<linux-tests>>).
 
 ==== Ignored tests
 
@@ -66,6 +68,31 @@ cargo nextest run --workspace --run-ignored only -E 'test(fixture_dlls_hold_thei
 On macOS and Linux the Windows-only tests are not compiled, so
 `--run-ignored all` is safe there. On Windows, select tests by name.
 
+==== Tests that skip
+
+These Linux tests are not ignored, but need tools that most hosts lack.
+Without them, each prints that it is skipping and passes, so check their
+output when you change the Linux target:
+
+[cols="3,4",options="header"]
+|===
+|Test |Needs
+
+|`fixtures_compile_list_and_type_in_libxkbcommon`
+(`src/build/linux/xkb/differential/xkbcommon.rs`)
+|Linux, with the development files of libxkbcommon and libxkbregistry,
+found by pkg-config when kbdgen is built
+
+|`crates/kbd-ibus/tests/ibus.rs`
+|`ibus-daemon` on `PATH`, or named by `IBUS_DAEMON`, and a session bus:
+run it under `dbus-run-session`
+|===
+
+With `KBDGEN_REQUIRE_LINUX_TESTS` set, they fail instead of skipping. A
+Linux CI job that runs them must install the tools and set it. The ChromeOS typing test
+skips the same way without Deno, but has no such switch. <<linux-tests>>
+shows how to run both Linux tests in Docker on macOS.
+
 === Golden files
 
 Golden files pin generated output byte for byte. A golden test generates
@@ -88,6 +115,17 @@ built DLLs
 |ChromeOS
 |`src/build/chromeos/testdata/golden/`
 |`manifest.json`, `_locales/` and `diagnostics.txt`
+
+|Linux
+|`src/build/linux/testdata/golden/`
+|`output/`, the output tree without the models and the GResource bundle;
+`osk-layouts.gresource.txt`, that bundle read back; and `messages.txt`
+
+|Linux on-screen keyboards
+|`src/build/linux/osk/gnome/golden/`, `osk/plasma/golden/`,
+`osk/stevia/golden/`
+|Each fixture's GNOME Shell and Stevia layout, and its plasma-keyboard
+`metadata.json` and `desktop.qml`
 |===
 
 When a change to a generator is intended, regenerate the files with
@@ -134,12 +172,13 @@ bytes and typing arbitrary keys never panic).
 
 === Differential tests
 
-The Windows, macOS and ChromeOS generators each have a test that types on
-what the generator wrote and on `kbd-engine` with the same model, and
-requires the same text. Windows and macOS keep a list of the differences
-their native formats cannot avoid (`exceptions.rs` in each `differential/`
-directory); a difference must match an entry there, and any other fails
-the test. ChromeOS runs the engine itself, so it allows none.
+The Windows, macOS, ChromeOS and Linux generators each have a test that
+types on what the generator wrote and on `kbd-engine` with the same model,
+and requires the same text. Windows, macOS and Linux keep a list of the
+differences their native formats cannot avoid (`exceptions.rs` in each
+`differential/` directory); a difference must match an entry there, and
+any other fails the test. ChromeOS runs the engine itself, so it allows
+none.
 
 Windows (`src/build/windows/kbdl/differential/`)::
 Simulates `ToUnicodeEx` on the generated `KBDTABLES`: every layer at each
@@ -159,6 +198,15 @@ Generates the extension, then `harness/typing_test.ts` loads its
 https://deno.com[Deno]: `deno` on `PATH`, or its path in `DENO`. Without
 it, the test prints that it is skipping and passes, so check its output
 when you change the ChromeOS target.
+
+Linux (`src/build/linux/xkb/differential/`)::
+Reads each written XKB symbols file back and simulates it as libxkbcommon
+and IBus's simple engine type it: every written key in all eight states of
+Shift, Caps Lock and AltGr, then every dead-key path of up to three keys.
+Runs on every host. On Linux with libxkbcommon, `xkbcommon.rs` also
+compiles and types the layouts through the real library (see above). The
+IBus engine runs the engine itself; its planner is tested against a fake
+client in `crates/kbd-ibus/tests/planner.rs`.
 
 The migration is checked the same way: `src/ldml/migrate` runs each
 migrated layout through the engine against what the format 3 platforms

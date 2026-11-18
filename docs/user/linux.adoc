@@ -1,0 +1,706 @@
+== Linux
+`kbdgen target linux` writes, for each layout, the pieces a Linux keyboard
+package installs:
+
+* an XKB layout, which every Wayland desktop can use as its keyboard layout
+  without anything else running;
+* the data of the Divvun IBus engine, which runs the same keyboard engine as
+  the Windows text service and the ChromeOS extension, so dead keys,
+  transforms and everything else the layout says type as they do in the
+  engine;
+* on-screen keyboard layouts for GNOME Shell, for plasma-keyboard on KDE
+  Plasma, and for Stevia on Phosh.
+
+[source,sh]
+----
+kbdgen target -b sme.kbdgen -o linux-out linux
+----
+
+The target has no subcommands.
+
+=== Prerequisites
+Generating needs only kbdgen. It writes every file itself, the GNOME Shell
+resource bundle included, so no Linux tool is needed and the build runs on
+any host.
+
+The IBus engine is a program of its own, `ibus-engine-divvun`, shared by
+every keyboard and released separately from them, as the Windows text
+service is. It is the crate `crates/kbd-ibus` in the kbdgen repository, and
+builds on Linux:
+
+[source,sh]
+----
+cargo build -p kbd-ibus --release
+----
+
+which writes `target/release/ibus-engine-divvun`. A plain `cargo build`
+leaves it out.
+
+The keyboards run on Wayland desktops: GNOME 50 or later, and KDE Plasma
+6.8 or later, whose on-screen keyboard packages need Plasma 6.9. They need
+libxkbcommon 1.13 or later and xkeyboard-config 2.45 or later, which Fedora
+44 and Ubuntu 26.04 have (<<linux-install>>).
+
+=== Target configuration
+`targets/linux.yaml` is required; without it the build stops with
+`targets/linux.yaml is missing`. Any scalar is read as a string, so
+`version: 1.0` is the version `1.0`.
+
+[source,yaml]
+----
+packageId: no.divvun
+layoutPrefix: divvun
+version: 1.0.0
+----
+
+[cols="1,1,4"]
+|===
+|Field |Required |Meaning
+
+|`packageId`
+|yes
+|The bundle's name on Linux, in reverse DNS: two or more labels separated
+by dots, each of lowercase ASCII letters, digits and `-`. It names the
+directories the package installs (<<linux-install>>), the GNOME Shell
+extension, `osk@<packageId>`, and each layout's plasma-keyboard package,
+`<packageId>.<tag>` with the `-` of the tag replaced by `_`
+(`no.divvun.se_NO`).
+
+|`layoutPrefix`
+|yes
+|A lowercase ASCII letter followed by at most 15 lowercase ASCII letters
+and digits. Each layout's *layout id* is the prefix, `-`, and its tag in
+lowercase: `divvun-se-no` for `se-NO`. The layout id names the layout's
+XKB layout, its IBus engine and its GNOME Shell and Stevia layouts, so it
+must not be used by another keyboard installed on the same system.
+
+|`version`
+|yes
+|The version written to each engine description, to the GNOME Shell
+extension's `version-name` and to each plasma-keyboard package. Any text.
+|===
+
+Another shape of `packageId` or `layoutPrefix` stops the build:
+
+----
+Error: targets/linux.yaml: packageId "divvun" is not a reverse-DNS name: two or more dot-separated labels of lowercase ASCII letters, digits and '-'
+Error: targets/linux.yaml: layoutPrefix "Divvun" is not a lowercase ASCII letter followed by at most 15 lowercase ASCII letters and digits
+----
+
+A missing field stops loading the bundle:
+
+----
+Error: Error parsing YAML for path: <bundle>/targets/linux.yaml at .
+
+Caused by:
+    missing field `layoutPrefix` at line 2, column 1
+----
+
+The GNOME Shell extension's name and description come from `locales` in
+`project.yaml`, which must have an `en` entry; without one the build stops
+with `project.yaml: locales has no en entry`.
+
+[[linux-layouts]]
+=== Keyboard layouts
+Both layout formats work, side by side in one bundle:
+
+* A v4 layout (`format: 4`) is built from its `linux` hardware variant, or
+  from `default` when it has none. A v4 layout with neither has no Linux
+  output.
+* A v3 layout is built from its `windows` section, or from its `chromeOS`
+  section when it has no `windows` one. A v3 layout with neither has no
+  Linux output. kbdgen converts the layout in memory, as
+  `kbdgen ldml migrate` would, without changing the file.
+
+Each layout that builds is reported with its layout id:
+
+----
+INFO se-NO: compiled as the Linux layout divvun-se-no
+----
+
+and with `RUST_LOG=debug`, each one skipped is too:
+
+----
+DEBUG Skipping fi: no windows or chromeOS section
+DEBUG Skipping se-NO: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one
+----
+
+If no layout has a Linux keyboard, the build stops with
+`no layout has a linux keyboard`.
+
+A layout that `kbdgen ldml migrate` has converted to format 4 has
+`windows`, `macOS` and `chromeOS` variants but no `linux` or `default` one,
+so it has no Linux output until you add one. To build it as it was built
+before the conversion, give it a `linux` variant that inherits the Windows
+one:
+
+[source,yaml]
+----
+hardware:
+  linux:
+    inherits: windows
+----
+
+If the in-memory conversion of a v3 layout finds a blocking problem, the
+build stops and names the layout and the defect codes:
+
+----
+Error: smj: the v3 layout's migration is blocked by defects M05; `kbdgen ldml migrate --dry-run` reports them
+----
+
+`target linux` prints only blocking problems. The conversion can also
+change what a key types; `kbdgen ldml migrate --dry-run -b <bundle>` lists
+every such change for each layout.
+
+==== Modifiers on Linux
+* Write AltGr layers as `altR` or `alt`. Right Alt becomes AltGr when the
+  layout has a layer for it, and stays Alt otherwise.
+* Left Alt stays Alt, for menus and shortcuts, so a layer that needs
+  `altL`, or Left Ctrl, never types; kbdgen warns about it. An `alt` layer
+  is typed with AltGr alone.
+* Ctrl without AltGr, and Super, are for shortcuts: layers for them never
+  type and are not written to the XKB layout, so shortcuts take the keys of
+  the layer without modifiers.
+* Caps Lock layers work in both the XKB layout and the IBus engine. Shift
+  Lock (`targets.windows.shiftLock`), extra modifiers and the LRM and RLM
+  of `targets.windows.lrmRlm` work in the IBus engine only.
+
+[[linux-output]]
+=== Output
+The output directory holds five directories, each laid out as a package
+installs it. For a bundle with the layouts `se-NO`, `sme` and `vro`,
+`packageId: no.divvun` and `layoutPrefix: divvun`:
+
+[source,text]
+----
+linux-out/
+├── xkb/
+│   ├── rules/
+│   │   └── evdev.xml
+│   └── symbols/
+│       ├── divvun-se-no
+│       ├── divvun-sme
+│       └── divvun-vro
+├── ibus/
+│   ├── divvun-se-no.dvkb
+│   ├── divvun-se-no.xml
+│   ├── divvun-sme.dvkb
+│   ├── divvun-sme.xml
+│   ├── divvun-vro.dvkb
+│   └── divvun-vro.xml
+├── gnome-shell/
+│   └── osk@no.divvun/
+│       ├── extension.js
+│       ├── metadata.json
+│       └── osk-layouts.gresource
+├── plasma-keyboard/
+│   ├── no.divvun.se_NO/
+│   │   ├── contents/layouts/desktop.qml
+│   │   └── metadata.json
+│   ├── no.divvun.sme/
+│   └── no.divvun.vro/
+└── stevia/
+    └── layouts/
+        ├── divvun-se-no.json
+        ├── divvun-sme.json
+        └── divvun-vro.json
+----
+
+* `xkb/symbols/<L>` is the XKB layout of the layout with id L, and
+  `xkb/rules/evdev.xml` the registry that lists the bundle's layouts, by
+  which the desktops' settings offer them.
+* `ibus/<L>.dvkb` is the layout's compiled keyboard, which the IBus engine
+  runs, and `ibus/<L>.xml` its engine description.
+* `gnome-shell/osk@<packageId>/` is a GNOME Shell extension that adds the
+  bundle's on-screen layouts, held in `osk-layouts.gresource`.
+* `plasma-keyboard/<packageId>.<tag>/` is a plasma-keyboard package per
+  layout.
+* `stevia/layouts/<L>.json` is a layout for Stevia, to contribute upstream.
+
+kbdgen checks everything before it writes anything, so a failed build
+leaves the directory as it was. A successful build empties those five
+directories first, so nothing of an earlier build remains, not even a
+layout since renamed. It does not touch anything else in the output
+directory.
+
+==== The XKB layout
+Each layout is an XKB layout of its own, named by its layout id. The
+symbols file has one line per key: a key type, which says how Shift, Caps
+Lock and AltGr select a level, and a keysym per level, starting with no
+modifier, Shift, AltGr, and Shift with AltGr:
+
+----
+// divvun-se-no: generated by kbdgen from layouts/se-NO.yaml. Do not edit.
+default partial alphanumeric_keys
+xkb_symbols "basic" {
+    name[Group1] = "Davvisámegiella (Norga)";
+    key <TLDE> { type[Group1] = "FOUR_LEVEL", symbols[Group1] = [ bar, section, VoidSymbol, VoidSymbol ] };
+    key <AE01> { type[Group1] = "FOUR_LEVEL", symbols[Group1] = [ 1, exclam, VoidSymbol, VoidSymbol ] };
+    ...
+    key <AD01> { type[Group1] = "FOUR_LEVEL_SEMIALPHABETIC", symbols[Group1] = [ aacute, Aacute, q, Q ] };
+    ...
+    key <SPCE> { type[Group1] = "ONE_LEVEL", symbols[Group1] = [ space ] };
+    include "level3(ralt_switch)"
+};
+----
+
+`VoidSymbol` types nothing. A dead key gets a dead keysym, such as
+`dead_acute`, when its standalone output or its display is an accent X has
+one for: `´`, `ˇ`, `~`, `¨` and so on. The registry lists each layout by
+its display name in its own language, with its language subtag as the short
+name, which GNOME shows as its indicator:
+
+[source,xml]
+----
+<layout>
+  <configItem>
+    <name>divvun-se-no</name>
+    <shortDescription>se</shortDescription>
+    <description>Davvisámegiella (Norga)</description>
+    <countryList>
+      <iso3166Id>NO</iso3166Id>
+    </countryList>
+    <languageList>
+      <iso639Id>sme</iso639Id>
+    </languageList>
+  </configItem>
+</layout>
+----
+
+==== The engine description
+Each layout's engine description names its XKB layout as `layout`, so the
+desktop uses that layout beneath the engine, and for the keys the engine
+lets through:
+
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<engine>
+  <name>divvun-se-no</name>
+  <longname>Davvisámegiella (Norga)</longname>
+  <description>Davvisámegiella (Norga)</description>
+  <language>se_NO</language>
+  <author>Divvun</author>
+  <layout>divvun-se-no</layout>
+  <symbol>se</symbol>
+  <version>1.0.0</version>
+</engine>
+----
+
+`author` comes from `project.yaml` and `version` from
+`targets/linux.yaml`. There are no icons yet: IBus shows the `symbol`, and
+kbdgen reads no `resources/linux` directory.
+
+==== The GNOME Shell extension
+`metadata.json` takes its name and description from the `en` entry of
+`project.yaml` `locales`:
+
+[source,json]
+----
+{
+  "uuid": "osk@no.divvun",
+  "name": "Divvun keyboards",
+  "description": "Keyboards for the Sámi languages",
+  "shell-version": [
+    "50",
+    "51"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ],
+  "version-name": "1.0.0"
+}
+----
+
+`extension.js` is the same for every bundle: it adds the layouts in
+`osk-layouts.gresource` to GNOME Shell's on-screen keyboard while the
+extension is enabled. `unlock-dialog` keeps it running on the lock screen,
+so the lock screen's keyboard has the layouts too.
+
+[[linux-install]]
+=== Installing
+kbdgen installs nothing. Keyboards reach users as system packages, a
+`.deb` and an `.rpm` per bundle, which pahkat-3 builds; there is no
+per-user installer. A package copies each output directory unchanged:
+
+[cols="2,3",options="header"]
+|===
+|Output |Installed as
+
+|`xkb/`
+|`/usr/share/xkeyboard-config.d/<packageId>/`
+
+|`ibus/`
+|`/usr/share/divvun/keyboards/<packageId>/`
+
+|`gnome-shell/osk@<packageId>/`
+|`/usr/share/gnome-shell/extensions/osk@<packageId>/`
+
+|`plasma-keyboard/<packageId>.<tag>/`
+|`/usr/share/plasma/keyboard/keyboardpackages/<packageId>.<tag>/`
+
+|`stevia/`
+|not installed (<<linux-osk>>)
+|===
+
+`/usr/share/xkeyboard-config.d/` holds libxkbcommon's extension
+directories: libxkbcommon 1.13 and later reads layouts from each package's
+directory there, beside the system's own, and xkeyboard-config 2.45 and
+later lists them in the desktops' settings. Each package owns its
+directory, so packages share no file. Older libxkbcommon is not supported.
+
+A keyboard package depends on:
+
+* libxkbcommon 1.13 or later and xkeyboard-config 2.45 or later:
+  `libxkbcommon0` and `xkb-data` on Debian and Ubuntu, `libxkbcommon` and
+  `xkeyboard-config` on Fedora. Fedora 44 and Ubuntu 26.04, the first
+  releases with GNOME 50, have them.
+* the IBus engine package, in a release that reads the version of the
+  model format kbdgen wrote.
+
+Uninstalling removes exactly what installing added. Desktops read new
+layouts at their next session, so users log out and in after installing.
+
+==== The IBus engine package
+The engine is one system package that every keyboard package depends on.
+It installs:
+
+* the program, as `/usr/libexec/ibus-engine-divvun`;
+* its IBus component, as `/usr/share/ibus/component/divvun.xml`. That file
+  is `crates/kbd-ibus/data/divvun.xml.in` with `@LIBEXECDIR@`,
+  `@DATADIR@` and `@VERSION@` filled in, `@VERSION@` being the version of
+  the `kbd-ibus` crate.
+
+IBus reads components only from `/usr/share/ibus/component`, so the engine
+cannot be installed for one user. The component tells IBus to ask the
+program for its engines, and to ask again when
+`/usr/share/divvun/keyboards/` or `~/.local/share/divvun/keyboards/`
+changes, so a keyboard installed after the engine needs nothing more.
+
+[[linux-extension]]
+==== Enabling the GNOME Shell extension
+A system package cannot enable the GNOME Shell extension for its users:
+GNOME runs only the extensions each user has enabled, and cannot enable
+one that was installed while it was running. Each user enables it once,
+after their next login, in the Extensions application or with
+
+[source,sh]
+----
+gnome-extensions enable osk@no.divvun
+----
+
+A distribution or an administrator may instead set a default of
+`org.gnome.shell enabled-extensions` in dconf. Until the extension is
+enabled, GNOME Shell's on-screen keyboard shows `us` for the layout. Typing
+with hardware keys does not need the extension.
+
+==== Trying the output on a test machine
+A package does this for users. To try a build on a test machine, with
+`out` the output directory and `ibus-engine-divvun` the built engine, copy
+the files where a package would put them:
+
+[source,sh]
+----
+P=no.divvun
+sudo mkdir -p /usr/share/xkeyboard-config.d /usr/share/divvun/keyboards /usr/share/gnome-shell/extensions
+sudo cp -r out/xkb /usr/share/xkeyboard-config.d/$P
+sudo cp -r out/ibus /usr/share/divvun/keyboards/$P
+sudo cp -r out/gnome-shell/osk@$P /usr/share/gnome-shell/extensions/
+sudo install -m 755 ibus-engine-divvun /usr/libexec/ibus-engine-divvun
+sed -e 's|@LIBEXECDIR@|/usr/libexec|g' -e 's|@DATADIR@|/usr/share|g' -e 's|@VERSION@|0.1.0|g' \
+  crates/kbd-ibus/data/divvun.xml.in | sudo tee /usr/share/ibus/component/divvun.xml > /dev/null
+----
+
+On Fedora, restore the SELinux labels of the copies:
+
+[source,sh]
+----
+sudo restorecon -R /usr/share/xkeyboard-config.d /usr/share/divvun /usr/share/gnome-shell/extensions \
+  /usr/libexec/ibus-engine-divvun /usr/share/ibus/component
+----
+
+On Plasma 6.9, copy each `out/plasma-keyboard/<id>/` to
+`/usr/share/plasma/keyboard/keyboardpackages/` the same way.
+
+Then check that libxkbcommon finds a layout and compiles it, and that the
+engine lists the keyboards. `xkbcli` is in `libxkbcommon-utils` on Fedora
+and `libxkbcommon-tools` on Ubuntu.
+
+[source,sh]
+----
+xkbcli list | grep -A4 "layout: 'divvun-sme'"
+xkbcli compile-keymap --layout divvun-sme > /dev/null
+/usr/libexec/ibus-engine-divvun --xml --data-dir /usr/share/divvun/keyboards
+----
+
+Log out and in, enable the extension, and add the input sources. Remove
+the same files to undo it.
+
+[[linux-sources]]
+=== The XKB source and the IBus source
+Each layout can be typed in two ways:
+
+* The *XKB source* is the XKB layout alone. It needs no engine and works
+  on every Wayland desktop, but cannot do everything a layout can. The
+  build reports, for each layout, what it cannot do
+  (<<linux-diagnostics>>).
+* The *IBus source* runs the IBus engine on the layout's compiled
+  keyboard, so it types what the layout says.
+
+A run on GNOME Shell 50.6 (Fedora 44, IBus 1.5.34, libxkbcommon 1.13.1) on
+2026-11-18 typed, among other cases:
+
+[cols="3,2,2",options="header"]
+|===
+|Input |XKB source |IBus source
+
+|`´` then `a`
+|`á`
+|`á`
+
+|`´` then `1`
+|nothing: IBus's simple engine drops the `1` and keeps the dead key pending
+|`´1`
+
+|AltGr+`t`, which types `t` followed by U+0301
+|nothing
+|`t́`
+
+|on-screen `´`, then on-screen `a`
+|`a`
+|`á`
+|===
+
+Caps Lock layers (`Č`), AltGr, dead keys on AltGr, and Left Alt passing a
+key on as a shortcut worked with both.
+
+==== GNOME
+GNOME runs IBus, so both sources are available. In GNOME's keyboard
+settings, add the layout's XKB layout, listed by its display name, and its
+IBus engine, which GNOME Shell lists as `<language> (<display name>)`. With
+`gsettings`, for the layout id `divvun-sme`:
+
+[source,sh]
+----
+gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'divvun-sme'), ('ibus', 'divvun-sme')]"
+----
+
+The IBus source types the whole layout. With the XKB source, GNOME still
+runs IBus, whose simple engine composes dead keys by the user's Compose
+file, if there is one, or else by its built-in table, not by the layout's
+`deadKeys`.
+
+In password fields, the lock screen's among them, GNOME does not use IBus
+sources unless every source is one; it uses the most recent XKB source
+instead. Keep the layout's XKB source in the list, so that passwords type
+with the layout.
+
+==== KDE Plasma
+Plasma's keyboard settings list the XKB layout. KWin runs one input
+method, plasma-keyboard or IBus:
+
+* With plasma-keyboard, the XKB layout types hardware keys, and
+  plasma-keyboard's on-screen keyboard types its own layout, without the
+  engine.
+* With IBus as KWin's input method, add the layout's IBus engine, which
+  then types.
+
+==== Phosh
+Phosh has no IBus, so the XKB layout types.
+
+[[linux-osk]]
+=== On-screen keyboards
+Every on-screen layout shows the layout's desktop layout: its keys without
+modifiers and with Shift, and two levels of symbols that are the same for
+every layout. Long-press candidates are shown where the on-screen keyboard
+can show them. Layers for other modifiers, such as AltGr and Caps Lock,
+type only on hardware keys, and the layout's `touch` layouts are not
+used.
+
+GNOME Shell::
+Once the extension is enabled (<<linux-extension>>), the on-screen
+keyboard shows the layout for both of its sources, on the lock screen too.
+With the IBus source, every on-screen key goes through the engine, so an
+on-screen dead key composes with the next key, on screen or not. With the
+XKB source, an on-screen dead key composes only with a hardware key.
+Terminals show GNOME's `us-extended` layout.
+
+plasma-keyboard::
+Each layout has a package of its own for plasma-keyboard 6.9 and later,
+which users enable in plasma-keyboard's settings. plasma-keyboard types
+without the IBus engine: dead keys type their standalone output, and no
+transform applies. plasma-keyboard 6.9 is not released yet, and kbdgen
+does not target earlier releases.
+
+Stevia::
+Stevia, Phosh's on-screen keyboard, builds its layouts in, so
+`stevia/layouts/<L>.json` is not installed. To contribute one upstream,
+copy it to Stevia's `src/layouts/`, add the line
+`<file preprocess="json-stripblanks">layouts/<L>.json</file>` to
+`src/phosh-osk-stevia.gresources.xml`, and add the file to the `layouts`
+of `src/layouts/meson.build`, which validates it. To try a file without
+rebuilding Stevia, start Stevia with
+`G_RESOURCE_OVERLAYS=/mobi/phosh/stevia/layouts=<dir>` in its environment,
+`<dir>` holding the file. Stevia shows a layout only for the XKB source of
+the same name, and types it without the engine.
+
+[[linux-diagnostics]]
+=== Diagnostics
+kbdgen reports, once per layout and kind, with a count and up to ten
+examples, what the XKB layout and each on-screen keyboard cannot do. The
+layout still builds. Most are information: each says that the IBus engine
+types what the XKB layout cannot. From builds of kbdgen's test layouts,
+the longest shortened:
+
+----
+INFO sme: the XKB layout cannot type 2 output(s) of more than one scalar value (e.g. <AD05> with AltGr: "t\u{301}"; <AD08> with AltGr: "i\u{307}\u{301}"); the IBus engine types them
+INFO se-NO: the XKB layout composes 704 dead-key result(s) (e.g. \m{dk_02C7} then "|": the engine types "ˇ|", the XKB layout types "" and leaves dead_caron pending; \m{dk_02C7} then "1": the engine types "ˇ1", the XKB layout types "₁"; …) otherwise than the engine, because IBus's simple engine composes by the reference Compose table, drops a key that continues no sequence and keeps the dead key pending, where the engine types the dead key's standalone and the key; the IBus engine types them as the engine does
+INFO se-NO: the XKB layout cannot type 1 key state(s) that no key type gives (e.g. <AB07> with Caps Lock+AltGr should type 'µ' (FOUR_LEVEL_SEMIALPHABETIC)); the IBus engine types them
+INFO vro: the XKB layout cannot type 1 dead key(s) without a dead keysym, which it types as their standalone (e.g. \m{dk_0119}, typed as "ę"); the IBus engine types them
+INFO sme: the XKB layout cannot type 1 layer(s) selected by an extra modifier (e.g. layer extra1, caps extra1); the IBus engine types them
+INFO sme: the XKB layout has no Shift Lock; the IBus engine types it
+INFO sme: the XKB layout cannot type LRM/RLM on Shift+Backspace; the IBus engine types them
+INFO sme: the XKB layout ignores the long-press, multi-tap and flick gestures of 4 key(s) (e.g. u-0065; u-0061; u-007A; u-006E), which no hardware key makes
+WARN sme-SE: nothing on Linux types 1 layer(s) that only Left Alt or a Left Ctrl selects (e.g. layer altL, altL caps): the XKB layout leaves Left Alt and Left Ctrl to shortcuts, and the IBus engine passes their chords
+----
+
+When the XKB layout loses nothing, the layout gets one message instead:
+`the XKB layout types every feature of the keyboard`.
+
+For the on-screen keyboards, kbdgen warns once per on-screen keyboard about
+what it does not show or type, and informs once per layout about how they
+type:
+
+----
+INFO se-NO: on GNOME Shell, a dead key pressed on screen composes only with the layout's IBus source; with its XKB source, only with a hardware key
+INFO vro: GNOME Shell sends 1 on-screen text(s) of several scalar values to the IBus engine one scalar value at a time (e.g. õ̭)
+INFO se-NO: plasma-keyboard and Stevia type their on-screen layouts without the IBus engine, so no transform applies there
+WARN se-NO: GNOME Shell does not show 5 layer(s) other than the default and shift levels, which only hardware keys type (e.g. caps; caps shift; altR; altR shift, altR caps shift; altR caps)
+WARN se-NO: plasma-keyboard types 1 dead key(s) as their standalone output, which composes nothing, or leaves them out where they have none (e.g. `)
+WARN sme-SE: Stevia types 2 dead key(s) as their standalone output, which composes nothing, or leaves them out where they have none (e.g. ´; ¨ (left out))
+----
+
+[cols="2,3",options="header"]
+|===
+|Message |What to do
+
+|outputs of more than one scalar value, outputs mixing text and markers
+|Nothing, for users of the IBus source. The XKB layout types one character
+per key; a precomposed character, where one exists, types with both
+sources.
+
+|dead-key results composed otherwise than the engine
+|Nothing, for users of the IBus source. The XKB source composes by the
+desktop's Compose table, and a key that composes nothing with the dead key
+types nothing.
+
+|dead keys without a dead keysym
+|Give the dead key a standalone output, or a display, that is an accent X
+has a dead keysym for, such as `´`, `ˇ`, `~` or `¨`. Without one, the XKB
+layout and GNOME Shell's on-screen keyboard type the standalone.
+
+|key states that no key type gives
+|Nothing, for users of the IBus source. XKB has a fixed set of ways in
+which Shift, Caps Lock and AltGr combine; these are usually Caps Lock with
+AltGr.
+
+|transform rules that do not start with a marker, reorder groups, backspace
+rules, normalization
+|Nothing, for users of the IBus source: the XKB layout cannot run them.
+
+|layers selected by an extra modifier, Shift Lock, LRM/RLM
+|Nothing, for users of the IBus source.
+
+|outputs at scan codes it does not write
+|The form has a position that the XKB layout does not write. Move its
+output to a position on the ISO keyboard.
+
+|long-press, multi-tap and flick gestures
+|Nothing: a hardware key has no gestures.
+
+|layers that only Left Alt or a Left Ctrl selects (a warning)
+|Move the layer to `altR` or `alt` if it should type on Linux.
+
+|`alt` layers typed with AltGr alone
+|Nothing. A layer written `altR` in a `linux` variant is the same layer,
+without the message.
+
+|layers the on-screen keyboards do not show
+|Nothing: the on-screen layouts show the layers without modifiers and
+with Shift.
+
+|dead keys typed as their standalone output, or left out
+|Nothing for plasma-keyboard and Stevia, which have no dead keys. For
+GNOME Shell, give the dead key a dead keysym, as above, on a level other
+than Shift with AltGr.
+
+|keys mixing text and markers, long-press candidates holding markers
+|Nothing: the on-screen keyboards cannot send them, so they leave them
+out.
+
+|shift-level texts that plasma-keyboard uppercases
+|Nothing, unless the text matters there: plasma-keyboard uppercases what a
+key types while Shift is on, so a shift-level text that is not its own
+uppercase, such as a lowercase letter, types its uppercase.
+|===
+
+=== Errors
+These stop the build, before anything is written:
+
+* `targets/linux.yaml is missing`
+* `targets/linux.yaml: packageId "divvun" is not a reverse-DNS name: …`
+* `targets/linux.yaml: layoutPrefix "Divvun" is not a lowercase ASCII letter followed by at most 15 lowercase ASCII letters and digits`
+* `project.yaml: locales has no en entry`
+* `<tag>: the v3 layout's migration is blocked by defects …`, described
+  under <<linux-layouts>>
+* `<tag>: the linux keyboard has no hardware layers`, for a v4 layout
+  whose `linux` keyboard, from an LDML file it names, has only touch
+  layouts
+* `<tag>: no hardware layer is selected with no modifier, so the on-screen keyboards have no default level`
+* `no layout has a linux keyboard`
+
+A missing field of `targets/linux.yaml`, or a duplicate one, stops loading
+the bundle, with the file, the line and the column.
+
+=== How the IBus engine types
+* A dead key shows what it would type as underlined preedit, which the
+  next key completes or replaces.
+* Backspace runs the layout's backspace rules, if it has any. Otherwise it
+  cancels a pending dead key, and with none pending the application
+  deletes as usual.
+* Keys the layout does not handle, such as the arrows, Enter, Tab and
+  shortcuts, go to the application. A pending dead key is typed first, as
+  it is on macOS. Keys held with Left Alt pass as shortcuts.
+* In applications that do not tell IBus the text around the caret, such
+  as terminals, the engine works from what it typed itself. For a layout
+  whose transforms rewrite text already typed (transforms that do not
+  start with a dead key, reorder groups, backspace rules or
+  normalization), it keeps the last characters it typed as preedit, since
+  it cannot rely on deleting them, until a key that passes commits them.
+* In a password or PIN field, keys type as elsewhere, but nothing is shown
+  as preedit, the engine keeps no text from the field, and a dead key
+  still pending when the field loses focus is dropped.
+* The engine records no typed text and no keys. When it cannot load a
+  keyboard, IBus runs no engine for it and the layout's XKB layout types.
+  The engine then writes the reason, such as
+  `ibus-engine-divvun: divvun-sme.dvkb: model-version`, to its standard
+  error, which IBus passes on to its own, and so to the session journal,
+  only when `ibus-daemon` runs with `--verbose`.
+
+=== Limits
+* Only Wayland sessions are supported. X11 applications under XWayland get
+  the XKB layout from the compositor; typing in them with the IBus source
+  has not been tested yet.
+* The GNOME Shell extension declares GNOME 50 and 51. Later GNOME releases
+  are added once they have been tested.
+* Each user enables the GNOME Shell extension once (<<linux-install>>).
+* The on-screen layouts show only the layers without modifiers and with
+  Shift, and GNOME Shell shows `us-extended` in terminals.
+* There are no icons; IBus shows the layout's language subtag.
+* There is no Fcitx5 addon: Fcitx5 cannot run IBus engines, so with Fcitx5
+  only the XKB layout types.
+* Typing has been tested end to end on GNOME Shell 50 only. The plasma-keyboard
+  packages have been loaded by plasma-keyboard under its own test
+  compositor, not yet on a Plasma desktop, and the Stevia layouts have not
+  yet run on Phosh.

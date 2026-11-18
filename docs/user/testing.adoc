@@ -3,8 +3,8 @@
 
 A bundle can carry typing tests: files in `tests/` that press keys on a
 layout and say what should come out. kbdgen runs them on its keyboard engine,
-the same engine that types on ChromeOS and in the Divvun text service on
-Windows, so you can check a layout on any computer before building it.
+the same engine that types on ChromeOS, in the Divvun text service on
+Windows and in the Divvun IBus engine on Linux, so you can check a layout on any computer before building it.
 
 [source,sh]
 ----
@@ -117,8 +117,8 @@ blocked, the error names the defect codes (<<layouts-v3-migrate-report>>).
 |`host`
 |The platform to test: `windows`, `macOS`, `chromeOS`, `linux`, `iOS`,
 `android` or `web` (<<layouts-hosts>>). Required with `layout`. It also
-decides platform behaviour, such as Left Alt being for shortcuts on Windows
-and ChromeOS.
+decides platform behaviour, such as Left Alt being for shortcuts on
+Windows, ChromeOS and Linux.
 
 |`options`
 |Optional engine settings: `backspace`, either `cancelOrPass` (the default:

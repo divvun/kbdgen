@@ -302,15 +302,15 @@ transforms:
       u: ǘ
 ----
 
-Here `´` then `¨` then `u` types `ǘ`. Only the Windows and ChromeOS targets
-support chains. The macOS and iOS targets stop with an internal error on a
-layout with a chain and a section for them; the Android target stops on a
+Here `´` then `¨` then `u` types `ǘ`. Only the Windows, ChromeOS and Linux
+targets support chains. The macOS and iOS targets stop with an internal error
+on a layout with a chain and a section for them; the Android target stops on a
 chain in any layout of the bundle.
 
 Write dead-key characters themselves, not `+\u{…}+` escapes, in layers,
 `deadKeys` and `transforms`: an escaped entry does not match the key on
 Windows. Quote keys that YAML would read otherwise, as in format 4
-(<<layouts-quoting>>): `'0': °`, `'~'`, `'n': ŋ`.
+(<<layouts-quoting>>): `'0': °`, `'~'`.
 
 [[layouts-v3-escapes]]
 === Escapes
@@ -365,6 +365,10 @@ only the summary.
   under `hardware`, `iOS` and `android` under `touch`. Each variant is
   written in full; you may then merge equal parts into a `default` variant
   with `inherits` (<<layouts-hosts>>).
+* No `linux` variant is written. The Linux target builds a format 3 layout
+  from its `windows` section, or its `chromeOS` section when it has no
+  `windows` one, so add `linux: {inherits: windows}` (or `chromeOS`) under
+  `hardware` to keep building it for Linux (<<linux-layouts>>).
 * Layer names become modifier sets: `default` → `none`, `caps+shift` →
   `caps shift`, `cmd+alt` → `cmd alt`. `alt` becomes `altR` on Windows and
   ChromeOS (AltGr) and stays `alt` on macOS.

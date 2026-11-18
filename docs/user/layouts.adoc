@@ -79,7 +79,7 @@ hardware:
         Ž Z Č C V B N M ; : _
 ----
 
-This is already a working keyboard for Windows, macOS and ChromeOS.
+This is already a working keyboard for Windows, macOS, ChromeOS and Linux.
 
 * `format: 4` marks the file as format 4. Without it, kbdgen reads the file
   as format 3 (<<layouts-v3>>).
@@ -178,9 +178,9 @@ Inside a `|` block nothing needs quoting. Elsewhere, YAML gives some
 characters a meaning of their own, so quote them with single quotes when they
 are the whole value or a key: `'~'` (unquoted it means "nothing"),
 `+'`'+`, `'#'`, `'@'`, `'%'`, `'&'`, `'*'`, `'!'`, `'|'`, `'>'`, `'?'`,
-`'-'`, `':'`, `','`, `'['`, `'{'`, `"'"`. Quote digits and numbers too,
-and the words YAML might read as true or false, such as `'y'`, `'n'`, `'no'`,
-`'on'` and `'off'`.
+`'-'`, `':'`, `','`, `'['`, `'{'`, `"'"`. Quote digits and numbers too, and
+`true` and `false`. Words such as `y`, `n`, `no`, `on` and `off` are text, so
+they need no quotes.
 
 Format 4 never turns a number or a true/false into text behind your back:
 where it expects text and finds anything else, it stops and asks you to quote
@@ -284,8 +284,8 @@ hardware:
 
 `alt` is the portable choice:
 
-* On Windows and ChromeOS, the right Alt key (AltGr) reaches it. The left
-  Alt key never types there: it is for menus and shortcuts.
+* On Windows, ChromeOS and Linux, the right Alt key (AltGr) reaches it. The
+  left Alt key never types there: it is for menus and shortcuts.
 * On macOS, either Option key reaches it.
 
 `altR` is the right Alt key only. When it builds for macOS, kbdgen warns
@@ -431,10 +431,12 @@ warns (<<layouts-checking>>).
 [[layouts-dead-keys-typing]]
 ==== What the user gets
 
-kbdgen's keyboard engine, which ChromeOS and the Divvun text service on
-Windows run, gives dead keys the behaviour they have on macOS. The macOS
-`.keylayout` and the Windows layout DLL that kbdgen generates follow it as
-far as those formats allow. With `´` on the key left of Backspace:
+kbdgen's keyboard engine, which ChromeOS, the Divvun text service on Windows
+and the Divvun IBus engine on Linux run, gives dead keys the behaviour they
+have on macOS. The macOS `.keylayout` and the Windows layout DLL that kbdgen
+generates follow it as far as those formats allow; the Linux XKB layout
+composes by the desktop's Compose table instead (<<linux-sources>>). With `´`
+on the key left of Backspace:
 
 * `´` then `a` types `á`, and `´` then Shift+`a` types `Á`.
 * While a dead key waits, the text shows what it would type alone, here `´`,
@@ -539,10 +541,11 @@ typed in a different order than they are stored. The rule syntax is in the
 LDML specification, under
 https://www.unicode.org/reports/tr35/tr35-keyboards.html#element-transforms[transforms].
 
-Transforms run in kbdgen's keyboard engine: on ChromeOS, and on Windows
-through the Divvun text service. A macOS `.keylayout` or a Windows layout
-DLL can only express transforms that continue a dead key; when kbdgen builds
-them, it reports the transforms they cannot express.
+Transforms run in kbdgen's keyboard engine: on ChromeOS, on Windows through
+the Divvun text service, and on Linux through the Divvun IBus engine. A
+macOS `.keylayout` or a Windows layout DLL can only express transforms that
+continue a dead key, and a Linux XKB layout none; when kbdgen builds them,
+it reports the transforms they cannot express.
 
 [[layouts-long-press]]
 === Long press
@@ -770,8 +773,8 @@ touch:
 ----
 
 The layout-level fields, such as `displayNames`, `deadKeys` and `transforms`,
-are shared by all hosts. No target builds the `linux` and `web` hosts; only
-the `kbdgen ldml` commands use them.
+are shared by all hosts. The Linux target builds the `linux` host. No target
+builds the `web` host; only the `kbdgen ldml` commands use it.
 
 [[layouts-normalization]]
 === Normalization
