@@ -1,0 +1,24 @@
+{
+  "KPlugin": {
+    "Id": "no.divvun.und_x_mods",
+    "Name": "Modifiers",
+    "Version": "1.2.3"
+  },
+  "X-Plasma-Keyboard": {
+    "KeyboardLayouts": [
+      {
+        "File": "desktop.qml",
+        "FormFactors": [
+          "phone",
+          "desktop",
+          "mediacenter"
+        ],
+        "Id": "desktop",
+        "Name": "Modifiers"
+      }
+    ],
+    "Locales": [
+      "und_x_mods"
+    ]
+  }
+}

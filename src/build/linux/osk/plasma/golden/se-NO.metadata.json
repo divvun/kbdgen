@@ -1,0 +1,33 @@
+{
+  "KPlugin": {
+    "Id": "no.divvun.se_NO",
+    "Name": "Davvisámegiella (Norga)",
+    "Name[da]": "Nordsamisk (Norge)",
+    "Name[en]": "Northern Sami (Norway)",
+    "Name[fi]": "Pohjoissaame (Norja)",
+    "Name[nb]": "Nordsamisk (Norge)",
+    "Name[nn]": "Nordsamisk (Noreg)",
+    "Name[no]": "Nordsamisk (Norge)",
+    "Name[se_NO]": "Davvisámegiella (Norga)",
+    "Name[sma]": "Noerhtesaemiengïele (Nöörje)",
+    "Name[sv]": "Nordsamiska (Norge)",
+    "Version": "1.2.3"
+  },
+  "X-Plasma-Keyboard": {
+    "KeyboardLayouts": [
+      {
+        "File": "desktop.qml",
+        "FormFactors": [
+          "phone",
+          "desktop",
+          "mediacenter"
+        ],
+        "Id": "desktop",
+        "Name": "Davvisámegiella (Norga)"
+      }
+    ],
+    "Locales": [
+      "se_NO"
+    ]
+  }
+}

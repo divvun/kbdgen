@@ -313,13 +313,20 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 >
 > - without a shift level, the default level's `KeyboardLayout`
 > - with one, a `KeyboardLayoutLoader` whose `sourceComponent` is the
->   shift level's `KeyboardLayout` while
->   `VirtualKeyboard.inputEngine.uppercase` is true and the default
->   level's otherwise, each in a `Component`. plasma-keyboard has no shift
->   layer: it uppercases a key's text, when that is one UTF-16 unit, for
->   the locale while shifted (`textcomposers/directtextcomposer.cpp`), so
->   the shift level's keys carry `noModifier: true`, and a shift output
->   that the uppercasing changes is reported
+>   shift level's `KeyboardLayout` while its own `inputEngine` is
+>   uppercase (`inputEngine && inputEngine.uppercase`, as
+>   `layouts/ko_KR/contents/layouts/Dubeolsik.qml` writes it) and the
+>   default level's otherwise, each in a `Component`. The loader declares
+>   `readonly property real maxWidthToHeightRatio: -1`: `Keyboard.qml`
+>   caps the main layout's width at that ratio times its height unless it
+>   is -1, and for a loader without the property the cap is NaN and no tap
+>   reaches a key (Verified: `tests/linux-vm/plasma-keyboard/`).
+>   plasma-keyboard has no shift layer: while shifted it uppercases a
+>   key's text, when that is one UTF-16 unit, for the locale
+>   (`textcomposers/directtextcomposer.cpp`), and its labels with them.
+>   The shift level's keys carry `noModifier: true`, which keeps their
+>   labels as written; what they commit is still uppercased, so a
+>   shift-level text that the uppercasing changes is reported
 >
 > plasma-keyboard's own symbol pages stand in for the symbol levels. A
 > level's rows are `KeyboardRow`s of:
@@ -330,11 +337,18 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > - a dead key: `Key { text: flush[m]; displayText: display }`, left out
 >   when `flush[m]` is empty
 > - the added keys: `ShiftKey {}` and `BackspaceKey {}`, `weight` 150
-> - a gap: `FillerKey {}`
+> - a gap: `FillerKey {}`, with `weight` as for text
 >
-> Each page ends with nb_NO's bottom row: `SymbolModeKey` (1.5),
-> `ChangeLanguageKey`, `,`, `SpaceKey` (4), `.`, `HideKeyboardKey` and
-> `EnterKey` (1.5).
+> Each level ends with nb_NO's bottom row: `SymbolModeKey` (1.5),
+> `ChangeLanguageKey`, its `,` and `.` keys around `SpaceKey`, which has
+> `displayText` `labels.space` where K has one, `HideKeyboardKey` and
+> `EnterKey` (1.5). plasma-keyboard stretches each row to the keyboard's
+> width and sizes its keys by weight (`KeyboardRow.qml`), so every row of
+> both levels is made as wide as the widest of them, or as the bottom row
+> with a `SpaceKey` of 4 if that is wider: a narrower row gets a
+> `FillerKey` of half the difference at each end, and the `SpaceKey` takes
+> what the bottom row lacks. `EnterKey` shows its icon, not
+> `labels.return`.
 
 ## Reporting
 

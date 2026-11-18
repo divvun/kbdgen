@@ -1630,6 +1630,13 @@ impl_evidence (
         {impl_name main, rule linux.xkb.naming}
         {impl_name main, rule linux.xkb.symbols}
     )}
+    {id targets.linux.osk.plasma, covered_rules (
+        ldml.linux.touch.plasma
+        linux.osk.plasma
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.touch.plasma}
+        {impl_name main, rule linux.osk.plasma}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

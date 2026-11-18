@@ -69,10 +69,11 @@ Sources:
   `src/layouts/*.json`, `doc/testing-layouts.md`
 - plasma-keyboard `1e20db4` (6.8.80, the 6.9 development line):
   `README.md`, `layouts/*/metadata.json`, `layouts/nb_NO/`,
-  `layouts/defaultplugin/`, `virtualkeyboard/components/`,
+  `layouts/ko_KR/`, `layouts/defaultplugin/`, `virtualkeyboard/components/`,
   `virtualkeyboard/keyboardlayoutmetadata.cpp`,
   `virtualkeyboard/textcomposers/directtextcomposer.cpp`,
-  `kcm/plasmakeyboardkcm.cpp`, `src/plasmakeyboardsettings.kcfg`; tag
+  `kcm/plasmakeyboardkcm.cpp`, `src/plasmakeyboardsettings.kcfg`,
+  `autotests/mockinputmethodcompositor.cpp`; tag
   `v6.7.90` `src/layoutpathhelper.h`
 - crates.io `ibus-engine` 0.3.1, `gvdb` 0.10.1, `xkbcommon` 0.9.0
 - `docs/spec/tsf.md`, `docs/spec/chromeos.md`, `docs/spec/ldml/chromeos.md`
@@ -719,7 +720,10 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
 >
 > The entry lists every form factor plasma-keyboard's own packages use, so
 > its settings offer the layout whatever the device (Source:
-> `kcm/plasmakeyboardkcm.cpp`). Users enable layouts there
+> `kcm/plasmakeyboardkcm.cpp`). plasma-keyboard `1e20db4`, run under its
+> own mock compositor, finds such packages under `XDG_DATA_DIRS`, loads
+> the layout enabled as `<id>/desktop` and commits what its keys type
+> (Verified: `tests/linux-vm/plasma-keyboard/`). Users enable layouts in its settings
 > (`enabledKeyboardLayoutIds`), not by XKB layout, so these ids need not
 > match L. plasma-keyboard 6.5 to 6.8 compiled Qt Virtual Keyboard
 > layouts in and read at most one layouts directory (Source: `v6.7.90`

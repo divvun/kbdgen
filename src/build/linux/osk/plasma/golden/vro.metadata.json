@@ -1,0 +1,25 @@
+{
+  "KPlugin": {
+    "Id": "no.divvun.vro",
+    "Name": "Võro",
+    "Name[en]": "Võro",
+    "Version": "1.2.3"
+  },
+  "X-Plasma-Keyboard": {
+    "KeyboardLayouts": [
+      {
+        "File": "desktop.qml",
+        "FormFactors": [
+          "phone",
+          "desktop",
+          "mediacenter"
+        ],
+        "Id": "desktop",
+        "Name": "Võro"
+      }
+    ],
+    "Locales": [
+      "vro"
+    ]
+  }
+}

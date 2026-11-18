@@ -1,12 +1,14 @@
 //! The on-screen keyboards of the Linux target (`linux.osk.*`). Every OSK
 //! shows one presented set, the layout's desktop layout as touch
-//! (`presented`), and reports what it cannot show or type (`classify`).
+//! (`presented`), and reports what it cannot show or type (`classify`);
+//! `plasma` writes it as a plasma-keyboard package.
 
 use anyhow::{Result, anyhow};
 
 use super::source::LinuxLayout;
 
 pub mod classify;
+pub mod plasma;
 pub mod presented;
 #[cfg(test)]
 mod tests;
