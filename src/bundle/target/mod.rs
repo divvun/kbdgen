@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-// [spec:kbdgen:req:bundle.structure.targets+4]
+// [spec:kbdgen:req:bundle.structure.targets+5]
 #[derive(Debug, Default)]
 pub struct Targets {
     pub windows: Option<Windows>,
     pub macos: Option<MacOS>,
     pub ios: Option<iOS>,
     pub chromeos: Option<ChromeOS>,
+    pub linux: Option<Linux>,
     pub android: Option<Android>,
 }
 
@@ -67,6 +68,16 @@ pub struct ChromeOS {
     pub(crate) version: String,
 }
 
+/// `targets/linux.yaml`, whose names `linux.ids` checks when the target
+/// builds.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Linux {
+    pub(crate) package_id: String,
+    pub(crate) layout_prefix: String,
+    pub(crate) version: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Android {
@@ -99,6 +110,7 @@ mod tests {
         "codeSignId: Sign\npackageId: no.example\nbundleName: Bundle\nversion: 2.0\nbuild: 3\n";
     const IOS: &str = "packageId: no.example.ios\nbundleName: Bundle\nversion: \"1.0\"\nbuild: 4\n";
     const CHROMEOS: &str = "appId: abc\nbuild: 5\nversion: 1.2.3\n";
+    const LINUX: &str = "packageId: no.example\nlayoutPrefix: divvun\nversion: 1.0\n";
     const ANDROID: &str = "packageId: no.example.android\nversion: \"1.0\"\nbuild: 6\n";
 
     fn load_with_targets(targets: &[(&str, &str)]) -> Result<KbdgenBundle, Error> {
@@ -159,7 +171,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn recognised_stems_load_and_unknown_are_ignored() {
         let _env = EnvGuard::new();
@@ -169,7 +181,8 @@ mod tests {
             ("ios", IOS),
             ("chromeos", CHROMEOS),
             ("android", ANDROID),
-            ("linux", "not: [valid"),
+            ("linux", LINUX),
+            ("wayland", "not: [valid"),
             ("ipados", "- not a mapping\n"),
         ])
         .unwrap();
@@ -190,12 +203,16 @@ mod tests {
         assert_eq!(chromeos.app_id, "abc");
         assert_eq!(chromeos.build, "5");
         assert_eq!(chromeos.version, "1.2.3");
+        let linux = targets.linux.unwrap();
+        assert_eq!(linux.package_id, "no.example");
+        assert_eq!(linux.layout_prefix, "divvun");
+        assert_eq!(linux.version, "1.0");
         let android = targets.android.unwrap();
         assert_eq!(android.package_id, "no.example.android");
         assert_eq!(android.build, 6);
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn absent_target_files_leave_targets_unconfigured() {
         let bundle = load_with_targets(&[("windows", WINDOWS)]).unwrap();
@@ -204,10 +221,11 @@ mod tests {
         assert!(bundle.targets.macos.is_none());
         assert!(bundle.targets.ios.is_none());
         assert!(bundle.targets.chromeos.is_none());
+        assert!(bundle.targets.linux.is_none());
         assert!(bundle.targets.android.is_none());
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn chrome_yaml_configures_chromeos_but_not_beside_chromeos_yaml() {
         let bundle = load_with_targets(&[("chrome", CHROMEOS)]).unwrap();
@@ -217,7 +235,7 @@ mod tests {
         assert!(matches!(error, Error::ChromeOsTwice { .. }), "{error}");
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn target_parse_failure_aborts_loading() {
         let _env = EnvGuard::new();
@@ -225,6 +243,7 @@ mod tests {
             ("windows", WINDOWS.replace("uuid: 1234\n", "")),
             ("macos", MACOS.replace("bundleName: Bundle\n", "")),
             ("chromeos", CHROMEOS.replace("appId: abc\n", "")),
+            ("linux", LINUX.replace("layoutPrefix: divvun\n", "")),
             ("ios", IOS.replace("build: 4", "build: -1")),
             (
                 "android",
@@ -240,7 +259,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn ios_and_android_strings_must_be_yaml_strings() {
         let _env = EnvGuard::new();
@@ -258,7 +277,7 @@ mod tests {
         }
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn windows_target_rejects_layout_keyboard_options() {
         for (field, value) in [
@@ -282,7 +301,7 @@ mod tests {
         assert!(load_with_targets(&[("windows", &yaml)]).is_ok());
     }
 
-    // [spec:kbdgen:req:bundle.structure.targets+4/test]
+    // [spec:kbdgen:req:bundle.structure.targets+5/test]
     #[test]
     fn non_mapping_ios_and_android_targets_are_errors() {
         let _env = EnvGuard::new();

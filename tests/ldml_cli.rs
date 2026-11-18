@@ -121,12 +121,13 @@ fn v4_bundle_exports_compiles_and_imports_back() {
     }
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence+2/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+3/test]
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
 // [spec:kbdgen:req:ldml.macos.target/test]
 // [spec:kbdgen:req:ldml.chromeos.target/test]
+// [spec:kbdgen:def:ldml.linux.input/test]
 #[test]
-fn windows_macos_and_chromeos_targets_build_v4_layouts() {
+fn model_targets_build_v4_layouts() {
     let dir = tempfile::tempdir().unwrap();
     let bundle = dir.path().join("vro.kbdgen");
     for sub in ["layouts", "targets", "resources"] {
@@ -241,6 +242,128 @@ fn windows_macos_and_chromeos_targets_build_v4_layouts() {
     }
     let manifest = std::fs::read_to_string(chromeos.join("manifest.json")).unwrap();
     assert!(manifest.contains("\"id\": \"vro\""), "{manifest}");
+
+    std::fs::write(bundle.join("targets/linux.yaml"), LINUX).unwrap();
+    let linux = dir.path().join("linux");
+    let output = kbdgen(&[
+        "target".as_ref(),
+        "-b".as_ref(),
+        bundle.as_os_str(),
+        "-o".as_ref(),
+        linux.as_os_str(),
+        "linux".as_ref(),
+    ]);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    assert!(
+        stderr.contains("vro: compiled as the Linux layout divvun-vro"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("Prepared 1 layout(s) for Linux"),
+        "{stderr}"
+    );
+}
+
+const LINUX: &str = "packageId: no.divvun\nlayoutPrefix: divvun\nversion: 1.0.0\n";
+
+fn fixture(relative: &str) -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(relative);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+// [spec:kbdgen:def:cli.commands+3/test]
+// [spec:kbdgen:sem:pipeline.steps+3/test]
+// [spec:kbdgen:def:linux.ids/test]
+// [spec:kbdgen:def:ldml.linux.input/test]
+#[test]
+fn linux_target_compiles_the_fixture_layouts() {
+    let linux = |text: String, variant: &str| {
+        text.replace(&format!("hardware:\n  {variant}:"), "hardware:\n  linux:")
+    };
+    let layouts = [
+        ("vro", VRO.to_owned()),
+        (
+            "und-x-mods",
+            fixture("crates/kbd-engine/tests/golden/layouts/und-x-mods.yaml"),
+        ),
+        (
+            "sme",
+            linux(
+                fixture("src/build/windows/kbdl/testdata/features.yaml"),
+                "windows",
+            ),
+        ),
+        (
+            "sme-FI",
+            linux(fixture("src/build/macos/testdata/features.yaml"), "macOS"),
+        ),
+        ("sme-SE", fixture("src/build/macos/testdata/features.yaml")),
+        (
+            "vro-x-win",
+            fixture("src/build/windows/kbdl/testdata/vro-v3.yaml"),
+        ),
+        (
+            "vro-x-cros",
+            fixture("src/build/chromeos/testdata/vro-v3.yaml"),
+        ),
+        (
+            "se-NO",
+            fixture("crates/kbd-engine/tests/golden/v3/se-NO.yaml"),
+        ),
+        ("fi", "displayNames:\n  fi: Suomi\n".to_owned()),
+    ];
+    let dir = tempfile::tempdir().unwrap();
+    let bundle = dir.path().join("fixtures.kbdgen");
+    for sub in ["layouts", "targets", "resources"] {
+        std::fs::create_dir_all(bundle.join(sub)).unwrap();
+    }
+    std::fs::write(
+        bundle.join("project.yaml"),
+        "locales:\n  en:\n    name: Test\n    description: Test\nauthor: Test\ncopyright: Test\nemail: test@example.com\norganisation: Test\n",
+    )
+    .unwrap();
+    for (stem, text) in &layouts {
+        std::fs::write(bundle.join(format!("layouts/{stem}.yaml")), text).unwrap();
+    }
+    std::fs::write(bundle.join("targets/linux.yaml"), LINUX).unwrap();
+    let out = dir.path().join("out");
+    let output = Command::new(env!("CARGO_BIN_EXE_kbdgen"))
+        .env("RUST_LOG", "info,kbdgen::build::linux=debug")
+        .args(["target", "-b"])
+        .arg(&bundle)
+        .arg("-o")
+        .arg(&out)
+        .arg("linux")
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    for (tag, id) in [
+        ("se-NO", "divvun-se-no"),
+        ("sme", "divvun-sme"),
+        ("sme-FI", "divvun-sme-fi"),
+        ("und-x-mods", "divvun-und-x-mods"),
+        ("vro", "divvun-vro"),
+        ("vro-x-cros", "divvun-vro-x-cros"),
+        ("vro-x-win", "divvun-vro-x-win"),
+    ] {
+        assert!(
+            stderr.contains(&format!("{tag}: compiled as the Linux layout {id}")),
+            "{tag}: {stderr}"
+        );
+    }
+    for skipped in [
+        "Skipping fi: no windows or chromeOS section",
+        "Skipping sme-SE: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one",
+    ] {
+        assert!(stderr.contains(skipped), "{skipped}: {stderr}");
+    }
+    assert!(
+        stderr.contains("Prepared 7 layout(s) for Linux"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_dir(&out).unwrap().count(), 0, "{stderr}");
 }
 
 // [spec:kbdgen:req:ldml.yaml.strict+1/test]

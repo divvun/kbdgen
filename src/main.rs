@@ -12,6 +12,7 @@ use kbdgen::build::BuildSteps;
 use kbdgen::build::android::AndroidBuild;
 use kbdgen::build::chromeos::ChromeOsBuild;
 use kbdgen::build::ios::{self, IosBuild, IosProjectExt};
+use kbdgen::build::linux::LinuxBuild;
 use kbdgen::build::windows::WindowsBuild;
 use kbdgen::bundle::read_kbdgen_bundle;
 use kbdgen::ldml::cli::LdmlCommand;
@@ -33,7 +34,7 @@ async fn android_target(
     Ok(())
 }
 
-// [spec:kbdgen:sem:pipeline.steps+2]
+// [spec:kbdgen:sem:pipeline.steps+3]
 // [spec:kbdgen:req:macbundle.installer+1]
 async fn macos_target(
     bundle: KbdgenBundle,
@@ -85,7 +86,7 @@ async fn main() -> anyhow::Result<()> {
         }
         // [spec:kbdgen:def:ldml.cli.commands+1]
         Command::Ldml { command } => kbdgen::ldml::cli::run(command)?,
-        // [spec:kbdgen:def:cli.commands+2]
+        // [spec:kbdgen:def:cli.commands+3]
         // [spec:kbdgen:req:tsf.security.signing+2]
         Command::Tsf(options) => {
             for path in
@@ -94,11 +95,11 @@ async fn main() -> anyhow::Result<()> {
                 println!("{}", path.display());
             }
         }
-        // [spec:kbdgen:def:cli.commands+2]
+        // [spec:kbdgen:def:cli.commands+3]
         Command::Target(target_command_struct) => {
             let bundle_path = &target_command_struct.bundle_path;
             let bundle = read_kbdgen_bundle(bundle_path)?;
-            // [spec:kbdgen:req:ldml.yaml.coexistence+2]
+            // [spec:kbdgen:req:ldml.yaml.coexistence+3]
             bundle.reject_v4_layouts(target_command_struct.target_command.name())?;
 
             let output_path = &target_command_struct.output_path;
@@ -116,6 +117,11 @@ async fn main() -> anyhow::Result<()> {
                 }
                 TargetCommand::ChromeOs(_chromeos_command) => {
                     let build = ChromeOsBuild::new(bundle, output_path.clone());
+
+                    build.build_full().await?;
+                }
+                TargetCommand::Linux(_linux_command) => {
+                    let build = LinuxBuild::new(bundle, output_path.clone());
 
                     build.build_full().await?;
                 }
@@ -156,7 +162,7 @@ struct Cli {
     command: Command,
 }
 
-// [spec:kbdgen:def:cli.commands+2]
+// [spec:kbdgen:def:cli.commands+3]
 #[derive(Subcommand)]
 enum Command {
     #[clap(about = "Functionality relating to specific targets")]
@@ -198,6 +204,7 @@ impl TargetCommand {
         match self {
             TargetCommand::Windows(_) => "windows",
             TargetCommand::ChromeOs(_) => "chromeos",
+            TargetCommand::Linux(_) => "linux",
             TargetCommand::MacOs(_) => "macos",
             TargetCommand::Android(_) => "android",
             TargetCommand::Ios(_) => "ios",
@@ -211,6 +218,8 @@ enum TargetCommand {
     Windows(TargetWindowsCommand),
     #[clap(name = "chromeos", about = "ChromeOS functionality")]
     ChromeOs(TargetChromeOsCommand),
+    #[clap(about = "Linux functionality")]
+    Linux(TargetLinuxCommand),
     #[clap(name = "macos", about = "macOS functionality")]
     MacOs(TargetMacOs),
     #[clap(about = "Android functionality")]
@@ -297,6 +306,11 @@ struct TargetWindowsCommand {}
 
 #[derive(Parser)]
 struct TargetChromeOsCommand {}
+
+// Linux
+
+#[derive(Parser)]
+struct TargetLinuxCommand {}
 
 // MacOS
 

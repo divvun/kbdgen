@@ -7,9 +7,9 @@
 //! platforms typed (`oracle`). Every defect found on the way is reported
 //! (`defect`, `report`); a blocking one leaves the file unwritten.
 //!
-//! [`migrate_text`] works in memory, which the Windows and ChromeOS builds
-//! use to embed a v3 layout's model (`ldml.kbdl.model-resource`,
-//! `ldml.chromeos.input`).
+//! [`migrate_text`] works in memory, which the Windows, ChromeOS and Linux
+//! builds use to embed a v3 layout's model (`ldml.kbdl.model-resource`,
+//! `ldml.chromeos.input`, `ldml.linux.input`).
 
 mod check;
 mod convert;

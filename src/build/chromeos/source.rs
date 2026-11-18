@@ -13,11 +13,10 @@ use language_tags::LanguageTag;
 
 use super::classify;
 use crate::build::diag::{Diagnostics, Platform};
+use crate::build::migration;
 use crate::bundle::KbdgenBundle;
 use crate::ldml::compile::{Selection, encode};
 use crate::ldml::layouts::{HostDocument, LayoutFile, compiled_layouts, host_documents};
-use crate::ldml::migrate::defect::Code;
-use crate::ldml::migrate::migrate_bundle_layout;
 use crate::ldml::yaml::LayoutFormat;
 
 /// The input component's language and XKB layout when the layout's
@@ -73,28 +72,11 @@ fn sources(bundle: &KbdgenBundle) -> Vec<Source<'_>> {
     sources
 }
 
-/// The host documents of a v3 layout's migration, which must not block
-/// and must have a `chromeOS` document, since the extension has no other
-/// way to type the layout.
+/// The host documents of a v3 layout's migration, which must have a
+/// `chromeOS` document, since the extension has no other way to type the
+/// layout.
 fn migrated_documents(bundle: &KbdgenBundle, tag: &LanguageTag) -> Result<Vec<HostDocument>> {
-    let migration = migrate_bundle_layout(&bundle.path, tag.as_str())
-        .with_context(|| format!("{tag}: migrate the v3 layout"))?
-        .ok_or_else(|| anyhow!("{tag}: the bundle has no v3 layout file to migrate"))?;
-    if migration.blocked() {
-        let codes: Vec<&str> = migration
-            .blocking_codes()
-            .into_iter()
-            .map(Code::name)
-            .collect();
-        bail!(
-            "{tag}: the v3 layout's migration is blocked by defects {}; `kbdgen ldml migrate --dry-run` reports them",
-            codes.join(", ")
-        );
-    }
-    let documents = migration
-        .host_documents()
-        .with_context(|| format!("{tag}: lower the migrated layout"))?
-        .ok_or_else(|| anyhow!("{tag}: the v3 layout migrated to no layout"))?;
+    let documents = migration::host_documents(tag, &migration::unblocked(bundle, tag)?)?;
     if !documents.iter().any(|d| d.host == Host::ChromeOs) {
         bail!("{tag}: the v3 layout's migration has no chromeOS keyboard");
     }

@@ -27,12 +27,12 @@ dependency bundles.
 
 ### Target files
 
-> [spec:kbdgen:req:bundle.structure.targets+4]
+> [spec:kbdgen:req:bundle.structure.targets+5]
 > A file in `targets/` is recognised by its stem, exactly `windows`, `ios`,
-> `macos`, `chromeos` or `android`; `chrome`, as bundles written for kbdgen 2
-> name it, configures ChromeOS too, and having both `chrome` and `chromeos`
-> fails loading with an error naming the files. Other stems are warned about
-> and ignored.
+> `macos`, `chromeos`, `linux` or `android`; `chrome`, as bundles written for
+> kbdgen 2 name it, configures ChromeOS too, and having both `chrome` and
+> `chromeos` fails loading with an error naming the files. Other stems are
+> warned about and ignored.
 > An absent file leaves the target unconfigured; a parse failure aborts
 > loading; unknown fields are ignored. The exception is `windows` with a
 > top-level `shiftLock`, `lrmRlm` or `keyNames`: these are keyboard options
@@ -46,14 +46,17 @@ dependency bundles.
 > | `macos` | `codeSignId` `packageId` `bundleName` `version` `build` | — |
 > | `ios` | `packageId` `bundleName` `version`, `build` (unsigned int) | `codeSignId` `teamId` `provisioningProfileId` `sentryDsn` `appStoreKeyJson` `matchGitUrl` `matchPassword` `fastlaneUser` `fastlanePassword` |
 > | `chromeos` | `appId` `build` `version` | — |
+> | `linux` | `packageId` `layoutPrefix` `version` | — |
 > | `android` | `packageId` `version`, `build` (unsigned int) | `keyStore` `keyAlias` `playStoreAccount` `playStoreP12` `storePassword` `keyPassword` |
 >
 > Windows `version` and `build` form the layout DLLs' file version
 > (`kbdl.resources`); `appName`, `url` and `uuid` are required but unused.
-> Other fields are strings. `windows`, `macos`, `chromeos` accept any scalar
-> as a string (`version: 1.0` → `"1.0"`); `ios` and `android` are parsed via a
-> YAML value, so their strings MUST be YAML strings and their top level MUST
-> be a mapping, else loading fails with an error naming the file.
+> Linux `packageId` and `layoutPrefix` name the Linux output, whose build
+> checks their shape (`linux.ids`). Other fields are strings. `windows`,
+> `macos`, `chromeos` and `linux` accept any scalar as a string
+> (`version: 1.0` → `"1.0"`); `ios` and `android` are parsed via a YAML
+> value, so their strings MUST be YAML strings and their top level MUST be a
+> mapping, else loading fails with an error naming the file.
 
 > [spec:kbdgen:req:bundle.structure.targets.env+1]
 > When `ios.yaml` or `android.yaml` exists, each variable below that is set

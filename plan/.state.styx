@@ -1,38 +1,40 @@
 schema_version 7
 
-last_sync_at 2026-10-06T23:57:10.455378Z
+last_sync_at 2026-11-18T12:46:46.576107Z
 
 rule_versions (
-    {id android.dependencies, version 0}
-    {id android.dependencies.jnilibs, version 0}
-    {id android.gradle, version 0}
-    {id android.keys, version 0}
+    {id android.dependencies, version 1}
+    {id android.dependencies.jnilibs, version 1}
+    {id android.gradle, version 1}
+    {id android.keys, version 1}
     {id android.keys.number-row, version 0}
     {id android.layout-xml, version 0}
-    {id android.layout-xml.name, version 0}
-    {id android.layout-xml.rows, version 0}
-    {id android.metadata, version 0}
-    {id android.metadata.icons, version 0}
-    {id android.metadata.strings, version 0}
-    {id android.transforms, version 0}
-    {id bundle.fetch, version 0}
-    {id bundle.layouts, version 1}
+    {id android.layout-xml.name, version 1}
+    {id android.layout-xml.rows, version 1}
+    {id android.metadata, version 2}
+    {id android.metadata.icons, version 2}
+    {id android.metadata.strings, version 1}
+    {id android.transforms, version 1}
+    {id bundle.fetch, version 1}
+    {id bundle.layouts, version 2}
     {id bundle.layouts.autonym, version 0}
     {id bundle.project, version 0}
-    {id bundle.resources, version 0}
+    {id bundle.resources, version 3}
     {id bundle.structure, version 0}
-    {id bundle.structure.targets, version 1}
-    {id bundle.structure.targets.env, version 0}
-    {id chromeos.descriptor, version 0}
-    {id chromeos.descriptor.runtime, version 0}
-    {id chromeos.keymap, version 0}
-    {id chromeos.manifest, version 0}
-    {id cli.commands, version 1}
-    {id ios.build-chain, version 0}
-    {id ios.build-chain.init, version 0}
-    {id ios.keyboard-json, version 0}
-    {id ios.pkg-ids, version 0}
-    {id ios.pkg-ids.all, version 0}
+    {id bundle.structure.targets, version 4}
+    {id bundle.structure.targets.env, version 1}
+    {id chromeos.engine, version 0}
+    {id chromeos.extension, version 0}
+    {id chromeos.icons, version 1}
+    {id chromeos.locales, version 0}
+    {id chromeos.manifest, version 2}
+    {id cli.commands, version 2}
+    {id ios.build-chain, version 3}
+    {id ios.build-chain.init, version 1}
+    {id ios.keyboard-json, version 1}
+    {id ios.layouts, version 0}
+    {id ios.pkg-ids, version 1}
+    {id ios.pkg-ids.all, version 1}
     {id ios.rows, version 0}
     {id ios.transforms, version 0}
     {id kbdl.build, version 0}
@@ -81,21 +83,21 @@ rule_versions (
     {id kbdl.vk-chars.values, version 0}
     {id kbdl.wow64, version 0}
     {id keylayout.actions, version 0}
-    {id keylayout.actions.dead-key-next, version 0}
+    {id keylayout.actions.dead-key-next, version 1}
     {id keylayout.document, version 0}
     {id keylayout.document.id-range, version 0}
     {id keylayout.document.name, version 0}
     {id keylayout.keymaps, version 0}
     {id keylayout.keymaps.iso-codes, version 0}
     {id keylayout.keymaps.tokens, version 0}
-    {id keylayout.transforms, version 0}
-    {id keys.escape, version 1}
-    {id keys.iso-order, version 0}
-    {id keys.iso-order.desktop-layers, version 0}
-    {id layout.schema, version 0}
+    {id keylayout.transforms, version 1}
+    {id keys.escape, version 2}
+    {id keys.iso-order, version 1}
+    {id keys.iso-order.desktop-layers, version 2}
+    {id layout.schema, version 1}
     {id layout.schema.targets, version 0}
-    {id layout.transforms, version 0}
-    {id layout.transforms.dead-key-entries, version 0}
+    {id layout.transforms, version 1}
+    {id layout.transforms.dead-key-entries, version 1}
     {id ldml.android.adapter, version 0}
     {id ldml.android.cells, version 0}
     {id ldml.android.classify, version 0}
@@ -114,15 +116,25 @@ rule_versions (
     {id ldml.android.test.golden, version 0}
     {id ldml.android.test.writer, version 0}
     {id ldml.android.widths, version 0}
+    {id ldml.chromeos.classify, version 0}
+    {id ldml.chromeos.context, version 0}
+    {id ldml.chromeos.input, version 0}
+    {id ldml.chromeos.keys, version 0}
+    {id ldml.chromeos.modifiers, version 0}
+    {id ldml.chromeos.semantics, version 0}
+    {id ldml.chromeos.target, version 0}
+    {id ldml.chromeos.test.golden, version 0}
+    {id ldml.chromeos.test.typing, version 0}
+    {id ldml.chromeos.wasm, version 0}
     {id ldml.cli.commands, version 1}
     {id ldml.cli.compile, version 1}
     {id ldml.cli.export, version 0}
     {id ldml.cli.import, version 0}
     {id ldml.cli.test, version 0}
     {id ldml.crate.engine, version 1}
-    {id ldml.crate.ffi, version 0}
+    {id ldml.crate.ffi, version 1}
     {id ldml.crate.kbdgen, version 1}
-    {id ldml.crate.layout, version 1}
+    {id ldml.crate.layout, version 2}
     {id ldml.crate.ldml, version 0}
     {id ldml.crate.model, version 0}
     {id ldml.crate.targets, version 0}
@@ -149,7 +161,7 @@ rule_versions (
     {id ldml.engine.preedit, version 1}
     {id ldml.engine.reorder, version 1}
     {id ldml.engine.replace, version 0}
-    {id ldml.engine.shortcuts, version 1}
+    {id ldml.engine.shortcuts, version 2}
     {id ldml.engine.state, version 0}
     {id ldml.engine.test-keys, version 1}
     {id ldml.engine.touch, version 0}
@@ -166,6 +178,26 @@ rule_versions (
     {id ldml.kbdl.positions, version 2}
     {id ldml.kbdl.values, version 1}
     {id ldml.kbdl.windows-inputs, version 1}
+    {id ldml.linux.adapter, version 0}
+    {id ldml.linux.classify, version 0}
+    {id ldml.linux.classify.touch, version 0}
+    {id ldml.linux.compose, version 0}
+    {id ldml.linux.dead-keys, version 0}
+    {id ldml.linux.decimal, version 0}
+    {id ldml.linux.input, version 0}
+    {id ldml.linux.keycodes, version 0}
+    {id ldml.linux.levels, version 0}
+    {id ldml.linux.rewrites, version 0}
+    {id ldml.linux.semantics, version 0}
+    {id ldml.linux.target, version 0}
+    {id ldml.linux.test.typing, version 0}
+    {id ldml.linux.touch, version 0}
+    {id ldml.linux.touch.gnome, version 0}
+    {id ldml.linux.touch.keys, version 0}
+    {id ldml.linux.touch.plasma, version 0}
+    {id ldml.linux.touch.stevia, version 0}
+    {id ldml.linux.types, version 0}
+    {id ldml.linux.values, version 0}
     {id ldml.macos.adapter, version 0}
     {id ldml.macos.classify, version 0}
     {id ldml.macos.dead-keys, version 0}
@@ -205,7 +237,7 @@ rule_versions (
     {id ldml.model.touch, version 1}
     {id ldml.model.transforms, version 1}
     {id ldml.model.windows, version 0}
-    {id ldml.scope.deferred, version 1}
+    {id ldml.scope.deferred, version 2}
     {id ldml.scope.macos-rules, version 0}
     {id ldml.scope.v1, version 1}
     {id ldml.test.bundle, version 1}
@@ -239,7 +271,7 @@ rule_versions (
     {id ldml.xml.to, version 0}
     {id ldml.xml.validate, version 1}
     {id ldml.xml.write, version 0}
-    {id ldml.yaml.coexistence, version 1}
+    {id ldml.yaml.coexistence, version 2}
     {id ldml.yaml.dead-keys, version 1}
     {id ldml.yaml.dead-keys.backspace, version 0}
     {id ldml.yaml.dead-keys.compose, version 0}
@@ -264,36 +296,75 @@ rule_versions (
     {id ldml.yaml.roundtrip, version 2}
     {id ldml.yaml.rows, version 0}
     {id ldml.yaml.schema, version 3}
-    {id ldml.yaml.strict, version 0}
+    {id ldml.yaml.strict, version 1}
     {id ldml.yaml.targets, version 0}
     {id ldml.yaml.tokens, version 0}
     {id ldml.yaml.touch, version 1}
     {id ldml.yaml.touch.flicks, version 0}
     {id ldml.yaml.touch.roles, version 1}
     {id ldml.yaml.verbatim, version 1}
-    {id macbundle.installer, version 0}
-    {id macbundle.plist, version 1}
-    {id macbundle.plist.bundle-resources, version 0}
+    {id linux.ibus.component, version 0}
+    {id linux.ibus.context, version 0}
+    {id linux.ibus.context.fallback, version 0}
+    {id linux.ibus.crate, version 0}
+    {id linux.ibus.data, version 0}
+    {id linux.ibus.edit, version 0}
+    {id linux.ibus.factory, version 0}
+    {id linux.ibus.inert, version 0}
+    {id linux.ibus.keys, version 0}
+    {id linux.ibus.lister, version 0}
+    {id linux.ibus.logging, version 0}
+    {id linux.ibus.modifiers, version 0}
+    {id linux.ibus.osk-backspace, version 0}
+    {id linux.ibus.panic, version 0}
+    {id linux.ibus.planner, version 0}
+    {id linux.ibus.security, version 0}
+    {id linux.ibus.semantics, version 0}
+    {id linux.ibus.virtual-keys, version 0}
+    {id linux.ids, version 0}
+    {id linux.install, version 0}
+    {id linux.osk.gnome, version 0}
+    {id linux.osk.gnome.selection, version 0}
+    {id linux.osk.gnome.spike, version 0}
+    {id linux.osk.plasma, version 0}
+    {id linux.osk.stevia, version 0}
+    {id linux.output, version 0}
+    {id linux.test.acceptance, version 0}
+    {id linux.test.ci, version 0}
+    {id linux.test.golden, version 0}
+    {id linux.test.ibus, version 0}
+    {id linux.test.planner, version 0}
+    {id linux.test.xkbcommon, version 0}
+    {id linux.xkb.desktops, version 0}
+    {id linux.xkb.install, version 0}
+    {id linux.xkb.naming, version 0}
+    {id linux.xkb.registry, version 0}
+    {id linux.xkb.symbols, version 0}
+    {id macbundle.installer, version 1}
+    {id macbundle.plist, version 2}
+    {id macbundle.plist.bundle-resources, version 2}
     {id macbundle.plist.strings, version 0}
     {id pbxproj.ids, version 0}
-    {id pbxproj.model, version 0}
-    {id pbxproj.model.ordering, version 0}
-    {id pbxproj.model.read, version 0}
-    {id pbxproj.quoting, version 0}
-    {id pbxproj.serialize, version 0}
-    {id pbxproj.serialize.attributes, version 0}
-    {id pbxproj.serialize.build-settings, version 0}
-    {id pbxproj.serialize.fields, version 0}
-    {id pipeline.steps, version 0}
+    {id pbxproj.model, version 2}
+    {id pbxproj.model.ordering, version 1}
+    {id pbxproj.model.read, version 1}
+    {id pbxproj.quoting, version 2}
+    {id pbxproj.serialize, version 2}
+    {id pbxproj.serialize.attributes, version 1}
+    {id pbxproj.serialize.build-settings, version 1}
+    {id pbxproj.serialize.fields, version 2}
+    {id pipeline.steps, version 2}
     {id tsf.arch.arm64x, version 1}
     {id tsf.arch.builds, version 1}
     {id tsf.arch.registration, version 1}
     {id tsf.component, version 0}
     {id tsf.component.crate, version 0}
+    {id tsf.component.events, version 0}
     {id tsf.component.interfaces, version 2}
-    {id tsf.component.logging, version 0}
+    {id tsf.component.logging, version 1}
     {id tsf.component.panic, version 0}
     {id tsf.component.self-contained, version 0}
+    {id tsf.data.inert, version 0}
     {id tsf.data.locate, version 1}
     {id tsf.data.resource, version 0}
     {id tsf.data.version, version 0}
@@ -329,15 +400,16 @@ rule_versions (
     {id tsf.test.engine, version 0}
     {id tsf.test.host, version 0}
     {id tsf.test.vm, version 2}
-    {id xcode.localization, version 0}
-    {id xcode.targets, version 0}
-    {id xcode.targets.hosting-app, version 0}
-    {id xcode.targets.keyboard-plist, version 0}
+    {id xcode.localization, version 1}
+    {id xcode.targets, version 2}
+    {id xcode.targets.hosting-app, version 2}
+    {id xcode.targets.keyboard-plist, version 2}
 )
 
 derived_priorities (
     {id input.bundle, priority 1, derived_at 2026-10-05T12:48:15.670259Z}
     {id input.cli, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id input.fetch-tls, priority 2, derived_at 2026-11-18T12:46:46.576107Z}
     {id input.layout, priority 0, derived_at 2026-10-05T12:48:15.670259Z}
     {id input.layout-order, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id input.test-bundle, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
@@ -358,6 +430,7 @@ derived_priorities (
     {id ldml.ref-windows-targets, priority 3, derived_at 2026-10-05T22:35:48.087196Z}
     {id ldml.spec, priority 0, derived_at 2026-10-05T16:49:50.96484Z}
     {id ldml.spec-errata, priority 3, derived_at 2026-10-05T17:57:43.280011Z}
+    {id ldml.version-4-alpha, priority 0, derived_at 2026-11-18T12:46:46.576107Z}
     {id ldml.workspace, priority 1, derived_at 2026-10-05T17:21:48.229555Z}
     {id ldml.yaml-v4, priority 2, derived_at 2026-10-05T16:49:50.96484Z}
     {id quality.clippy, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
@@ -372,11 +445,31 @@ derived_priorities (
     {id targets.ios.about-path, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.development-team, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.keyboard-json, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.ios.main-parity, priority 0, derived_at 2026-11-18T12:46:46.576107Z}
     {id targets.ios.pbxproj, priority 0, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.pbxproj-gaps, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.test-golden, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.toolchain, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.ios.xcode, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
+    {id targets.linux.ibus.component, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.ibus.data, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.ibus.edits, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.ibus.factory, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.ibus.keys, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.ibus.test, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.input, priority 1, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.install, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.osk.gnome, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.osk.gnome-spike, priority 0, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.osk.plasma, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.osk.source, priority 2, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.osk.stevia, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.output, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.target-file, priority 0, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.xkb.classify, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.xkb.dead-keys, priority 3, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.xkb.registry, priority 2, derived_at 2026-11-18T12:46:46.576107Z}
+    {id targets.linux.xkb.symbols, priority 2, derived_at 2026-11-18T12:46:46.576107Z}
     {id targets.macos.keylayout, priority 2, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.macos.package, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
     {id targets.macos.repeated-dead-key, priority 3, derived_at 2026-10-05T12:48:15.670259Z}
@@ -432,6 +525,11 @@ assertions (
     {id targets.windows.test-golden, kind @doing, author "brendan@necessary.nu", at 2026-10-06T23:46:48.316912Z}
     {id input.fetch-tls, kind @complete, author "brendan@necessary.nu", at 2026-11-17T16:20:42.278384Z}
     {id ldml.version-4-alpha, kind @complete, author "brendan@necessary.nu", at 2026-11-17T16:23:02.828681Z}
+    {id targets.svg, kind @complete, author "brendan@necessary.nu", at 2026-11-18T12:36:10.365379Z}
+    {id targets.chromeos.panic-message, kind @complete, author "brendan@necessary.nu", at 2026-11-18T12:36:10.516381Z}
+    {id targets.ios.about-path, kind @complete, author "brendan@necessary.nu", at 2026-11-18T12:36:10.636808Z}
+    {id targets.ios.development-team, kind @complete, author "brendan@necessary.nu", at 2026-11-18T12:36:10.780871Z}
+    {id targets.android.icon-resize, kind @complete, author "brendan@necessary.nu", at 2026-11-18T12:36:10.912603Z}
 )
 
 impl_evidence (
@@ -454,14 +552,14 @@ impl_evidence (
         {impl_name main, rule bundle.structure.targets}
         {impl_name main, rule bundle.structure.targets.env}
     ), rule_versions_seen (
-        {id bundle.fetch, version 0}
-        {id bundle.layouts, version 1}
+        {id bundle.fetch, version 1}
+        {id bundle.layouts, version 2}
         {id bundle.layouts.autonym, version 0}
         {id bundle.project, version 0}
-        {id bundle.resources, version 0}
+        {id bundle.resources, version 3}
         {id bundle.structure, version 0}
-        {id bundle.structure.targets, version 1}
-        {id bundle.structure.targets.env, version 0}
+        {id bundle.structure.targets, version 4}
+        {id bundle.structure.targets.env, version 1}
     )}
     {id input.cli, covered_rules (
         cli.commands
@@ -471,7 +569,7 @@ impl_evidence (
         {impl_name main, rule pipeline.steps}
     ), rule_versions_seen (
         {id cli.commands, version 1}
-        {id pipeline.steps, version 0}
+        {id pipeline.steps, version 1}
     )}
     {id input.layout, covered_rules (
         keys.escape
@@ -490,13 +588,13 @@ impl_evidence (
         {impl_name main, rule layout.transforms}
         {impl_name main, rule layout.transforms.dead-key-entries}
     ), rule_versions_seen (
-        {id keys.escape, version 1}
-        {id keys.iso-order, version 0}
-        {id keys.iso-order.desktop-layers, version 0}
-        {id layout.schema, version 0}
+        {id keys.escape, version 2}
+        {id keys.iso-order, version 1}
+        {id keys.iso-order.desktop-layers, version 2}
+        {id layout.schema, version 1}
         {id layout.schema.targets, version 0}
-        {id layout.transforms, version 0}
-        {id layout.transforms.dead-key-entries, version 0}
+        {id layout.transforms, version 1}
+        {id layout.transforms.dead-key-entries, version 1}
     )}
     {id input.windows-layers, covered_rules (
         ldml.kbdl.windows-inputs
@@ -851,6 +949,40 @@ impl_evidence (
         {id ldml.xml.write, version 0}
     )}
     {id ldml.port.android}
+    {id ldml.port.chromeos, covered_rules (
+        ldml.chromeos.classify
+        ldml.chromeos.context
+        ldml.chromeos.input
+        ldml.chromeos.keys
+        ldml.chromeos.modifiers
+        ldml.chromeos.semantics
+        ldml.chromeos.target
+        ldml.chromeos.test.golden
+        ldml.chromeos.test.typing
+        ldml.chromeos.wasm
+    ), covered_claims (
+        {impl_name main, rule ldml.chromeos.classify}
+        {impl_name main, rule ldml.chromeos.context}
+        {impl_name main, rule ldml.chromeos.input}
+        {impl_name main, rule ldml.chromeos.keys}
+        {impl_name main, rule ldml.chromeos.modifiers}
+        {impl_name main, rule ldml.chromeos.semantics}
+        {impl_name main, rule ldml.chromeos.target}
+        {impl_name main, rule ldml.chromeos.test.golden}
+        {impl_name main, rule ldml.chromeos.test.typing}
+        {impl_name main, rule ldml.chromeos.wasm}
+    ), rule_versions_seen (
+        {id ldml.chromeos.classify, version 0}
+        {id ldml.chromeos.context, version 0}
+        {id ldml.chromeos.input, version 0}
+        {id ldml.chromeos.keys, version 0}
+        {id ldml.chromeos.modifiers, version 0}
+        {id ldml.chromeos.semantics, version 0}
+        {id ldml.chromeos.target, version 0}
+        {id ldml.chromeos.test.golden, version 0}
+        {id ldml.chromeos.test.typing, version 0}
+        {id ldml.chromeos.wasm, version 0}
+    )}
     {id ldml.port.macos, covered_rules (
         ldml.macos.adapter
         ldml.macos.classify
@@ -976,7 +1108,7 @@ impl_evidence (
         {impl_name main, rule ldml.yaml.verbatim}
     ), rule_versions_seen (
         {id ldml.scope.macos-rules, version 0}
-        {id ldml.yaml.coexistence, version 1}
+        {id ldml.yaml.coexistence, version 2}
         {id ldml.yaml.dead-keys, version 1}
         {id ldml.yaml.dead-keys.backspace, version 0}
         {id ldml.yaml.dead-keys.compose, version 0}
@@ -1000,7 +1132,7 @@ impl_evidence (
         {id ldml.yaml.roundtrip, version 2}
         {id ldml.yaml.rows, version 0}
         {id ldml.yaml.schema, version 3}
-        {id ldml.yaml.strict, version 0}
+        {id ldml.yaml.strict, version 1}
         {id ldml.yaml.tokens, version 0}
         {id ldml.yaml.touch, version 1}
         {id ldml.yaml.touch.flicks, version 0}
@@ -1008,16 +1140,10 @@ impl_evidence (
         {id ldml.yaml.verbatim, version 1}
     )}
     {id targets.android.layout, rule_versions_seen (
-        {id android.gradle, version 0}
-        {id android.keys, version 0}
-        {id android.keys.number-row, version 0}
-        {id android.layout-xml, version 0}
-        {id android.layout-xml.name, version 0}
-        {id android.layout-xml.rows, version 0}
-        {id android.metadata, version 0}
-        {id android.metadata.icons, version 0}
-        {id android.metadata.strings, version 0}
-        {id android.transforms, version 0}
+        {id android.layout-xml.rows, version 1}
+        {id android.metadata, version 2}
+        {id android.metadata.icons, version 2}
+        {id android.metadata.strings, version 1}
     )}
     {id targets.android.toolchain, covered_rules (
         android.dependencies
@@ -1025,6 +1151,9 @@ impl_evidence (
     ), covered_claims (
         {impl_name main, rule android.dependencies}
         {impl_name main, rule android.dependencies.jnilibs}
+    ), rule_versions_seen (
+        {id android.dependencies, version 1}
+        {id android.dependencies.jnilibs, version 1}
     )}
     {id targets.chromeos.ime, covered_rules (
         chromeos.engine
@@ -1038,6 +1167,12 @@ impl_evidence (
         {impl_name main, rule chromeos.icons}
         {impl_name main, rule chromeos.locales}
         {impl_name main, rule chromeos.manifest}
+    ), rule_versions_seen (
+        {id chromeos.engine, version 0}
+        {id chromeos.extension, version 0}
+        {id chromeos.icons, version 1}
+        {id chromeos.locales, version 0}
+        {id chromeos.manifest, version 2}
     )}
     {id targets.ios.keyboard-json, covered_rules (
         ios.keyboard-json
@@ -1051,6 +1186,13 @@ impl_evidence (
         {id ios.keyboard-json, version 0}
         {id ios.rows, version 0}
         {id ios.transforms, version 0}
+    )}
+    {id targets.ios.main-parity, covered_rules (
+        ios.layouts
+    ), covered_claims (
+        {impl_name main, rule ios.layouts}
+    ), rule_versions_seen (
+        {id ios.layouts, version 0}
     )}
     {id targets.ios.pbxproj, covered_rules (
         pbxproj.ids
@@ -1078,10 +1220,10 @@ impl_evidence (
         {impl_name main, rule ios.pkg-ids}
         {impl_name main, rule ios.pkg-ids.all}
     ), rule_versions_seen (
-        {id ios.build-chain, version 0}
-        {id ios.build-chain.init, version 0}
-        {id ios.pkg-ids, version 0}
-        {id ios.pkg-ids.all, version 0}
+        {id ios.build-chain, version 3}
+        {id ios.build-chain.init, version 1}
+        {id ios.pkg-ids, version 1}
+        {id ios.pkg-ids.all, version 1}
     )}
     {id targets.ios.xcode, covered_rules (
         xcode.localization
@@ -1104,15 +1246,9 @@ impl_evidence (
     ), covered_claims (
         {impl_name main, rule keylayout.document.id-range}
     ), rule_versions_seen (
-        {id keylayout.actions, version 0}
-        {id keylayout.actions.dead-key-next, version 0}
-        {id keylayout.document, version 0}
+        {id keylayout.actions.dead-key-next, version 1}
         {id keylayout.document.id-range, version 0}
-        {id keylayout.document.name, version 0}
-        {id keylayout.keymaps, version 0}
-        {id keylayout.keymaps.iso-codes, version 0}
-        {id keylayout.keymaps.tokens, version 0}
-        {id keylayout.transforms, version 0}
+        {id keylayout.transforms, version 1}
     )}
     {id targets.macos.package, covered_rules (
         macbundle.installer
@@ -1125,9 +1261,9 @@ impl_evidence (
         {impl_name main, rule macbundle.plist.bundle-resources}
         {impl_name main, rule macbundle.plist.strings}
     ), rule_versions_seen (
-        {id macbundle.installer, version 0}
-        {id macbundle.plist, version 1}
-        {id macbundle.plist.bundle-resources, version 0}
+        {id macbundle.installer, version 1}
+        {id macbundle.plist, version 2}
+        {id macbundle.plist.bundle-resources, version 1}
         {id macbundle.plist.strings, version 0}
     )}
     {id targets.windows.dll-build, covered_rules (
@@ -1330,10 +1466,12 @@ impl_evidence (
         ldml.crate.tsf
         tsf.component
         tsf.component.crate
+        tsf.component.events
         tsf.component.interfaces
         tsf.component.logging
         tsf.component.panic
         tsf.component.self-contained
+        tsf.data.inert
         tsf.data.locate
         tsf.edit.apply
         tsf.edit.cache
@@ -1361,10 +1499,12 @@ impl_evidence (
         {impl_name main, rule ldml.crate.tsf}
         {impl_name main, rule tsf.component}
         {impl_name main, rule tsf.component.crate}
+        {impl_name main, rule tsf.component.events}
         {impl_name main, rule tsf.component.interfaces}
         {impl_name main, rule tsf.component.logging}
         {impl_name main, rule tsf.component.panic}
         {impl_name main, rule tsf.component.self-contained}
+        {impl_name main, rule tsf.data.inert}
         {impl_name main, rule tsf.data.locate}
         {impl_name main, rule tsf.edit.apply}
         {impl_name main, rule tsf.edit.cache}
@@ -1388,6 +1528,39 @@ impl_evidence (
         {impl_name main, rule tsf.security.secure-mode}
         {impl_name main, rule tsf.test.host}
         {impl_name main, rule tsf.test.vm}
+    ), rule_versions_seen (
+        {id ldml.crate.tsf, version 1}
+        {id tsf.component, version 0}
+        {id tsf.component.crate, version 0}
+        {id tsf.component.events, version 0}
+        {id tsf.component.interfaces, version 2}
+        {id tsf.component.logging, version 1}
+        {id tsf.component.panic, version 0}
+        {id tsf.component.self-contained, version 0}
+        {id tsf.data.inert, version 0}
+        {id tsf.data.locate, version 1}
+        {id tsf.edit.apply, version 1}
+        {id tsf.edit.cache, version 0}
+        {id tsf.edit.inject, version 1}
+        {id tsf.edit.ops, version 0}
+        {id tsf.edit.preedit, version 2}
+        {id tsf.edit.reset, version 1}
+        {id tsf.edit.session, version 1}
+        {id tsf.edit.units, version 0}
+        {id tsf.engine.api, version 0}
+        {id tsf.engine.contract, version 0}
+        {id tsf.keys.altgr, version 2}
+        {id tsf.keys.claim, version 1}
+        {id tsf.keys.identity, version 1}
+        {id tsf.keys.locale-flags, version 0}
+        {id tsf.pairing.alternatives, version 0}
+        {id tsf.pairing.self-sufficient, version 0}
+        {id tsf.pairing.substitute, version 0}
+        {id tsf.security.disabled, version 1}
+        {id tsf.security.integrity, version 0}
+        {id tsf.security.secure-mode, version 1}
+        {id tsf.test.host, version 0}
+        {id tsf.test.vm, version 2}
     )}
     {id targets.windows.tsf.register, covered_rules (
         tsf.arch.registration
@@ -1405,33 +1578,17 @@ impl_evidence (
         {id tsf.register.upgrade, version 2}
         {id tsf.security.appcontainer, version 2}
     )}
-    {id targets.ios.main-parity, covered_rules (
-        ios.layouts
+    {id targets.linux.target-file, covered_rules (
+        linux.ids
     ), covered_claims (
-        {impl_name main, rule ios.layouts}
+        {impl_name main, rule linux.ids}
     )}
-    {id ldml.port.chromeos, covered_rules (
-        ldml.chromeos.classify
-        ldml.chromeos.context
-        ldml.chromeos.input
-        ldml.chromeos.keys
-        ldml.chromeos.modifiers
-        ldml.chromeos.semantics
-        ldml.chromeos.target
-        ldml.chromeos.test.golden
-        ldml.chromeos.test.typing
-        ldml.chromeos.wasm
+    {id targets.linux.input, covered_rules (
+        ldml.linux.adapter
+        ldml.linux.input
     ), covered_claims (
-        {impl_name main, rule ldml.chromeos.classify}
-        {impl_name main, rule ldml.chromeos.context}
-        {impl_name main, rule ldml.chromeos.input}
-        {impl_name main, rule ldml.chromeos.keys}
-        {impl_name main, rule ldml.chromeos.modifiers}
-        {impl_name main, rule ldml.chromeos.semantics}
-        {impl_name main, rule ldml.chromeos.target}
-        {impl_name main, rule ldml.chromeos.test.golden}
-        {impl_name main, rule ldml.chromeos.test.typing}
-        {impl_name main, rule ldml.chromeos.wasm}
+        {impl_name main, rule ldml.linux.adapter}
+        {impl_name main, rule ldml.linux.input}
     )}
 )
 

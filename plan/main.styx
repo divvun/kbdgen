@@ -1049,6 +1049,22 @@ children (
                         title "Resolve About.txt existence check against output_path instead of CWD"
                         kind @fix
                         deps (targets.ios.xcode)
+                        sealed true
+                        log (
+                            {
+                                at 2026-11-18T12:36:01.202152Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Done in 04a3392: the About.txt check looks under <out>/repo/HostingApp/<locale>.lproj, once per locale."
+                            }
+
+                            {
+                                at 2026-11-18T12:36:10.636808Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Done (nplan complete)"
+                            }
+                        )
                     }
 
                     {
@@ -1056,6 +1072,22 @@ children (
                         title "Set DEVELOPMENT_TEAM from teamId instead of codeSignId"
                         kind @fix
                         deps (targets.ios.xcode)
+                        sealed true
+                        log (
+                            {
+                                at 2026-11-18T12:36:01.346246Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Done in 04a3392: DEVELOPMENT_TEAM comes from teamId."
+                            }
+
+                            {
+                                at 2026-11-18T12:36:10.780871Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Done (nplan complete)"
+                            }
+                        )
                     }
 
                     {
@@ -1132,6 +1164,22 @@ children (
                         title "Fix ImageMagick invocation passing 'convert' as an input file; check exit status"
                         kind @fix
                         deps (targets.android.layout)
+                        sealed true
+                        log (
+                            {
+                                at 2026-11-18T12:36:01.466482Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Done in 4478487: ImageMagick is called as `convert -resize {d}x{d} <icon> <out>` and its exit status is checked."
+                            }
+
+                            {
+                                at 2026-11-18T12:36:10.912603Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Done (nplan complete)"
+                            }
+                        )
                     }
                 )
             }
@@ -1162,6 +1210,22 @@ children (
                         title "Fix too-few-keys panic wording (hard-codes Windows/Primary); prefer returning an error"
                         kind @fix
                         deps (targets.chromeos.ime)
+                        sealed true
+                        log (
+                            {
+                                at 2026-11-18T12:36:01.048675Z
+                                author "brendan@necessary.nu"
+                                kind @note
+                                text "Done in b55576a (a short layer is an error naming the layout and layer) and superseded in substance by b8890a1, which replaced the generator with kbd-engine in wasm."
+                            }
+
+                            {
+                                at 2026-11-18T12:36:10.516381Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Done (nplan complete)"
+                            }
+                        )
                     }
 
                     {
@@ -1187,6 +1251,22 @@ children (
                 title "Implement SVG output from template-iso-keyboard.svg, or drop SVG from README and CLI"
                 kind @feat
                 deps (input.bundle input.cli input.layout)
+                sealed true
+                log (
+                    {
+                        at 2026-11-18T12:36:00.92138Z
+                        author "brendan@necessary.nu"
+                        kind @note
+                        text "Done in 946187c: operator chose to drop SVG; the target, template and every mention are removed."
+                    }
+
+                    {
+                        at 2026-11-18T12:36:10.365379Z
+                        author "brendan@necessary.nu"
+                        kind @status
+                        text "Todo → Done (nplan complete)"
+                    }
+                )
             }
 
             {
@@ -1207,6 +1287,7 @@ children (
             {
                 id targets.linux
                 title "Linux: XKB layouts, an IBus engine running kbd-engine, and on-screen keyboard layouts"
+                priority 2
                 kind @feat
                 children (
                     {
@@ -1215,6 +1296,14 @@ children (
                         implements {
                             main ([spec:kbdgen:def:linux.ids])
                         }
+                        log (
+                            {
+                                at 2026-11-18T12:47:35.160125Z
+                                author "brendan@necessary.nu"
+                                kind @status
+                                text "Todo → Doing (nplan start)"
+                            }
+                        )
                     }
 
                     {
@@ -1278,6 +1367,7 @@ children (
                             {
                                 id targets.linux.xkb.test
                                 title "XKB tests: differential typing against the engine, libxkbcommon compile and registry"
+                                priority 2
                                 kind @test
                                 implements {
                                     main ([spec:kbdgen:req:ldml.linux.test.typing] [spec:kbdgen:req:linux.test.xkbcommon])
@@ -1449,6 +1539,7 @@ children (
                     {
                         id targets.linux.acceptance
                         title "Acceptance on GNOME, Plasma and Phosh VMs"
+                        priority 2
                         kind @test
                         implements {
                             main ([spec:kbdgen:req:linux.test.acceptance] [spec:kbdgen:sem:linux.xkb.desktops])
@@ -1462,6 +1553,13 @@ children (
                         author "brendan@necessary.nu"
                         kind @decision
                         text "Operator 2026-11-18: the first Linux deliverable is XKB layouts plus an IBus engine running kbd-engine, together, Wayland only (GNOME 50+, Plasma 6.8+). On-screen layouts are generated for plasma-keyboard (KPackage, Plasma 6.9+), GNOME Shell (in a generated extension, pending targets.linux.osk.gnome-spike) and Stevia (files for upstream). The Linux on-screen keyboards show the layout's desktop layout only for now: no touch.linux variant and no android touch sets; authored Linux touch layouts are later work. Left Alt passes through the engine as a shortcut on linux, as on Windows. v3 layouts reach Linux by in-memory migration from their Windows section, else ChromeOS. The engine and its data paths carry Divvun branding (ibus-engine-divvun, ~/.local/share/divvun/keyboards). Fcitx5 addon and a Stevia completer come after IBus ships. Spec: docs/spec/linux.md, docs/spec/ldml/linux.md."
+                    }
+
+                    {
+                        at 2026-11-18T12:45:56.685694Z
+                        author "brendan@necessary.nu"
+                        kind @decision
+                        text "Operator 2026-11-18: priority pinned to 2 so the Linux target is built next, ahead of the P3 backlog (ldml.port.ios, quality.clippy, the Android/iOS/macOS golden tests)."
                     }
                 )
             }

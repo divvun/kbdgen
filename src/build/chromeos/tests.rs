@@ -147,7 +147,7 @@ fn diagnostics(out: &Path) -> String {
 // [spec:kbdgen:def:ldml.chromeos.input/test]
 // [spec:kbdgen:req:ldml.chromeos.target/test]
 // [spec:kbdgen:req:ldml.chromeos.test.golden/test]
-// [spec:kbdgen:req:ldml.yaml.coexistence+2/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+3/test]
 #[tokio::test]
 async fn writes_the_extension_with_golden_manifest_and_messages() {
     let layouts = golden_layouts();

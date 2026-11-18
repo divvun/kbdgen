@@ -37,7 +37,7 @@ pub struct KbdgenBundle {
     pub project: Project,
     pub layouts: Layouts,
     /// The `format: 4` layouts, by tag in bundle layout order, which only
-    /// the windows, macos and chromeos targets build yet
+    /// the windows, macos, chromeos and linux targets build yet
     /// (`ldml.yaml.coexistence`).
     pub v4_layouts: Vec<(LanguageTag, PathBuf)>,
     pub targets: Targets,
@@ -104,15 +104,15 @@ impl<'a> IntoIterator for &'a Layouts {
 }
 
 impl KbdgenBundle {
-    // [spec:kbdgen:req:ldml.yaml.coexistence+2]
+    // [spec:kbdgen:req:ldml.yaml.coexistence+3]
     /// Fails, naming the first v4 layout and `target`, when the bundle has
-    /// v4 layouts and `target` cannot build them. Only `windows`, `macos`
-    /// and `chromeos` can, from the model (`ldml.kbdl.adapter`,
-    /// `ldml.macos.adapter`, `ldml.chromeos.input`). A generator never
-    /// skips a v4 layout silently.
+    /// v4 layouts and `target` cannot build them. Only `windows`, `macos`,
+    /// `chromeos` and `linux` can, from the model (`ldml.kbdl.adapter`,
+    /// `ldml.macos.adapter`, `ldml.chromeos.input`, `ldml.linux.input`). A
+    /// generator never skips a v4 layout silently.
     pub fn reject_v4_layouts(&self, target: &'static str) -> Result<(), Error> {
         match self.v4_layouts.first() {
-            Some((tag, _)) if !matches!(target, "windows" | "macos" | "chromeos") => {
+            Some((tag, _)) if !matches!(target, "windows" | "macos" | "chromeos" | "linux") => {
                 Err(Error::V4Layout {
                     tag: tag.to_string(),
                     target,
@@ -373,7 +373,7 @@ fn read_resources(path: &Path) -> Result<Resources, Error> {
 /// the bundle's Windows target.
 const WINDOWS_LAYOUT_OPTIONS: [&str; 3] = ["shiftLock", "lrmRlm", "keyNames"];
 
-// [spec:kbdgen:req:bundle.structure.targets+4]
+// [spec:kbdgen:req:bundle.structure.targets+5]
 /// Fails when `targets/windows.yaml` sets a keyboard option, which would
 /// otherwise be ignored like an unknown field.
 fn reject_windows_options(path: &Path) -> Result<(), Error> {
@@ -393,7 +393,7 @@ fn reject_windows_options(path: &Path) -> Result<(), Error> {
     }
 }
 
-// [spec:kbdgen:req:bundle.structure.targets+4]
+// [spec:kbdgen:req:bundle.structure.targets+5]
 fn read_targets(path: &Path) -> Result<Targets, Error> {
     tracing::debug!("Reading targets from {}", path.display());
     let mut targets = Targets::default();
@@ -449,6 +449,9 @@ fn read_targets(path: &Path) -> Result<Targets, Error> {
                     });
                 }
                 targets.chromeos = load_yaml(&path)?;
+            }
+            "linux" => {
+                targets.linux = load_yaml(&path)?;
             }
             "android" => {
                 targets.android = load_yaml_with_env(

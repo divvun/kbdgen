@@ -690,6 +690,24 @@ fn equal_documents_share_one_model() {
     assert_eq!(mac.replace("host=\"macOS\"", "host=\"linux\""), linux);
 }
 
+// [spec:kbdgen:def:ldml.linux.input/test]
+#[test]
+fn inheriting_in_memory_lowers_as_written() {
+    let written = VRO.replacen("touch:\n", "  linux:\n    inherits: windows\ntouch:\n", 1);
+    let expected = xml("vro", &written, Host::Linux);
+    assert_ne!(expected, xml("vro", VRO, Host::Linux));
+    let mut layout = load_as("vro", VRO).unwrap();
+    assert!(!layout.inherit_hardware("linux", "chromeOS"));
+    assert!(layout.inherit_hardware("linux", "windows"));
+    assert!(!layout.inherit_hardware("linux", "macOS"));
+    let (_, linux) = lower(&layout)
+        .unwrap()
+        .into_iter()
+        .find(|(host, _)| *host == Host::Linux)
+        .unwrap();
+    assert_eq!(kbd_ldml::write(&linux.document), expected);
+}
+
 // [spec:kbdgen:req:ldml.yaml.ldml-ref+3/test]
 #[test]
 fn ldml_ref_keeps_the_file_and_overrides_data() {

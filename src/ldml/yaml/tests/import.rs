@@ -198,7 +198,7 @@ fn foreign_touch_sets_get_size_names() {
     assert!(yaml.contains("normalization: enabled"));
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence+2/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+3/test]
 #[test]
 fn target_generators_refuse_v4_layouts() {
     let root = tempfile::tempdir().unwrap();
@@ -227,6 +227,7 @@ fn target_generators_refuse_v4_layouts() {
     bundle.reject_v4_layouts("windows").unwrap();
     bundle.reject_v4_layouts("macos").unwrap();
     bundle.reject_v4_layouts("chromeos").unwrap();
+    bundle.reject_v4_layouts("linux").unwrap();
     let v3 = fixture::write_bundle(
         root.path(),
         "v3",
@@ -245,7 +246,7 @@ fn target_generators_refuse_v4_layouts() {
     ));
 }
 
-// [spec:kbdgen:req:ldml.yaml.coexistence+2/test]
+// [spec:kbdgen:req:ldml.yaml.coexistence+3/test]
 #[test]
 fn ldml_commands_take_only_v4_layouts() {
     let dir = bundle(&[("se", "displayNames: {se: x}\n"), ("vro", VRO)]);

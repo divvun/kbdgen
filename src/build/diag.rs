@@ -11,6 +11,7 @@ pub enum Platform {
     Windows,
     MacOs,
     ChromeOs,
+    Linux,
 }
 
 /// Logs an event at `level` under `platform`'s module. `tracing` takes the
@@ -25,6 +26,7 @@ macro_rules! event {
             Platform::ChromeOs => {
                 tracing::event!(target: "kbdgen::build::chromeos", $level, $($arg)+)
             }
+            Platform::Linux => tracing::event!(target: "kbdgen::build::linux", $level, $($arg)+),
         }
     };
 }
@@ -129,12 +131,14 @@ mod tests {
             Diagnostics::new(Platform::Windows, "kbdsme").warn("w");
             Diagnostics::new(Platform::MacOs, "sme").warn("m");
             Diagnostics::new(Platform::ChromeOs, "sme").inform("c");
+            Diagnostics::new(Platform::Linux, "sme").warn("l");
         });
         assert_eq!(
             log,
             " WARN kbdgen::build::windows: kbdsme: w\n \
              WARN kbdgen::build::macos: sme: m\n \
-             INFO kbdgen::build::chromeos: sme: c\n"
+             INFO kbdgen::build::chromeos: sme: c\n \
+             WARN kbdgen::build::linux: sme: l\n"
         );
     }
 

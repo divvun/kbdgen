@@ -9,10 +9,12 @@ pub mod android;
 pub mod chromeos;
 pub mod diag;
 pub mod ios;
+pub mod linux;
 pub mod macos;
+pub mod migration;
 pub mod windows;
 
-// [spec:kbdgen:sem:pipeline.steps+2]
+// [spec:kbdgen:sem:pipeline.steps+3]
 #[async_trait(?Send)]
 pub trait BuildSteps {
     fn new(bundle: KbdgenBundle, output_path: PathBuf) -> Self

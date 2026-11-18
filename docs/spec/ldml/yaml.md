@@ -506,7 +506,7 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 > import structure do not reach the model. XML-to-XML keeps both
 > (`ldml.xml.roundtrip`).
 
-> [spec:kbdgen:req:ldml.yaml.coexistence+2]
+> [spec:kbdgen:req:ldml.yaml.coexistence+3]
 > Until each target generator is ported to the model:
 >
 > - `windows` builds v4 layouts through `ldml.kbdl.adapter`, and v3
@@ -515,6 +515,9 @@ UTS #35 Part 7; `docs/spec/{layout,bundle,kbdl}.md`.
 >   layouts as `keylayout.*` specifies (`ldml.macos.target`).
 > - `chromeos` builds both from the model, v3 layouts through in-memory
 >   migration (`ldml.chromeos.input`, `ldml.chromeos.target`).
+> - `linux` builds both from the model, v3 layouts through in-memory
+>   migration from their Windows section, else their ChromeOS section
+>   (`ldml.linux.input`, `ldml.linux.target`).
 > - `ios` and `android` generators MUST fail on a v4 layout with an error
 >   naming the layout and the target. They MUST NOT skip it silently.
 > - `kbdgen ldml export` and `compile` accept only v4 layouts.
