@@ -965,6 +965,7 @@ dependencies = [
  "fs_extra",
  "futures",
  "futures-util",
+ "icu_normalizer",
  "indexmap",
  "iso639",
  "kbd-engine",

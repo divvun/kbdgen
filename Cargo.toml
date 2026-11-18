@@ -29,6 +29,7 @@ url = { version = "2.2.2", features = ["serde"] }
 indexmap = { version = "2", features = ["serde"] }
 language-tags = { version = "0.3.2", features = ["serde"] }
 iso639 = "0.3.0"
+icu_normalizer = { version = "2.0", default-features = false, features = ["compiled_data"] }
 dunce = "1.0.2"
 thiserror = "1.0.30"
 anyhow = "1.0.57"

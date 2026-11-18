@@ -3,6 +3,8 @@
 //! entry, derived from its `linux` keyboard, and the bundle's
 //! `rules/evdev.xml`, built in memory for the output step to write.
 
+pub mod compose;
+mod dead_keys;
 pub mod keycodes;
 pub mod keysym;
 mod levels;
@@ -12,17 +14,14 @@ mod symbols;
 mod tests;
 pub mod types;
 
-use std::collections::BTreeMap;
-
 use anyhow::{Result, anyhow};
-use kbd_model::MarkerIndex;
 
+pub use dead_keys::{DeadKeys, Difference};
 pub use levels::{Decimal, KeyValues, Levels, Value};
 pub use registry::{RegistryEntry, evdev_xml};
 pub use symbols::{Symbols, SymbolsKey};
 pub use types::{KeyType, Typed, XkbState};
 
-use self::keysym::Keysym;
 use super::ids::Ids;
 use super::source::LinuxLayout;
 use crate::build::diag::{Diagnostics, Platform};
@@ -35,8 +34,7 @@ pub struct Adapted {
     /// Indexed like `levels.keys`.
     pub typed: Vec<Typed>,
     pub decimal: Option<Decimal>,
-    /// The dead keysym of each dead key that has one.
-    pub dead: BTreeMap<MarkerIndex, Keysym>,
+    pub dead: DeadKeys,
     pub symbols: Symbols,
     /// The text of `symbols/<L>`.
     pub text: String,
@@ -44,7 +42,8 @@ pub struct Adapted {
 }
 
 /// The XKB layout of one compiled layout. It fails, naming the layout,
-/// only when the layout lacks what the registry needs.
+/// when the layout lacks what the registry needs, or the marker of a dead
+/// key that does not leave it pending in the engine.
 // [spec:kbdgen:def:ldml.linux.adapter]
 pub fn adapt(ids: &Ids, layout: &LinuxLayout) -> Result<Adapted> {
     let entry = RegistryEntry::new(ids, layout)?;
@@ -55,7 +54,7 @@ pub fn adapt(ids: &Ids, layout: &LinuxLayout) -> Result<Adapted> {
         .as_ref()
         .ok_or_else(|| anyhow!("{}: the linux keyboard has no hardware layers", layout.tag))?;
     let levels = levels::derive(keyboard, hardware);
-    let dead = BTreeMap::new();
+    let dead = dead_keys::derive(keyboard, &levels, layout.tag.as_str())?;
     let typed: Vec<Typed> = levels
         .keys
         .iter()
@@ -63,7 +62,7 @@ pub fn adapt(ids: &Ids, layout: &LinuxLayout) -> Result<Adapted> {
             let values = key
                 .values
                 .clone()
-                .map(|value| levels::keysym(keyboard, &dead, &value));
+                .map(|value| levels::keysym(keyboard, &dead.keysyms, &value));
             types::choose(&values, levels.uses_level3)
         })
         .collect();

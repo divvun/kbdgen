@@ -166,24 +166,32 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 
 ## Dead keys
 
-> [spec:kbdgen:def:ldml.linux.compose]
+> [spec:kbdgen:def:ldml.linux.compose+1]
 > The *reference Compose table* is the `<dead_…>` sequences of libX11's
 > `nls/en_US.UTF-8/Compose.pre`, vendored in kbdgen with its licence;
 > IBus's built-in table and other locales' tables build on it.
 > Composition is taken to follow IBus's simple engine
-> (`src/ibusenginesimple.c`), which GNOME runs for every XKB source
-> (`linux.xkb.desktops`):
+> (`src/ibusenginesimple.c`, `ibus_engine_simple_process_key_event`),
+> which GNOME runs for every XKB source (`linux.xkb.desktops`):
 >
 > - a dead keysym starts a sequence, and a sequence that matches an entry
->   types its output
-> - a dead keysym followed by a keysym that continues no sequence types
->   the dead keysym's isolated character, after a space where
->   `ibus_keysym_to_unicode` asks for one, then the second keysym's
->   character ("dead keys are never *really* dead")
-> - a longer sequence that fails types nothing
+>   types its output; one that a longer entry extends stays pending
+> - a sequence no entry has or extends is composed by
+>   `ibus_check_algorithmically`: dead keysyms alone stay pending, or for
+>   two equal ones type its isolated character; dead keysyms then one
+>   other keysym type the NFC composition of that keysym's character with
+>   the dead keysyms' combining characters, tried in every order, when
+>   it is one character
+> - a keysym that continues no pending sequence otherwise types nothing,
+>   and the sequence stays pending: since IBus 1.5.32 (`486799f2`, "Keep
+>   compose preedit with wrong sequence") the simple engine drops the key,
+>   as GTK 4 does, where older releases typed the dead keysym's isolated
+>   character and the key
 >
 > So `<dead_acute> <space>` types `'` and `<dead_diaeresis> <space>`
-> types `"`, where the engine types the standalone. GTK's, KWin's,
+> types `"`, where the engine types the standalone, and `<dead_acute> <b>`
+> types nothing and leaves `<dead_acute>` pending, where the engine types
+> `´b` (Verified with IBus 1.5.35 on Fedora 45). GTK's, KWin's,
 > plasma-keyboard's and other locales' composition differ in details;
 > reports and tests use this one.
 
