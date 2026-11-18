@@ -208,8 +208,10 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > plasma-keyboard and Stevia alike. Its *default level* is the layer
 > selected with no modifier and its *shift level* the layer selected with
 > Shift (`ldml.engine.modifiers`), when Shift selects one; other layers are
-> not shown. A level's rows are the form's character rows without the
-> space row, a position with no key in the level being a gap one key wide.
+> not shown. A level's rows are the form's rows without the space bar, a
+> row of only the space bar being left out, and a position with no key in
+> the level being a gap one key wide; a gap key or a key with no output is
+> a gap of its width.
 > Two *symbol levels* of three rows follow, the ones GNOME's and Stevia's
 > layouts use:
 >
@@ -219,23 +221,24 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 >
 > As on a physical keyboard, every level gets a backspace key at the end
 > of its first row, and its last row starts with a shift key on the
-> default and shift levels, or a switch between the symbol levels on
-> those, each 1.5 keys wide. Each OSK adds its own bottom row with the
-> space bar and return. The `android` keyboard and authored touch sets are
-> not used (`docs/spec/linux.md`, Decisions).
+> default and shift levels when there is a shift level, or a switch
+> between the symbol levels on those, each 1.5 keys wide. Each OSK adds
+> its own bottom row with the space bar and return. The `android` keyboard
+> and authored touch sets are not used (`docs/spec/linux.md`, Decisions).
 
 > [spec:kbdgen:sem:ldml.linux.touch.keys]
 > On every OSK a key is written from its output: plain text is what it
 > commits; a single dead-key marker is a dead key, written per the OSK's
-> rule; a key mixing text and markers is left out. Its *label* is its
-> display (`ldml.model.displays`) when that differs from its output, and
-> for a dead key its marker's display. Its long-press candidates are the
-> plain outputs of its `long_press` keys, in order; `longPress` gives
-> hardware keys candidates too (`ldml.yaml.long-press`). Widths are the
-> key's `width`; a gap's width spaces the next key. Flicks, multi-tap and
-> `long_press_default` are not written. The space key is labelled with
-> `labels.space` and the return key with `labels.return` where K has them
-> and the OSK can show them.
+> rule; a key mixing text and markers, or of several markers, is left
+> out. Its *label* is its display (`ldml.model.displays`, by key id first,
+> then by output) when that differs from its output, and for a dead key
+> its marker's display, else its standalone (`flush[m]`), else U+25CC.
+> Its long-press candidates are the plain outputs of its `long_press`
+> keys, in order; `longPress` gives hardware keys candidates too
+> (`ldml.yaml.long-press`). Widths are the key's `width`; a gap's width
+> spaces the next key. Flicks, multi-tap and `long_press_default` are not
+> written. The space key is labelled with `labels.space` and the return
+> key with `labels.return` where K has them and the OSK can show them.
 
 > [spec:kbdgen:sem:ldml.linux.touch.gnome]
 > `<L>.json` is the presented set in GNOME Shell's format
@@ -366,18 +369,23 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > - layers other than the default and shift levels (`ldml.linux.touch`),
 >   such as AltGr and Caps layers: on every OSK
 > - flicks, multi-tap and `long_press_default`: on every OSK
-> - dead keys typed as their standalone: on Stevia and plasma-keyboard,
->   and on GNOME Shell those without a dead keysym
-> - keys mixing text and markers
-> - shift outputs plasma-keyboard's uppercasing changes
+> - dead keys typed as their standalone, or left out for want of one: on
+>   Stevia and plasma-keyboard, and on GNOME Shell those without a dead
+>   keysym
+> - keys left out for mixing text and markers, and long-press candidates
+>   left out for holding markers: on every OSK
+> - shift-level texts, candidates included, that plasma-keyboard's
+>   uppercasing changes
 >
-> It MUST inform, once per layout: that GNOME Shell sends a key of several
-> scalar values to the IBus engine one scalar at a time; that on GNOME
+> It MUST inform, once per layout, of each of these that applies to it:
+> that GNOME Shell sends a text of several scalar values to the IBus
+> engine one scalar at a time, where the levels show one; that on GNOME
 > Shell a dead key pressed on screen composes only with the IBus source
-> (`linux.osk.gnome.selection`); that GNOME Shell's on-screen Backspace
-> skips `backspace` transforms while nothing is shown as preedit
-> (`linux.ibus.osk-backspace`); and that plasma-keyboard's and Stevia's
-> layouts type without the engine.
+> (`linux.osk.gnome.selection`), where they show a dead key; that GNOME
+> Shell's on-screen Backspace skips `backspace` transforms while nothing
+> is shown as preedit (`linux.ibus.osk-backspace`), where K has
+> `backspace` rules other than the generated one; and, always, that
+> plasma-keyboard's and Stevia's layouts type without the engine.
 
 ## Target integration
 
