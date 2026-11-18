@@ -1672,6 +1672,15 @@ impl_evidence (
         {impl_name main, rule ldml.linux.classify}
         {impl_name main, rule ldml.linux.rewrites}
     )}
+    {id targets.linux.ibus.component, covered_rules (
+        linux.ibus.component
+        linux.ibus.crate
+        linux.ibus.lister
+    ), covered_claims (
+        {impl_name main, rule linux.ibus.component}
+        {impl_name main, rule linux.ibus.crate}
+        {impl_name main, rule linux.ibus.lister}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

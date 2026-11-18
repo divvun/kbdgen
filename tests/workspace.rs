@@ -114,7 +114,7 @@ fn crate_dirs(root: &Path) -> BTreeSet<String> {
         .collect()
 }
 
-// [spec:kbdgen:def:ldml.crate.layout+2/test]
+// [spec:kbdgen:def:ldml.crate.layout+3/test]
 #[test]
 fn workspace_has_kbdgen_and_crate_members() {
     let workspace = Workspace::load();
@@ -335,4 +335,68 @@ fn wasm_is_cdylib_on_engine_and_model() {
         workspace.root.join("build.rs").is_file(),
         "kbdgen's build script builds the module"
     );
+}
+
+// [spec:kbdgen:def:ldml.crate.layout+3/test]
+// [spec:kbdgen:req:linux.ibus.crate/test]
+// [spec:kbdgen:def:linux.ibus.component/test]
+#[test]
+fn ibus_is_binary_on_engine_and_zbus() {
+    let workspace = Workspace::load();
+    let ibus = workspace.package("kbd-ibus");
+
+    let targets: BTreeSet<(&str, &str)> = ibus["targets"]
+        .as_array()
+        .expect("targets")
+        .iter()
+        .filter(|target| target["kind"] != serde_json::json!(["test"]))
+        .map(|target| {
+            (
+                target["name"].as_str().expect("name"),
+                target["kind"][0].as_str().expect("kind"),
+            )
+        })
+        .collect();
+    assert_eq!(targets, BTreeSet::from([("ibus-engine-divvun", "bin")]));
+    assert!(
+        !workspace
+            .names_of("workspace_default_members")
+            .contains("kbd-ibus"),
+        "a plain cargo build never compiles the IBus engine"
+    );
+
+    assert_eq!(
+        dependency_names(ibus),
+        BTreeSet::from(["kbd-engine", "kbd-model", "tokio", "zbus"])
+    );
+    for name in ["kbd-engine", "kbd-model"] {
+        let dependency = dependency(ibus, name);
+        assert!(dependency["path"].is_string(), "{name} by path");
+        assert_eq!(
+            dependency["uses_default_features"], true,
+            "{name} with its defaults, so normalization is in the engine"
+        );
+    }
+    let zbus = dependency(ibus, "zbus");
+    assert_no_default_features(zbus, &["tokio"]);
+    assert!(
+        zbus["req"].as_str().expect("req").starts_with("^5"),
+        "zbus is 5.x"
+    );
+    assert_no_default_features(dependency(ibus, "tokio"), &["rt"]);
+    for name in ["zbus", "tokio"] {
+        assert_eq!(
+            dependency(ibus, name)["target"],
+            "cfg(unix)",
+            "{name} only on Unix"
+        );
+    }
+
+    let lock = std::fs::read_to_string(workspace.root.join("Cargo.lock")).expect("Cargo.lock");
+    for name in ["ibus-engine", "glib", "glib-sys", "gobject-sys", "gio-sys"] {
+        assert!(
+            !lock.contains(&format!("name = \"{name}\"\n")),
+            "nothing in the workspace links {name}"
+        );
+    }
 }

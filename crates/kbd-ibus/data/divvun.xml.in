@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <name>org.freedesktop.IBus.Divvun</name>
+  <description>Divvun keyboards</description>
+  <exec>@LIBEXECDIR@/ibus-engine-divvun --ibus --data-dir @DATADIR@/divvun/keyboards</exec>
+  <version>@VERSION@</version>
+  <author>Divvun</author>
+  <license>MIT OR Apache-2.0</license>
+  <homepage>https://github.com/divvun/kbdgen</homepage>
+  <observed-paths>
+    <path>@DATADIR@/divvun/keyboards/</path>
+    <path>~/.local/share/divvun/keyboards/</path>
+  </observed-paths>
+  <engines exec="@LIBEXECDIR@/ibus-engine-divvun --xml --data-dir @DATADIR@/divvun/keyboards"/>
+</component>

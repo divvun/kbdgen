@@ -291,12 +291,15 @@ Sources:
 > [spec:kbdgen:req:linux.ibus.crate]
 > `crates/kbd-ibus` MUST be an edition 2024 binary crate whose binary is
 > `ibus-engine-divvun`. It depends on `kbd-engine` with its default
-> `normalization` feature, `kbd-model`, and `zbus` 5, and implements the
-> D-Bus protocol of `linux.ibus.factory` itself, with no GLib, GObject or
-> libibus. It is excluded from `default-members`; releases are built for
-> `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`. It keeps
-> `kbd-engine`'s lints against panics, `unwrap`, `expect`, indexing and
-> `unreachable!`. It MUST NOT depend on the `ibus-engine` crate: 0.3.1,
+> `normalization` feature, `kbd-model`, and, for Unix targets only, `zbus`
+> 5 without its default features, on `tokio`'s current-thread runtime and
+> with no task per call, so one thread handles every call in the order it
+> arrives. It implements the D-Bus protocol of `linux.ibus.factory`
+> itself, with no GLib, GObject or libibus. It is excluded from
+> `default-members`; releases are built for `x86_64-unknown-linux-gnu` and
+> `aarch64-unknown-linux-gnu`. It keeps `kbd-engine`'s lints against
+> panics, `unwrap`, `expect`, indexing and `unreachable!`. It MUST NOT
+> depend on the `ibus-engine` crate: 0.3.1,
 > first published on 2026-11-09, ignores `SetSurroundingText` and
 > `SetCapabilities`, emits neither `DeleteSurroundingText` nor
 > `RequireSurroundingText`, and is licensed LGPL-2.1-or-later or

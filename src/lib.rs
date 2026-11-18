@@ -8,7 +8,7 @@
 //! generated for Windows declare their own empty `[workspace]`, so this
 //! workspace never captures them.
 
-// [spec:kbdgen:def:ldml.crate.layout+2]
+// [spec:kbdgen:def:ldml.crate.layout+3]
 // [spec:kbdgen:req:ldml.crate.kbdgen+1]
 pub mod build;
 pub mod bundle;

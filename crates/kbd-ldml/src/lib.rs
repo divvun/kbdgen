@@ -8,7 +8,7 @@
 //! a [`SourceDocument`], [`resolve()`] turns one into a model, [`export()`]
 //! builds one from a model, and [`write()`] serializes one.
 
-// [spec:kbdgen:def:ldml.crate.layout+2]
+// [spec:kbdgen:def:ldml.crate.layout+3]
 // [spec:kbdgen:req:ldml.crate.ldml]
 
 pub mod cldr;

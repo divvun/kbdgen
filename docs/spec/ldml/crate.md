@@ -7,6 +7,7 @@ Everything lives in the kbdgen repository as one Cargo workspace:
 - LDML XML support
 - the Windows text service
 - the engine's WebAssembly module
+- the IBus engine
 
 What runs on a device is kept small. Devices embed the engine in many
 places: the Windows TSF DLL, a macOS IMKit app, iOS keyboard extensions with
@@ -22,7 +23,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 
 ## Workspace
 
-> [spec:kbdgen:def:ldml.crate.layout+2]
+> [spec:kbdgen:def:ldml.crate.layout+3]
 > The root `Cargo.toml` keeps the `kbdgen` package and adds a `[workspace]`
 > with:
 >
@@ -39,6 +40,7 @@ crates opt out of any enclosing workspace); `docs/spec/tsf.md`
 > | `crates/kbd-ldml` | `kbd-ldml` | std lib | LDML keyboard3 source documents through `xmlem`, the embedded CLDR imports, parsers for LDML's syntaxes, resolution to the model, and export (`ldml.xml.*`) |
 > | `crates/kbd-tsf` | `kbd-tsf` | `cdylib` | the Windows text service (`docs/spec/tsf.md`), built only per `tsf.arch.builds` |
 > | `crates/kbd-wasm` | `kbd-wasm` | `cdylib` | the engine for WebAssembly hosts (`ldml.chromeos.wasm`), which kbdgen's build script compiles for `wasm32-unknown-unknown` and embeds (`chromeos.engine`) |
+> | `crates/kbd-ibus` | `kbd-ibus` | binary `ibus-engine-divvun` | the IBus engine (`docs/spec/linux.md`, `linux.ibus.crate`), a host that calls the engine directly |
 >
 > The `kbdgen` package keeps the v4 YAML format and its lowering, the
 > migrator, the `kbdl` adapter and the `kbdgen ldml` commands. Layout crates
