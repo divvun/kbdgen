@@ -82,9 +82,10 @@ captured; a non-zero exit becomes an error carrying the command's stderr.
   `libpahkat-android-v2.3.1.tgz`.
 . *tar* - `tar -xzf <download> -C app/src/main`.
 . *ImageMagick* - only when the bundle has `resources/android/icon.png`:
-  `+convert -resize {d}x{d} <icon> res/drawable-{density}/ic_launcher_keyboard.png+`
+  `+convert -resize {d}x{d} -define png:exclude-chunks=date,time <icon> res/drawable-{density}/ic_launcher_keyboard.png+`
   for mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144 and xxxhdpi 192. `-resize`
-  keeps the aspect ratio.
+  keeps the aspect ratio. Without the define, ImageMagick writes the time
+  into each PNG, and every run would change the five icons.
 . *Gradle* - only when `targets/android.yaml` exists:
   `gradlew assembleRelease -Dorg.gradle.jvmargs=-Xmx4096M --info --stacktrace`
   in `+{out}/repo+`, through `cmd /C gradlew` on Windows and the canonical
@@ -100,8 +101,14 @@ captured; a non-zero exit becomes an error carrying the command's stderr.
 . Creates `assets/layouts`, `res/xml` and `res/xml-sw600dp`, and lists the
   app's `res/values-*` directories, which decide the languages it writes
   names for.
-. Reads `res/xml/method.xml` and `res/xml/spellchecker.xml` and removes the
-  first `<subtype>` of each (`read_without_first_subtype`).
+. Reads `res/xml/method.xml` and `res/xml/spellchecker.xml` and strips
+  each back to the template's subtypes (`strip_subtypes`). A subtype is
+  kbdgen's when its attributes are exactly what `method_subtype` or
+  `spellchecker_subtype` writes for the tag (and keyboard name) it carries
+  (`generated_method_subtype`, `generated_spellchecker_subtype`); all of
+  those go, and their tags and keyboard names are what the last run
+  generated. Only if there were none, and some layout has an `android`
+  section, is the template's first `<subtype>`, its placeholder, removed.
 . For each layout, in bundle layout order:
 .. Flattens its `transforms` (`flatten_transforms`) into
    `+{dead key: {next: output}}+`. This runs before the `android` check, so it
@@ -113,15 +120,25 @@ captured; a non-zero exit becomes an error carrying the command's stderr.
    the speller with `android.config`, else `+{"transforms": {}, "speller": null}+`.
 .. Writes the rows and row keys of `primary` to `res/xml` and of
    `tablet-600` to `res/xml-sw600dp` (`create_and_write_rows_keys_for_layer`),
-   then `+res/xml/kbd_{name}.xml+` and `+res/xml/keyboard_layout_set_{name}.xml+`.
-.. Sets `english_ime_name` in `res/values/strings-appname.xml` and appends
-   the `+subtype_{sub}+` string to `res/values/strings.xml`
-   (`create_and_write_values_strings`), `+{sub}+` being the tag lowercased
-   with `-` as `_`. Then adds the localised `+subtype_{sub}+` strings where
-   `+res/values-{lang}+` exists, unless one is already there.
-.. Appends a `<subtype>` to `method.xml` (`append_method_subtype`) and to
-   `spellchecker.xml`.
-. Appends `english_ime_name` from each `project.yaml` locale to
+   deleting row key files numbered past the last row, then
+   `+res/xml/kbd_{name}.xml+` and `+res/xml/keyboard_layout_set_{name}.xml+`.
+.. Sets `english_ime_name` in `res/values/strings-appname.xml`
+   (`set_ime_name`), and collects the `+subtype_{sub}+` strings it wants in
+   `res/values/strings.xml` and, where `+res/values-{lang}+` exists, in
+   `+res/values-{lang}/strings.xml+`; `+{sub}+` is the tag lowercased with
+   `-` as `_` (`subtype_name`).
+.. Appends its `<subtype>` to `method.xml` and to `spellchecker.xml`.
+. Deletes `+assets/layouts/{tag}.json+` for each tag the last run generated
+  and this one did not, and the layout XML of each keyboard name likewise
+  (`remove_keyboard_files`).
+. Writes the `+subtype_{sub}+` strings (`write_subtype_strings`). The
+  `+subtype_{sub}+` names of this run's and the last run's tags are kbdgen's:
+  `values/strings.xml` and every `values-*/strings.xml` end up with exactly
+  the kbdgen strings this run wants in them. Paths are keyed by the file
+  they resolve to, because `values-en/strings.xml` is a symlink to
+  `values/strings.xml`. A file with nothing to set or remove is not read
+  as XML or written.
+. Sets `english_ime_name` from each `project.yaml` locale in
   `+res/values-{locale}/strings-appname.xml+`, where `+res/values-{locale}+`
   exists.
 . Writes `method.xml` and `spellchecker.xml`.
@@ -129,10 +146,21 @@ captured; a non-zero exit becomes an error carrying the command's stderr.
 . Writes `app/local.gradle` (`generate_gradle_local`) and runs Gradle
   (`run_gradle`), or warns that `targets/android.yaml` is missing.
 
+Every string is set with `set_string`, which replaces the text of an
+existing `<string>` of that name and removes its duplicates rather than
+appending another. Together with the subtype stripping, that makes
+generation idempotent: `android build` reuses an existing `+{out}/repo+`,
+and giellakbd-android's README tells developers to re-run
+`android generate`, so running it N times with one bundle must leave the
+files one run leaves. A checkout that older kbdgen versions appended to
+several times is repaired the same way.
+
 XML is read, queried and written with `xmlem`. Every file kbdgen touches is
 written back pretty-printed, so `git diff` in the checkout shows whole
 files reformatted, and text such as a `<string>` value gains surrounding
-whitespace, which the Android resource compiler trims.
+whitespace, which the Android resource compiler trims. Reading xmlem's
+output and printing it again gives the same bytes (it trims text before
+indenting it), which idempotence relies on.
 
 ==== Rows and keys
 `resources/template-android-rows.xml` and
@@ -179,9 +207,17 @@ cargo test -p kbdgen --lib build::android
 ----
 
 They cover the keyboard name, the number-row hints, the key attributes,
-the empty long-press error, the `assets/layouts` JSON, the removal of the
-first subtype, a failing `gradlew` (Unix only, with a stub script) and a
-clone over an existing checkout.
+the empty long-press error, the `assets/layouts` JSON, which subtypes count
+as kbdgen's and when the placeholder goes, `set_string`, a failing
+`gradlew` (Unix only, with a stub script) and a clone over an existing
+checkout. Two tests run `GenerateAndroid` on a checkout made from
+`src/build/android/fixtures/res`, trimmed copies of giellakbd-android's
+`method.xml`, `spellchecker.xml` and strings files, with
+`values-en/strings.xml` linked to `values/strings.xml` on Unix as in the
+app. One generates three times and requires the same bytes after each run;
+the other generates one bundle, then a changed one (a layout removed, a
+keyboard renamed, a row and a display name dropped), and requires the same
+XML content as generating the changed bundle once.
 
 An end-to-end run needs network access, the Android SDK and a JDK. Copy a
 v3 bundle with an `android` section, such as `sme.kbdgen` from `keyboard-sme`,
@@ -189,23 +225,27 @@ and run `android build`; the release APK lands in
 `+{out}/repo/app/build/outputs/apk/release/+`. Without a `targets/android.yaml`
 `android generate` writes the resources and skips Gradle, which is the
 quicker loop for generator changes; `+git -C {out}/repo status+` and `diff`
-show what changed.
-
-Reset the checkout between runs with
-`+git -C {out}/repo checkout -- . && git -C {out}/repo clean -fd+`. Without
-that, a second `generate` appends `english_ime_name` again to each
-`+values-{locale}/strings-appname.xml+`, and Gradle's resource merger fails
-with `Found item String/english_ime_name more than one time`. With more
-than one layout the subtypes duplicate too, since each run removes one and
-adds one per layout. `android.metadata` and `android.metadata.strings`
-specify this behaviour.
+show what changed. Generate again on the same checkout after every change;
+there is nothing to reset. To check idempotence, save
+`+git -C {out}/repo diff --binary+` and `git status --porcelain
+--untracked-files=all` after one run and compare them with the same after a
+second: they must be equal. `android.metadata` and `android.metadata.strings`
+specify what is replaced and removed.
 
 === Known gaps
 * `flatten_transforms` handles one level of branching; a deeper one hits
   `todo!("Recursion required ahead")` and panics, for any layout in the
   bundle, after some files of earlier layouts are written
   (`layout.transforms.dead-key-entries`).
-* A second `generate` on one checkout breaks the Gradle build, as above.
+* A run without any Android layout after one with them leaves the
+  template's placeholder subtype removed, so the next run with layouts
+  removes the template's next subtype, if it has one; the stock template
+  has only the one.
+* The app's name in a language that has left `project.yaml` `locales`
+  stays in `+values-{locale}/strings-appname.xml+`.
+* Subtypes are recognised by kbdgen's current attribute set, so changing
+  what `method_subtype` or `spellchecker_subtype` writes stops a later
+  version recognising subtypes an earlier one wrote.
 * Layouts whose English names give the same keyboard name overwrite each
   other's files.
 * No v4 support: `docs/spec/ldml/android.md` is unimplemented.

@@ -5,6 +5,15 @@ keyboard for each bundle layout that has an `android` section. Paths are
 relative to `{out}/repo/app/src/main` unless noted. `{out}` is the
 canonicalised `-o` directory.
 
+Generation edits the checkout in place, and runs again on a checkout it
+has already generated into whenever `{out}/repo` is reused. Running it any
+number of times with one bundle leaves the files that running it once
+does. Files kbdgen creates are rewritten whole. In the template's own
+files, each edit replaces what an earlier run put there instead of adding
+to it, and the subtypes, strings and files of a layout that has left the
+bundle are removed (`[spec:kbdgen:req:android.metadata]`,
+`[spec:kbdgen:req:android.metadata.strings]`).
+
 ## Toolchain
 
 > [spec:kbdgen:req:android.dependencies+1]
@@ -75,7 +84,7 @@ canonicalised `-o` directory.
 > `Northern Sami (Norway)` becomes `northernxsamixnorway`. Layouts whose
 > names collide overwrite each other's files.
 
-> [spec:kbdgen:req:android.layout-xml.rows]
+> [spec:kbdgen:req:android.layout-xml.rows+1]
 > An `android` section MUST have both `primary` and `tablet-600` platforms,
 > and each platform MUST have a `default` layer. For each platform, line `i`
 > of the `default` layer goes into the `<default>` element of
@@ -87,7 +96,9 @@ canonicalised `-o` directory.
 > rows file inserts one
 > `<Row><include latin:keyboardLayout="@xml/rowkeys_{name}{i+1}" latin:keyWidth="{w}%p"/></Row>`
 > per line, in line order, between the template's `key_styles_common` and
-> `row_qwerty4` includes.
+> `row_qwerty4` includes. With `k` rowkeys files written, kbdgen then deletes
+> `rowkeys_{name}{n}.xml` for `n` from `k+1` up to the first `n` with no
+> such file, so rows left by an earlier run with more lines go.
 
 ## Keys
 
@@ -143,44 +154,88 @@ canonicalised `-o` directory.
 
 ## Metadata
 
-> [spec:kbdgen:req:android.metadata+1]
-> `res/xml/method.xml` and `res/xml/spellchecker.xml` MUST already exist,
-> each with at least one `<subtype>`; otherwise generation fails with an
-> error naming the file. The first `<subtype>` of each file is removed.
-> Then, in bundle layout order, each Android layout appends one subtype to
-> each file. `{sub}` is the language tag with `-`→`_`, lowercased.
+> [spec:kbdgen:req:android.metadata+2]
+> `res/xml/method.xml` and `res/xml/spellchecker.xml` MUST already exist;
+> otherwise generation fails with `open {path}`. `{sub}` is the language
+> tag with `-`→`_`, lowercased. kbdgen writes these subtypes:
 > - `method.xml`:
 >   `<subtype android:icon="@drawable/ic_ime_switcher_dark" android:imeSubtypeMode="keyboard" android:label="@string/subtype_{sub}" android:imeSubtypeLocale="{tag, -→_}" android:imeSubtypeExtraValue="KeyboardLayoutSet={name},AsciiCapable,EmojiCapable" android:isAsciiCapable="true"/>`
 > - `spellchecker.xml`:
 >   `<subtype android:label="@string/subtype_{sub}" android:subtypeLocale="{tag}"/>`
 >
-> Each run removes one subtype but appends one per layout, so re-running on
-> the same clone duplicates subtypes. If no layout has an `android` section,
-> kbdgen only logs a warning and every step still runs.
+> A `<subtype>` child of the root is kbdgen's when its attributes, in any
+> order, are exactly the ones above for the tag it carries in
+> `imeSubtypeLocale` (with `_`→`-`) or `subtypeLocale` and, in `method.xml`,
+> the `{name}` in its `imeSubtypeExtraValue`. The template's subtypes are
+> not: the `method.xml` one has a `subtypeId`, and the `spellchecker.xml`
+> one is labelled `subtype_generic`.
+>
+> Each file is processed the same way:
+> 1. Every kbdgen subtype is removed. Its tag, and in `method.xml` its
+>    `{name}`, are what an earlier run generated.
+> 2. If none was removed and some layout has an `android` section, the
+>    file's first remaining `<subtype>`, the template's placeholder, is
+>    removed too, if there is one. An earlier run that generated a subtype
+>    has already removed the placeholder.
+> 3. In bundle layout order, each Android layout appends its subtype.
+>
+> A run on a checkout kbdgen has generated into therefore leaves the same
+> subtypes as a run on a fresh clone, and duplicates that earlier kbdgen
+> versions appended are dropped. If no layout has an `android` section,
+> kbdgen only logs a warning, keeps the placeholder, and every step still
+> runs. A run with no Android layout after one with them leaves no
+> placeholder; the next run with layouts then removes the template's next
+> subtype, if it has one.
+>
+> For a tag an earlier run generated that has no Android layout in the
+> bundle, kbdgen deletes `assets/layouts/{tag}.json` and logs
+> `Removing {tag}: an earlier run generated it, and the bundle has no Android layout for it`.
+> For a `{name}` an earlier run generated that no Android layout has, it
+> deletes that keyboard's layout XML (`[spec:kbdgen:def:android.layout-xml]`):
+> `res/xml/kbd_{name}.xml`, `res/xml/keyboard_layout_set_{name}.xml`, and in
+> both `res/xml` and `res/xml-sw600dp` `rows_{name}.xml` and
+> `rowkeys_{name}{n}.xml` for `n` from 1 up to the first `n` with no such
+> file. Their strings go as `[spec:kbdgen:req:android.metadata.strings]`
+> says.
 
-> [spec:kbdgen:req:android.metadata.strings]
+> [spec:kbdgen:req:android.metadata.strings+1]
+> kbdgen never appends a string a file may already have. To set string `s`
+> to `v` in a resources file, it gives the first `<string name="s">` child
+> of the root the text `v` and removes any further ones, which earlier
+> kbdgen versions appended on every run; with none, it appends
+> `<string name="s">v</string>`.
+>
 > For each Android layout, kbdgen MUST:
-> - set the `string[name="english_ime_name"]` element of
->   `res/values/strings-appname.xml` to `{displayNames.en} Keyboard`. The
->   last layout wins.
-> - append `<string name="subtype_{sub}">{displayNames.en}</string>` to
->   `res/values/strings.xml`.
+> - set the `english_ime_name` string of `res/values/strings-appname.xml`
+>   to `{displayNames.en} Keyboard`. The last layout wins. If the file has
+>   no such string, generation fails with
+>   `{path} has no string named english_ime_name`.
+> - set `subtype_{sub}` to `{displayNames.en}` in `res/values/strings.xml`.
 > - for each `displayNames` entry `(t, n)` where `res/values-{t}` existed
->   before generation, append `<string name="subtype_{sub}">{n}</string>` to
->   `res/values-{t}/strings.xml`. The file is created if missing, and the
->   string is skipped if one with that name already exists.
+>   before generation, set `subtype_{sub}` to `n` in
+>   `res/values-{t}/strings.xml`, creating the file if missing.
+>
+> The `subtype_{sub}` strings of every tag an earlier run generated
+> (`[spec:kbdgen:req:android.metadata]`) or this run generates are
+> kbdgen's. `res/values/strings.xml` and each `res/values-*/strings.xml`
+> lose the kbdgen strings that this run does not set in them: those of a
+> layout that has left the bundle, or of a display name a layout no longer
+> has. Two paths that resolve to the same file count as one file
+> (giellakbd-android links `values-en/strings.xml` to `values/strings.xml`);
+> where both set a string, the value set first wins. A strings file in
+> which kbdgen neither sets nor removes a string is not rewritten.
 >
 > Afterwards, for each `project.yaml` locale `l` whose `res/values-{l}`
-> existed, kbdgen appends
-> `<string name="english_ime_name">{locales[l].name}</string>` to
-> `res/values-{l}/strings-appname.xml`, creating the file if missing. Only
-> the per-locale `strings.xml` entries are deduplicated; the other appends
-> repeat on every run.
+> existed, kbdgen sets `english_ime_name` to `{locales[l].name}` in
+> `res/values-{l}/strings-appname.xml`, creating the file if missing. The
+> `english_ime_name` of a locale that has left `project.yaml` stays.
 
-> [spec:kbdgen:req:android.metadata.icons+1]
+> [spec:kbdgen:req:android.metadata.icons+2]
 > If `resources/android/icon.png` exists, kbdgen MUST run the following
 > command for each density `(mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144, xxxhdpi 192)`:
-> `convert -resize {d}x{d} <icon> res/drawable-{density}/ic_launcher_keyboard.png`.
+> `convert -resize {d}x{d} -define png:exclude-chunks=date,time <icon> res/drawable-{density}/ic_launcher_keyboard.png`.
+> The define leaves out the time stamps ImageMagick would otherwise write,
+> so one icon gives byte-identical files on every run.
 > If `convert` cannot be started or exits non-zero, generation fails with
 > an error naming the icon and the size and including convert's stderr.
 > Without the icon, kbdgen logs

@@ -46,7 +46,8 @@ at <output>/repo`.
 |Writes the layouts, names, input method subtypes and icons into
 `<output>/repo` and, when there is a `targets/android.yaml`, writes
 `app/local.gradle` and runs Gradle. It needs a
-checkout from an earlier `build` or `clone`; it does not download the
+checkout from an earlier `build` or `clone`, and can run on it again as
+often as needed (see <<android-building-again>>); it does not download the
 native libraries.
 |===
 
@@ -340,23 +341,36 @@ Studio to build, run and change the app there.
 
 [[android-building-again]]
 ==== Building again
-Generating twice into the same checkout breaks it: kbdgen appends the app's
-names again, and Gradle then stops with
+After changing the bundle, run `android build` or `android generate` again
+with the same output directory. There is no need to reset the checkout
+first: kbdgen replaces what it wrote the last time instead of adding to it.
+Generating any number of times with one bundle leaves the checkout exactly
+as generating once does, so `git status` lists the files above and
+`git diff` shows the same changes. `android build` keeps the existing
+checkout and downloads the native libraries again; `android generate` is
+quicker when only the bundle changed.
 
-----
-Error: `gradlew assembleRelease` failed with exit status: 1: ERROR: <output>/repo/app/src/main/res/values-en/strings-appname.xml: Resource and asset merger: Found item String/english_ime_name more than one time
-----
+The checkout follows the bundle:
 
-With more than one layout, the input method subtypes are duplicated as well.
-Reset the checkout before generating again; the native libraries and
-`local.gradle` stay:
+* A layout that has left the bundle, or lost its `android` section, loses
+  its input method subtype, its names in every language, its
+  `assets/layouts/<tag>.json` and its keyboard files. kbdgen logs
+  `Removing <tag>: an earlier run generated it, and the bundle has no
+  Android layout for it`.
+* A changed English name gives the keyboard's files the new name and
+  removes those with the old one.
+* A display name removed from a layout is removed from that language's
+  strings, and a changed one is replaced.
+* Rows removed from a layer lose their row files.
 
-[source,sh]
-----
-git -C android-out/repo checkout -- .
-git -C android-out/repo clean -fd
-kbdgen target -b sme.kbdgen -o android-out android generate
-----
+Two things stay from earlier runs: the app's name in a language that has
+left `project.yaml` `locales`, and the launcher icons of an earlier run
+whose bundle had `resources/android/icon.png`.
+
+A checkout that an older kbdgen generated into more than once, which Gradle
+rejects with `Found item String/english_ime_name more than one time`, is
+repaired by generating into it again: kbdgen keeps one of each name and
+subtype.
 
 === Diagnostics
 Warnings, after which the build goes on:
@@ -429,8 +443,6 @@ Gradle's output is logged at the trace level: run with
 * Only v3 layouts build.
 * Transforms deeper than one level crash kbdgen, even in a layout without
   an `android` section, with `not yet implemented: Recursion required
-  ahead`. The checkout is left half written; reset it as in
-  <<android-building-again>>.
-* Generating twice into one checkout breaks the Gradle build; see
-  <<android-building-again>>.
+  ahead`. The checkout is left half written; generate again once the
+  transform is fixed (see <<android-building-again>>).
 * A keyboard has only a `default` and a `shift` layer.
