@@ -52,7 +52,7 @@ pub struct DerivedLayers {
 /// How a `kbdl` layer is selected: through the engine's selection, or, for
 /// the native-only `ctrl` layer, by exact matching alone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Selection {
+pub(crate) enum Selection {
     Engine,
     Native,
 }
@@ -167,7 +167,7 @@ fn matching_layer(hardware: &Hardware, m: ModifierState, native: bool) -> Option
 /// then AltGr's retry with Left Ctrl (`ldml.engine.altgr`), then `Other`;
 /// for a native-only state, an exact native match.
 // [spec:kbdgen:sem:ldml.kbdl.layers]
-fn select(
+pub(crate) fn select(
     hardware: &Hardware,
     windows: &Windows,
     m: ModifierState,

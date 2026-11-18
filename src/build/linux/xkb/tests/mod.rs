@@ -1,6 +1,7 @@
 //! The XKB tier on fixture layouts.
 
 mod registry;
+mod symbols;
 
 use std::path::Path;
 
@@ -38,8 +39,23 @@ pub fn linux_layouts(layouts: &[(&str, &str)]) -> Vec<LinuxLayout> {
 /// A v4 layout whose `linux` variant has the one layer `none`, under
 /// `display` for the primary language subtag `primary`.
 pub fn v4_linux(primary: &str, display: &str, body: &str, rows: &str) -> String {
-    let rows: String = rows.lines().map(|row| format!("        {row}\n")).collect();
-    format!(
-        "format: 4\ndisplayNames: {{{primary}: {display:?}}}\n{body}hardware:\n  linux:\n    layers:\n      none: |\n{rows}"
-    )
+    v4_layers(primary, display, body, &[("none", rows)])
 }
+
+/// A v4 layout whose `linux` variant has `layers`, each (modifiers, rows),
+/// and the layers they imply (`ldml.yaml.implied-layers`).
+pub fn v4_layers(primary: &str, display: &str, body: &str, layers: &[(&str, &str)]) -> String {
+    let mut text = format!(
+        "format: 4\ndisplayNames: {{{primary}: {display:?}}}\n{body}hardware:\n  linux:\n    layers:\n"
+    );
+    for (modifiers, rows) in layers {
+        text.push_str(&format!("      {modifiers}: |\n"));
+        for row in rows.lines() {
+            text.push_str(&format!("        {row}\n"));
+        }
+    }
+    text
+}
+
+/// The ISO rows of a Nordic layout.
+pub const ROWS: &str = "§ 1 2 3 4 5 6 7 8 9 0 + ´\nq w e r t y u i o p å ¨\na s d f g h j k l ö æ '\n< z x c v b n m , . -";

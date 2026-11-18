@@ -1611,6 +1611,25 @@ impl_evidence (
         {impl_name main, rule ldml.linux.touch}
         {impl_name main, rule ldml.linux.touch.keys}
     )}
+    {id targets.linux.xkb.symbols, covered_rules (
+        ldml.linux.decimal
+        ldml.linux.keycodes
+        ldml.linux.levels
+        ldml.linux.semantics
+        ldml.linux.types
+        ldml.linux.values
+        linux.xkb.naming
+        linux.xkb.symbols
+    ), covered_claims (
+        {impl_name main, rule ldml.linux.decimal}
+        {impl_name main, rule ldml.linux.keycodes}
+        {impl_name main, rule ldml.linux.levels}
+        {impl_name main, rule ldml.linux.semantics}
+        {impl_name main, rule ldml.linux.types}
+        {impl_name main, rule ldml.linux.values}
+        {impl_name main, rule linux.xkb.naming}
+        {impl_name main, rule linux.xkb.symbols}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

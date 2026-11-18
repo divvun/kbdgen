@@ -46,6 +46,7 @@ LDML-only.
 | `android.md` | `ldml.android.*` | the model to Android layout resources adapter |
 | `macos.md` | `ldml.macos.*` | the model to macOS `.keylayout` adapter |
 | `chromeos.md` | `ldml.chromeos.*` | the engine in WebAssembly as a ChromeOS input method |
+| `linux.md` | `ldml.linux.*` | the model to XKB layout and on-screen keyboard layouts adapter |
 | `cli.md` | `ldml.cli.*` | `kbdgen ldml` subcommands |
 
 Rule bodies flag LDML gaps and kbdgen additions with fixed phrases:
@@ -91,7 +92,7 @@ Sources:
 > | Extension: per-host documents; the modifier components `cmd` and `extra1`–`extra3`; native-only layers; numpad decimal; dead-key flush output; touch roles, labels and bottom-row policy; dead-key names; Windows key-name overrides, Shift Lock, LRM/RLM, and extra-modifier bindings | yes |
 > | LDML keyboardTest3 `startContext`, `keystroke` (`flick`, `longPress`, `tapCount`), `emit`, `backspace`, `check` | n/a |
 
-> [spec:kbdgen:req:ldml.scope.deferred+2]
+> [spec:kbdgen:req:ldml.scope.deferred+3]
 > The following are out of scope for v1. A keyboard that uses one still
 > loads.
 >
@@ -103,9 +104,10 @@ Sources:
 >   element for one.
 > - Emoji-cluster-aware default backspace is not done. The `codePoint`
 >   policy deletes one scalar value (`ldml.engine.backspace.default`).
-> - The model is not compiled to XKB, and the iOS and Android generators
->   are not ported to v4 (`ldml.yaml.coexistence`). macOS gets a static
->   `.keylayout` (`ldml.macos.adapter`); there is no Input Method Kit host.
+> - The iOS and Android generators are not ported to v4
+>   (`ldml.yaml.coexistence`). macOS gets a static `.keylayout`
+>   (`ldml.macos.adapter`); there is no Input Method Kit host. Linux gets
+>   a static XKB layout (`ldml.linux.adapter`).
 > - There are no C ABI or JNI host bindings; the only bindings are the
 >   Windows text service and the WebAssembly module ChromeOS runs
 >   (`ldml.crate.ffi`).

@@ -76,7 +76,7 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 > positions of `kbdl.scancodes.iso`, the JIS yen key and the space bar.
 > A key is written when K's form has its scan code.
 
-> [spec:kbdgen:sem:ldml.linux.levels]
+> [spec:kbdgen:sem:ldml.linux.levels+1]
 > Each key has eight *states*, the combinations of Shift, Lock (Caps
 > Lock) and Level3 (AltGr). State (*s*, *c*, *g*) takes the layer the
 > engine selects (`ldml.engine.modifiers`, `ldml.engine.altgr`, `Other`;
@@ -96,13 +96,17 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 >   Lock, `Control_R`), and a bound `B00`, which has no key
 >   (`ldml.yaml.native`), types nothing
 >
-> A written key with no key in any state is written `[ NoSymbol ]`, so
-> that `pc`'s keysyms for it do not show through.
+> A written key with no key in any state is written `[ VoidSymbol ]`, so
+> that `pc`'s keysyms for it do not show through: the evdev rules include
+> the layout over `pc` with the override merge, which keeps the earlier
+> keysym of every level the layout leaves `NoSymbol` (`<LSGT>`, `<BKSL>`
+> and `<SPCE>` in `pc`; checked with libxkbcommon 1.7.0 and 1.13.1).
 
-> [spec:kbdgen:sem:ldml.linux.values]
+> [spec:kbdgen:sem:ldml.linux.values+1]
 > A state's *value* is a keysym:
 >
-> - no key, a gap or an empty output: `NoSymbol`
+> - no key, a gap or an empty output: `VoidSymbol`, which types nothing
+>   and, unlike `NoSymbol`, replaces `pc`'s keysym (`ldml.linux.levels`)
 > - one scalar value *c*: the keysym libxkbcommon's `xkb_utf32_to_keysym(c)`
 >   gives, the legacy keysym where there is one, else the Unicode keysym
 >   `0x01000000` + *c*, so that Compose sequences and shortcuts naming
@@ -111,32 +115,33 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 >   uppercase hexadecimal digits
 > - a single marker: its dead keysym (`ldml.linux.dead-keys`); for a dead
 >   key without one, the keysym of `flush[m]` when that is one scalar
->   value, else `NoSymbol`
-> - more than one scalar value, or text and markers mixed: `NoSymbol`.
+>   value, else `VoidSymbol`
+> - more than one scalar value, or text and markers mixed: `VoidSymbol`.
 >   libxkbcommon allows several keysyms per level, but toolkits take one
 >   keysym per key (`xkb_state_key_get_one_sym`, as plasma-keyboard's
 >   `src/inputmethod.cpp` does), and Compose output would need per-user
 >   files (`linux.xkb.desktops`)
 
-> [spec:kbdgen:sem:ldml.linux.semantics]
+> [spec:kbdgen:sem:ldml.linux.semantics+1]
 > The XKB layout is taken to type as libxkbcommon does (`src/state.c`): a
 > key's type maps the active modifiers among its own to a level, Level1
 > when no entry matches, and consumes its own modifiers except those the
-> entry preserves; the level's keysym is taken, and `NoSymbol` types
-> nothing. When Lock is active and the type does not consume it, the
+> entry preserves; the level's keysym is taken, and `VoidSymbol` and
+> `NoSymbol` type nothing. When Lock is active and the type does not consume it, the
 > keysym becomes its uppercase, `xkb_keysym_to_upper`: the simple
 > uppercase mapping of Unicode, with ẞ for ß since libxkbcommon 1.8
 > (`NEWS.md`). Dead keysyms then compose per `ldml.linux.compose`. The
 > adapter's choice of types, `ldml.linux.test.typing` and
 > `linux.test.xkbcommon` all rest on these semantics.
 
-> [spec:kbdgen:sem:ldml.linux.types]
+> [spec:kbdgen:sem:ldml.linux.types+1]
 > Each key gets an explicit type from xkeyboard-config's `complete` set
 > (`types/basic`, `types/extra`): the first of `ONE_LEVEL`, `TWO_LEVEL`,
 > `ALPHABETIC`, then `FOUR_LEVEL`, `FOUR_LEVEL_SEMIALPHABETIC` and
 > `FOUR_LEVEL_ALPHABETIC` when the model uses Level3, then
 > `FOUR_LEVEL_PLUS_LOCK`, that gives all eight of its values under
-> `ldml.linux.semantics`. A type's levels hold the values of the states
+> `ldml.linux.semantics`; when the model does not use Level3, no state
+> with Level3 can occur, and only the other four count. A type's levels hold the values of the states
 > that name them in its map: Level1 (0, 0, 0), Level2 (1, 0, 0), Level3
 > (0, 0, 1), Level4 (1, 0, 1), and in `FOUR_LEVEL_PLUS_LOCK`, which gives
 > Lock alone a level, Level5 (0, 1, 0). A key that no type serves takes

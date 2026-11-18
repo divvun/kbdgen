@@ -1,8 +1,6 @@
 use super::*;
 use crate::build::linux::xkb::{RegistryEntry, Tree, evdev_xml};
 
-const ROWS: &str = "§ 1 2 3 4 5 6 7 8 9 0 + ´\nq w e r t y u i o p å ¨\na s d f g h j k l ö æ '\n< z x c v b n m , . -";
-
 // [spec:kbdgen:syn:linux.xkb.registry/test]
 #[test]
 fn registry_lists_each_layout_in_bundle_order() {
@@ -11,9 +9,7 @@ fn registry_lists_each_layout_in_bundle_order() {
     let sme = v4_linux("sme", "Davvisámegiella", "", ROWS);
     let layouts = linux_layouts(&[("sme", &sme), ("se-NO", &se), ("es-419", &es)]);
     let tree = Tree::new(&ids(), &layouts).unwrap();
-    let [(path, xml)] = &tree.files[..] else {
-        panic!("{:?}", tree.files);
-    };
+    let (path, xml) = tree.files.last().unwrap();
     assert_eq!(path, "rules/evdev.xml");
     assert_eq!(
         xml,
