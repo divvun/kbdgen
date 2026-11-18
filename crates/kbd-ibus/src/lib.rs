@@ -11,7 +11,7 @@
 //! Stevia completer would reuse (`planner`, `keys`, `context`).
 
 // [spec:kbdgen:def:linux.ibus.component]
-// [spec:kbdgen:req:linux.ibus.crate]
+// [spec:kbdgen:req:linux.ibus.crate+1]
 
 pub mod address;
 pub mod context;

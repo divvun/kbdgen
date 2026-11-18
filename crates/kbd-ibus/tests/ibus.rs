@@ -37,8 +37,8 @@ use kbd_ibus::planner::{CAP_PREEDIT_TEXT, CAP_SURROUNDING_TEXT, PreeditMode, Sig
 use kbd_model::{Info, Keyboard};
 use zbus::export::futures_core::Stream;
 use zbus::message::Type;
-use zbus::zvariant::{OwnedObjectPath, OwnedValue, Value};
 use zbus::{Connection, Message, MessageStream};
+use zbus::{OwnedObjectPath, OwnedVariant, Variant};
 
 const PROGRAM: &str = env!("CARGO_BIN_EXE_ibus-engine-divvun");
 const TEMPLATE: &str = include_str!("../data/divvun.xml.in");
@@ -221,15 +221,15 @@ impl Drop for Daemon {
 }
 
 /// The text of an `IBusText`.
-fn ibus_text(value: &Value<'_>) -> String {
+fn ibus_text(value: &Variant<'_>) -> String {
     let mut value = value;
-    while let Value::Value(inner) = value {
+    while let Variant::Variant(inner) = value {
         value = inner;
     }
-    let Value::Structure(structure) = value else {
+    let Variant::Structure(structure) = value else {
         panic!("an IBusText, got {value:?}");
     };
-    let [Value::Str(kind), _, Value::Str(text), ..] = structure.fields() else {
+    let [Variant::Str(kind), _, Variant::Str(text), ..] = structure.fields() else {
         panic!("an IBusText, got {structure:?}");
     };
     assert_eq!(kind.as_str(), "IBusText");
@@ -237,21 +237,20 @@ fn ibus_text(value: &Value<'_>) -> String {
 }
 
 /// An `IBusText` of `text` with no attributes.
-fn ibus_text_value(text: &str) -> Value<'static> {
+fn ibus_text_value(text: &str) -> Variant<'static> {
     use std::collections::HashMap;
-    use zbus::zvariant::StructureBuilder;
-    let list = StructureBuilder::new()
+    let list = zbus::Structure::builder()
         .add_field("IBusAttrList")
-        .add_field(HashMap::<String, Value<'static>>::new())
-        .add_field(Vec::<Value<'static>>::new())
+        .add_field(HashMap::<String, Variant<'static>>::new())
+        .add_field(Vec::<Variant<'static>>::new())
         .build()
         .unwrap();
-    Value::Structure(
-        StructureBuilder::new()
+    Variant::Structure(
+        zbus::Structure::builder()
             .add_field("IBusText")
-            .add_field(HashMap::<String, Value<'static>>::new())
+            .add_field(HashMap::<String, Variant<'static>>::new())
             .add_field(text.to_owned())
-            .add_field(Value::Structure(list))
+            .add_field(Variant::Structure(list))
             .build()
             .unwrap(),
     )
@@ -270,7 +269,6 @@ struct Client {
 impl Client {
     async fn connect(daemon: &Daemon) -> Client {
         let connection = zbus::connection::Builder::address(daemon.address.as_str())
-            .unwrap()
             .build()
             .await
             .unwrap();
@@ -294,14 +292,14 @@ impl Client {
             surrounding: true,
         };
         client
-            .set_property("ClientCommitPreedit", Value::from((true,)))
+            .set_property("ClientCommitPreedit", Variant::from((true,)))
             .await;
         client
     }
 
     async fn call<B>(&self, method: &str, body: &B) -> zbus::Result<Message>
     where
-        B: zbus::export::serde::Serialize + zbus::zvariant::DynamicType,
+        B: zbus::export::serde::Serialize + zbus::DynamicType,
     {
         self.connection
             .call_method(
@@ -314,7 +312,7 @@ impl Client {
             .await
     }
 
-    async fn set_property(&self, name: &str, value: Value<'_>) {
+    async fn set_property(&self, name: &str, value: Variant<'_>) {
         self.connection
             .call_method(
                 Some(IBUS),
@@ -359,18 +357,18 @@ impl Client {
     }
 
     async fn set_purpose(&self, purpose: u32) {
-        self.set_property("ContentType", Value::from((purpose, 0u32)))
+        self.set_property("ContentType", Variant::from((purpose, 0u32)))
             .await;
     }
 
     async fn engine(&self) -> String {
         let reply = self.call("GetEngine", &()).await.unwrap();
-        let description: OwnedValue = reply.body().deserialize().unwrap();
-        let Value::Structure(structure) = &*description else {
+        let description: OwnedVariant = reply.body().deserialize().unwrap();
+        let Variant::Structure(structure) = &*description else {
             panic!("an IBusEngineDesc, got {description:?}");
         };
         match structure.fields() {
-            [_, _, Value::Str(name), ..] => name.as_str().to_owned(),
+            [_, _, Variant::Str(name), ..] => name.as_str().to_owned(),
             fields => panic!("an IBusEngineDesc, got {fields:?}"),
         }
     }
@@ -397,11 +395,11 @@ impl Client {
             let body = message.body();
             received.push(match header.member().map(|m| m.as_str()) {
                 Some("CommitText") => {
-                    let (text,): (OwnedValue,) = body.deserialize().unwrap();
+                    let (text,): (OwnedVariant,) = body.deserialize().unwrap();
                     Signal::CommitText(ibus_text(&text))
                 }
                 Some("UpdatePreeditTextWithMode") => {
-                    let (text, cursor, visible, mode): (OwnedValue, u32, bool, u32) =
+                    let (text, cursor, visible, mode): (OwnedVariant, u32, bool, u32) =
                         body.deserialize().unwrap();
                     Signal::UpdatePreeditText {
                         text: ibus_text(&text),
@@ -508,8 +506,8 @@ impl Client {
             )
             .await
             .unwrap();
-        let engines: OwnedValue = reply.body().deserialize().unwrap();
-        let Value::Array(engines) = &*engines else {
+        let engines: OwnedVariant = reply.body().deserialize().unwrap();
+        let Variant::Array(engines) = &*engines else {
             panic!("an array, got {engines:?}");
         };
         engines
@@ -517,12 +515,12 @@ impl Client {
             .iter()
             .filter_map(|engine| {
                 let mut engine = engine;
-                while let Value::Value(inner) = engine {
+                while let Variant::Variant(inner) = engine {
                     engine = inner;
                 }
                 match engine {
-                    Value::Structure(s) => match s.fields() {
-                        [_, _, Value::Str(name), ..] => Some(name.as_str().to_owned()),
+                    Variant::Structure(s) => match s.fields() {
+                        [_, _, Variant::Str(name), ..] => Some(name.as_str().to_owned()),
                         _ => None,
                     },
                     _ => None,
@@ -674,12 +672,14 @@ fn engine_list_matches_lister_and_refuses_corrupt_model() {
             ("divvun-bad", "model-malformed"),
             ("divvun-none", "no-description"),
         ] {
-            let Err(zbus::Error::MethodError(error, detail, _)) = client.create_engine(name).await
-            else {
-                panic!("{name} is refused");
+            let refused = client.create_engine(name).await;
+            let Err(zbus::Error::FDO(error)) = refused else {
+                panic!("{name} is refused with Failed, got {refused:?}");
             };
-            assert_eq!(error.as_str(), "org.freedesktop.DBus.Error.Failed");
-            assert_eq!(detail.as_deref(), Some(reason));
+            let zbus::fdo::Error::Failed(detail) = *error else {
+                panic!("{name} is refused with Failed, got {error:?}");
+            };
+            assert_eq!(detail, reason);
         }
         assert!(
             daemon

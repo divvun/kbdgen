@@ -338,7 +338,7 @@ fn wasm_is_cdylib_on_engine_and_model() {
 }
 
 // [spec:kbdgen:def:ldml.crate.layout+3/test]
-// [spec:kbdgen:req:linux.ibus.crate/test]
+// [spec:kbdgen:req:linux.ibus.crate+1/test]
 // [spec:kbdgen:def:linux.ibus.component/test]
 #[test]
 fn ibus_is_binary_on_engine_and_zbus() {
@@ -382,10 +382,10 @@ fn ibus_is_binary_on_engine_and_zbus() {
         );
     }
     let zbus = dependency(ibus, "zbus");
-    assert_no_default_features(zbus, &["tokio"]);
+    assert_no_default_features(zbus, &["service", "tokio"]);
     assert!(
-        zbus["req"].as_str().expect("req").starts_with("^5"),
-        "zbus is 5.x"
+        zbus["req"].as_str().expect("req").starts_with("^6"),
+        "zbus is 6.x"
     );
     assert_no_default_features(dependency(ibus, "tokio"), &["rt", "sync"]);
     for name in ["zbus", "tokio"] {

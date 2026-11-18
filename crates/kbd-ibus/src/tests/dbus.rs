@@ -8,11 +8,11 @@ use std::pin::pin;
 use std::sync::Arc;
 use std::task::Poll;
 
-use tokio::net::UnixStream;
+use std::os::unix::net::UnixStream;
 use tokio::sync::Notify;
 use zbus::connection::Builder;
-use zbus::zvariant::{OwnedObjectPath, Value};
 use zbus::{Connection, Guid, Message};
+use zbus::{OwnedObjectPath, Variant};
 
 use super::data::{description, install, model_bytes};
 use crate::dbus::factory::Factory;
@@ -70,10 +70,8 @@ async fn serve(root: &Path) -> Served {
     let factory = Factory::new(vec![root.to_path_buf()], process.clone(), exit.clone());
     let server = Builder::unix_stream(a)
         .server(Guid::generate())
-        .unwrap()
         .p2p()
         .serve_at(FACTORY_PATH, factory)
-        .unwrap()
         .build();
     let client = Builder::unix_stream(b).p2p().build();
     let (server, client) = both(server, client).await;
@@ -82,6 +80,18 @@ async fn serve(root: &Path) -> Served {
         client: client.unwrap(),
         process,
         exit,
+    }
+}
+
+/// The detail of an `org.freedesktop.DBus.Error.Failed` reply, which zbus
+/// reports as `fdo::Error::Failed`.
+fn failure<T: std::fmt::Debug>(reply: zbus::Result<T>) -> String {
+    match reply {
+        Err(zbus::Error::FDO(error)) => match *error {
+            zbus::fdo::Error::Failed(detail) => detail,
+            other => panic!("expected Failed, got {other:?}"),
+        },
+        other => panic!("expected Failed, got {other:?}"),
     }
 }
 
@@ -94,7 +104,7 @@ impl Served {
         body: &B,
     ) -> zbus::Result<Message>
     where
-        B: zbus::export::serde::Serialize + zbus::zvariant::DynamicType,
+        B: zbus::export::serde::Serialize + zbus::DynamicType,
     {
         self.client
             .call_method(None::<&str>, path, Some(interface), member, body)
@@ -122,7 +132,7 @@ impl Served {
                 &(ENGINE, property),
             )
             .await?;
-        let value: zbus::zvariant::OwnedValue = reply.body().deserialize().unwrap();
+        let value: zbus::OwnedVariant = reply.body().deserialize().unwrap();
         Ok(bool::try_from(&*value).unwrap())
     }
 
@@ -157,7 +167,7 @@ impl Served {
                     PATH,
                     "org.freedesktop.DBus.Properties",
                     "Set",
-                    &(ENGINE, "ContentType", Value::from((8u32, 0u32))),
+                    &(ENGINE, "ContentType", Variant::from((8u32, 0u32))),
                 )
                 .await,
             ),
@@ -257,10 +267,7 @@ fn poisoned_process_passes_and_exits_without_engines() {
         served.enter(Entry::FocusIn).await;
         assert!(served.process.poisoned());
         assert!(!served.key(30).await.unwrap());
-        let Err(zbus::Error::MethodError(_, Some(detail), _)) = served.create("kbd").await else {
-            panic!("a poisoned process refuses");
-        };
-        assert_eq!(detail, "poisoned");
+        assert_eq!(failure(served.create("kbd").await), "poisoned");
         assert!(!served.process.done(), "an engine object is left");
         served.enter(Entry::Destroy).await;
         assert!(served.process.done());
@@ -280,12 +287,7 @@ fn factory_numbers_engines_and_refuses_unknown() {
             served.create("kbd").await.unwrap().as_str(),
             "/org/freedesktop/IBus/Engine/2"
         );
-        let Err(zbus::Error::MethodError(name, Some(detail), _)) = served.create("none").await
-        else {
-            panic!("an unknown engine is refused");
-        };
-        assert_eq!(name.as_str(), "org.freedesktop.DBus.Error.Failed");
-        assert_eq!(detail, "no-description");
+        assert_eq!(failure(served.create("none").await), "no-description");
         served.enter(Entry::Destroy).await;
         assert!(served.get("FocusId").await.is_err(), "unexported");
         assert!(!served.process.poisoned());

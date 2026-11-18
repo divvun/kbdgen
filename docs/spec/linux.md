@@ -296,13 +296,17 @@ Sources:
 > only a leading `~` in observed paths, so the per-user directory does not
 > follow `XDG_DATA_HOME`.
 
-> [spec:kbdgen:req:linux.ibus.crate]
+> [spec:kbdgen:req:linux.ibus.crate+1]
 > `crates/kbd-ibus` MUST be an edition 2024 binary crate whose binary is
 > `ibus-engine-divvun`. It depends on `kbd-engine` with its default
 > `normalization` feature, `kbd-model`, and, for Unix targets only, `zbus`
-> 5 without its default features, on `tokio`'s current-thread runtime and
-> with no task per call, so one thread handles every call in the order it
-> arrives. It implements the D-Bus protocol of `linux.ibus.factory`
+> 6 without its default features, with only `tokio` and `service` (the
+> `interface` macro), on `tokio`'s current-thread runtime and with no task
+> per call, so one thread handles every call in the order it arrives. zbus
+> 6 holds the D-Bus wire format and name types that `zvariant` and
+> `zbus_names` did before it. It finds ibus-daemon's address itself
+> (`linux.ibus.factory`), so zbus's `ibus` feature, which runs a process,
+> is not used. It implements the D-Bus protocol of `linux.ibus.factory`
 > itself, with no GLib, GObject or libibus. It is excluded from
 > `default-members`; releases are built for `x86_64-unknown-linux-gnu` and
 > `aarch64-unknown-linux-gnu`. Its library, `kbd_ibus`, is the program

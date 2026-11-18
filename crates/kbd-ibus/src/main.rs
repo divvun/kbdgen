@@ -3,7 +3,7 @@
 //! directory changes, and `--ibus` serves them to ibus-daemon.
 
 // [spec:kbdgen:def:linux.ibus.component]
-// [spec:kbdgen:req:linux.ibus.crate]
+// [spec:kbdgen:req:linux.ibus.crate+1]
 
 use std::ffi::OsString;
 use std::io::Write as _;

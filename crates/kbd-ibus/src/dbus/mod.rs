@@ -55,13 +55,11 @@ async fn run(roots: Vec<PathBuf>) -> ExitCode {
     let process = Arc::new(Process::default());
     let exit = Arc::new(Notify::new());
     let factory = Factory::new(roots, process.clone(), exit.clone());
-    let connection = match zbus::connection::Builder::address(address.as_str())
-        .and_then(|builder| builder.serve_at(FACTORY_PATH, factory))
-        .and_then(|builder| builder.name(BUS_NAME))
-    {
-        Ok(builder) => builder.build().await,
-        Err(error) => Err(error),
-    };
+    let connection = zbus::connection::Builder::address(address.as_str())
+        .serve_at(FACTORY_PATH, factory)
+        .name(BUS_NAME)
+        .build()
+        .await;
     let Ok(connection) = connection else {
         diag::record(Event::Failed("cannot serve on ibus-daemon's bus"));
         return ExitCode::FAILURE;

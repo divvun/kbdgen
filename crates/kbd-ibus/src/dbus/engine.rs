@@ -10,8 +10,8 @@
 use std::sync::Arc;
 
 use tokio::sync::Notify;
+use zbus::Variant;
 use zbus::object_server::SignalEmitter;
-use zbus::zvariant::Value;
 use zbus::{ObjectServer, interface};
 
 use super::text;
@@ -188,7 +188,7 @@ impl Engine {
         self.run(Entry::CursorDown, (), |_| ());
     }
 
-    async fn set_surrounding_text(&mut self, text: Value<'_>, cursor_pos: u32, anchor_pos: u32) {
+    async fn set_surrounding_text(&mut self, text: Variant<'_>, cursor_pos: u32, anchor_pos: u32) {
         self.run(Entry::SetSurroundingText, (), |session| {
             if let Some(text) = text::decode(&text) {
                 session.set_surrounding_text(&text, cursor_pos, anchor_pos);
@@ -196,12 +196,12 @@ impl Engine {
         });
     }
 
-    async fn panel_extension_received(&mut self, event: Value<'_>) {
+    async fn panel_extension_received(&mut self, event: Variant<'_>) {
         drop(event);
         self.run(Entry::PanelExtensionReceived, (), |_| ());
     }
 
-    async fn panel_extension_register_keys(&mut self, data: Value<'_>) {
+    async fn panel_extension_register_keys(&mut self, data: Variant<'_>) {
         drop(data);
         self.run(Entry::PanelExtensionRegisterKeys, (), |_| ());
     }
@@ -232,12 +232,12 @@ impl Engine {
     }
 
     #[zbus(signal)]
-    async fn commit_text(emitter: &SignalEmitter<'_>, text: &Value<'_>) -> zbus::Result<()>;
+    async fn commit_text(emitter: &SignalEmitter<'_>, text: &Variant<'_>) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn update_preedit_text(
         emitter: &SignalEmitter<'_>,
-        text: &Value<'_>,
+        text: &Variant<'_>,
         cursor_pos: u32,
         visible: bool,
         mode: u32,

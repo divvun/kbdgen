@@ -5,8 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use tokio::sync::Notify;
-use zbus::zvariant::OwnedObjectPath;
-use zbus::{ObjectServer, fdo, interface};
+use zbus::{ObjectServer, OwnedObjectPath, fdo, interface};
 
 use super::engine::{Engine, Service};
 use crate::data::{self, Refusal};
@@ -65,8 +64,9 @@ impl Factory {
                 let path = format!("/org/freedesktop/IBus/Engine/{number}");
                 let engine = Engine::new(session, self.process.clone());
                 let service = Service::new(self.process.clone(), self.exit.clone());
-                let exported = server.at(path.as_str(), engine).await.unwrap_or(false);
-                let served = exported && server.at(path.as_str(), service).await.unwrap_or(false);
+                let exported = matches!(server.at(path.as_str(), engine).await, Ok(None));
+                let served =
+                    exported && matches!(server.at(path.as_str(), service).await, Ok(None));
                 if exported && !served {
                     let _ = server.remove::<Engine, _>(path.as_str()).await;
                 }
