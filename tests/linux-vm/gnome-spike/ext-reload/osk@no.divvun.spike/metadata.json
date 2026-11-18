@@ -1,0 +1,14 @@
+{
+  "uuid": "osk@no.divvun.spike",
+  "name": "Spike keyboards",
+  "description": "On-screen layouts for the kbdgen GNOME spike",
+  "shell-version": [
+    "50",
+    "51"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ],
+  "version-name": "0.1.0"
+}

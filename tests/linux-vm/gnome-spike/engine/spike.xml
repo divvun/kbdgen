@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component>
+  <name>org.freedesktop.IBus.Spike</name>
+  <description>kbdgen GNOME spike engine</description>
+  <exec>/usr/bin/python3 /usr/local/libexec/spike-engine.py --ibus</exec>
+  <version>0.1</version>
+  <author>kbdgen spike</author>
+  <license>MIT</license>
+  <homepage>https://example.invalid/</homepage>
+  <engines>
+    <engine>
+      <name>test-se</name>
+      <longname>Test davvisámegiella</longname>
+      <description>Test davvisámegiella</description>
+      <language>se</language>
+      <author>kbdgen spike</author>
+      <layout>test-se</layout>
+      <symbol>se</symbol>
+      <version>0.1</version>
+    </engine>
+    <engine>
+      <name>spike-other</name>
+      <longname>Spike other name</longname>
+      <description>Engine whose name is not its layout</description>
+      <language>se</language>
+      <author>kbdgen spike</author>
+      <layout>test-se</layout>
+      <symbol>sx</symbol>
+      <version>0.1</version>
+    </engine>
+  </engines>
+</component>

@@ -35,7 +35,7 @@ for them (`linux.ibus.planner`).
 **What the marks mean.** "(Source)" marks behaviour read in the upstream
 source at the revisions below; nothing in this file has yet been run on a
 Linux desktop. "Unverified" marks inferences, each to be settled by
-`linux.osk.gnome.spike` or `linux.test.acceptance`. Rules naming the
+the GNOME spike results or `linux.test.acceptance`. Rules naming the
 installer bind the keyboard packaging (divvun-actions), not kbdgen.
 
 Sources:
@@ -130,9 +130,12 @@ Sources:
 > | `plasma-keyboard/<id>/` | `<datadir>/plasma/keyboard/keyboardpackages/<id>/` | `$XDG_DATA_HOME/plasma/keyboard/keyboardpackages/<id>/` |
 >
 > `stevia/` is not installed (`linux.osk.stevia`). The installer enables
-> the GNOME extension for the user (`gnome-extensions enable <uuid>`); a
-> distribution may enable it by a dconf default of `org.gnome.shell
-> enabled-extensions`. The IBus engine is a system package of its own,
+> the GNOME extension for the user by adding its UUID to `org.gnome.shell
+> enabled-extensions`, which takes effect at the next login;
+> `gnome-extensions enable` cannot be used, as it refuses an extension
+> installed while the shell runs and needs a running shell (Verified:
+> GNOME spike results). A distribution may enable it by a dconf default of
+> that key. The IBus engine is a system package of its own,
 > which keyboard packages depend on (`linux.ibus.component`); a per-user
 > install types through it only where it is installed. Uninstalling
 > removes exactly what installing added.
@@ -462,9 +465,17 @@ Sources:
 > A string of several scalar values therefore reaches the engine one at a
 > time (`ldml.linux.classify.touch`). On-screen dead keys are keyvals
 > instead (`ldml.linux.touch.gnome`), which GNOME Shell presses on its
-> virtual device, so they reach the engine as hardware keys. (Unverified:
-> that mutter's virtual device finds the key code and level modifiers of a
-> dead keysym in the keymap, `linux.osk.gnome.spike`.)
+> virtual device, so they reach the engine as hardware keys: mutter takes
+> the first key code in the keymap that has the keysym, at the lowest
+> level, and presses `Shift_L` (key code 42) for Level2 or
+> `ISO_Level3_Shift` (84) for Level3 around it, so the engine sees that
+> modifier press, then the key with SHIFT or MOD5 in its state; a keysym
+> at a higher level types its Level1, and one the keymap lacks is dropped.
+> A code-0 press is followed by its release only when the engine returns
+> true. When it returns false, GNOME Shell presses the keyval itself,
+> which mutter drops if the keymap lacks it, and does not wait for that
+> echo before sending the next scalar value (Verified: GNOME spike
+> results).
 
 ### Edits and context
 
@@ -616,7 +627,13 @@ touch layouts are later work (Decisions).
 > - `extension.js`, the same for every bundle and embedded in kbdgen: an
 >   ES module whose default export extends GNOME Shell's `Extension`;
 >   `enable()` loads `osk-layouts.gresource` from the extension's `path`
->   with `Gio.Resource.load` and registers it, `disable()` unregisters it
+>   with `Gio.Resource.load` and registers it, `disable()` unregisters it,
+>   and each then reloads the input sources (`getInputSourceManager()`
+>   `.reload()` from `resource:///org/gnome/shell/ui/status/keyboard.js`):
+>   the on-screen keyboard reads its layout only when the input source,
+>   the source list or the field's purpose changes, and at login it is
+>   built before extensions are enabled. The reload keeps the current
+>   source and its MRU, and re-creates the IBus engine
 > - `osk-layouts.gresource`, a GResource bundle with
 >   `/org/gnome/shell/osk-layouts/<L>.json` for each layout
 >   (`ldml.linux.touch.gnome`), the JSON without insignificant whitespace,
@@ -630,31 +647,39 @@ touch layouts are later work (Decisions).
 > each time the layout or the field's purpose changes (`js/ui/keyboard.js`
 > `KeyboardModel`, `_updateLayout`). GLib looks a path up in every
 > registered bundle, so the extension's bundle adds files without
-> replacing the shell's. (Unverified: `linux.osk.gnome.spike`.)
+> replacing the shell's (Verified: GNOME spike results).
 
-> [spec:kbdgen:req:linux.osk.gnome.spike]
-> Before `linux.osk.gnome` is built, a spike MUST check on GNOME Shell 50
-> and 51 under Wayland, with an extension of that shape and one layout:
->
-> 1. once enabled, without restarting the shell, the on-screen keyboard
->    shows the layout for the XKB source L and for the IBus source whose
->    engine's `layout` is L, in an application and on the lock screen
-> 2. once disabled, it falls back to `us`
-> 3. a key whose `keyval` is a dead keysym of L reaches the IBus engine as
->    a hardware key whose key code and level modifiers type that keysym in
->    L (`linux.ibus.virtual-keys`), and a key whose string has several
->    scalar values reaches it as one `ProcessKeyEvent` each
->
-> Each result is recorded here as Verified, with the versions. If (1)
-> fails, `extension.js` instead replaces `Gio.File.new_for_uri` while
-> enabled, mapping each of its own layouts'
-> `resource:///org/gnome/shell/osk-layouts/<L>.json` to the file
-> `osk-layouts/<L>.json` in the extension's directory, which kbdgen then
-> writes instead of the bundle, and every other URI to the original,
-> which `disable()` restores. If (3) fails, on-screen dead keys are
-> written as their standalone (`ldml.linux.touch.gnome`). Either way the
-> layouts can be contributed to gnome-shell's `data/osk-layouts`, as
-> Stevia's are (`linux.osk.stevia`).
+### GNOME spike results
+
+Before `linux.osk.gnome` was built, a spike checked the extension's shape
+on GNOME Shell 50.6 (Fedora 44) and 51.0 (Ubuntu 26.10) under Wayland,
+with IBus 1.5.34 and libxkbcommon 1.13.1, one layout `test-se` in
+`~/.config/xkb`, a logging IBus engine and a GTK 4 application. The
+scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
+
+- Verified: once `enable()` registers the bundle and reloads the input
+  sources, the on-screen keyboard shows `<L>.json` for `('xkb', L)`,
+  `('ibus', L)` and an engine of another name whose `layout` is L, in an
+  application and on the lock screen. The bundle adds its file beside the
+  shell's 68 layouts. Without the reload the open keyboard keeps `us`
+  until the next source change, and from login on.
+- Verified: on the lock screen the extension stays active, but password
+  fields drop IBus sources unless all sources are IBus, so there L shows
+  only through the XKB source L (`linux.osk.gnome.selection`).
+- Verified: once `disable()` unregisters the bundle and reloads, both
+  sources show `us`.
+- Verified: a dead keysym D at Level1, 2 or 3 of L reaches the engine as
+  `ProcessKeyEvent(D, e, s)` with L's key code, after a press of
+  `Shift_L` (42) or `ISO_Level3_Shift` (84), `s` holding SHIFT or MOD5; at
+  Level4 it types Level1, and a keysym L lacks is dropped
+  (`linux.ibus.virtual-keys`, `ldml.linux.touch.gnome`).
+- Verified: a string of n scalar values arrives as n
+  `ProcessKeyEvent(k, 0, 0)`, each followed by its release when the engine
+  returns true.
+- Verified: `shell-version` `["50", "51"]` is accepted, and a bundle
+  written by the `gvdb` crate loads as `glib-compile-resources` output does.
+- Verified: `gnome-extensions enable` fails for an extension installed
+  while the shell runs (`linux.install`).
 
 > [spec:kbdgen:sem:linux.osk.gnome.selection]
 > GNOME Shell takes the on-screen layout from the active input source's
@@ -668,7 +693,13 @@ touch layouts are later work (Decisions).
 > engine (`linux.ibus.virtual-keys`). With the XKB source, GNOME Shell
 > commits on-screen strings itself, past IBus, and presses keyvals on its
 > virtual device, so a dead key pressed on screen composes only with a
-> hardware key (`ldml.linux.classify.touch`).
+> hardware key, and stays pending past on-screen text keys
+> (`ldml.linux.classify.touch`). In a password field, the lock screen's
+> included, GNOME Shell drops IBus sources unless every source is one and
+> uses the most recent XKB source (`js/ui/status/keyboard.js`
+> `_ibusSetContentType`), so the field shows `<L>.json` only while the XKB
+> source L is in the list or every source is IBus (Verified: GNOME spike
+> results).
 
 > [spec:kbdgen:def:linux.osk.plasma]
 > `plasma-keyboard/<id>/` (`linux.ids`) is a plasma-keyboard layout
@@ -796,7 +827,7 @@ touch layouts are later work (Decisions).
 > `linux.test.ibus` on its Linux jobs, which MUST install libxkbcommon
 > and ibus for them. No CI job can run GNOME Shell, KWin,
 > plasma-keyboard, Phosh or Stevia, or a Wayland client: the GNOME spike
-> (`linux.osk.gnome.spike`) and `linux.test.acceptance` are manual, on
+> (GNOME spike results) and `linux.test.acceptance` are manual, on
 > VMs.
 
 

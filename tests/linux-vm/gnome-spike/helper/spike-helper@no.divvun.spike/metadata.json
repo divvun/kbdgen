@@ -1,0 +1,7 @@
+{
+  "uuid": "spike-helper@no.divvun.spike",
+  "name": "Spike helper",
+  "description": "Enables unsafe mode for the kbdgen GNOME spike",
+  "shell-version": ["50", "51"],
+  "session-modes": ["user", "unlock-dialog"]
+}

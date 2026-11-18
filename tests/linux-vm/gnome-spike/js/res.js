@@ -1,0 +1,1 @@
+(async () => { const {default: Gio} = await import('gi://Gio'); const l = Gio.resources_enumerate_children('/org/gnome/shell/osk-layouts/', 0); return {testSe: l.includes('test-se.json'), shellLayouts: l.length}; })()

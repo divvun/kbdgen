@@ -249,10 +249,11 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 >
 > - text: `strings`, its output then its candidates, and `label`
 > - a dead key whose marker has a dead keysym D in the XKB layout
->   (`ldml.linux.dead-keys`): `keyval` D in lowercase `0x` hexadecimal and
+>   (`ldml.linux.dead-keys`) at Level1, 2 or 3 of the first key carrying D
+>   in key-code order: `keyval` D in lowercase `0x` hexadecimal and
 >   `label`, so that it reaches the IBus engine as a hardware key
->   (`linux.ibus.virtual-keys`); any other dead key: `strings` with
->   `flush[m]`, left out when that is empty
+>   (`linux.ibus.virtual-keys`; mutter presses no higher level); any other
+>   dead key: `strings` with `flush[m]`, left out when that is empty
 > - `width`: the key's width rounded to the nearest half key, at least
 >   one half, as the shell places keys on a half-key grid (`KEY_SIZE`);
 >   gaps add their width to the next key's `leftOffset`

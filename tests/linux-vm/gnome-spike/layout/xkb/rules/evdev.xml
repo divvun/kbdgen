@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xkbConfigRegistry version="1.1">
+  <layoutList>
+    <layout>
+      <configItem>
+        <name>test-se</name>
+        <shortDescription>se</shortDescription>
+        <description>Test davvisámegiella</description>
+        <languageList>
+          <iso639Id>sme</iso639Id>
+        </languageList>
+      </configItem>
+    </layout>
+  </layoutList>
+</xkbConfigRegistry>

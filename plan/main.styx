@@ -1472,9 +1472,29 @@ children (
                                 id targets.linux.osk.gnome-spike
                                 title "Spike: GNOME Shell 50/51 loads OSK layouts from an extension's GResource; keyval dead keys reach IBus"
                                 kind @chore
-                                implements {
-                                    main ([spec:kbdgen:req:linux.osk.gnome.spike])
-                                }
+                                sealed true
+                                log (
+                                    {
+                                        at 2026-11-18T13:42:33.26746Z
+                                        author "brendan@necessary.nu"
+                                        kind @blocker
+                                        text "Needs a GNOME Shell 50/51 Wayland session to test against. Waiting on the operator: is jaheira-ubuntu (in ~/.ssh/config) a desktop VM to use, or should a Lima VM be set up on the Mac? Docker here covers the XKB and IBus tests but not a desktop session."
+                                    }
+
+                                    {
+                                        at 2026-11-18T14:56:01.444547Z
+                                        author "brendan@necessary.nu"
+                                        kind @unblock
+                                        text "Done on Lima VMs kbdgen-gnome50 (Fedora 44, GNOME Shell 50.6) and kbdgen-gnome51 (Ubuntu 26.10, GNOME Shell 51.0), headless Wayland. All three checks pass once extension.js reloads the input sources in enable()/disable(); dead keys at Level4 and keysyms the keymap lacks don't reach the engine, so those are written as standalone; password fields drop IBus sources unless all are IBus; gnome-extensions enable can't be used by installers. Results recorded as \"GNOME spike results\" in docs/spec/linux.md (the gate rule linux.osk.gnome.spike became that section) and in linux.osk.gnome, linux.osk.gnome.selection, linux.ibus.virtual-keys, linux.install and ldml.linux.touch.gnome. Reproducer scripts were in the session scratchpad; the VMs are stopped, not deleted, for acceptance."
+                                    }
+
+                                    {
+                                        at 2026-11-18T14:56:01.546971Z
+                                        author "brendan@necessary.nu"
+                                        kind @status
+                                        text "Todo → Done (nplan complete)"
+                                    }
+                                )
                             }
 
                             {

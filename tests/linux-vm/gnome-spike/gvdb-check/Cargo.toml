@@ -1,0 +1,11 @@
+[package]
+name = "gvdb-check"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+gvdb = { version = "0.9", features = ["gresource"] }
+
+# Built on its own, not as a member of the kbdgen workspace.
+[workspace]
