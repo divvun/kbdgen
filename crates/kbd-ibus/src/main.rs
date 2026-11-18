@@ -1,35 +1,16 @@
-//! `ibus-engine-divvun`, the Divvun keyboard IBus engine
-//! (`docs/spec/linux.md`, "IBus engine"): one program, shared by every
-//! keyboard kbdgen builds, that runs `kbd-engine` on the model of each
-//! installed keyboard. Keyboards supply only data (`linux.ibus.data`);
-//! the program is released and installed separately, with the component
-//! file `data/divvun.xml.in` that packaging completes.
-//!
-//! `--xml` prints the engines of the installed keyboards for ibus-daemon,
-//! which runs it again whenever an observed data directory changes, and
-//! `--ibus` serves them to ibus-daemon (`crate::dbus`). The host logic,
-//! free of D-Bus, is `planner`.
+//! `ibus-engine-divvun`: `--xml` prints the engines of the installed
+//! keyboards for ibus-daemon, which runs it again whenever an observed data
+//! directory changes, and `--ibus` serves them to ibus-daemon.
 
 // [spec:kbdgen:def:linux.ibus.component]
 // [spec:kbdgen:req:linux.ibus.crate]
-
-mod address;
-mod context;
-mod data;
-#[cfg(unix)]
-mod dbus;
-mod diag;
-mod guard;
-mod keys;
-mod keysym;
-mod planner;
-#[cfg(test)]
-mod tests;
 
 use std::ffi::OsString;
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
+
+use kbd_ibus::data;
 
 const USAGE: &str = "usage: ibus-engine-divvun (--xml | --ibus) [--data-dir DIR]...\n";
 
@@ -86,10 +67,10 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         #[cfg(unix)]
-        Mode::Ibus => dbus::serve(data::roots(&args.data_dirs)),
+        Mode::Ibus => kbd_ibus::dbus::serve(data::roots(&args.data_dirs)),
         #[cfg(not(unix))]
         Mode::Ibus => {
-            diag::record(diag::Event::Failed("IBus needs a Unix system"));
+            kbd_ibus::diag::record(kbd_ibus::diag::Event::Failed("IBus needs a Unix system"));
             ExitCode::FAILURE
         }
     }

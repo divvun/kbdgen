@@ -1,13 +1,26 @@
-use kbd_engine::{Key, ModifierState};
+//! Key identity, modifiers and on-screen keys (`linux.ibus.keys`,
+//! `linux.ibus.modifiers`, `linux.ibus.virtual-keys`).
 
-use super::field::{Field, GTK};
-use super::fixture::{features, model, mods, vro};
-use crate::keys::{
+// Clippy counts only `#[test]` functions of a test binary as tests, not
+// the helpers beside them.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing
+)]
+
+mod common;
+
+use common::field::{Field, GTK};
+use common::fixture::{features, model, mods, vro};
+use kbd_engine::{Key, ModifierState};
+use kbd_ibus::keys::{
     CONTROL_MASK, Facts, Keys, LOCK_MASK, MOD1_MASK, MOD4_MASK, MOD5_MASK, RELEASE_MASK, Role,
     SHIFT_MASK, SUPER_MASK, classify,
 };
-use crate::keysym::{self, by_name};
-use crate::planner::{Reply, Session, Signal};
+use kbd_ibus::keysym::{self, by_name};
+use kbd_ibus::planner::{Reply, Session, Signal};
 
 fn keysym(name: &str) -> u32 {
     by_name(name).unwrap_or_else(|| panic!("no keysym {name}"))

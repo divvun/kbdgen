@@ -34,12 +34,42 @@ pub fn features() -> String {
         .replace("hardware:\n  windows:", "hardware:\n  linux:")
 }
 
+/// The macOS feature fixture as a `linux` variant.
+pub fn macos_features() -> String {
+    fixture_text("src/build/macos/testdata/features.yaml")
+        .replace("hardware:\n  macOS:", "hardware:\n  linux:")
+}
+
+/// The golden v3 layout, whose Linux keyboard inherits its Windows one.
+pub fn se_no() -> String {
+    fixture_text("crates/kbd-engine/tests/golden/v3/se-NO.yaml")
+}
+
+/// A v3 Võro layout with a ChromeOS section only.
+pub fn vro_v3() -> String {
+    fixture_text("src/build/chromeos/testdata/vro-v3.yaml")
+}
+
 /// A layout whose edits delete committed text: transforms over it, one
 /// through an astral character, and normalization that recomposes with
 /// the text before the caret. `AE12` is U+0301, `BKSL` U+0308, `AD12`
 /// U+1D56B.
 pub fn context() -> String {
     "format: 4\ndisplayNames: {und: Context}\nnormalization: enabled\ntransforms: [[{from: qq, to: ʠ}, {from: '\\u{1D56B}z', to: ż}]]\nhardware:\n  linux:\n    layers:\n      none: |\n        § 1 2 3 4 5 6 7 8 9 0 + \\u{301}\n        q w e r t y u i o p å \\u{1D56B}\n        a s d f g h j k l ö æ \\u{308}\n        < z x c v b n m , . -\n".to_owned()
+}
+
+/// Every fixture of `linux.test.planner`: the layouts of
+/// `ldml.chromeos.test.typing`, as Linux layouts.
+pub fn all() -> Vec<(&'static str, &'static str, String)> {
+    vec![
+        ("vro", "vro", vro()),
+        ("mods", "und-x-mods", mods()),
+        ("se-NO", "se-NO", se_no()),
+        ("vro-v3", "vro", vro_v3()),
+        ("macos-features", "sme", macos_features()),
+        ("windows-features", "sme", features()),
+        ("context", "und", context()),
+    ]
 }
 
 pub fn model(tag: &str, text: &str) -> Model {

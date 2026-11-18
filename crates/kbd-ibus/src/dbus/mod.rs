@@ -8,8 +8,8 @@
 //! them, and a key's signals and reply never interleave with another
 //! call's.
 
-mod engine;
-mod factory;
+pub mod engine;
+pub mod factory;
 pub mod text;
 
 use std::future::{Future, poll_fn};

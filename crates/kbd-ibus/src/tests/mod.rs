@@ -1,9 +1,7 @@
 mod address;
 mod data;
-mod edits;
-mod field;
-mod fixture;
+#[cfg(unix)]
+mod dbus;
 mod guard;
-mod keys;
 #[cfg(unix)]
 mod text;

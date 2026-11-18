@@ -2,8 +2,10 @@
 //! (`linux.test.ibus`): its own address, `HOME` and `XDG_*` directories in
 //! a temporary directory, `IBUS_COMPONENT_PATH` naming a directory with
 //! only the engine's component, and no panel, emoji extension or config
-//! service. The test acts as the client over D-Bus. Without ibus-daemon on
-//! `PATH` (or `$IBUS_DAEMON`), each test says so and passes. Run it under
+//! service. The test acts as the client over D-Bus and applies the input
+//! context's signals to a fake field. Without ibus-daemon on `PATH` (or
+//! `$IBUS_DAEMON`), each test says so and passes, unless
+//! `KBDGEN_REQUIRE_LINUX_TESTS` is set, when it fails. Run it under
 //! `dbus-run-session`, as ibus-daemon also looks for a session bus.
 
 #![cfg(unix)]
@@ -16,9 +18,7 @@
     clippy::indexing_slicing
 )]
 
-#[allow(dead_code)]
-#[path = "../src/tests/fixture.rs"]
-mod fixture;
+mod common;
 
 use std::fs;
 use std::future::poll_fn;
@@ -28,6 +28,12 @@ use std::process::{Child, Command, Stdio};
 use std::task::Poll;
 use std::time::{Duration, Instant};
 
+use common::cases::{BACKSPACE, Case, Step, Stroke, Typed, cases, pairs};
+use common::field::Field;
+use common::fixture;
+use common::native::Native;
+use kbd_engine::{Key, KeyEvent, Model};
+use kbd_ibus::planner::{CAP_PREEDIT_TEXT, CAP_SURROUNDING_TEXT, PreeditMode, Signal};
 use kbd_model::{Info, Keyboard};
 use zbus::export::futures_core::Stream;
 use zbus::message::Type;
@@ -39,10 +45,11 @@ const TEMPLATE: &str = include_str!("../data/divvun.xml.in");
 const IBUS: &str = "org.freedesktop.IBus";
 const DIVVUN: &str = "org.freedesktop.IBus.Divvun";
 const INPUT_CONTEXT: &str = "org.freedesktop.IBus.InputContext";
-
-/// `IBUS_CAP_PREEDIT_TEXT`, `IBUS_CAP_FOCUS` and
-/// `IBUS_CAP_SURROUNDING_TEXT`, as GTK sets them.
-const GTK_CAPABILITIES: u32 = 1 | 8 | 32;
+/// `IBUS_CAP_FOCUS`.
+const CAP_FOCUS: u32 = 1 << 3;
+/// `IBUS_INPUT_PURPOSE_PASSWORD`.
+const PASSWORD: u32 = 8;
+const RELEASE: u32 = 1 << 30;
 
 fn ibus_daemon() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("IBUS_DAEMON") {
@@ -96,32 +103,30 @@ struct Daemon {
 impl Daemon {
     /// Starts ibus-daemon with the component and `keyboards` installed
     /// system-wide, or says why not and gives `None`.
+    // [spec:kbdgen:req:linux.test.ibus]
+    // [spec:kbdgen:sem:linux.test.ci/test]
     fn start(test: &str, keyboards: &[Installed]) -> Option<Daemon> {
         let Some(program) = ibus_daemon() else {
+            assert!(
+                std::env::var_os("KBDGEN_REQUIRE_LINUX_TESTS").is_none(),
+                "{test}: ibus-daemon is not installed, and KBDGEN_REQUIRE_LINUX_TESTS is set"
+            );
             eprintln!("{test}: ibus-daemon is not installed; skipping (linux.test.ibus)");
             return None;
         };
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
-        let share = root.join("share");
-        let data = share.join("divvun/keyboards/no.divvun");
+        let data = root.join("share/divvun/keyboards/no.divvun");
         fs::create_dir_all(&data).unwrap();
         for keyboard in keyboards {
-            fs::write(
-                data.join(format!("{}.xml", keyboard.name)),
-                keyboard.description(),
-            )
-            .unwrap();
-            fs::write(
-                data.join(format!("{}.dvkb", keyboard.name)),
-                &keyboard.model,
-            )
-            .unwrap();
+            let file = |extension: &str| data.join(format!("{}.{extension}", keyboard.name));
+            fs::write(file("xml"), keyboard.description()).unwrap();
+            fs::write(file("dvkb"), &keyboard.model).unwrap();
         }
         let libexec = Path::new(PROGRAM).parent().unwrap();
         let component = TEMPLATE
             .replace("@LIBEXECDIR@", libexec.to_str().unwrap())
-            .replace("@DATADIR@", share.to_str().unwrap())
+            .replace("@DATADIR@", root.join("share").to_str().unwrap())
             .replace("@VERSION@", env!("CARGO_PKG_VERSION"));
         fs::create_dir_all(root.join("component")).unwrap();
         fs::write(root.join("component/divvun.xml"), component).unwrap();
@@ -169,6 +174,23 @@ impl Daemon {
         fs::read_to_string(self.dir.path().join("daemon.log")).unwrap_or_default()
     }
 
+    /// What `--xml` lists for this daemon's data, as ibus-daemon runs it.
+    fn listed(&self) -> Vec<String> {
+        let output = Command::new(PROGRAM)
+            .args(["--xml", "--data-dir"])
+            .arg(self.dir.path().join("share/divvun/keyboards"))
+            .env("HOME", self.dir.path().join("home"))
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("<name>")?.strip_suffix("</name>"))
+            .map(str::to_owned)
+            .collect()
+    }
+
     /// The processes running the engine under this daemon.
     fn engines(&self) -> Vec<u32> {
         let marker = self.dir.path().join("share");
@@ -198,27 +220,6 @@ impl Drop for Daemon {
     }
 }
 
-/// A signal of the input context.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[expect(
-    clippy::enum_variant_names,
-    reason = "the variants are named as the D-Bus signals"
-)]
-enum Received {
-    CommitText(String),
-    UpdatePreeditText {
-        text: String,
-        cursor: u32,
-        visible: bool,
-        mode: u32,
-    },
-    DeleteSurroundingText {
-        offset: i32,
-        nchars: u32,
-    },
-    RequireSurroundingText,
-}
-
 /// The text of an `IBusText`.
 fn ibus_text(value: &Value<'_>) -> String {
     let mut value = value;
@@ -235,11 +236,35 @@ fn ibus_text(value: &Value<'_>) -> String {
     text.as_str().to_owned()
 }
 
-/// The test's connection to the daemon and its one input context.
+/// An `IBusText` of `text` with no attributes.
+fn ibus_text_value(text: &str) -> Value<'static> {
+    use std::collections::HashMap;
+    use zbus::zvariant::StructureBuilder;
+    let list = StructureBuilder::new()
+        .add_field("IBusAttrList")
+        .add_field(HashMap::<String, Value<'static>>::new())
+        .add_field(Vec::<Value<'static>>::new())
+        .build()
+        .unwrap();
+    Value::Structure(
+        StructureBuilder::new()
+            .add_field("IBusText")
+            .add_field(HashMap::<String, Value<'static>>::new())
+            .add_field(text.to_owned())
+            .add_field(Value::Structure(list))
+            .build()
+            .unwrap(),
+    )
+}
+
+/// The test's connection to the daemon, its one input context, and the
+/// field it applies the context's signals to.
 struct Client {
     connection: Connection,
     stream: MessageStream,
     context: OwnedObjectPath,
+    field: Field,
+    surrounding: bool,
 }
 
 impl Client {
@@ -265,6 +290,8 @@ impl Client {
             connection,
             stream,
             context,
+            field: Field::default(),
+            surrounding: true,
         };
         client
             .set_property("ClientCommitPreedit", Value::from((true,)))
@@ -300,10 +327,9 @@ impl Client {
             .unwrap();
     }
 
-    async fn set_engine(&self, name: &str) {
-        self.call("SetCapabilities", &(GTK_CAPABILITIES,))
-            .await
-            .unwrap();
+    /// Focuses the field, as GTK sets it up, and makes `name` the engine.
+    async fn set_engine(&mut self, name: &str) {
+        self.set_capabilities(true, true).await;
         self.call("FocusIn", &()).await.unwrap();
         self.connection
             .call_method(
@@ -315,6 +341,26 @@ impl Client {
             )
             .await
             .unwrap();
+        self.received().await;
+    }
+
+    async fn set_capabilities(&mut self, preedit: bool, surrounding: bool) {
+        let mut capabilities = CAP_FOCUS;
+        if preedit {
+            capabilities |= CAP_PREEDIT_TEXT;
+        }
+        if surrounding {
+            capabilities |= CAP_SURROUNDING_TEXT;
+        }
+        self.surrounding = surrounding;
+        self.call("SetCapabilities", &(capabilities,))
+            .await
+            .unwrap();
+    }
+
+    async fn set_purpose(&self, purpose: u32) {
+        self.set_property("ContentType", Value::from((purpose, 0u32)))
+            .await;
     }
 
     async fn engine(&self) -> String {
@@ -329,18 +375,11 @@ impl Client {
         }
     }
 
-    /// Sends a key event and gives the reply.
-    async fn key(&self, keyval: u32, keycode: u32, state: u32) -> bool {
-        let reply = self
-            .call("ProcessKeyEvent", &(keyval, keycode, state))
-            .await
-            .unwrap();
-        reply.body().deserialize().unwrap()
-    }
-
-    /// The input context's signals received so far. ibus-daemon sends a
-    /// call's signals before its reply, so after a reply they are here.
-    async fn received(&mut self) -> Vec<Received> {
+    /// The input context's signals received so far, but for
+    /// `RequireSurroundingText`, which this client answers before every
+    /// key anyway. ibus-daemon sends a call's signals before its reply, so
+    /// after a reply they are here.
+    async fn received(&mut self) -> Vec<Signal> {
         let mut received = Vec::new();
         while let Some(message) = poll_fn(|cx| match Pin::new(&mut self.stream).poll_next(cx) {
             Poll::Ready(message) => Poll::Ready(message),
@@ -359,27 +398,86 @@ impl Client {
             received.push(match header.member().map(|m| m.as_str()) {
                 Some("CommitText") => {
                     let (text,): (OwnedValue,) = body.deserialize().unwrap();
-                    Received::CommitText(ibus_text(&text))
+                    Signal::CommitText(ibus_text(&text))
                 }
                 Some("UpdatePreeditTextWithMode") => {
                     let (text, cursor, visible, mode): (OwnedValue, u32, bool, u32) =
                         body.deserialize().unwrap();
-                    Received::UpdatePreeditText {
+                    Signal::UpdatePreeditText {
                         text: ibus_text(&text),
                         cursor,
                         visible,
-                        mode,
+                        mode: if mode == 1 {
+                            PreeditMode::Commit
+                        } else {
+                            PreeditMode::Clear
+                        },
                     }
                 }
                 Some("DeleteSurroundingText") => {
                     let (offset, nchars): (i32, u32) = body.deserialize().unwrap();
-                    Received::DeleteSurroundingText { offset, nchars }
+                    Signal::DeleteSurroundingText { offset, nchars }
                 }
-                Some("RequireSurroundingText") => Received::RequireSurroundingText,
                 _ => continue,
             });
         }
         received
+    }
+
+    /// Starts a case: the engine resets, the field empties, and for a
+    /// model with Shift Lock, a Shift tap undoes the lock an earlier case's
+    /// Caps Lock left.
+    async fn restart(&mut self, shift_lock: bool) {
+        self.call("Reset", &()).await.unwrap();
+        if shift_lock {
+            self.event(0xffe1, 42, 0).await;
+            self.event(0xffe1, 42, RELEASE).await;
+        }
+        self.received().await;
+        self.field = Field::default();
+    }
+
+    /// A key event; the signals of a press go to the field, which types a
+    /// key the engine passed.
+    async fn event(&mut self, keyval: u32, keycode: u32, state: u32) -> bool {
+        let reply = self
+            .call("ProcessKeyEvent", &(keyval, keycode, state))
+            .await
+            .unwrap();
+        let handled: bool = reply.body().deserialize().unwrap();
+        let signals = self.received().await;
+        self.field.apply(&signals);
+        if state & RELEASE == 0 && !handled {
+            self.field.type_passed(Typed::of(keyval, keycode, state));
+        }
+        handled
+    }
+
+    /// A stroke, the field read before its key as GTK reads it.
+    async fn stroke(&mut self, stroke: &Stroke) -> bool {
+        for &(keyval, code) in &stroke.taps {
+            self.event(keyval, code, 0).await;
+            self.event(keyval, code, RELEASE).await;
+        }
+        for &(keyval, code) in &stroke.held {
+            self.event(keyval, code, 0).await;
+        }
+        if self.surrounding {
+            let text = self.field.before.clone();
+            let n = u32::try_from(text.chars().count()).unwrap();
+            self.call("SetSurroundingText", &(ibus_text_value(&text), n, n))
+                .await
+                .unwrap();
+        }
+        let handled = self.event(stroke.keyval, stroke.code, stroke.state).await;
+        let released = self
+            .event(stroke.keyval, stroke.code, stroke.state | RELEASE)
+            .await;
+        assert_eq!(released, handled, "a release returns what its press did");
+        for &(keyval, code) in stroke.held.iter().rev() {
+            self.event(keyval, code, stroke.state | RELEASE).await;
+        }
+        handled
     }
 
     /// Calls the component's factory directly.
@@ -438,6 +536,58 @@ fn minimal_model() -> Vec<u8> {
     Keyboard::new("se", 45, Info::default()).to_bytes().unwrap()
 }
 
+/// Runs `case` through the daemon and natively, and says where they
+/// differ, as `linux.test.planner` does. Without surrounding text, an
+/// on-screen Backspace is a key press, as GNOME Shell sends it to a
+/// terminal.
+// [spec:kbdgen:req:linux.test.ibus]
+async fn run(client: &mut Client, model: &Model, case: &Case, setup: Setup) -> Result<(), String> {
+    client.restart(model.keyboard().windows.shift_lock).await;
+    let mut native = if setup.password {
+        Native::blind(model)
+    } else {
+        Native::new(model)
+    };
+    for step in &case.steps {
+        let stroke = match step {
+            Step::Key(stroke) => stroke.clone(),
+            Step::OnScreenBackspace => Stroke {
+                name: "Backspace".to_owned(),
+                taps: Vec::new(),
+                held: Vec::new(),
+                keyval: BACKSPACE.0,
+                code: BACKSPACE.1,
+                state: 0,
+                event: Some(KeyEvent::new(Key::Backspace)),
+            },
+        };
+        let handled = client.stroke(&stroke).await;
+        let expected = native.key(stroke.event.as_ref(), stroke.typed());
+        if handled != expected {
+            return Err(format!(
+                "{}: {} handled {handled}, natively {expected}",
+                case.name, stroke.name
+            ));
+        }
+    }
+    let (got, expected) = if setup.preedit && !setup.password {
+        (
+            client.field.text(),
+            format!("{}{}", native.document, native.preedit),
+        )
+    } else {
+        (client.field.before.clone(), native.document.clone())
+    };
+    if got != expected {
+        return Err(format!(
+            "{}: the field shows {got:?}, natively {expected:?}",
+            case.name
+        ));
+    }
+    Ok(())
+}
+
+// [spec:kbdgen:req:linux.test.ibus/test]
 // [spec:kbdgen:req:linux.ibus.factory/test]
 // [spec:kbdgen:def:linux.ibus.component/test]
 // [spec:kbdgen:req:linux.ibus.lister/test]
@@ -448,7 +598,7 @@ fn engine_registers_and_factory_creates_it() {
         return;
     };
     runtime().block_on(async {
-        let client = Client::connect(&daemon).await;
+        let mut client = Client::connect(&daemon).await;
         let listed = client.engines().await;
         assert!(
             listed.contains(&"divvun-se".to_owned()),
@@ -493,19 +643,31 @@ fn engine_registers_and_factory_creates_it() {
     });
 }
 
+// [spec:kbdgen:req:linux.test.ibus/test]
 // [spec:kbdgen:req:linux.ibus.inert/test]
+// [spec:kbdgen:req:linux.ibus.lister/test]
 #[test]
-fn corrupt_model_refused_with_its_reason() {
+fn engine_list_matches_lister_and_refuses_corrupt_model() {
     let keyboards = [
         Installed::new("divvun-se", minimal_model()),
+        Installed::new("divvun-sma", minimal_model()),
         Installed::new("divvun-bad", b"DVKB\x01\x00\x00\x00junk".to_vec()),
     ];
-    let Some(daemon) = Daemon::start("corrupt_model", &keyboards) else {
+    let Some(daemon) = Daemon::start("engine_list", &keyboards) else {
         return;
     };
     runtime().block_on(async {
-        let client = Client::connect(&daemon).await;
-        assert!(!client.engines().await.contains(&"divvun-bad".to_owned()));
+        let mut client = Client::connect(&daemon).await;
+        let listed = daemon.listed();
+        assert_eq!(listed, ["divvun-se", "divvun-sma"]);
+        let mut engines: Vec<String> = client
+            .engines()
+            .await
+            .into_iter()
+            .filter(|name| name.starts_with("divvun-"))
+            .collect();
+        engines.sort();
+        assert_eq!(engines, listed, "ibus-daemon lists what --xml prints");
         client.set_engine("divvun-se").await;
         assert_eq!(client.engine().await, "divvun-se");
         for (name, reason) in [
@@ -531,6 +693,7 @@ fn corrupt_model_refused_with_its_reason() {
     });
 }
 
+// [spec:kbdgen:req:linux.test.ibus/test]
 // [spec:kbdgen:req:linux.ibus.factory/test]
 #[test]
 fn engine_exits_with_its_connection() {
@@ -539,12 +702,11 @@ fn engine_exits_with_its_connection() {
         return;
     };
     runtime().block_on(async {
-        let client = Client::connect(&daemon).await;
+        let mut client = Client::connect(&daemon).await;
         client.set_engine("divvun-se").await;
         assert_eq!(client.engine().await, "divvun-se");
     });
-    let running = daemon.engines();
-    assert_eq!(running.len(), 1);
+    assert_eq!(daemon.engines().len(), 1);
     daemon.stop();
     let deadline = Instant::now() + Duration::from_secs(10);
     while !daemon.engines().is_empty() {
@@ -553,62 +715,88 @@ fn engine_exits_with_its_connection() {
     }
 }
 
-/// A press and release of `keycode` with `keyval`, whether it was
-/// handled, and the signals of the press but for `RequireSurroundingText`,
-/// which ibus-daemon also sends of its own once it has read
-/// `ActiveSurroundingText`.
-async fn tap(client: &mut Client, keyval: u32, keycode: u32) -> (bool, Vec<Received>) {
-    let handled = client.key(keyval, keycode, 0).await;
-    let mut received = client.received().await;
-    received.retain(|signal| *signal != Received::RequireSurroundingText);
-    assert_eq!(client.key(keyval, keycode, 1 << 30).await, handled);
-    (handled, received)
+/// How a field is set up through the daemon.
+#[derive(Debug, Clone, Copy)]
+struct Setup {
+    preedit: bool,
+    surrounding: bool,
+    password: bool,
 }
 
+const GTK: Setup = Setup {
+    preedit: true,
+    surrounding: true,
+    password: false,
+};
+const TERMINAL: Setup = Setup {
+    surrounding: false,
+    ..GTK
+};
+const PASSWORD_FIELD: Setup = Setup {
+    password: true,
+    ..GTK
+};
+
+// [spec:kbdgen:req:linux.test.ibus/test]
 // [spec:kbdgen:req:linux.ibus.keys/test]
 // [spec:kbdgen:sem:linux.ibus.virtual-keys/test]
+// [spec:kbdgen:req:linux.ibus.edit/test]
+// [spec:kbdgen:sem:linux.ibus.context/test]
+// [spec:kbdgen:sem:linux.ibus.context.fallback/test]
+// [spec:kbdgen:req:linux.ibus.security/test]
 #[test]
-fn keys_type_through_the_daemon() {
-    let vro = fixture::model("vro", &fixture::vro());
-    let keyboard = vro.keyboard().to_bytes().unwrap();
-    let keyboards = [Installed::new("divvun-vro", keyboard)];
-    let Some(daemon) = Daemon::start("keys_type", &keyboards) else {
+fn fixtures_type_through_the_daemon() {
+    let fixtures: Vec<(String, Model)> = fixture::all()
+        .into_iter()
+        .map(|(name, tag, text)| (format!("divvun-{name}"), fixture::model(tag, &text)))
+        .collect();
+    let keyboards: Vec<Installed> = fixtures
+        .iter()
+        .map(|(name, model)| Installed::new(name, model.keyboard().to_bytes().unwrap()))
+        .collect();
+    let Some(daemon) = Daemon::start("fixtures_type", &keyboards) else {
         return;
     };
     runtime().block_on(async {
         let mut client = Client::connect(&daemon).await;
-        client.set_engine("divvun-vro").await;
-        assert_eq!(client.engine().await, "divvun-vro");
-        client.received().await;
-        let preedit = |text: &str| Received::UpdatePreeditText {
-            text: text.to_owned(),
-            cursor: u32::try_from(text.chars().count()).unwrap(),
-            visible: !text.is_empty(),
-            mode: 1,
-        };
-        assert_eq!(tap(&mut client, 0x2b, 13).await, (true, vec![preedit("´")]));
-        let (handled, received) = tap(&mut client, 0x61, 30).await;
-        assert!(handled);
-        assert_eq!(
-            received,
-            [
-                Received::UpdatePreeditText {
-                    text: String::new(),
-                    cursor: 0,
-                    visible: false,
-                    mode: 0
-                },
-                Received::CommitText("á".to_owned()),
-            ],
-            "{}",
+        let mut failures = Vec::new();
+        for (name, model) in &fixtures {
+            client.set_engine(name).await;
+            assert_eq!(&client.engine().await, name, "{}", daemon.log());
+            let mut runs = vec![(GTK, cases(model)), (TERMINAL, cases(model))];
+            if model.keyboard().rewrites().is_empty() {
+                runs.push((PASSWORD_FIELD, cases(model)));
+            } else {
+                runs.push((TERMINAL, pairs(model)));
+            }
+            for (setup, cases) in runs {
+                client
+                    .set_capabilities(setup.preedit, setup.surrounding)
+                    .await;
+                client
+                    .set_purpose(if setup.password { PASSWORD } else { 0 })
+                    .await;
+                for case in &cases {
+                    let onscreen_deletion = case
+                        .steps
+                        .iter()
+                        .any(|step| matches!(step, Step::OnScreenBackspace));
+                    if onscreen_deletion && setup.surrounding {
+                        continue;
+                    }
+                    if let Err(failure) = run(&mut client, model, case, setup).await {
+                        failures.push(format!("{name} {setup:?}: {failure}"));
+                    }
+                }
+            }
+        }
+        let count = failures.len();
+        failures.truncate(10);
+        assert!(
+            failures.is_empty(),
+            "{count} failure(s):\n{}\n{}",
+            failures.join("\n"),
             daemon.log()
         );
-        let (handled, received) = tap(&mut client, 0x71, 0).await;
-        assert_eq!(
-            (handled, received),
-            (true, vec![Received::CommitText("q".to_owned())])
-        );
-        let (handled, received) = tap(&mut client, 0xff51, 105).await;
-        assert_eq!((handled, received), (false, vec![]), "an arrow passes");
     });
 }

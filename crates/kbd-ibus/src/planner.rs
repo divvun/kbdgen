@@ -42,10 +42,6 @@ pub enum PreeditMode {
 
 /// A signal of `org.freedesktop.IBus.Engine`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[expect(
-    clippy::enum_variant_names,
-    reason = "the variants are named as the D-Bus signals"
-)]
 pub enum Signal {
     CommitText(String),
     /// The preedit, its cursor in scalar values, whether it is shown.
@@ -101,10 +97,11 @@ enum Mode {
     /// preedit when `preedit`.
     Surrounding { preedit: bool },
     /// The context is the engine's own edits, the last `held` scalar
-    /// values of which are shown as preedit, not committed
-    /// (`linux.ibus.context.fallback`).
-    Cached { held: usize },
-    /// Neither surrounding text nor a preedit: the context is empty.
+    /// values of which are shown as preedit, not committed, where the
+    /// client shows a `preedit` (`linux.ibus.context.fallback`).
+    Cached { held: usize, preedit: bool },
+    /// Neither surrounding text nor a preedit, for a model that rewrites
+    /// committed text: the context is empty, so the engine never deletes.
     Bare,
 }
 
@@ -170,9 +167,12 @@ impl Session {
                 } else {
                     0
                 },
+                preedit,
             }
-        } else {
+        } else if self.rewrites {
             Mode::Bare
+        } else {
+            Mode::Cached { held: 0, preedit }
         }
     }
 
@@ -306,7 +306,7 @@ impl Session {
         commit: bool,
     ) -> Vec<Signal> {
         let (delete, insert, preedit) = match mode {
-            Mode::Cached { held } => {
+            Mode::Cached { held, .. } => {
                 self.hold(delete, insert, preedit, if commit { 0 } else { held })
             }
             _ => (delete, insert.to_owned(), preedit.to_owned()),
@@ -364,8 +364,7 @@ impl Session {
     fn to_show(&self, mode: Mode, preedit: String, next: &State) -> Option<Preedit> {
         let shows = match mode {
             Mode::Secure | Mode::Bare => false,
-            Mode::Surrounding { preedit } => preedit,
-            Mode::Cached { .. } => true,
+            Mode::Surrounding { preedit } | Mode::Cached { preedit, .. } => preedit,
         };
         if !shows {
             return None;

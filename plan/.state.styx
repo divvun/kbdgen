@@ -1752,6 +1752,13 @@ impl_evidence (
         {impl_name main, rule linux.ibus.security}
         {impl_name main, rule linux.ibus.semantics}
     )}
+    {id targets.linux.ibus.test, covered_rules (
+        linux.test.ibus
+        linux.test.planner
+    ), covered_claims (
+        {impl_name main, rule linux.test.ibus}
+        {impl_name main, rule linux.test.planner}
+    )}
 )
 
 onboarding {kind @adopt, phase 11}

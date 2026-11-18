@@ -1,10 +1,25 @@
-use kbd_engine::{Model, Options};
+//! Edits, context, held text, on-screen Backspace and password fields
+//! (`linux.ibus.semantics`, `linux.ibus.edit`, `linux.ibus.context`,
+//! `linux.ibus.context.fallback`, `linux.ibus.osk-backspace`,
+//! `linux.ibus.security`).
 
-use super::field::{Client, GTK, Report};
-use super::fixture::{context, model, vro};
-use crate::keys::SHIFT_MASK;
-use crate::keysym;
-use crate::planner::{PURPOSE_PASSWORD, PURPOSE_PIN, PreeditMode, Signal};
+// Clippy counts only `#[test]` functions of a test binary as tests, not
+// the helpers beside them.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing
+)]
+
+mod common;
+
+use common::field::{Client, GTK, Report};
+use common::fixture::{context, model, vro};
+use kbd_engine::{Model, Options};
+use kbd_ibus::keys::SHIFT_MASK;
+use kbd_ibus::keysym;
+use kbd_ibus::planner::{PURPOSE_PASSWORD, PURPOSE_PIN, PreeditMode, Session, Signal};
 
 const Q: u32 = 16;
 const A: u32 = 30;
@@ -260,11 +275,7 @@ fn resets_forget_state_context_and_cache() {
     );
     client.tap(A);
     assert_eq!(client.last, [commit("a")]);
-    for event in [
-        crate::planner::Session::focus_in,
-        crate::planner::Session::focus_out,
-        crate::planner::Session::disable,
-    ] {
+    for event in [Session::focus_in, Session::focus_out, Session::disable] {
         client.tap(ACUTE);
         assert!(event(&mut client.session).is_empty());
         client.field.settle();

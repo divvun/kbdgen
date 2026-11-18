@@ -57,8 +57,7 @@ pub fn is_modifier(keysym: u32) -> bool {
     )
 }
 
-/// The keysym the table names `name`, for tests.
-#[cfg(test)]
+/// The keysym the table names `name`.
 pub fn by_name(name: &str) -> Option<u32> {
     TABLE
         .lines()

@@ -3,17 +3,20 @@
 //! passes, and reports its text before the caret on time, one key late, or
 //! not at all.
 
-use kbd_engine::Model;
+use std::collections::BTreeMap;
 
-use crate::keys::RELEASE_MASK;
-use crate::keysym;
-use crate::planner::{CAP_PREEDIT_TEXT, CAP_SURROUNDING_TEXT, PreeditMode, Reply, Session, Signal};
+use kbd_engine::Model;
+use kbd_ibus::keys::RELEASE_MASK;
+use kbd_ibus::planner::{
+    CAP_PREEDIT_TEXT, CAP_SURROUNDING_TEXT, PreeditMode, Reply, Session, Signal,
+};
+
+use super::cases::{Stroke, Typed};
 
 /// `IBUS_CAP_FOCUS`, which every client here has.
 const CAP_FOCUS: u32 = 1 << 3;
 /// GTK's capabilities: a preedit, focus and surrounding text.
 pub const GTK: u32 = CAP_PREEDIT_TEXT | CAP_FOCUS | CAP_SURROUNDING_TEXT;
-const BACKSPACE: u32 = 14;
 
 /// When the client tells the engine its surrounding text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +92,18 @@ impl Field {
             _ => self.before.clone(),
         }
     }
+
+    /// The client types a key the engine passed.
+    pub fn type_passed(&mut self, typed: Typed) {
+        match typed {
+            Typed::Text(c) => self.before.push(c),
+            Typed::Backspace => {
+                assert!(self.preedit.is_empty(), "nothing is shown over a deletion");
+                self.before.pop();
+            }
+            Typed::Nothing => {}
+        }
+    }
 }
 
 /// A client with one focused field.
@@ -100,6 +115,8 @@ pub struct Client {
     report: Report,
     /// The field's text before the caret before the last key.
     earlier: String,
+    /// What each key down returned, by keyval and key code.
+    pressed: BTreeMap<(u32, u32), bool>,
 }
 
 impl Client {
@@ -124,11 +141,16 @@ impl Client {
             last: Vec::new(),
             report,
             earlier: String::new(),
+            pressed: BTreeMap::new(),
         }
     }
 
     pub fn gtk(model: Model) -> Client {
         Client::new(model, Report::OnTime, true)
+    }
+
+    pub fn report(&self) -> Report {
+        self.report
     }
 
     fn read(&mut self, text: &str) {
@@ -137,7 +159,7 @@ impl Client {
     }
 
     /// The client reads its field before a key, as its report says.
-    fn report(&mut self) {
+    fn read_before_key(&mut self) {
         match self.report {
             Report::OnTime => {
                 let text = self.field.before.clone();
@@ -162,38 +184,58 @@ impl Client {
         }
     }
 
-    /// Presses and releases a key as `state`; the client types what the
-    /// engine passes: a character's keyval, or for Backspace, a deletion.
-    pub fn key(&mut self, keyval: u32, code: u32, state: u32) -> bool {
-        self.report();
+    /// A key down; a key the engine passes is typed.
+    pub fn press(&mut self, keyval: u32, code: u32, state: u32) -> bool {
         let Reply { handled, signals } = self.session.process_key_event(keyval, code, state);
         self.field.apply(&signals);
         self.last = signals;
         if !handled {
-            if keyval == keysym::BACKSPACE || code == BACKSPACE {
-                assert!(
-                    self.field.preedit.is_empty(),
-                    "nothing shown over a deletion"
-                );
-                self.field.before.pop();
-            } else if let Some(c) = keysym::to_char(keyval).filter(|c| !c.is_control()) {
-                self.field.before.push(c);
-            }
+            self.field.type_passed(Typed::of(keyval, code, state));
         }
+        self.pressed.insert((keyval, code), handled);
+        handled
+    }
+
+    /// A key up, which returns what its key down did.
+    pub fn release(&mut self, keyval: u32, code: u32, state: u32) {
         let release = self
             .session
             .process_key_event(keyval, code, state | RELEASE_MASK);
+        let pressed = self.pressed.remove(&(keyval, code)).unwrap_or(false);
         assert_eq!(
-            release.handled, handled,
+            release.handled, pressed,
             "a release returns what its press did"
         );
         assert!(release.signals.is_empty());
+    }
+
+    /// A key pressed and released, the client reading its field first.
+    pub fn key(&mut self, keyval: u32, code: u32, state: u32) -> bool {
+        self.read_before_key();
+        let handled = self.press(keyval, code, state);
+        self.release(keyval, code, state);
         handled
     }
 
     /// A hardware key with no modifier and no keyval the client types.
     pub fn tap(&mut self, code: u32) -> bool {
         self.key(0, code, 0)
+    }
+
+    /// A stroke: its taps, its held keys down, the key, its held keys up.
+    pub fn stroke(&mut self, stroke: &Stroke) -> bool {
+        for &(keyval, code) in &stroke.taps {
+            self.press(keyval, code, 0);
+            self.release(keyval, code, 0);
+        }
+        for &(keyval, code) in &stroke.held {
+            self.press(keyval, code, 0);
+        }
+        let handled = self.key(stroke.keyval, stroke.code, stroke.state);
+        for &(keyval, code) in stroke.held.iter().rev() {
+            self.release(keyval, code, stroke.state);
+        }
+        handled
     }
 
     pub fn focus_out(&mut self) {

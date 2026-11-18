@@ -357,7 +357,11 @@ fn ibus_is_binary_on_engine_and_zbus() {
             )
         })
         .collect();
-    assert_eq!(targets, BTreeSet::from([("ibus-engine-divvun", "bin")]));
+    assert_eq!(
+        targets,
+        BTreeSet::from([("ibus-engine-divvun", "bin"), ("kbd_ibus", "lib")]),
+        "a binary over a library of the host logic"
+    );
     assert!(
         !workspace
             .names_of("workspace_default_members")

@@ -300,10 +300,12 @@ Sources:
 > arrives. It implements the D-Bus protocol of `linux.ibus.factory`
 > itself, with no GLib, GObject or libibus. It is excluded from
 > `default-members`; releases are built for `x86_64-unknown-linux-gnu` and
-> `aarch64-unknown-linux-gnu`. It keeps `kbd-engine`'s lints against
-> panics, `unwrap`, `expect`, indexing and `unreachable!`. It MUST NOT
-> depend on the `ibus-engine` crate: 0.3.1,
-> first published on 2026-11-09, ignores `SetSurroundingText` and
+> `aarch64-unknown-linux-gnu`. Its library, `kbd_ibus`, is the program
+> but for its command line, so that the host logic (`linux.ibus.planner`)
+> can be reused and tested from outside it. It keeps `kbd-engine`'s lints
+> against panics, `unwrap`, `expect`, indexing and `unreachable!`. It
+> MUST NOT depend on the `ibus-engine` crate: 0.3.1, first published on
+> 2026-11-09, ignores `SetSurroundingText` and
 > `SetCapabilities`, emits neither `DeleteSurroundingText` nor
 > `RequireSurroundingText`, and is licensed LGPL-2.1-or-later or
 > GPL-3.0-or-later, which a statically linked MIT or Apache-2.0 program
@@ -570,8 +572,11 @@ Sources:
 > service injects (`engine.cpp`); forwarded keys and committed text take
 > different paths through GTK and GNOME Shell, so this engine forwards
 > no keys. Without `IBUS_CAP_PREEDIT_TEXT` (1 << 0) nothing can be held:
-> *h* is 0, no preedit is shown, the context is empty, so the engine never
-> deletes, and the edit of `Commit` is applied before passing a key
+> *h* is 0 and no preedit is shown. The context is still the cache for a
+> model that does not rewrite committed text, which keeps a marker an edit
+> leaves pending after committed text, as a dead key typed after an
+> unmatched one does; for a model that does, it is empty, so the engine
+> never deletes. The edit of `Commit` is applied before passing a key
 > (`tsf.edit.reset`).
 
 > [spec:kbdgen:sem:linux.ibus.osk-backspace]
@@ -827,9 +832,13 @@ scripts that reproduce it are in `tests/linux-vm/gnome-spike/`.
 > GNOME Shell's virtual keys, the on-screen Backspace that bypasses the
 > engine, Left Alt, a password field, and for a model that rewrites
 > committed text every pair of positions without surrounding text.
-> Committed text and preedit MUST agree with the engine run natively.
-> Fault injection MUST panic in each D-Bus entry point and check the reply
-> and the poisoned process (`linux.ibus.panic`).
+> Committed text and preedit MUST agree with the engine run natively, by
+> a host that knows its whole document, or, in a password field, that
+> gives the engine an empty context as the field does; a field without a
+> preedit is compared by its committed text, and a model that rewrites
+> committed text is not compared where it gets no context. Fault
+> injection MUST panic in each D-Bus entry point and check the reply and
+> the poisoned process (`linux.ibus.panic`).
 
 > [spec:kbdgen:req:linux.test.ibus]
 > Where `ibus-daemon` is installed, a test MUST run the built
