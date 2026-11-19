@@ -365,10 +365,10 @@ only the summary.
   under `hardware`, `iOS` and `android` under `touch`. Each variant is
   written in full; you may then merge equal parts into a `default` variant
   with `inherits` (<<layouts-hosts>>).
-* No `linux` variant is written. The Linux target builds a format 3 layout
-  from its `windows` section, or its `chromeOS` section when it has no
-  `windows` one, so add `linux: {inherits: windows}` (or `chromeOS`) under
-  `hardware` to keep building it for Linux (<<linux-layouts>>).
+* A layout with a `windows` section also gets `linux: {inherits: windows}`
+  under `hardware`, and one with only a `chromeOS` section
+  `linux: {inherits: chromeOS}`, so it builds for Linux as it did before the
+  conversion (<<linux-layouts>>).
 * Layer names become modifier sets: `default` → `none`, `caps+shift` →
   `caps shift`, `cmd+alt` → `cmd alt`. `alt` becomes `altR` on Windows and
   ChromeOS (AltGr) and stays `alt` on macOS.

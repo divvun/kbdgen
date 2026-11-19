@@ -1035,12 +1035,14 @@ and a time to each event.
 
 ## Engine boundary
 
-> [spec:kbdgen:def:tsf.engine.api]
+> [spec:kbdgen:def:tsf.engine.api+1]
 > The text service's engine is `kbd-engine`, through the API of
 > `ldml.engine.api` as bounded for TSF by `ldml.engine.tsf`. Per profile it
-> decodes the model with `Model::from_bytes`, which uses the default
+> decodes the model with `Model::from_bytes` and runs it with the default
 > options (`CancelOrPass`, `Nfc`; `ldml.engine.backspace.default`,
-> `ldml.engine.output.form`). Per context it owns one `State` and calls
+> `ldml.engine.output.form`) and `Options.host` `windows`, so a keyboard
+> that names no host (`ldml.model.layout`) runs as on Windows: Left Alt
+> passes (`ldml.engine.shortcuts`). Per context it owns one `State` and calls
 > `Model::key(&State, &Context, &KeyEvent)`. It sends only `Scan`,
 > `Decimal`, `Backspace` (`tsf.keys.identity`) and `Commit`
 > (`tsf.edit.reset`) keys, builds `Context` per `tsf.edit.session` and
@@ -1063,10 +1065,11 @@ and a time to each event.
 > `kbd-engine` MUST build for every target of `tsf.arch.builds`
 > (`ldml.crate.targets`).
 
-> [spec:kbdgen:def:tsf.engine.model+1]
+> [spec:kbdgen:def:tsf.engine.model+2]
 > The *model* of a layout is the `ldml.model.encoding` (`DVKB` major 1) of
 > the layout's `windows` keyboard, the same keyboard the `kbdl` adapter
-> reads (`ldml.kbdl.model-resource`). A v3 layout gets it by in-memory
+> reads (`ldml.kbdl.model-resource`), naming `windows` as its host even
+> where the layout shares it with other hosts (`ldml.cli.compile`). A v3 layout gets it by in-memory
 > migration. Of it, the text service uses the hardware set and its layers,
 > the transforms, the flush outputs that form the preedit, and
 > `windows` (`ldml.model.windows`). It does not use touch sets or displays.

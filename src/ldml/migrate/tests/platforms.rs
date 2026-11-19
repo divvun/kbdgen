@@ -18,7 +18,7 @@ fn value(m: &Migration) -> serde_json::Value {
     crate::yaml::tree(yaml(m)).unwrap()
 }
 
-// [spec:kbdgen:sem:ldml.migrate.platforms/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
 #[test]
 fn windows_layers_become_modifier_sets_in_iso_rows() {
     let m = migrate(&desktop(
@@ -63,7 +63,7 @@ fn windows_layers_become_modifier_sets_in_iso_rows() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.migrate.platforms/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
 #[test]
 fn macos_alt_stays_alt_and_cmd_is_native() {
     let m = migrate(&desktop(
@@ -107,7 +107,7 @@ fn macos_alt_stays_alt_and_cmd_is_native() {
     assert!(layer_rows(&chrome, "chromeOS", "altR").len() == 4);
 }
 
-// [spec:kbdgen:sem:ldml.migrate.platforms/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
 #[test]
 fn macos_space_entries_become_variant_space() {
     let m = migrate(&format!(
@@ -145,7 +145,7 @@ const IOS: &str = r#"iOS:
         1 2 3
 "#;
 
-// [spec:kbdgen:sem:ldml.migrate.platforms/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
 #[test]
 fn ios_platforms_become_sizes_with_south_flicks() {
     let m = migrate(IOS);
@@ -176,7 +176,7 @@ fn ios_platforms_become_sizes_with_south_flicks() {
     );
 }
 
-// [spec:kbdgen:sem:ldml.migrate.platforms/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
 #[test]
 fn android_platforms_become_phone_and_tablet() {
     let m = migrate(
@@ -187,7 +187,7 @@ fn android_platforms_become_phone_and_tablet() {
     assert_eq!(sizes["tablet"]["layers"]["base"].as_str(), Some("a b c\n"));
 }
 
-// [spec:kbdgen:sem:ldml.migrate.platforms/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
 #[test]
 fn variants_follow_host_order_not_file_order() {
     let m = migrate(&format!(
@@ -204,8 +204,42 @@ fn variants_follow_host_order_not_file_order() {
             .map(|k| k.as_str().to_string())
             .collect()
     };
-    assert_eq!(names("hardware"), ["windows", "chromeOS"]);
+    assert_eq!(names("hardware"), ["windows", "chromeOS", "linux"]);
     assert_eq!(names("touch"), ["iOS", "android"]);
+}
+
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
+#[test]
+fn linux_inherits_windows_else_chromeos() {
+    let windows = desktop("windows", &[("default", KEYS)], "");
+    let chrome = desktop("chromeOS", &[("default", KEYS)], "");
+    let mac = desktop("macOS", &[("default", KEYS)], "");
+    for (sections, parent) in [
+        (format!("{chrome}{windows}"), Some("windows")),
+        (chrome.clone(), Some("chromeOS")),
+        (mac, None),
+    ] {
+        let m = migrate(&sections);
+        assert!(!m.blocked(), "{:?}", m.defects);
+        let v = value(&m);
+        let linux = v["hardware"].get("linux");
+        assert_eq!(
+            linux.map(|l| l
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>()),
+            parent.map(|_| vec!["inherits"])
+        );
+        assert_eq!(linux.and_then(|l| l["inherits"].as_str()), parent);
+    }
+    let m = migrate(&chrome);
+    assert!(
+        yaml(&m).contains("  linux:\n    inherits: chromeOS\n"),
+        "{}",
+        yaml(&m)
+    );
 }
 
 const TRANSFORMS: &str = "transforms:\n  ´:\n    ' ': ´\n    a: á\n    e: é\n  ˆ:\n    ' ': '^'\n    a: â\n    ˇ:\n      e: ế\n";

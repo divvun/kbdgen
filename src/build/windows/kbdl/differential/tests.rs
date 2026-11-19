@@ -198,7 +198,7 @@ fn windows_keyboard(fixture: &FixtureBundle, tag: &str) -> Keyboard {
 
 // [spec:kbdgen:req:tsf.test.engine/test]
 // [spec:kbdgen:req:tsf.data.resource/test]
-// [spec:kbdgen:def:tsf.engine.model+1/test]
+// [spec:kbdgen:def:tsf.engine.model+2/test]
 // [spec:kbdgen:req:tsf.data.version/test]
 #[tokio::test]
 async fn built_res_files_decode_to_the_windows_model() {
@@ -224,7 +224,10 @@ async fn built_res_files_decode_to_the_windows_model() {
                 "the reader expects what kbdgen writes"
             );
             let model = Model::from_bytes(&bytes).unwrap();
-            let expected = windows_keyboard(&fixture, layout.tag.as_str());
+            let expected = kbd_model::Keyboard {
+                host: Some(Host::Windows),
+                ..windows_keyboard(&fixture, layout.tag.as_str())
+            };
             assert_eq!(model.keyboard(), &expected, "{}", fixture.label);
         }
     }

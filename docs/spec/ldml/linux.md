@@ -21,16 +21,16 @@ gnome-shell `7fcbec8`, Stevia `810aba7` and plasma-keyboard `1e20db4` as
 
 ## Input
 
-> [spec:kbdgen:def:ldml.linux.input]
+> [spec:kbdgen:def:ldml.linux.input+1]
 > The target's layouts are, in bundle layout order, every v4 layout with a
 > `linux` host document (`ldml.yaml.hosts`: a `linux` or `default`
 > hardware variant) and every v3 layout with a `windows` or `chromeOS`
 > section. v3 has no Linux section. A v3 layout is migrated in memory
-> (`ldml.migrate.*`), with nothing written, and its `linux` document is
-> lowered as if the migration had written `hardware.linux: {inherits:
-> windows}`, or `{inherits: chromeOS}` when it has no `windows` variant:
-> Windows, like XKB, types a third level with Right Alt as AltGr, and
-> nearly every v3 layout has a Windows section. Each `linux` document is
+> (`ldml.migrate.*`), with nothing written, and the migration's `linux`
+> variant inherits its `windows` variant, or its `chromeOS` one when it
+> has no `windows` section (`ldml.migrate.platforms`), as the layout
+> migrated on disk does: Windows, like XKB, types a third level with Right
+> Alt as AltGr, and nearly every v3 layout has a Windows section. Each `linux` document is
 > compiled (`ldml.model.layout`) and its keyboard K encoded per
 > `ldml.model.encoding` after the engine has loaded it. The on-screen
 > layouts present K too, its hardware set as touch (`ldml.linux.touch`):

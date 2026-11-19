@@ -21,12 +21,14 @@ pub enum ComposeOut {
     Node(DeadOut),
 }
 
-/// A hardware variant: layers by modifier-set key, and `space` entries.
+/// A hardware variant: layers by modifier-set key, and `space` entries, or
+/// the variant it inherits.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HardwareOut {
     pub name: String,
     pub layers: Vec<(String, Vec<Vec<String>>)>,
     pub space: Vec<(String, String)>,
+    pub inherits: Option<String>,
 }
 
 /// A touch layer: its rows, and the rows of its south flicks.
@@ -208,6 +210,10 @@ pub fn write(layout: &Out4) -> String {
         e.open(0, "hardware");
         for variant in &layout.hardware {
             e.open(1, &variant.name);
+            if let Some(parent) = &variant.inherits {
+                e.entry(2, "inherits", parent);
+                continue;
+            }
             e.open(2, "layers");
             for (key, rows) in &variant.layers {
                 e.rows(3, key, rows);

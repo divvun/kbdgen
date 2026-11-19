@@ -50,7 +50,7 @@ fn names(dir: &std::path::Path) -> Vec<String> {
 }
 
 // [spec:kbdgen:req:ldml.cli.export/test]
-// [spec:kbdgen:req:ldml.cli.compile+1/test]
+// [spec:kbdgen:req:ldml.cli.compile+2/test]
 // [spec:kbdgen:req:ldml.cli.import/test]
 // [spec:kbdgen:thm:ldml.yaml.roundtrip+2/test]
 #[test]
@@ -82,7 +82,26 @@ fn v4_bundle_exports_compiles_and_imports_back() {
     assert_eq!(names(&xml), hosts.map(|h| format!("vro.{h}.xml")));
     assert_eq!(names(&dvkb), hosts.map(|h| format!("vro.{h}.dvkb")));
     let read = |d: &std::path::Path, n: &str| std::fs::read(d.join(n)).unwrap();
-    assert_eq!(read(&dvkb, "vro.linux.dvkb"), read(&dvkb, "vro.web.dvkb"));
+    let keyboard = |n: &str| {
+        kbd_engine::Model::from_bytes(&read(&dvkb, n))
+            .unwrap()
+            .keyboard()
+            .clone()
+    };
+    let (linux, web) = (keyboard("vro.linux.dvkb"), keyboard("vro.web.dvkb"));
+    assert_eq!(
+        (linux.host, web.host),
+        (Some(kbd_model::Host::Linux), Some(kbd_model::Host::Web)),
+        "each file names its host"
+    );
+    assert_eq!(
+        kbd_model::Keyboard {
+            host: None,
+            ..linux
+        },
+        kbd_model::Keyboard { host: None, ..web },
+        "linux and web share one keyboard"
+    );
     assert_ne!(read(&dvkb, "vro.linux.dvkb"), read(&dvkb, "vro.macOS.dvkb"));
 
     let imported = dir.path().join("imported.kbdgen");
@@ -125,7 +144,7 @@ fn v4_bundle_exports_compiles_and_imports_back() {
 // [spec:kbdgen:def:ldml.kbdl.adapter/test]
 // [spec:kbdgen:req:ldml.macos.target/test]
 // [spec:kbdgen:req:ldml.chromeos.target/test]
-// [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:ldml.linux.input+1/test]
 // [spec:kbdgen:req:ldml.linux.target/test]
 #[test]
 fn model_targets_build_v4_layouts() {
@@ -284,7 +303,7 @@ fn fixture(relative: &str) -> String {
 // [spec:kbdgen:def:cli.commands+3/test]
 // [spec:kbdgen:sem:pipeline.steps+3/test]
 // [spec:kbdgen:def:linux.ids/test]
-// [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:ldml.linux.input+1/test]
 // [spec:kbdgen:def:linux.output/test]
 #[test]
 fn linux_target_compiles_the_fixture_layouts() {
@@ -365,7 +384,7 @@ fn linux_target_compiles_the_fixture_layouts() {
     }
     for skipped in [
         "Skipping fi: no windows or chromeOS section",
-        "Skipping sme-SE: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one",
+        "Skipping sme-SE: no linux keyboard; a `linux` or `default` hardware variant would give it one",
     ] {
         assert!(stderr.contains(skipped), "{skipped}: {stderr}");
     }

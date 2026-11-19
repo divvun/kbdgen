@@ -54,7 +54,7 @@ pub fn units(context: &str, delete: usize) -> usize {
 // [spec:kbdgen:req:tsf.edit.inject+1]
 // [spec:kbdgen:req:tsf.edit.preedit+2]
 // [spec:kbdgen:req:tsf.security.disabled+1]
-// [spec:kbdgen:def:tsf.engine.api]
+// [spec:kbdgen:def:tsf.engine.api+1]
 pub fn plan(action: &Action, context: &Context, mode: Mode) -> Vec<Step> {
     let Action::Edit {
         delete,

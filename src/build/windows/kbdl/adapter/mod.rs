@@ -20,7 +20,7 @@ use crate::{
     build::diag::{Diagnostics, Platform},
     bundle::KbdgenBundle,
     ldml::{
-        compile::{Selection, encode},
+        compile::encode_for,
         layouts::{HostDocument, LayoutFile, compiled_layouts, host_documents},
         yaml::LayoutFormat,
     },
@@ -116,7 +116,7 @@ pub fn layout_name(tag: &LanguageTag, path: &Path) -> Result<Option<String>> {
 /// The input, diagnostics and model of one compiled layout. The model is
 /// the encoding of the same `windows` keyboard the input derives from.
 // [spec:kbdgen:def:ldml.kbdl.adapter]
-// [spec:kbdgen:def:tsf.engine.model+1]
+// [spec:kbdgen:def:tsf.engine.model+2]
 pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
     let keyboard = layout
         .layout
@@ -144,15 +144,7 @@ pub fn adapt(bundle: &KbdgenBundle, layout: &ModelLayout) -> Result<Adapted> {
     };
     windows_inputs(keyboard, &derived.dead_keys, &mut input, &mut diag);
 
-    let selection = Selection {
-        layouts: vec![layout.layout.tag.clone()],
-        hosts: vec![Host::Windows],
-    };
-    let model = encode(std::slice::from_ref(&layout.layout), &selection)?
-        .into_iter()
-        .next()
-        .map(|(_, bytes)| bytes)
-        .ok_or_else(|| anyhow!("layout {}: no windows model was encoded", layout.tag))?;
+    let model = encode_for(&layout.layout.tag, keyboard, Host::Windows)?;
     Ok(Adapted {
         input,
         diag,

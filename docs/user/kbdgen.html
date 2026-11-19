@@ -3712,10 +3712,10 @@ written in full; you may then merge equal parts into a <code>default</code> vari
 with <code>inherits</code> (<a href="#layouts-hosts">Platforms and variants</a>).</p>
 </li>
 <li>
-<p>No <code>linux</code> variant is written. The Linux target builds a format 3 layout
-from its <code>windows</code> section, or its <code>chromeOS</code> section when it has no
-<code>windows</code> one, so add <code>linux: {inherits: windows}</code> (or <code>chromeOS</code>) under
-<code>hardware</code> to keep building it for Linux (<a href="#linux-layouts">Keyboard layouts</a>).</p>
+<p>A layout with a <code>windows</code> section also gets <code>linux: {inherits: windows}</code>
+under <code>hardware</code>, and one with only a <code>chromeOS</code> section
+<code>linux: {inherits: chromeOS}</code>, so it builds for Linux as it did before the
+conversion (<a href="#linux-layouts">Keyboard layouts</a>).</p>
 </li>
 <li>
 <p>Layer names become modifier sets: <code>default</code> → <code>none</code>, <code>caps+shift</code> →
@@ -8127,7 +8127,8 @@ Linux output. kbdgen converts the layout in memory, as
 <div class="listingblock">
 <div class="content">
 <pre>DEBUG Skipping fi: no windows or chromeOS section
-DEBUG Skipping se-NO: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one</pre>
+DEBUG Skipping sme-SE: no linux keyboard; a `linux` or `default` hardware variant would give it one
+DEBUG Skipping se-FI: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -8135,18 +8136,22 @@ DEBUG Skipping se-NO: no linux keyboard; `hardware.linux: {inherits: windows}` w
 <code>no layout has a linux keyboard</code>.</p>
 </div>
 <div class="paragraph">
-<p>A layout that <code>kbdgen ldml migrate</code> has converted to format 4 has
-<code>windows</code>, <code>macOS</code> and <code>chromeOS</code> variants but no <code>linux</code> or <code>default</code> one,
-so it has no Linux output until you add one. To build it as it was built
-before the conversion, give it a <code>linux</code> variant that inherits the Windows
-one:</p>
+<p><code>kbdgen ldml migrate</code> writes the same choice into the format 4 layout it
+converts to, so the layout builds for Linux as before:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-yaml" data-lang="yaml">hardware:
+  windows:
+    ...
   linux:
     inherits: windows</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>A format 4 layout written by hand needs a <code>linux</code> or a <code>default</code> variant;
+a <code>linux</code> one that inherits its <code>windows</code> variant types as the Windows text
+service does.</p>
 </div>
 <div class="paragraph">
 <p>If the in-memory conversion of a v3 layout finds a blocking problem, the

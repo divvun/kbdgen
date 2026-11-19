@@ -14,9 +14,13 @@ manual-review table, per-bundle survey) and §6; `docs/spec/{layout,kbdl,macos,i
 
 ## Conversion
 
-> [spec:kbdgen:sem:ldml.migrate.platforms]
+> [spec:kbdgen:sem:ldml.migrate.platforms+1]
 > Each v3 platform section becomes a v4 variant, and its layer names map to
-> modifier sets:
+> modifier sets. A layout with a `windows` section also gets
+> `hardware.linux: {inherits: windows}`, and one with a `chromeOS` section
+> but no `windows` one `hardware.linux: {inherits: chromeOS}`, so that it
+> builds for Linux after migration as `target linux` builds it before
+> (`ldml.linux.input`); v3 has no Linux section:
 >
 > | v3 | v4 variant | Layer → v4 key |
 > |---|---|---|

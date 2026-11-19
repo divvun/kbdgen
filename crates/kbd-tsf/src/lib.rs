@@ -16,7 +16,7 @@
 
 // [spec:kbdgen:req:ldml.crate.tsf+1]
 // [spec:kbdgen:req:tsf.component.crate]
-// [spec:kbdgen:def:tsf.engine.api]
+// [spec:kbdgen:def:tsf.engine.api+1]
 // [spec:kbdgen:sem:tsf.pairing.substitute]
 // [spec:kbdgen:sem:tsf.pairing.alternatives]
 // [spec:kbdgen:sem:tsf.security.integrity]

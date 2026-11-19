@@ -122,24 +122,28 @@ and with `RUST_LOG=debug`, each one skipped is too:
 
 ----
 DEBUG Skipping fi: no windows or chromeOS section
-DEBUG Skipping se-NO: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one
+DEBUG Skipping sme-SE: no linux keyboard; a `linux` or `default` hardware variant would give it one
+DEBUG Skipping se-FI: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one
 ----
 
 If no layout has a Linux keyboard, the build stops with
 `no layout has a linux keyboard`.
 
-A layout that `kbdgen ldml migrate` has converted to format 4 has
-`windows`, `macOS` and `chromeOS` variants but no `linux` or `default` one,
-so it has no Linux output until you add one. To build it as it was built
-before the conversion, give it a `linux` variant that inherits the Windows
-one:
+`kbdgen ldml migrate` writes the same choice into the format 4 layout it
+converts to, so the layout builds for Linux as before:
 
 [source,yaml]
 ----
 hardware:
+  windows:
+    ...
   linux:
     inherits: windows
 ----
+
+A format 4 layout written by hand needs a `linux` or a `default` variant;
+a `linux` one that inherits its `windows` variant types as the Windows text
+service does.
 
 If the in-memory conversion of a v3 layout finds a blocking problem, the
 build stops and names the layout and the defect codes:

@@ -13,7 +13,7 @@ use crate::ldml::migrate::{Migration, migrate_bundle_layout};
 /// The v3 layout `tag` of `bundle`, migrated in memory. A migration that
 /// blocks is an error listing its blocking defect codes.
 // [spec:kbdgen:def:ldml.chromeos.input]
-// [spec:kbdgen:def:ldml.linux.input]
+// [spec:kbdgen:def:ldml.linux.input+1]
 pub fn unblocked(bundle: &KbdgenBundle, tag: &LanguageTag) -> Result<Migration> {
     let migration = migrate_bundle_layout(&bundle.path, tag.as_str())
         .with_context(|| format!("{tag}: migrate the v3 layout"))?

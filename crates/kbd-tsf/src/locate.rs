@@ -6,8 +6,8 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use kbd_engine::{Error, Model};
-use kbd_model::DecodeError;
+use kbd_engine::{Error, Model, Options};
+use kbd_model::{DecodeError, Host};
 
 use crate::guid;
 use crate::keys::AltGrChords;
@@ -128,19 +128,24 @@ pub fn check_layout_file(found: Option<Result<String, i32>>) -> Result<String, I
 }
 
 /// Decodes a layout DLL's model resource with `Model::from_bytes`, which
-/// refuses an unknown major version. A refused model leaves the profile
-/// inert.
+/// refuses an unknown major version, and runs it as on Windows even when
+/// its keyboard names no host. A refused model leaves the profile inert.
 // [spec:kbdgen:req:tsf.data.locate+1]
 // [spec:kbdgen:req:tsf.data.inert]
-// [spec:kbdgen:def:tsf.engine.api]
+// [spec:kbdgen:def:tsf.engine.api+1]
 // [spec:kbdgen:req:ldml.crate.tsf+1]
 // [spec:kbdgen:req:tsf.keys.altgr+2]
 pub fn decode(bytes: &[u8]) -> Result<Keyboard, Reason> {
-    let model = Model::from_bytes(bytes).map_err(|error| match error {
-        Error::Decode(DecodeError::UnsupportedVersion(_)) => Reason::ModelVersion,
-        Error::Decode(_) => Reason::ModelMalformed,
-        Error::Invalid(_) | Error::NormalizationUnsupported => Reason::ModelInvalid,
-    })?;
+    let model = Model::from_bytes(bytes)
+        .map_err(|error| match error {
+            Error::Decode(DecodeError::UnsupportedVersion(_)) => Reason::ModelVersion,
+            Error::Decode(_) => Reason::ModelMalformed,
+            Error::Invalid(_) | Error::NormalizationUnsupported => Reason::ModelInvalid,
+        })?
+        .with_options(Options {
+            host: Some(Host::Windows),
+            ..Options::default()
+        });
     let chords = AltGrChords::of(&model);
     Ok(Keyboard {
         altgr: !chords.typed.is_empty(),

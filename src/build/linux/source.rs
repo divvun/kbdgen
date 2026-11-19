@@ -16,10 +16,6 @@ use crate::ldml::compile::{Selection, encode};
 use crate::ldml::layouts::{HostDocument, LayoutFile, compiled_layouts, host_documents};
 use crate::ldml::yaml::LayoutFormat;
 
-/// The variants a v3 layout's `linux` keyboard inherits, first present
-/// wins: Windows, like XKB, types a third level with Right Alt as AltGr.
-const V3_PARENTS: [&str; 2] = ["windows", "chromeOS"];
-
 /// One layout's `linux` keyboard K, the adapter's input.
 ///
 /// The on-screen layouts present K's hardware set as touch
@@ -85,32 +81,22 @@ fn file_name(path: &Path) -> String {
         .unwrap_or_default()
 }
 
-/// The migrated file's name and the host documents of its migration, the
-/// `linux` one lowered as if the migration had written `hardware.linux:
-/// {inherits: windows}`, or `{inherits: chromeOS}` without a `windows`
-/// variant.
-// [spec:kbdgen:def:ldml.linux.input]
+/// The migrated file's name and the host documents of its migration,
+/// whose `linux` variant inherits its `windows` one, else its `chromeOS`
+/// one (`ldml.migrate.platforms`).
+// [spec:kbdgen:def:ldml.linux.input+1]
 fn migrated_documents(
     bundle: &KbdgenBundle,
     tag: &LanguageTag,
 ) -> Result<(String, Vec<HostDocument>)> {
-    let mut migration = migration::unblocked(bundle, tag)?;
-    if let Some(layout) = migration.layout.as_mut() {
-        let Some(parent) = V3_PARENTS
-            .into_iter()
-            .find(|parent| layout.inherit_hardware(Host::Linux.name(), parent))
-        else {
-            bail!("{tag}: the v3 layout's migration has no windows or chromeOS keyboard");
-        };
-        tracing::debug!("{tag}: the v3 layout's linux keyboard inherits its {parent} variant");
-    }
+    let migration = migration::unblocked(bundle, tag)?;
     let documents = migration::host_documents(tag, &migration)?;
     Ok((file_name(&migration.path), documents))
 }
 
 /// Compiles the `linux` document among `documents`; none when there is no
 /// such document.
-// [spec:kbdgen:def:ldml.linux.input]
+// [spec:kbdgen:def:ldml.linux.input+1]
 fn compile(
     tag: &LanguageTag,
     file: String,
@@ -149,10 +135,32 @@ fn compile(
     }))
 }
 
+/// How a v4 layout without a `linux` keyboard would get one: by inheriting
+/// its `windows` variant, else its `chromeOS` one, as a migrated v3
+/// layout does (`ldml.migrate.platforms`), else with a variant of its own.
+fn hint(documents: &[HostDocument]) -> String {
+    let has = |host: Host| documents.iter().any(|d| d.host == host);
+    match [Host::Windows, Host::ChromeOs]
+        .into_iter()
+        .find(|&host| has(host))
+    {
+        Some(host) => format!(
+            "`hardware.linux: {{inherits: {}}}` would give it its {} one",
+            host.name(),
+            if host == Host::Windows {
+                "Windows"
+            } else {
+                "ChromeOS"
+            }
+        ),
+        None => "a `linux` or `default` hardware variant would give it one".to_owned(),
+    }
+}
+
 /// Every layout of the bundle with Linux output, in bundle layout order.
 /// A v3 layout whose migration fails is an error, and a v4 layout without
 /// a `linux` keyboard has no output.
-// [spec:kbdgen:def:ldml.linux.input]
+// [spec:kbdgen:def:ldml.linux.input+1]
 pub fn layouts(bundle: &KbdgenBundle) -> Result<Vec<LinuxLayout>> {
     let mut layouts = Vec::new();
     for source in sources(bundle) {
@@ -170,11 +178,10 @@ pub fn layouts(bundle: &KbdgenBundle) -> Result<Vec<LinuxLayout>> {
                 (file_name(path), documents)
             }
         };
+        let hint = hint(&documents);
         match compile(tag, file, documents)? {
             Some(layout) => layouts.push(layout),
-            None => tracing::debug!(
-                "Skipping {tag}: no linux keyboard; `hardware.linux: {{inherits: windows}}` would give it its Windows one"
-            ),
+            None => tracing::debug!("Skipping {tag}: no linux keyboard; {hint}"),
         }
     }
     Ok(layouts)

@@ -218,7 +218,7 @@ fn names_derive_from_package_id_and_prefix() {
 type ErrorCase<'a> = (&'a [(&'a str, &'a str)], &'a [(&'a str, &'a str)], &'a str);
 
 // [spec:kbdgen:def:linux.ids/test]
-// [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:ldml.linux.input+1/test]
 #[tokio::test]
 async fn errors_come_before_any_file_is_written() {
     let vro = fixture_text("crates/kbd-engine/tests/golden/layouts/vro.yaml");
@@ -255,7 +255,7 @@ async fn errors_come_before_any_file_is_written() {
     }
 }
 
-// [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:ldml.linux.input+1/test]
 // [spec:kbdgen:def:ldml.linux.adapter/test]
 #[test]
 fn selects_v4_linux_and_v3_windows_or_chromeos() {
@@ -283,16 +283,8 @@ fn selects_v4_linux_and_v3_windows_or_chromeos() {
     );
     assert!(
         log.contains(
-            "Skipping sme-SE: no linux keyboard; `hardware.linux: {inherits: windows}` would give it its Windows one"
+            "Skipping sme-SE: no linux keyboard; a `linux` or `default` hardware variant would give it one"
         ),
-        "{log}"
-    );
-    assert!(
-        log.contains("se-NO: the v3 layout's linux keyboard inherits its windows variant"),
-        "{log}"
-    );
-    assert!(
-        log.contains("vro: the v3 layout's linux keyboard inherits its chromeOS variant"),
         "{log}"
     );
 
@@ -327,7 +319,34 @@ fn selects_v4_linux_and_v3_windows_or_chromeos() {
     );
 }
 
-// [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:ldml.linux.input+1/test]
+// [spec:kbdgen:sem:ldml.migrate.platforms+1/test]
+#[test]
+fn layouts_migrated_on_disk_still_build() {
+    let layouts = selection_layouts();
+    let layouts: Vec<(&str, &str)> = layouts.iter().map(|(t, y)| (*t, y.as_str())).collect();
+    let fixture = fixture(&layouts, &[("linux", TARGET)]);
+    let keyboards = |path: &Path| -> Vec<(String, Keyboard)> {
+        let bundle = read_kbdgen_bundle(path).unwrap();
+        source::layouts(&bundle)
+            .unwrap()
+            .into_iter()
+            .map(|l| (l.tag.to_string(), l.keyboard))
+            .collect()
+    };
+    let before = keyboards(&fixture.bundle);
+    crate::ldml::migrate::migrate_bundle(&fixture.bundle, false).unwrap();
+    let bundle = read_kbdgen_bundle(&fixture.bundle).unwrap();
+    let v3: Vec<String> = bundle.layouts.keys().map(|tag| tag.to_string()).collect();
+    assert_eq!(
+        v3,
+        ["fi"],
+        "se-NO and vro are now v4; fi has nothing to migrate"
+    );
+    assert_eq!(keyboards(&fixture.bundle), before);
+}
+
+// [spec:kbdgen:def:ldml.linux.input+1/test]
 #[test]
 fn blocked_migrations_and_layerless_keyboards_are_fatal() {
     let keys = "a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 A B C D E F G H I J K L";
@@ -460,7 +479,7 @@ fn is_binary(name: &str) -> bool {
 // [spec:kbdgen:def:linux.xkb.install/test]
 // [spec:kbdgen:req:linux.test.golden/test]
 // [spec:kbdgen:req:ldml.linux.target/test]
-// [spec:kbdgen:def:ldml.linux.input/test]
+// [spec:kbdgen:def:ldml.linux.input+1/test]
 #[tokio::test]
 async fn writes_the_golden_output_tree() {
     let layouts = golden_layouts();

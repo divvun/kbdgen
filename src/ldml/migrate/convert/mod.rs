@@ -292,7 +292,18 @@ fn dead_usage(src: &Source3, ctx: &mut Ctx) {
     }
 }
 
-// [spec:kbdgen:sem:ldml.migrate.platforms]
+/// The variant the `linux` one inherits: `windows`, else `chromeOS`, as
+/// `target linux` reads a v3 layout (`ldml.linux.input`). Windows, like
+/// XKB, types a third level with Right Alt as AltGr.
+// [spec:kbdgen:sem:ldml.migrate.platforms+1]
+fn linux_parent(hardware: &[HardwareOut]) -> Option<String> {
+    ["windows", "chromeOS"]
+        .into_iter()
+        .find(|parent| hardware.iter().any(|variant| variant.name == *parent))
+        .map(str::to_string)
+}
+
+// [spec:kbdgen:sem:ldml.migrate.platforms+1]
 /// Converts a v3 layout, reporting each defect into `defects`.
 pub fn convert(src: &Source3, defects: &mut Defects) -> Converted {
     let (dead, dead_keys) = dead::table(src, defects);
@@ -311,6 +322,13 @@ pub fn convert(src: &Source3, defects: &mut Defects) -> Converted {
         let (variant, layers): (HardwareOut, DesktopTrace) = desktop::convert(section, &mut ctx);
         out.hardware.push(variant);
         trace.desktop.push(layers);
+    }
+    if let Some(parent) = linux_parent(&out.hardware) {
+        out.hardware.push(HardwareOut {
+            name: "linux".to_string(),
+            inherits: Some(parent),
+            ..HardwareOut::default()
+        });
     }
     for section in &src.touch {
         let (variant, sizes): (TouchOut, TouchTrace) = touch::convert(src, section, &mut ctx);

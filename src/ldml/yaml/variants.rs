@@ -8,7 +8,7 @@ use serde_json::Value;
 use super::error::{At, Result};
 use super::node::{Fields, entries, integer, list, string};
 use super::schema::{
-    FlickRows, FormSpec, HardwareVariant, LayerSpec, Layout4, LongPressEntry, Size, SpaceSpec,
+    FlickRows, FormSpec, HardwareVariant, LayerSpec, LongPressEntry, Size, SpaceSpec,
     TouchLayerSpec, TouchVariant, long_press,
 };
 use super::text::Strings;
@@ -302,24 +302,6 @@ pub fn hardware(value: &Value, at: &At, strings: &Strings) -> Result<Vec<Hardwar
         out.push(variant);
     }
     Ok(out)
-}
-
-impl Layout4 {
-    /// Adds the hardware variant `name` as the layout would have it with
-    /// `hardware.<name>: {inherits: <parent>}` and nothing more: `parent`
-    /// as resolved, under the new name. Adds nothing, returning false, when
-    /// the layout has no variant `parent` or already has one named `name`.
-    pub fn inherit_hardware(&mut self, name: &str, parent: &str) -> bool {
-        if self.hardware.iter().any(|v| v.name == name) {
-            return false;
-        }
-        let Some(mut variant) = self.hardware.iter().find(|v| v.name == parent).cloned() else {
-            return false;
-        };
-        variant.name = name.to_string();
-        self.hardware.push(variant);
-        true
-    }
 }
 
 struct RawTouch {

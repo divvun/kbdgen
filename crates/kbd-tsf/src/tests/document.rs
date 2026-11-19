@@ -189,7 +189,7 @@ fn backspace_cancels_pending_dead_key() {
 }
 
 // [spec:kbdgen:req:tsf.keys.claim+1/test]
-// [spec:kbdgen:def:tsf.engine.api/test]
+// [spec:kbdgen:def:tsf.engine.api+1/test]
 // [spec:kbdgen:req:tsf.keys.phases/test]
 #[test]
 fn deciding_twice_changes_nothing() {

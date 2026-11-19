@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use kbd_model::{EncodeError, Host, Layout};
+use kbd_model::{EncodeError, Host, Keyboard, Layout};
 
 /// The layouts and hosts a run covers. Empty lists mean every layout, in
 /// bundle layout order, and every host, in `ldml.yaml.hosts` order.
@@ -36,12 +36,33 @@ pub enum CompileError {
     },
 }
 
-/// The selected models as (file name, bytes), layouts in the given order
-/// and hosts in host order, each named `<tag>.<host>.dvkb`. Each model is
-/// decoded again by the engine, so a file is only produced when the device
+/// `keyboard` encoded as the model of `host`: with `host` as its host, so a
+/// keyboard several hosts share (`ldml.model.layout`), which has none,
+/// still runs as on `host` in an engine given no `Options.host`. The model
+/// is decoded again by the engine, so it is only produced when the device
 /// will load it.
-/// Hosts that share a keyboard get identical bytes, because the shared
-/// keyboard is encoded once per host from the same value.
+// [spec:kbdgen:req:ldml.cli.compile+2]
+pub fn encode_for(tag: &str, keyboard: &Keyboard, host: Host) -> Result<Vec<u8>, CompileError> {
+    let keyboard = Keyboard {
+        host: Some(host),
+        ..keyboard.clone()
+    };
+    let bytes = keyboard.to_bytes().map_err(|source| CompileError::Encode {
+        tag: tag.to_owned(),
+        host: host.name(),
+        source,
+    })?;
+    kbd_engine::Model::from_bytes(&bytes).map_err(|source| CompileError::Load {
+        tag: tag.to_owned(),
+        host: host.name(),
+        source,
+    })?;
+    Ok(bytes)
+}
+
+/// The selected models as (file name, bytes), layouts in the given order
+/// and hosts in host order, each named `<tag>.<host>.dvkb` and encoded by
+/// [`encode_for`].
 pub fn encode(
     layouts: &[Layout],
     selection: &Selection,
@@ -65,23 +86,14 @@ pub fn encode(
             let Some(keyboard) = layout.keyboard_for(host) else {
                 continue;
             };
-            let bytes = keyboard.to_bytes().map_err(|source| CompileError::Encode {
-                tag: layout.tag.clone(),
-                host: host.name(),
-                source,
-            })?;
-            kbd_engine::Model::from_bytes(&bytes).map_err(|source| CompileError::Load {
-                tag: layout.tag.clone(),
-                host: host.name(),
-                source,
-            })?;
+            let bytes = encode_for(&layout.tag, keyboard, host)?;
             files.push((format!("{}.{}.dvkb", layout.tag, host.name()), bytes));
         }
     }
     Ok(files)
 }
 
-// [spec:kbdgen:req:ldml.cli.compile+1]
+// [spec:kbdgen:req:ldml.cli.compile+2]
 /// Writes `<out>/<tag>.<host>.dvkb` for each selected layout and host that
 /// has a keyboard, creating `out` with its parents. Every model is encoded
 /// and checked before the first file is written, so a failure writes
@@ -166,7 +178,7 @@ mod tests {
             .collect()
     }
 
-    // [spec:kbdgen:req:ldml.cli.compile+1/test]
+    // [spec:kbdgen:req:ldml.cli.compile+2/test]
     #[test]
     fn writes_one_model_per_layout_host() {
         let dir = tempfile::tempdir().unwrap();
@@ -184,13 +196,31 @@ mod tests {
             ]
         );
         let read = |name: &str| std::fs::read(out.join(name)).unwrap();
-        assert_eq!(read("sme.windows.dvkb"), read("sme.macOS.dvkb"));
+        let keyboard = |name: &str| {
+            kbd_engine::Model::from_bytes(&read(name))
+                .unwrap()
+                .keyboard()
+                .clone()
+        };
+        let (windows, mac) = (keyboard("sme.windows.dvkb"), keyboard("sme.macOS.dvkb"));
+        assert_eq!(
+            windows.host,
+            Some(Host::Windows),
+            "a shared keyboard names its host"
+        );
+        assert_eq!(mac.host, Some(Host::MacOs));
+        assert_eq!(
+            Keyboard {
+                host: None,
+                ..windows
+            },
+            Keyboard { host: None, ..mac }
+        );
         assert_ne!(read("sme.windows.dvkb"), read("sme.iOS.dvkb"));
-        let model = kbd_engine::Model::from_bytes(&read("sme.iOS.dvkb")).unwrap();
-        assert_eq!(model.keyboard().host, Some(Host::Ios));
+        assert_eq!(keyboard("sme.iOS.dvkb").host, Some(Host::Ios));
     }
 
-    // [spec:kbdgen:req:ldml.cli.compile+1/test]
+    // [spec:kbdgen:req:ldml.cli.compile+2/test]
     #[test]
     fn selection_restricts_layouts_and_hosts() {
         let selection = Selection {
@@ -202,7 +232,7 @@ mod tests {
         assert_eq!(names, ["smj.windows.dvkb", "smj.iOS.dvkb"]);
     }
 
-    // [spec:kbdgen:req:ldml.cli.compile+1/test]
+    // [spec:kbdgen:req:ldml.cli.compile+2/test]
     #[test]
     fn failures_write_nothing() {
         let dir = tempfile::tempdir().unwrap();

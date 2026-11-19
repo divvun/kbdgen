@@ -411,3 +411,31 @@ fn other_keys_keep_held_modifiers() {
     let sent = through_ctrl_alt(&t, both, &right_ctrl).unwrap();
     assert!(sent.ctrl_r && !sent.ctrl_l && !sent.alt_l && sent.alt_r && sent.altgr);
 }
+
+// [spec:kbdgen:def:tsf.engine.api+1/test]
+#[test]
+fn a_model_naming_no_host_runs_as_windows() {
+    let keyboard = kbd_model::Keyboard {
+        host: None,
+        ..fixture::keyboard()
+    };
+    let bytes = keyboard.to_bytes().unwrap();
+    let loaded = crate::locate::decode(&bytes).unwrap();
+    assert_eq!(loaded.model.options().host, Some(kbd_model::Host::Windows));
+    let event = KeyEvent {
+        key: Key::Scan(fixture::Q),
+        modifiers: ModifierState {
+            ctrl_l: true,
+            alt_l: true,
+            ..ModifierState::default()
+        },
+        repeat: false,
+    };
+    let typed = |model: &Model| model.key(&State::default(), &Context::default(), &event).0;
+    assert_eq!(typed(&loaded.model), Action::Pass, "Left Alt is a shortcut");
+    assert_ne!(
+        typed(&Model::from_bytes(&bytes).unwrap()),
+        Action::Pass,
+        "with no host the ctrl alt layer types"
+    );
+}

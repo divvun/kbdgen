@@ -44,10 +44,13 @@ Sources: `docs/spec/cli.md`, `docs/spec/bundle.md`.
 > given. Two files claiming the same tag and host are an error. It prints
 > the count of dropped comments and every warning.
 
-> [spec:kbdgen:req:ldml.cli.compile+1]
+> [spec:kbdgen:req:ldml.cli.compile+2]
 > `compile` MUST write `<OUT>/<tag>.<host>.dvkb` (`ldml.model.encoding`)
-> for each v4 layout and host. Hosts that share a model get identical
-> files. Each host document must also load in the engine
+> for each v4 layout and host. Each file's keyboard names its host, also
+> where hosts share a keyboard, which in the model has none
+> (`ldml.model.layout`), so a host that supplies no `Options.host` still
+> runs it as that host; the files of hosts that share a keyboard differ
+> only there. Each host document must also load in the engine
 > (`Model::from_keyboard`), and each encoded file must decode
 > (`Model::from_bytes`), before anything is written. These are the files
 > that host packaging embeds: the Windows resource of

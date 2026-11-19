@@ -99,9 +99,9 @@ fn export_selection_and_failures() {
     assert!(!out.exists(), "a failure writes nothing");
 }
 
-// [spec:kbdgen:req:ldml.cli.compile+1/test]
+// [spec:kbdgen:req:ldml.cli.compile+2/test]
 #[test]
-fn shared_hosts_compile_to_identical_models() {
+fn shared_hosts_compile_to_models_naming_their_host() {
     let layouts = compiled_layouts(&documents()).unwrap();
     assert_eq!(layouts.len(), 2);
     let sme = &layouts[0];
@@ -114,7 +114,25 @@ fn shared_hosts_compile_to_identical_models() {
     let paths = compile(&layouts, &Selection::default(), dir.path()).unwrap();
     assert_eq!(paths.len(), 4);
     let read = |n: &str| std::fs::read(dir.path().join(n)).unwrap();
-    assert_eq!(read("sme.windows.dvkb"), read("sme.macOS.dvkb"));
+    let keyboard = |n: &str| {
+        kbd_engine::Model::from_bytes(&read(n))
+            .unwrap()
+            .keyboard()
+            .clone()
+    };
+    let (windows, mac) = (keyboard("sme.windows.dvkb"), keyboard("sme.macOS.dvkb"));
+    assert_eq!(
+        (windows.host, mac.host),
+        (Some(Host::Windows), Some(Host::MacOs))
+    );
+    assert_eq!(
+        kbd_model::Keyboard {
+            host: None,
+            ..windows
+        },
+        kbd_model::Keyboard { host: None, ..mac },
+        "the shared keyboard but for its host"
+    );
     assert_ne!(read("sme.windows.dvkb"), read("sme.iOS.dvkb"));
 }
 

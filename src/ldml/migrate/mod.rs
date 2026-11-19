@@ -29,6 +29,7 @@ pub use self::convert::Out;
 use self::defect::{Code, Defect, Defects};
 use self::report::{LayoutReport, Outcome, Report};
 use super::LdmlError;
+use super::compile::encode_for;
 use super::layouts::{HostDocument, LayoutFile, compiled_layouts, layout_files};
 use super::yaml::{Layout4, LayoutFormat, lower, parse_yaml};
 
@@ -186,9 +187,9 @@ pub fn migrate_bundle_layout(bundle: &Path, tag: &str) -> Result<Option<Migratio
     }
 }
 
-/// The encoded `windows` keyboard (`ldml.model.encoding`) of a migration
-/// that does not block; none when it has no `windows` keyboard.
-// [spec:kbdgen:def:tsf.engine.model+1]
+/// The `windows` model (`tsf.engine.model`) of a migration that does not
+/// block; none when it has no `windows` keyboard.
+// [spec:kbdgen:def:tsf.engine.model+2]
 pub fn windows_model(migration: &Migration) -> Result<Option<Vec<u8>>, LdmlError> {
     let Some(layout) = migration.compiled()? else {
         return Ok(None);
@@ -196,8 +197,7 @@ pub fn windows_model(migration: &Migration) -> Result<Option<Vec<u8>>, LdmlError
     let Some(keyboard) = layout.keyboard_for(Host::Windows) else {
         return Ok(None);
     };
-    keyboard
-        .to_bytes()
+    encode_for(&migration.tag, keyboard, Host::Windows)
         .map(Some)
         .map_err(|e| LdmlError::Layout {
             tag: migration.tag.clone(),
