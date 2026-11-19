@@ -161,6 +161,8 @@ pub struct HostingPlist {
     pub ui_user_interface_style: String,
     #[serde(rename = "SentryDSN")]
     pub sentry_dsn: Option<String>,
+    #[serde(rename = "UIApplicationSceneManifest")]
+    pub ui_application_scene_manifest: Option<plist::Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
